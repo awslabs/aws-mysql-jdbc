@@ -1,0 +1,369 @@
+/*
+ * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License, version 2.0, as published by the
+ * Free Software Foundation.
+ *
+ * This program is also distributed with certain software (including but not
+ * limited to OpenSSL) that is licensed under separate terms, as designated in a
+ * particular file or component or in included license documentation. The
+ * authors of MySQL hereby grant you an additional permission to link the
+ * program and your derivative works with the separately licensed software that
+ * they have included with MySQL.
+ *
+ * Without limiting anything contained in the foregoing, this file, which is
+ * part of MySQL Connector/J, is also subject to the Universal FOSS Exception,
+ * version 1.0, a copy of which can be found at
+ * http://oss.oracle.com/licenses/universal-foss-exception.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,
+ * for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+ */
+
+package com.mysql.cj.jdbc.ha.ca;
+
+import com.mysql.cj.Messages;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.log.Log;
+import com.mysql.cj.log.NullLogger;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * An implementation of ReaderFailoverHandler.
+ *
+ * <p>Reader Failover Process goal is to connect to any available reader. In order to connect
+ * faster, this implementation tries to connect to two readers at the same time. The first
+ * successfully connected reader is returned as the process result. If both readers are unavailable
+ * (i.e. could not be connected to), the process picks up another pair of readers and repeat. If no
+ * reader has been connected to, the process may consider a writer host, and other hosts marked
+ * down, to connect to.
+ */
+public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler {
+  protected static final int DEFAULT_FAILOVER_TIMEOUT = 30000; // 30 sec
+
+  /** Null logger shared by all connections at startup. */
+  protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
+
+  /** The logger we're going to use. */
+  protected transient Log log = NULL_LOGGER;
+
+  protected int timeoutMs;
+  protected final ConnectionProvider connProvider;
+  protected final TopologyService topologyService;
+
+  public ClusterAwareReaderFailoverHandler(
+      TopologyService topologyService, ConnectionProvider connProvider, Log log) {
+    this(topologyService, connProvider, DEFAULT_FAILOVER_TIMEOUT, log);
+  }
+
+
+  /**
+   * ClusterAwareReaderFailoverHandler constructor.
+   * */
+  public ClusterAwareReaderFailoverHandler(
+      TopologyService topologyService, ConnectionProvider connProvider, int timeoutMs, Log log) {
+    this.topologyService = topologyService;
+    this.connProvider = connProvider;
+    this.timeoutMs = timeoutMs;
+
+    if (log != null) {
+      this.log = log;
+    }
+  }
+
+  /**
+   * Set process timeout in millis. Entire process of connecting to a reader will be limited by this
+   * time duration.
+   *
+   * @param timeoutMs Process timeout in millis
+   */
+  protected void setTimeoutMs(int timeoutMs) {
+    this.timeoutMs = timeoutMs;
+  }
+
+  /**
+   * Called to start Reader Failover Process. This process tries to connect to any reader. If no
+   * reader is available then driver may also try to connect to a writer host, down hosts, and the
+   * current reader host.
+   *
+   * @param hosts Cluster current topology
+   * @param currentHost The currently connected host that has failed.
+   * @return {@link ConnectionAttemptResult} The results of this process. May return null, which is
+   *     considered an unsuccessful result.
+   */
+  @Override
+  public ConnectionAttemptResult failover(List<HostInfo> hosts, HostInfo currentHost)
+      throws SQLException {
+    if (currentHost != null) {
+      this.topologyService.addDownHost(currentHost.getHostPortPair());
+    }
+    if (hosts == null || hosts.isEmpty()) {
+      return new ConnectionAttemptResult(
+          null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+    }
+    Set<String> downHosts = topologyService.getDownHosts();
+    List<HostTuple> hostGroup = getHostTuplesByPriority(hosts, downHosts);
+    return getConnectionFromHostGroup(hostGroup);
+  }
+
+  List<HostTuple> getHostTuplesByPriority(List<HostInfo> hosts, Set<String> downHosts) {
+    List<HostTuple> hostGroup = new ArrayList<>();
+    addActiveReaders(hostGroup, hosts, downHosts);
+    HostInfo writerHost = hosts.get(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX);
+    if (writerHost != null) {
+      hostGroup.add(
+          new HostTuple(
+              hosts.get(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX),
+              ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX));
+    }
+    addDownHosts(hostGroup, hosts, downHosts);
+    return hostGroup;
+  }
+
+  private void addActiveReaders(List<HostTuple> list, List<HostInfo> hosts, Set<String> downHosts) {
+    List<HostTuple> activeReaders = new ArrayList<>();
+    for (int i = ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX + 1; i < hosts.size(); i++) {
+      HostInfo host = hosts.get(i);
+      if (!downHosts.contains(host.getHostPortPair())) {
+        activeReaders.add(new HostTuple(host, i));
+      }
+    }
+    Collections.shuffle(activeReaders);
+    list.addAll(activeReaders);
+  }
+
+  private void addDownHosts(List<HostTuple> list, List<HostInfo> hosts, Set<String> downHosts) {
+    List<HostTuple> downHostList = new ArrayList<>();
+    for (int i = 0; i < hosts.size(); i++) {
+      HostInfo host = hosts.get(i);
+      if (downHosts.contains(host.getHostPortPair())) {
+        downHostList.add(new HostTuple(host, i));
+      }
+    }
+    Collections.shuffle(downHostList);
+    list.addAll(downHostList);
+  }
+
+  /**
+   * Called to get any available reader connection. If no reader is available then result of process
+   * is unsuccessful. This process will not attempt to connect to the writer.
+   *
+   * @param hostList Cluster current topology
+   * @return {@link ConnectionAttemptResult} The results of this process. May return null, which is
+   *     considered an unsuccessful result.
+   */
+  @Override
+  public ConnectionAttemptResult getReaderConnection(List<HostInfo> hostList) throws SQLException {
+    Set<String> downHosts = topologyService.getDownHosts();
+    List<HostTuple> tuples = getReaderTuplesByPriority(hostList, downHosts);
+    return getConnectionFromHostGroup(tuples);
+  }
+
+  List<HostTuple> getReaderTuplesByPriority(List<HostInfo> hostList, Set<String> downHosts) {
+    List<HostTuple> tuples = new ArrayList<>();
+    addActiveReaders(tuples, hostList, downHosts);
+    addDownReaders(tuples, hostList, downHosts);
+    return tuples;
+  }
+
+  private void addDownReaders(List<HostTuple> list, List<HostInfo> hosts, Set<String> downHosts) {
+    List<HostTuple> downReaders = new ArrayList<>();
+    for (int i = ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX + 1; i < hosts.size(); i++) {
+      HostInfo host = hosts.get(i);
+      if (downHosts.contains(host.getHostPortPair())) {
+        downReaders.add(new HostTuple(host, i));
+      }
+    }
+    Collections.shuffle(downReaders);
+    list.addAll(downReaders);
+  }
+
+  private ConnectionAttemptResult getConnectionFromHostGroup(List<HostTuple> hostGroup)
+      throws SQLException {
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    CompletionService<ConnectionAttemptResult> completionService =
+        new ExecutorCompletionService<>(executor);
+
+    ConnectionAttemptResult result;
+
+    try {
+      for (int i = 0; i < hostGroup.size(); i += 2) {
+        boolean secondAttemptPresent = i + 1 < hostGroup.size();
+        Future<ConnectionAttemptResult> attempt1 =
+                completionService.submit(
+                        new ConnectionAttemptTask(
+                                this.connProvider, hostGroup.get(i), this.topologyService, this.log));
+        if (secondAttemptPresent) {
+          Future<ConnectionAttemptResult> attempt2 =
+                  completionService.submit(
+                          new ConnectionAttemptTask(
+                                  this.connProvider, hostGroup.get(i + 1), this.topologyService, this.log));
+          result = getResultFromAttemptPair(attempt1, attempt2, completionService);
+        } else {
+          result = getNextResult(completionService);
+        }
+
+        if (result.isSuccess()) {
+          this.log.logDebug(
+                  Messages.getString(
+                          "ClusterAwareReaderFailoverHandler.2", new Object[]{result.getConnectionIndex()}));
+          return result;
+        }
+
+        try {
+          TimeUnit.MILLISECONDS.sleep(1);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new SQLException(
+                  Messages.getString("ClusterAwareReaderFailoverHandler.1"), "70100", e);
+        }
+      }
+
+      return new ConnectionAttemptResult(
+              null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private ConnectionAttemptResult getResultFromAttemptPair(
+      Future<ConnectionAttemptResult> attempt1,
+      Future<ConnectionAttemptResult> attempt2,
+      CompletionService<ConnectionAttemptResult> service)
+      throws SQLException {
+    try {
+      Future<ConnectionAttemptResult> firstCompleted =
+          service.poll(this.timeoutMs, TimeUnit.MILLISECONDS);
+      if (firstCompleted != null) {
+        ConnectionAttemptResult result = firstCompleted.get();
+        if (result.isSuccess()) {
+          if (firstCompleted.equals(attempt1)) {
+            attempt2.cancel(true);
+          } else {
+            attempt1.cancel(true);
+          }
+          return result;
+        }
+      }
+    } catch (ExecutionException e) {
+      return getNextResult(service);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      // "Thread was interrupted"
+      throw new SQLException(Messages.getString("ClusterAwareReaderFailoverHandler.1"), "70100", e);
+    }
+    return getNextResult(service);
+  }
+
+  private ConnectionAttemptResult getNextResult(CompletionService<ConnectionAttemptResult> service)
+      throws SQLException {
+    try {
+      Future<ConnectionAttemptResult> result = service.poll(this.timeoutMs, TimeUnit.MILLISECONDS);
+      if (result == null) {
+        return new ConnectionAttemptResult(
+            null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+      }
+      return result.get();
+    } catch (ExecutionException e) {
+      return new ConnectionAttemptResult(
+          null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      // "Thread was interrupted"
+      throw new SQLException(Messages.getString("ClusterAwareReaderFailoverHandler.1"), "70100", e);
+    }
+  }
+
+  private static class ConnectionAttemptTask implements Callable<ConnectionAttemptResult> {
+    private final ConnectionProvider connProvider;
+    private final HostTuple newHostTuple;
+    private final TopologyService topologyService;
+    private final transient Log log;
+
+    private ConnectionAttemptTask(
+        ConnectionProvider connProvider,
+        HostTuple newHostTuple,
+        TopologyService topologyService,
+        Log log) {
+      this.connProvider = connProvider;
+      this.newHostTuple = newHostTuple;
+      this.topologyService = topologyService;
+      this.log = log;
+    }
+
+    /**
+     * Call ConnectionAttemptResult.
+     * */
+    @Override
+    public ConnectionAttemptResult call() {
+      HostInfo newHost = this.newHostTuple.getHost();
+      String newHostPortPair = newHost.getHostPortPair();
+      this.log.logDebug(
+          Messages.getString(
+              "ClusterAwareReaderFailoverHandler.3",
+              new Object[] {this.newHostTuple.getIndex(), newHostPortPair}));
+
+      try {
+        JdbcConnection conn = this.connProvider.connect(newHost);
+        topologyService.removeDownHost(newHostPortPair);
+        this.log.logDebug(
+            Messages.getString(
+                "ClusterAwareReaderFailoverHandler.4",
+                new Object[] {this.newHostTuple.getIndex(), newHostPortPair}));
+        return new ConnectionAttemptResult(conn, this.newHostTuple.getIndex(), true);
+      } catch (SQLException e) {
+        topologyService.addDownHost(newHostPortPair);
+        this.log.logDebug(
+            Messages.getString(
+                "ClusterAwareReaderFailoverHandler.5",
+                new Object[] {this.newHostTuple.getIndex(), newHostPortPair}));
+        return new ConnectionAttemptResult(
+            null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+      }
+    }
+  }
+
+  /**
+   * HostTuple class.
+   * */
+  protected static class HostTuple {
+    private final HostInfo host;
+    private final int index;
+
+    HostTuple(HostInfo host, int index) {
+      this.host = host;
+      this.index = index;
+    }
+
+    public HostInfo getHost() {
+      return host;
+    }
+
+    public int getIndex() {
+      return index;
+    }
+  }
+}
