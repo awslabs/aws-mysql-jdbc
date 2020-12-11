@@ -1,0 +1,14 @@
+Source: @PRODUCT_NAME@@PRODUCT_SUFFIX@
+Section: database
+Priority: optional
+Maintainer: Oracle MySQL Product Engineering Team <mysql-build@oss.oracle.com>
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 8.9.4)
+Homepage: http://dev.mysql.com/downloads/connector/j/
+
+Package: @PRODUCT_NAME@@PRODUCT_SUFFIX@
+Section: database
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: MySQL Connector/J
+ Standardized MySQL database driver for Java
