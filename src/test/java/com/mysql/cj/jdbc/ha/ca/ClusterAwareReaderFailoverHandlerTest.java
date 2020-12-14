@@ -110,9 +110,9 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertEquals(successHostIndex, result.getConnectionIndex());
 
     final HostInfo successHost = hosts.get(successHostIndex);
-    verify(mockTopologyService, atLeast(4)).addDownHost(any());
-    verify(mockTopologyService, never()).addDownHost(eq(successHost.getHostPortPair()));
-    verify(mockTopologyService, times(1)).removeDownHost(eq(successHost.getHostPortPair()));
+    verify(mockTopologyService, atLeast(4)).addToDownHostList(any());
+    verify(mockTopologyService, never()).addToDownHostList(eq(successHost));
+    verify(mockTopologyService, times(1)).removeFromDownHostList(eq(successHost));
   }
 
   private List<HostInfo> getHostsFromTestUrls(int numHosts) {
@@ -142,7 +142,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertFalse(result.isSuccess());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
-    verify(mockTopologyService, times(1)).addDownHost(eq(currentHost.getHostPortPair()));
+    verify(mockTopologyService, times(1)).addToDownHostList(eq(currentHost));
 
     final List<HostInfo> hosts = new ArrayList<>();
     result = target.failover(hosts, currentHost);
@@ -150,7 +150,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 
-    verify(mockTopologyService, times(2)).addDownHost(eq(currentHost.getHostPortPair()));
+    verify(mockTopologyService, times(2)).addToDownHostList(eq(currentHost));
   }
 
   @Test
@@ -182,8 +182,8 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertSame(mockConnection, result.getConnection());
     assertEquals(2, result.getConnectionIndex());
 
-    verify(mockTopologyService, never()).addDownHost(any());
-    verify(mockTopologyService, times(1)).removeDownHost(eq(fastHost.getHostPortPair()));
+    verify(mockTopologyService, never()).addToDownHostList(any());
+    verify(mockTopologyService, times(1)).removeFromDownHostList(eq(fastHost));
   }
 
   @Test
@@ -208,10 +208,10 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 
     final HostInfo currentHost = hosts.get(currentHostIndex);
-    verify(mockTopologyService, atLeastOnce()).addDownHost(eq(currentHost.getHostPortPair()));
+    verify(mockTopologyService, atLeastOnce()).addToDownHostList(eq(currentHost));
     verify(mockTopologyService, never())
-        .addDownHost(
-            eq(hosts.get(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX).getHostPortPair()));
+        .addToDownHostList(
+            eq(hosts.get(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX)));
   }
 
   @Test
@@ -244,7 +244,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 
-    verify(mockTopologyService, never()).addDownHost(any());
+    verify(mockTopologyService, never()).addToDownHostList(any());
   }
 
   @Test
