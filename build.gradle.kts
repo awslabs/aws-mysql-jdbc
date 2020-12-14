@@ -119,18 +119,6 @@ tasks.javadoc {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
-    testLogging.showStandardStreams = true
-    addTestListener(object: TestListener {
-        override fun afterSuite(descriptor: TestDescriptor?, result: TestResult?) {}
-        override fun beforeSuite(descriptor: TestDescriptor?) {}
-        override fun afterTest(descriptor: TestDescriptor?, result: TestResult?) {}
-
-        override fun beforeTest(descriptor: TestDescriptor?) {
-            logger.lifecycle("Running test: $descriptor")
-        }
-    })
-
-    addTestOutputListener { descriptor, event -> logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message ) }
 
     // Pass the property to tests
     fun passProperty(name: String, default: String? = null) {
