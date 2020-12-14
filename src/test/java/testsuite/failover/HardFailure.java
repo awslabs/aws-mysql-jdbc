@@ -1,6 +1,7 @@
 package testsuite.failover;
 
 //import com.mysql.cj.jdbc.MysqlDataSource;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -11,6 +12,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 
+@Disabled
 public class HardFailure {
 
   public HardFailure() throws SQLException {
