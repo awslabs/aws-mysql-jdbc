@@ -119,6 +119,7 @@ tasks.javadoc {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+
     // Pass the property to tests
     fun passProperty(name: String, default: String? = null) {
         val value = System.getProperty(name) ?: default
