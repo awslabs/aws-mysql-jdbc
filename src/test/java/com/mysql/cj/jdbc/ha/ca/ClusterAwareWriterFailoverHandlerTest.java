@@ -113,8 +113,8 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertSame(result.getNewConnection(), mockConnection);
 
     final InOrder inOrder = Mockito.inOrder(mockTopologyService);
-    inOrder.verify(mockTopologyService).addDownHost(eq(writerHost.getHostPortPair()));
-    inOrder.verify(mockTopologyService).removeDownHost(eq(writerHost.getHostPortPair()));
+    inOrder.verify(mockTopologyService).addToDownHostList(eq(writerHost));
+    inOrder.verify(mockTopologyService).removeFromDownHostList(eq(writerHost));
   }
 
   private HostInfo createBasicHostInfo(String instanceName) {
@@ -185,8 +185,8 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertSame(result.getNewConnection(), mockWriterConnection);
 
     final InOrder inOrder = Mockito.inOrder(mockTopologyService);
-    inOrder.verify(mockTopologyService).addDownHost(eq(writerHost.getHostPortPair()));
-    inOrder.verify(mockTopologyService).removeDownHost(eq(writerHost.getHostPortPair()));
+    inOrder.verify(mockTopologyService).addToDownHostList(eq(writerHost));
+    inOrder.verify(mockTopologyService).removeFromDownHostList(eq(writerHost));
   }
 
   /**
@@ -243,8 +243,8 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertSame(result.getNewConnection(), mockWriterConnection);
 
     final InOrder inOrder = Mockito.inOrder(mockTopologyService);
-    inOrder.verify(mockTopologyService).addDownHost(eq(writerHost.getHostPortPair()));
-    inOrder.verify(mockTopologyService).removeDownHost(eq(writerHost.getHostPortPair()));
+    inOrder.verify(mockTopologyService).addToDownHostList(eq(writerHost));
+    inOrder.verify(mockTopologyService).removeFromDownHostList(eq(writerHost));
   }
 
   /**
@@ -315,8 +315,8 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertEquals(3, result.getTopology().size());
     assertEquals("new-writer-host", result.getTopology().get(0).getHost());
 
-    verify(mockTopologyService, times(1)).addDownHost(eq(writerHost.getHostPortPair()));
-    verify(mockTopologyService, times(1)).removeDownHost(eq(newWriterHost.getHostPortPair()));
+    verify(mockTopologyService, times(1)).addToDownHostList(eq(writerHost));
+    verify(mockTopologyService, times(1)).removeFromDownHostList(eq(newWriterHost));
   }
 
   /**
@@ -385,8 +385,8 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertEquals(4, result.getTopology().size());
     assertEquals("new-writer-host", result.getTopology().get(0).getHost());
 
-    verify(mockTopologyService, times(1)).addDownHost(eq(initialWriterHost.getHostPortPair()));
-    verify(mockTopologyService, times(1)).removeDownHost(eq(newWriterHost.getHostPortPair()));
+    verify(mockTopologyService, times(1)).addToDownHostList(eq(initialWriterHost));
+    verify(mockTopologyService, times(1)).removeFromDownHostList(eq(newWriterHost));
   }
 
   /**
@@ -460,7 +460,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());
 
-    verify(mockTopologyService, times(1)).addDownHost(eq(writerHost.getHostPortPair()));
+    verify(mockTopologyService, times(1)).addToDownHostList(eq(writerHost));
   }
 
   /**
@@ -517,7 +517,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());
 
-    verify(mockTopologyService, times(1)).addDownHost(eq(writerHost.getHostPortPair()));
-    verify(mockTopologyService, atLeastOnce()).addDownHost(eq(newWriterHost.getHostPortPair()));
+    verify(mockTopologyService, times(1)).addToDownHostList(eq(writerHost));
+    verify(mockTopologyService, atLeastOnce()).addToDownHostList(eq(newWriterHost));
   }
 }

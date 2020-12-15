@@ -101,13 +101,13 @@ public interface TopologyService {
   void setLastUsedReaderHost(HostInfo reader);
 
   /**
-   * Return an index of the host associated with a provided connection in topology host list.
+   * Return the {@link HostInfo} object that is associated with a provided connection from the topology host list.
    *
    * @param conn A connection to database.
-   * @return A index in topology host list. Returns -1 (NO_CONNECTION_INDEX), if connection host is
+   * @return The HostInfo object from the topology host list. Returns null if the connection host is
    *     not found in the latest topology.
    */
-  int getHostIndexByName(JdbcConnection conn);
+  HostInfo getHostByName(JdbcConnection conn);
 
   /**
    * Get a set of instance names that were marked down.
@@ -117,20 +117,18 @@ public interface TopologyService {
   Set<String> getDownHosts();
 
   /**
-   * Mark host down. Host stays marked down till next topology refresh.
+   * Mark host as down. Host stays marked down until next topology refresh.
    *
-   * @param currentHostPortPair A host dns endpoint and port to mark down. For example:
-   *     "instance-1.my-domain.com:3306".
+   * @param downHost The {@link HostInfo} object representing the host to mark as down
    */
-  void addDownHost(String currentHostPortPair);
+  void addToDownHostList(HostInfo downHost);
 
   /**
-   * Unmark host down.
+   * Unmark host as down. The host is removed from the list of down hosts
    *
-   * @param currentHostPortPair A host dns endpoint and port to unmark down. For example:
-   *     "instance-1.my-domain.com:3306".
+   * @param host The {@link HostInfo} object representing the host to remove from the list of down hosts
    */
-  void removeDownHost(String currentHostPortPair);
+  void removeFromDownHostList(HostInfo host);
 
   /**
    * Check if topology belongs to multi-writer cluster.

@@ -116,9 +116,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
   @Override
   public ConnectionAttemptResult failover(List<HostInfo> hosts, HostInfo currentHost)
       throws SQLException {
-    if (currentHost != null) {
-      this.topologyService.addDownHost(currentHost.getHostPortPair());
-    }
+    this.topologyService.addToDownHostList(currentHost);
     if (hosts == null || hosts.isEmpty()) {
       return new ConnectionAttemptResult(
           null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
@@ -135,7 +133,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     if (writerHost != null) {
       hostGroup.add(
           new HostTuple(
-              hosts.get(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX),
+              writerHost,
               ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX));
     }
     addDownHosts(hostGroup, hosts, downHosts);
@@ -158,7 +156,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     List<HostTuple> downHostList = new ArrayList<>();
     for (int i = 0; i < hosts.size(); i++) {
       HostInfo host = hosts.get(i);
-      if (downHosts.contains(host.getHostPortPair())) {
+      if (host != null && downHosts.contains(host.getHostPortPair())) {
         downHostList.add(new HostTuple(host, i));
       }
     }
@@ -320,26 +318,25 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     @Override
     public ConnectionAttemptResult call() {
       HostInfo newHost = this.newHostTuple.getHost();
-      String newHostPortPair = newHost.getHostPortPair();
       this.log.logDebug(
           Messages.getString(
               "ClusterAwareReaderFailoverHandler.3",
-              new Object[] {this.newHostTuple.getIndex(), newHostPortPair}));
+              new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
 
       try {
         JdbcConnection conn = this.connProvider.connect(newHost);
-        topologyService.removeDownHost(newHostPortPair);
+        topologyService.removeFromDownHostList(newHost);
         this.log.logDebug(
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.4",
-                new Object[] {this.newHostTuple.getIndex(), newHostPortPair}));
+                new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
         return new ConnectionAttemptResult(conn, this.newHostTuple.getIndex(), true);
       } catch (SQLException e) {
-        topologyService.addDownHost(newHostPortPair);
+        topologyService.addToDownHostList(newHost);
         this.log.logDebug(
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.5",
-                new Object[] {this.newHostTuple.getIndex(), newHostPortPair}));
+                new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
         return new ConnectionAttemptResult(
             null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
       }

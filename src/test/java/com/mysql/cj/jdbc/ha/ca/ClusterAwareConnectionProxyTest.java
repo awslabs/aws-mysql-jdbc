@@ -629,7 +629,6 @@ public class ClusterAwareConnectionProxyTest {
         "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
-    final int connectionHostIndex = ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX;
 
     final HostInfo writerHost = createBasicHostInfo("writer-host");
     final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
@@ -641,7 +640,7 @@ public class ClusterAwareConnectionProxyTest {
 
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class))).thenReturn(topology);
-    when(mockTopologyService.getHostIndexByName(mockConn)).thenReturn(connectionHostIndex);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
     when(mockConnectionProvider.connect(writerHost)).thenReturn(mockConn);
 
     final ClusterAwareConnectionProxy proxy =
@@ -685,7 +684,7 @@ public class ClusterAwareConnectionProxyTest {
 
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class))).thenReturn(topology);
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
-    when(mockTopologyService.getHostIndexByName(mockConn)).thenReturn(connectionHostIndex);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(readerAHost);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
@@ -726,7 +725,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
     when(mockTopologyService.getLastUsedReaderHost()).thenReturn(readerA_Host);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class))).thenReturn(topology);
-    when(mockTopologyService.getHostIndexByName(mockConn)).thenReturn(newConnectionHostIndex);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(readerB_Host);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
@@ -774,7 +773,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockTopologyService.getCachedTopology()).thenReturn(cachedTopology);
     when(mockTopologyService.getTopology(eq(mockCachedWriterConn), any(Boolean.class)))
         .thenReturn(actualTopology);
-    when(mockTopologyService.getHostIndexByName(mockCachedWriterConn)).thenReturn(2);
+    when(mockTopologyService.getHostByName(mockCachedWriterConn)).thenReturn(obsoleteWriterHost);
 
     ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(cachedWriterHost)).thenReturn(mockCachedWriterConn);
@@ -823,8 +822,8 @@ public class ClusterAwareConnectionProxyTest {
 
     when(mockTopologyService.getTopology(eq(mockDirectReaderConn), any(Boolean.class)))
         .thenReturn(topology);
-    when(mockTopologyService.getHostIndexByName(mockDirectReaderConn))
-        .thenReturn(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX);
+    when(mockTopologyService.getHostByName(mockDirectReaderConn))
+        .thenReturn(null);
 
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(conStr.getMainHost())).thenReturn(mockDirectReaderConn);
@@ -855,7 +854,6 @@ public class ClusterAwareConnectionProxyTest {
         "jdbc:mysql://my-cluster-name.cluster-ro-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
-    final int initialHostIndex = 2;
 
     final HostInfo writerHost = createBasicHostInfo("writer-host");
     final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
@@ -867,7 +865,7 @@ public class ClusterAwareConnectionProxyTest {
 
     when(mockTopologyService.getTopology(eq(mockReaderConnection), any(Boolean.class)))
         .thenReturn(topology);
-    when(mockTopologyService.getHostIndexByName(mockReaderConnection)).thenReturn(initialHostIndex);
+    when(mockTopologyService.getHostByName(mockReaderConnection)).thenReturn(readerB_Host);
 
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(conStr.getMainHost())).thenReturn(mockReaderConnection);

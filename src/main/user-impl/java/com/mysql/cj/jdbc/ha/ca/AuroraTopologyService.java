@@ -325,24 +325,25 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    */
   @Override
   public void setLastUsedReaderHost(HostInfo reader) {
-    synchronized (cacheLock) {
-      ClusterTopologyInfo info = topologyCache.get(this.clusterId);
-      if (info != null) {
-        info.lastUsedReader = reader;
+    if(reader != null) {
+      synchronized (cacheLock) {
+        ClusterTopologyInfo info = topologyCache.get(this.clusterId);
+        if (info != null) {
+          info.lastUsedReader = reader;
+        }
       }
     }
   }
 
   /**
-   * Return an index of the host associated with a provided connection. It requests connection
-   * instance name from database and try to lookup this name in the latest topology.
+   * Return the {@link HostInfo} object that is associated with a provided connection from the topology host list.
    *
    * @param conn A connection to database.
-   * @return A index in topology host list. Returns -1 (NO_CONNECTION_INDEX), if connection host is
+   * @return The HostInfo object from the topology host list. Returns null if the connection host is
    *     not found in the latest topology.
    */
   @Override
-  public int getHostIndexByName(JdbcConnection conn) {
+  public HostInfo getHostByName(JdbcConnection conn) {
     try (Statement stmt = conn.createStatement()) {
       try (ResultSet resultSet = stmt.executeQuery(GET_INSTANCE_NAME_SQL)) {
         String instanceName = null;
@@ -350,27 +351,26 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
           instanceName = resultSet.getString(GET_INSTANCE_NAME_COL);
         }
         ClusterTopologyInfo clusterTopologyInfo = topologyCache.get(this.clusterId);
-        return instanceNameToHostIndex(
+        return instanceNameToHost(
                 instanceName, clusterTopologyInfo == null ? null : clusterTopologyInfo.hosts);
       }
     } catch (SQLException e) {
-      return NO_CONNECTION_INDEX;
+      return null;
     }
   }
 
-  private int instanceNameToHostIndex(String name, List<HostInfo> hosts) {
+  private HostInfo instanceNameToHost(String name, List<HostInfo> hosts) {
     if (name == null || hosts == null) {
-      return NO_CONNECTION_INDEX;
+      return null;
     }
 
-    for (int i = 0; i < hosts.size(); i++) {
-      HostInfo host = hosts.get(i);
-      if (name.equalsIgnoreCase(
-          host.getHostProperties().get(TopologyServicePropertyKeys.INSTANCE_NAME))) {
-        return i;
+    for (HostInfo host : hosts) {
+      if (host != null && name.equalsIgnoreCase(
+              host.getHostProperties().get(TopologyServicePropertyKeys.INSTANCE_NAME))) {
+        return host;
       }
     }
-    return NO_CONNECTION_INDEX;
+    return null;
   }
 
   /**
@@ -389,13 +389,15 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   }
 
   /**
-   * Mark host down. Host stays marked down till next topology refresh.
+   * Mark host as down. Host stays marked down until next topology refresh.
    *
-   * @param downHostPortPair A host dns endpoint and port to mark down. For example:
-   *     "instance-1.my-domain.com:3306"
+   * @param downHost The {@link HostInfo} object representing the host to mark as down
    */
   @Override
-  public void addDownHost(String downHostPortPair) {
+  public void addToDownHostList(HostInfo downHost) {
+    if(downHost == null) {
+      return;
+    }
     synchronized (cacheLock) {
       ClusterTopologyInfo clusterTopologyInfo = topologyCache.get(this.clusterId);
       if (clusterTopologyInfo == null) {
@@ -405,22 +407,24 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
       if (clusterTopologyInfo.downHosts == null) {
         clusterTopologyInfo.downHosts = new HashSet<>();
       }
-      clusterTopologyInfo.downHosts.add(downHostPortPair);
+      clusterTopologyInfo.downHosts.add(downHost.getHostPortPair());
     }
   }
 
   /**
-   * Unmark host down.
+   * Unmark host as down. The host is removed from the list of down hosts
    *
-   * @param downHostPortPair A host dns endpoint and port to unmark down. For example:
-   *     "instance-1.my-domain.com:3306"
+   * @param host The {@link HostInfo} object representing the host to remove from the list of down hosts
    */
   @Override
-  public void removeDownHost(String downHostPortPair) {
+  public void removeFromDownHostList(HostInfo host) {
+    if(host == null) {
+      return;
+    }
     synchronized (cacheLock) {
       ClusterTopologyInfo clusterTopologyInfo = topologyCache.get(this.clusterId);
       if (clusterTopologyInfo != null && clusterTopologyInfo.downHosts != null) {
-        clusterTopologyInfo.downHosts.remove(downHostPortPair);
+        clusterTopologyInfo.downHosts.remove(host.getHostPortPair());
       }
     }
   }

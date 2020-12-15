@@ -350,14 +350,14 @@ public class AuroraTopologyServiceTest {
   }
 
   @Test
-  public void testGetHostIndexByName_success() throws SQLException {
+  public void testGetHostByName_success() throws SQLException {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
     final Statement mockStatement = Mockito.mock(StatementImpl.class);
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
 
     // populate cache
-    spyProvider.getTopology(mockConn, false);
+    List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
 
     final String connectionHostName = "replica-instance-2";
     final int connectionHostIndex = 2;
@@ -369,12 +369,12 @@ public class AuroraTopologyServiceTest {
     when(mockResultSet.getString(AuroraTopologyService.GET_INSTANCE_NAME_COL))
         .thenReturn(connectionHostName);
 
-    final int hostIndex = spyProvider.getHostIndexByName(mockConn);
-    assertEquals(connectionHostIndex, hostIndex);
+    final HostInfo host = spyProvider.getHostByName(mockConn);
+    assertEquals(topology.get(connectionHostIndex), host);
   }
 
   @Test
-  public void testGetHostIndexByName_noServerId() throws SQLException {
+  public void testGetHostByName_noServerId() throws SQLException {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
     final Statement mockStatement = Mockito.mock(StatementImpl.class);
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
@@ -383,12 +383,12 @@ public class AuroraTopologyServiceTest {
         .thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(false);
 
-    final int hostIndex = spyProvider.getHostIndexByName(mockConn);
-    assertEquals(AuroraTopologyService.NO_CONNECTION_INDEX, hostIndex);
+    final HostInfo host = spyProvider.getHostByName(mockConn);
+    assertNull(host);
   }
 
   @Test
-  public void testGetHostIndexByName_exception() throws SQLException {
+  public void testGetHostByName_exception() throws SQLException {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
     final Statement mockStatement = Mockito.mock(StatementImpl.class);
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
@@ -397,8 +397,8 @@ public class AuroraTopologyServiceTest {
         .thenReturn(mockResultSet);
     when(mockResultSet.next()).thenThrow(SQLException.class);
 
-    final int hostIndex = spyProvider.getHostIndexByName(mockConn);
-    assertEquals(AuroraTopologyService.NO_CONNECTION_INDEX, hostIndex);
+    final HostInfo host = spyProvider.getHostByName(mockConn);
+    assertNull(host);
   }
 
   @Test
@@ -538,7 +538,7 @@ public class AuroraTopologyServiceTest {
     spyProvider.setClusterInstanceHost(clusterInstanceInfo);
 
     spyProvider.getTopology(mockConn, false);
-    spyProvider.addDownHost(clusterInstanceInfo.getHostPortPair());
+    spyProvider.addToDownHostList(clusterInstanceInfo);
     assertEquals(1, AuroraTopologyService.topologyCache.size());
 
     spyProvider.clearAll();
