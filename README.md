@@ -38,7 +38,7 @@ The driver binaries are in Maven Central.
 ```
 
 **Example - Gradle**
-```json
+```gradle
 dependencies {
     compile group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.1.0'
 }
