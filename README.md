@@ -50,50 +50,55 @@ For more information about parameters that can be configured with the AWS JDBC D
 
 After you have installed Amazon Corretto or Java according to the requirements section, use the below command to clone the driver repository.
 
-```
+```bash
 $ git clone https://github.com/awslabs/aws-mysql-jdbc.git
 $ cd mysql-connector-j
 ```
+
 Changes can now be made in the repository.
 ### Building the AWS JDBC Driver for MySQL
 
 To build the AWS JDBC Driver without running the tests, navigate into the aws-mysql-jdbc directory and run the following command:
-```
+
+```bash
 gradlew build -x test
 ```
 
 To build the driver and run the tests, Docker must be installed. Refer to the section below and then run the following command
 
-```
+```bash
 gradlew build
 ```
 
 ### Running the Tests
 
 To run the tests for the AWS JDBC Driver, [Docker](https://docs.docker.com/get-docker/) must be installed. After installing Docker, execute the following commands to create the Docker servers that the tests will run against:
-```
+
+```bash
 $ cd aws-mysql-jdbc/docker
 $ docker-compose up -d
 $ cd ../
 ```
+
 You can now run the tests in the aws-mysql-jdbc directory using the following command:
-```
+
+```bash
 gradlew test
 ```
+
 To shut down the Docker servers after finishing testing:
-```
+
+```bash
 $ cd aws-mysql-jdbc/docker
 $ docker-compose down && docker-compose rm
 $ cd ../
 ```
 
-## Getting Help
+## Getting Help and Opening Issues
 
-[TODO: add content here]
+If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear about it. Please search the existing issues and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we will need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please also include reproduction case for the issue when appropriate.
 
-## Opening Issues
-
-[TODO: add content here]
+The GitHub issues are intended for bug reports and feature requests. Keeping the list of open issues lean will help us respond in a timely manner.
 
 ## Documentation
 
@@ -101,4 +106,4 @@ For additional documentation on the AWS JDBC Driver, [please refer to the docume
 
 ## License
 
-[TODO: add license information here]
+This software is released under version 2 of the GNU General Public License (GPLv2).
