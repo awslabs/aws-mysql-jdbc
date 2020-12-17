@@ -29,6 +29,7 @@
 
 package com.mysql.cj;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -1106,6 +1107,11 @@ public class NativeSession extends CoreSession implements Serializable {
                 }
                 this.needsPing = true;
             }
+
+            if(ex instanceof EOFException) {
+                throw ExceptionFactory.createException(CJCommunicationsException.class, ex.getMessage(), ex, this.exceptionInterceptor);
+            }
+
             throw ExceptionFactory.createException(ex.getMessage(), ex, this.exceptionInterceptor);
 
         } finally {
