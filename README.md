@@ -87,9 +87,9 @@ public class FailoverSampleApp1 {
   private static final int MAX_RETRIES = 5;
 
   public static void main(String[] args) throws SQLException {
-    // Create a connection
+    // Create a connection.
     Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD);
-    // Configure the connection
+    // Configure the connection.
     setInitialSessionState(conn);
 
     // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
@@ -123,12 +123,12 @@ public class FailoverSampleApp1 {
       } catch (SQLException e) {
 
         // If the attempt to connect has failed MAX_RETRIES times,
-        // throw the exception to inform users of the failed connection
+        // throw the exception to inform users of the failed connection.
         if (retries > MAX_RETRIES) {
           throw e;
         }
 
-        // Failover has occurred and the driver has failed over to another instance successfully
+        // Failover has occurred and the driver has failed over to another instance successfully.
         if (e.getSQLState().equalsIgnoreCase("08S02")) {
           // Re-config the connection.
           setInitialSessionState(conn);
@@ -136,7 +136,7 @@ public class FailoverSampleApp1 {
           retries++;
 
         } else {
-          // If some other exception occurs, throw the exception
+          // If some other exception occurs, throw the exception.
           throw e;
         }
 
@@ -148,7 +148,7 @@ public class FailoverSampleApp1 {
       }
     }
 
-    // return the ResultSet successfully
+    // return the ResultSet successfully.
     return rs;
   }
 }
@@ -216,7 +216,7 @@ public class FailoverSampleApp2 {
       } catch (SQLException e) {
 
         // If the attempt to connect has failed MAX_RETRIES times,
-        // rollback the transaction and throw the exception to inform users of the failed connection
+        // rollback the transaction and throw the exception to inform users of the failed connection.
         if (retries > MAX_RETRIES) {
           conn.rollback();
           throw e;
@@ -224,13 +224,13 @@ public class FailoverSampleApp2 {
 
         // Failure happens within the transaction and the driver failover to another instance successfully.
         if (e.getSQLState().equalsIgnoreCase("08007")) {
-          // Re-config the connection, re-start the transaction
+          // Re-config the connection, re-start the transaction.
           setInitialSessionState(conn);
           // Re-execute every queries that were inside the transaction.
           retries++;
 
         } else {
-          // If some other exception occurs, rollback the transaction and throw the exception
+          // If some other exception occurs, rollback the transaction and throw the exception.
           conn.rollback();
           throw e;
         }
@@ -281,7 +281,7 @@ $ docker-compose up -d
 $ cd ../
 ```
 
-You can now run the tests in the aws-mysql-jdbc directory using the following command:
+You can now run the tests in the ```aws-mysql-jdbc``` directory using the following command:
 
 ```bash
 gradlew test
