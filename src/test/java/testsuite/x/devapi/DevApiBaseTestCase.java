@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -202,5 +202,19 @@ public class DevApiBaseTestCase extends InternalXBaseTestCase {
             psCount = getPreparedStatementsCount(threadId);
         } while (psCount != 0 && --countdown > 0);
         assertEquals(expectedCount, psCount);
+    }
+
+    protected static void assertNonSecureSession(Session sess) {
+        assertSessionStatusEquals(sess, "mysqlx_ssl_cipher", "");
+    }
+
+    protected static void assertSecureSession(Session sess) {
+        assertSessionStatusNotEquals(sess, "mysqlx_ssl_cipher", "");
+    }
+
+    protected static void assertSecureSession(Session sess, String user) {
+        assertSecureSession(sess);
+        SqlResult res = sess.sql("SELECT CURRENT_USER()").execute();
+        assertEquals(user, res.fetchOne().getString(0).split("@")[0]);
     }
 }

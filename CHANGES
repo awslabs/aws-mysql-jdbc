@@ -1,6 +1,39 @@
 # Changelog
 # https://dev.mysql.com/doc/relnotes/connector-j/8.0/en/
 
+Version 8.0.22
+
+  - Fix for Bug#98667 (31711961), "All pipe instances are busy" exception on multiple connections to named Pipe.
+
+  - Fix for Bug#96309 (31699357), MultiHost in loadbalance may lead to a TPS reduction during a quick switch.
+
+  - Fix for Bug#99076 (31083755), Unclear exception/error when connecting with jdbc:mysql to a mysqlx port.
+
+  - Fix for Bug#96870 (30304764), Contribution: Allow to disable AbandonedConnectionCleanupThread completely.
+    Thanks to Andrey Turbanov for his contribution.
+
+  - WL#14115, Support for authentication_ldap_sasl_client(SCRAM-SHA-1) authentication plugin.
+
+  - WL#14096, Add option to specify LOAD DATA LOCAL allow list folder.
+
+  - WL#13780, Skip system-wide trust and key stores (incl. X DevAPI client certs).
+
+  - WL#14017, XProtocol -- support for configurable compression algorithms.
+
+  - Fix for Bug#92903 (28834903), MySQL Connector/j should support wildcard names or alternative names.
+
+  - Fix for Bug#99767 (31443178), Contribution: Check SubjectAlternativeName for TLS instead of commonName.
+    Thanks to Daniël van Eeden for his contribution.
+
+  - Fix for Bug#93444 (29015453), LOCALDATETIME PARAMETER VALUES ALTERED WHEN CLIENT AND SERVER TIMEZONES DIFFER.
+    Thanks to Iwao Abe for his contribution.
+
+  - WL#14052, Remove asynchronous variant of X Protocol.
+
+  - Fix for Bug#99713 (31418928), NPE DURING COM.MYSQL.CJ.SERVERPREPAREDQUERYBINDVALUE.STOREDATE().
+
+  - WL#14068, Remove legacy integration with JBoss.
+
 Version 8.0.21
 
   - WL#14051, Upgrade Protocol Buffers dependency to protobuf-java-3.11.4.

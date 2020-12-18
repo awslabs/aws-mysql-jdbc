@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -860,7 +860,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 this.session.forceClose();
 
                 JdbcConnection c = getProxy();
-                this.session.connect(this.origHostInfo, this.user, this.password, this.database, DriverManager.getLoginTimeout() * 1000, c);
+                this.session.connect(this.origHostInfo, this.user, this.password, this.database, getLoginTimeout(), c);
                 pingInternal(false, 0);
 
                 boolean oldAutoCommit;
@@ -966,7 +966,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         try {
 
             JdbcConnection c = getProxy();
-            this.session.connect(this.origHostInfo, this.user, this.password, this.database, DriverManager.getLoginTimeout() * 1000, c);
+            this.session.connect(this.origHostInfo, this.user, this.password, this.database, getLoginTimeout(), c);
 
             // save state from old connection
             boolean oldAutoCommit = getAutoCommit();
@@ -1025,6 +1025,14 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
             throw chainedEx;
         }
+    }
+
+    private int getLoginTimeout() {
+        int loginTimeoutSecs = DriverManager.getLoginTimeout();
+        if (loginTimeoutSecs <= 0) {
+            return 0;
+        }
+        return loginTimeoutSecs * 1000;
     }
 
     private void createPreparedStatementCaches() throws SQLException {

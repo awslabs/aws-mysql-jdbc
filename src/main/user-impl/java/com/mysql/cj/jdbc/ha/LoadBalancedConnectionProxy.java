@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates.
  * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -313,7 +313,10 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
         // add host to the global blacklist, if enabled
         if (this.isGlobalBlacklistEnabled()) {
-            addToGlobalBlacklist(this.connectionsToHostsMap.get(conn));
+            String host = this.connectionsToHostsMap.get(conn);
+            if (host != null) {
+                addToGlobalBlacklist(host);
+            }
         }
 
         // remove from liveConnections
@@ -401,6 +404,8 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
         this.liveConnections.put(hostInfo.getHostPortPair(), conn);
         this.connectionsToHostsMap.put(conn, hostInfo.getHostPortPair());
+
+        removeFromGlobalBlacklist(hostInfo.getHostPortPair());
 
         this.totalPhysicalConnections++;
 
@@ -682,6 +687,20 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
         if (isGlobalBlacklistEnabled()) {
             synchronized (globalBlacklist) {
                 globalBlacklist.put(host, timeout);
+            }
+        }
+    }
+
+    /**
+     * Removes a host from the blacklist.
+     *
+     * @param host
+     *            The host to be removed from the blacklist.
+     */
+    public void removeFromGlobalBlacklist(String host) {
+        if (isGlobalBlacklistEnabled() && globalBlacklist.containsKey(host)) {
+            synchronized (globalBlacklist) {
+                globalBlacklist.remove(host);
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -315,8 +315,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                         this.columnSize = Integer.valueOf(typeInfo.substring((typeInfo.indexOf("(") + 1), endParenIndex).trim());
 
                         // Adjust for pseudo-boolean
-                        if (DatabaseMetaData.this.tinyInt1isBit && this.columnSize.intValue() == 1
-                                && StringUtils.startsWithIgnoreCase(typeInfo, 0, "tinyint")) {
+                        if (DatabaseMetaData.this.tinyInt1isBit && this.columnSize.intValue() == 1 && StringUtils.startsWithIgnoreCase(typeInfo, "tinyint")) {
                             if (DatabaseMetaData.this.transformedBitIsBoolean) {
                                 this.mysqlType = MysqlType.BOOLEAN;
                             } else {

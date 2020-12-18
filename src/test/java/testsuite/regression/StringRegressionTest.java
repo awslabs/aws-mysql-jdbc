@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -30,28 +30,19 @@
 
 package testsuite.regression;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.util.Base64Decoder;
+import com.mysql.cj.util.StringUtils;
+import org.junit.jupiter.api.Test;
+import testsuite.BaseTestCase;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.sql.Clob;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Properties;
 
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-import com.mysql.cj.conf.PropertyKey;
-import com.mysql.cj.util.Base64Decoder;
-import com.mysql.cj.util.StringUtils;
-
-import testsuite.BaseTestCase;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for regressions of bugs in String handling in the driver.
