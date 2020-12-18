@@ -67,7 +67,8 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
       "SELECT SERVER_ID, SESSION_ID, LAST_UPDATE_TIMESTAMP, REPLICA_LAG_IN_MILLISECONDS "
           + "FROM information_schema.replica_host_status "
           + "WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 " // 5 min
-          + "ORDER BY REPLICA_LAG_IN_MILLISECONDS";
+          + "ORDER BY LAST_UPDATE_TIMESTAMP DESC";
+//          + "ORDER BY REPLICA_LAG_IN_MILLISECONDS";
   static final String GET_INSTANCE_NAME_SQL = "SELECT @@aurora_server_id";
   static final String GET_INSTANCE_NAME_COL = "@@aurora_server_id";
   static final String WRITER_SESSION_ID = "MASTER_SESSION_ID";
@@ -197,6 +198,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   protected ClusterTopologyInfo queryForTopology(JdbcConnection conn) {
     long startTimeMs = this.gatherPerfMetrics ? System.currentTimeMillis() : 0;
 
+    System.out.println("Querying topology.");
     ClusterTopologyInfo result = new ClusterTopologyInfo();
     try (Statement stmt = conn.createStatement()) {
       try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
@@ -207,13 +209,16 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
         int i = 1;
         while (resultSet.next()) {
           if (WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
+            System.out.println("found writer wtih id: " + resultSet.getString(FIELD_SERVER_ID));
+            System.out.println("last updated: " + resultSet.getString(FIELD_LAST_UPDATED));
+
             if (writerCount == 0) {
               // store the first writer to its expected position [0]
               result.hosts.set(
                       ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX, createHost(resultSet));
             } else {
               // store other writers, if any, to reader position
-              // the goal is to not loose them
+              // the goal is to not lose them
               result.hosts.add(i, createHost(resultSet));
               i++;
             }
@@ -227,6 +232,9 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
       }
     } catch (SQLException e) {
       // eat
+      System.out.println("========");
+      System.out.println("Error while querying the topology:\n" + e.getMessage());
+      System.out.println("========");
     }
 
     if (this.gatherPerfMetrics) {
