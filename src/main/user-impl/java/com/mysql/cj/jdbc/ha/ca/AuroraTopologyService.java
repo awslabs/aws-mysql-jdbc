@@ -68,7 +68,6 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
           + "FROM information_schema.replica_host_status "
           + "WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 " // 5 min
           + "ORDER BY LAST_UPDATE_TIMESTAMP DESC";
-//          + "ORDER BY REPLICA_LAG_IN_MILLISECONDS";
   static final String GET_INSTANCE_NAME_SQL = "SELECT @@aurora_server_id";
   static final String GET_INSTANCE_NAME_COL = "@@aurora_server_id";
   static final String WRITER_SESSION_ID = "MASTER_SESSION_ID";
