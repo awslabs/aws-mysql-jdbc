@@ -162,7 +162,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-commons:1.6.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.6.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
-    testImplementation("org.mockito:mockito-core:3.6.0")
+    testImplementation("org.mockito:mockito-inline:3.6.28")
     implementation("org.apiguardian:apiguardian-api:1.1.0")
     implementation("org.opentest4j:opentest4j:1.2.0")
     implementation("org.javassist:javassist:3.27.0-GA")

@@ -75,12 +75,7 @@ import com.mysql.cj.protocol.Resultset.Type;
 import com.mysql.cj.protocol.ServerSession;
 import com.mysql.cj.protocol.SocketConnection;
 import com.mysql.cj.protocol.SocketFactory;
-import com.mysql.cj.protocol.a.NativeMessageBuilder;
-import com.mysql.cj.protocol.a.NativePacketPayload;
-import com.mysql.cj.protocol.a.NativeProtocol;
-import com.mysql.cj.protocol.a.NativeServerSession;
-import com.mysql.cj.protocol.a.NativeSocketConnection;
-import com.mysql.cj.protocol.a.ResultsetFactory;
+import com.mysql.cj.protocol.a.*;
 import com.mysql.cj.result.Field;
 import com.mysql.cj.result.IntegerValueFactory;
 import com.mysql.cj.result.LongValueFactory;
@@ -129,8 +124,20 @@ public class NativeSession extends CoreSession implements Serializable {
 
     private transient Timer cancelTimer;
 
+    private final ProtocolProvider protocolProvider;
+
+    private final SocketConnectionProvider socketConnectionProvider;
+
     public NativeSession(HostInfo hostInfo, PropertySet propSet) {
         super(hostInfo, propSet);
+        this.protocolProvider = new NativeProtocolProvider();
+        this.socketConnectionProvider = new NativeSocketConnectionProvider();
+    }
+
+    NativeSession(HostInfo hostInfo, PropertySet propertySet, ProtocolProvider protocolProvider, SocketConnectionProvider socketConnectionProvider) {
+        super(hostInfo, propertySet);
+        this.protocolProvider = protocolProvider;
+        this.socketConnectionProvider = socketConnectionProvider;
     }
 
     public void connect(HostInfo hi, String user, String password, String database, int loginTimeout, TransactionEventHandler transactionManager)
@@ -142,14 +149,14 @@ public class NativeSession extends CoreSession implements Serializable {
         this.setSessionMaxRows(-1);
 
         // TODO do we need different types of physical connections?
-        SocketConnection socketConnection = new NativeSocketConnection();
+        SocketConnection socketConnection = this.socketConnectionProvider.getSocketConnection();
         socketConnection.connect(this.hostInfo.getHost(), this.hostInfo.getPort(), this.propertySet, getExceptionInterceptor(), this.log, loginTimeout);
 
         // we use physical connection to create a -> protocol
         // this configuration places no knowledge of protocol or session on physical connection.
         // physical connection is responsible *only* for I/O streams
         if (this.protocol == null) {
-            this.protocol = NativeProtocol.getInstance(this, socketConnection, this.propertySet, this.log, transactionManager);
+            this.protocol = this.protocolProvider.getProtocolInstance(this, socketConnection, this.propertySet, this.log, transactionManager);
         } else {
             this.protocol.init(this, socketConnection, this.propertySet, transactionManager);
         }

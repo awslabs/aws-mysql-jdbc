@@ -20,3 +20,4 @@
 .idea
 hs_err_pid*.log
 *.sh
+update_session_token.py
