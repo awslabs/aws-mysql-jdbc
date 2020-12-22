@@ -52,6 +52,7 @@ import com.mysql.cj.log.StandardLogger;
 import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
 
+import java.io.EOFException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
@@ -836,6 +837,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     } else if (t instanceof SQLException) {
       sqlState = ((SQLException) t).getSQLState();
     } else if (t instanceof CJException) {
+      if(t.getCause() instanceof EOFException) { // Can not read response from server
+        return true;
+      }
       sqlState = ((CJException) t).getSQLState();
     }
 

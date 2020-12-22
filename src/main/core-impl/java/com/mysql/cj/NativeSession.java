@@ -30,7 +30,6 @@
 
 package com.mysql.cj;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -124,20 +123,8 @@ public class NativeSession extends CoreSession implements Serializable {
 
     private transient Timer cancelTimer;
 
-    private final ProtocolProvider protocolProvider;
-
-    private final SocketConnectionProvider socketConnectionProvider;
-
     public NativeSession(HostInfo hostInfo, PropertySet propSet) {
         super(hostInfo, propSet);
-        this.protocolProvider = new NativeProtocolProvider();
-        this.socketConnectionProvider = new NativeSocketConnectionProvider();
-    }
-
-    NativeSession(HostInfo hostInfo, PropertySet propertySet, ProtocolProvider protocolProvider, SocketConnectionProvider socketConnectionProvider) {
-        super(hostInfo, propertySet);
-        this.protocolProvider = protocolProvider;
-        this.socketConnectionProvider = socketConnectionProvider;
     }
 
     public void connect(HostInfo hi, String user, String password, String database, int loginTimeout, TransactionEventHandler transactionManager)
@@ -149,14 +136,14 @@ public class NativeSession extends CoreSession implements Serializable {
         this.setSessionMaxRows(-1);
 
         // TODO do we need different types of physical connections?
-        SocketConnection socketConnection = this.socketConnectionProvider.getSocketConnection();
+        SocketConnection socketConnection = new NativeSocketConnection();
         socketConnection.connect(this.hostInfo.getHost(), this.hostInfo.getPort(), this.propertySet, getExceptionInterceptor(), this.log, loginTimeout);
 
         // we use physical connection to create a -> protocol
         // this configuration places no knowledge of protocol or session on physical connection.
         // physical connection is responsible *only* for I/O streams
         if (this.protocol == null) {
-            this.protocol = this.protocolProvider.getProtocolInstance(this, socketConnection, this.propertySet, this.log, transactionManager);
+            this.protocol = NativeProtocol.getInstance(this, socketConnection, this.propertySet, this.log, transactionManager);
         } else {
             this.protocol.init(this, socketConnection, this.propertySet, transactionManager);
         }
@@ -1110,14 +1097,10 @@ public class NativeSession extends CoreSession implements Serializable {
                 if (ex instanceof IOException) {
                     // IO may be dirty or damaged beyond repair, force close it.
                     this.protocol.getSocketConnection().forceClose();
-                } else if (ex instanceof IOException) {
-                    invokeCleanupListeners(ex);
                 }
                 this.needsPing = true;
-            }
-
-            if(ex instanceof EOFException) {
-                throw ExceptionFactory.createException(CJCommunicationsException.class, ex.getMessage(), ex, this.exceptionInterceptor);
+            } else if (ex instanceof IOException) {
+                invokeCleanupListeners(ex);
             }
 
             throw ExceptionFactory.createException(ex.getMessage(), ex, this.exceptionInterceptor);

@@ -80,7 +80,7 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final Properties mainHostProps = new Properties();
     mainHostProps.put("anyCustomProperty", "anyTestValue");
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, mainHostProps);
@@ -89,7 +89,7 @@ public class AuroraTopologyServiceTest {
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -103,7 +103,7 @@ public class AuroraTopologyServiceTest {
     final List<HostInfo> slaves =
         topology.subList(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX + 1, topology.size());
 
-    assertEquals("writer-instance.czygpppufgy4.us-east-2.rds.amazonaws.com", master.getHost());
+    assertEquals("writer-instance.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
     assertEquals(1234, master.getPort());
     assertEquals("", master.getUser());
     assertEquals("", master.getPassword());
@@ -130,14 +130,14 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQueryMultiWriter(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
 
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -157,19 +157,19 @@ public class AuroraTopologyServiceTest {
     final HostInfo master2 = topology.get(1);
     final HostInfo master3 = topology.get(2);
 
-    assertEquals("writer-instance-1.czygpppufgy4.us-east-2.rds.amazonaws.com", master1.getHost());
+    assertEquals("writer-instance-1.XYZ.us-east-2.rds.amazonaws.com", master1.getHost());
     assertEquals(1234, master1.getPort());
     assertEquals("", master1.getUser());
     assertEquals("", master1.getPassword());
     assertTrue(master1.isPasswordless());
 
-    assertEquals("writer-instance-2.czygpppufgy4.us-east-2.rds.amazonaws.com", master2.getHost());
+    assertEquals("writer-instance-2.XYZ.us-east-2.rds.amazonaws.com", master2.getHost());
     assertEquals(1234, master2.getPort());
     assertEquals("", master2.getUser());
     assertEquals("", master2.getPassword());
     assertTrue(master2.isPasswordless());
 
-    assertEquals("writer-instance-3.czygpppufgy4.us-east-2.rds.amazonaws.com", master3.getHost());
+    assertEquals("writer-instance-3.XYZ.us-east-2.rds.amazonaws.com", master3.getHost());
     assertEquals(1234, master3.getPort());
     assertEquals("", master3.getUser());
     assertEquals("", master3.getPassword());
@@ -274,13 +274,13 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -298,13 +298,13 @@ public class AuroraTopologyServiceTest {
   public void testForceUpdateQueryFailure() throws SQLException {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -324,13 +324,13 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -408,14 +408,14 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
 
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -438,14 +438,14 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
 
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -483,14 +483,14 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
 
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
@@ -522,14 +522,14 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final HostInfo mainHost = conStr.getMainHost();
 
     final HostInfo clusterInstanceInfo =
         new HostInfo(
             conStr,
-            "?.czygpppufgy4.us-east-2.rds.amazonaws.com",
+            "?.XYZ.us-east-2.rds.amazonaws.com",
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
