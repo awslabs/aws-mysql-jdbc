@@ -197,7 +197,6 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   protected ClusterTopologyInfo queryForTopology(JdbcConnection conn) {
     long startTimeMs = this.gatherPerfMetrics ? System.currentTimeMillis() : 0;
 
-    System.out.println("Querying topology.");
     ClusterTopologyInfo result = new ClusterTopologyInfo();
     try (Statement stmt = conn.createStatement()) {
       try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
@@ -208,9 +207,6 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
         int i = 1;
         while (resultSet.next()) {
           if (WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
-            System.out.println("found writer wtih id: " + resultSet.getString(FIELD_SERVER_ID));
-            System.out.println("last updated: " + resultSet.getString(FIELD_LAST_UPDATED));
-
             if (writerCount == 0) {
               // store the first writer to its expected position [0]
               result.hosts.set(
@@ -231,9 +227,6 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
       }
     } catch (SQLException e) {
       // eat
-      System.out.println("========");
-      System.out.println("Error while querying the topology:\n" + e.getMessage());
-      System.out.println("========");
     }
 
     if (this.gatherPerfMetrics) {
