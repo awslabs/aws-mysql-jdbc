@@ -67,7 +67,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
       "SELECT SERVER_ID, SESSION_ID, LAST_UPDATE_TIMESTAMP, REPLICA_LAG_IN_MILLISECONDS "
           + "FROM information_schema.replica_host_status "
           + "WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 " // 5 min
-          + "ORDER BY REPLICA_LAG_IN_MILLISECONDS";
+          + "ORDER BY LAST_UPDATE_TIMESTAMP DESC";
   static final String GET_INSTANCE_NAME_SQL = "SELECT @@aurora_server_id";
   static final String GET_INSTANCE_NAME_COL = "@@aurora_server_id";
   static final String WRITER_SESSION_ID = "MASTER_SESSION_ID";
@@ -213,7 +213,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
                       ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX, createHost(resultSet));
             } else {
               // store other writers, if any, to reader position
-              // the goal is to not loose them
+              // the goal is to not lose them
               result.hosts.add(i, createHost(resultSet));
               i++;
             }
