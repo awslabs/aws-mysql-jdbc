@@ -474,6 +474,16 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
     }
 
     private void connectoToReader() throws InterruptedException {
+
+      // Close reader connection if it's not needed.
+      try {
+        if(this.currentReaderConnection != null && !this.currentReaderConnection.isClosed()) {
+          this.currentReaderConnection.close();
+        }
+      } catch(SQLException e) {
+        // eat
+      }
+
       this.currentReaderConnection = null;
       int connIndex = -1;
       this.currentReaderHost = null;
