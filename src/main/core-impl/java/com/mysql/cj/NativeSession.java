@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -73,12 +74,7 @@ import com.mysql.cj.protocol.Resultset.Type;
 import com.mysql.cj.protocol.ServerSession;
 import com.mysql.cj.protocol.SocketConnection;
 import com.mysql.cj.protocol.SocketFactory;
-import com.mysql.cj.protocol.a.NativeMessageBuilder;
-import com.mysql.cj.protocol.a.NativePacketPayload;
-import com.mysql.cj.protocol.a.NativeProtocol;
-import com.mysql.cj.protocol.a.NativeServerSession;
-import com.mysql.cj.protocol.a.NativeSocketConnection;
-import com.mysql.cj.protocol.a.ResultsetFactory;
+import com.mysql.cj.protocol.a.*;
 import com.mysql.cj.result.Field;
 import com.mysql.cj.result.IntegerValueFactory;
 import com.mysql.cj.result.LongValueFactory;
@@ -1101,11 +1097,12 @@ public class NativeSession extends CoreSession implements Serializable {
                 if (ex instanceof IOException) {
                     // IO may be dirty or damaged beyond repair, force close it.
                     this.protocol.getSocketConnection().forceClose();
-                } else if (ex instanceof IOException) {
-                    invokeCleanupListeners(ex);
                 }
                 this.needsPing = true;
+            } else if (ex instanceof IOException) {
+                invokeCleanupListeners(ex);
             }
+
             throw ExceptionFactory.createException(ex.getMessage(), ex, this.exceptionInterceptor);
 
         } finally {

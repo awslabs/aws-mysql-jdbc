@@ -357,6 +357,9 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         this.latestTopology = null;
       } catch (Exception ex) {
         this.log.logError(ex);
+        this.isConnected = false;
+        this.currentConnection = null;
+        this.latestTopology = null;
         throw ex;
       } finally {
         this.log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.7"));
@@ -395,6 +398,8 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
     private final List<HostInfo> currentTopology;
     private final ReaderFailoverHandler readerFailoverHandler;
     private final transient Log log;
+    private HostInfo currentReaderHost;
+    private JdbcConnection currentReaderConnection;
 
     public WaitForNewWriterHandler(
         CountDownLatch taskCompletedLatch,
@@ -430,8 +435,6 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
     public void run() {
       this.log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.8"));
 
-      JdbcConnection conn = null;
-
       try {
         if (this.currentTopology == null) {
           // topology isn't available
@@ -439,71 +442,10 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           return;
         }
 
-        int connIndex = -1;
-        HostInfo currentReaderHost;
-
-        while (true) {
-          try {
-            ConnectionAttemptResult connResult =
-                this.readerFailoverHandler.getReaderConnection(this.currentTopology);
-            conn = connResult != null && connResult.isSuccess() ? connResult.getConnection() : null;
-            connIndex =
-                connResult != null && connResult.isSuccess() ? connResult.getConnectionIndex() : -1;
-          } catch (SQLException e) {
-            // eat
-          }
-
-          if (conn == null) {
-            // can't connect to any reader
-            this.log.logDebug(Messages.getString("ClusterAwareWriterFailoverHandler.11"));
-          } else {
-            currentReaderHost = this.currentTopology.get(connIndex);
-            if(currentReaderHost != null) {
-              this.log.logDebug(
-                      Messages.getString(
-                              "ClusterAwareWriterFailoverHandler.10",
-                              new Object[]{connIndex, currentReaderHost.getHostPortPair()}));
-              break;
-            }
-          }
-
-          TimeUnit.MILLISECONDS.sleep(1);
-        }
-
-        // re-read topology and wait for a new writer
-        while (true) {
-          this.latestTopology = this.topologyService.getTopology(conn, true);
-
-          if (this.latestTopology != null && !this.latestTopology.isEmpty()) {
-
-            logTopology();
-            HostInfo writerCandidate = this.latestTopology.get(WRITER_CONNECTION_INDEX);
-
-            if (writerCandidate != null && (this.originalWriterHost == null || !isSame(writerCandidate, this.originalWriterHost))) {
-              // new writer is available and it's different from the previous writer
-              try {
-                this.log.logDebug(
-                    Messages.getString(
-                        "ClusterAwareWriterFailoverHandler.13",
-                        new Object[] {writerCandidate.getHostPortPair()}));
-
-                if(isSame(writerCandidate, currentReaderHost)) {
-                  this.currentConnection = conn;
-                } else {
-                  // connected to a new writer
-                  this.currentConnection = this.connectionProvider.connect(writerCandidate);
-                }
-                this.isConnected = true;
-
-                this.topologyService.removeFromDownHostList(writerCandidate);
-                return;
-              } catch (SQLException exception) {
-                this.topologyService.addToDownHostList(writerCandidate);
-              }
-            }
-          }
-
-          TimeUnit.MILLISECONDS.sleep(this.readTopologyIntervalMs);
+        boolean success = false;
+        while(!success) {
+          connectoToReader();
+          success = connectToNewWriter();
         }
 
       } catch (InterruptedException exception) {
@@ -513,17 +455,112 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         this.latestTopology = null;
       } catch (Exception ex) {
         this.log.logError(ex);
+        this.isConnected = false;
+        this.currentConnection = null;
+        this.latestTopology = null;
         throw ex;
       } finally {
-        if(conn != null && this.currentConnection != conn) {
+        // Close reader connection if it's not needed.
+        if(this.currentReaderConnection != null && this.currentConnection != this.currentReaderConnection) {
           try {
-            conn.close();
+            this.currentReaderConnection.close();
           } catch(SQLException e) {
             // eat
           }
         }
         this.log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.9"));
         this.taskCompletedLatch.countDown();
+      }
+    }
+
+    private void connectoToReader() throws InterruptedException {
+
+      // Close reader connection if it's not needed.
+      try {
+        if(this.currentReaderConnection != null && !this.currentReaderConnection.isClosed()) {
+          this.currentReaderConnection.close();
+        }
+      } catch(SQLException e) {
+        // eat
+      }
+
+      this.currentReaderConnection = null;
+      int connIndex = -1;
+      this.currentReaderHost = null;
+
+      while (true) {
+        try {
+          ConnectionAttemptResult connResult =
+                  this.readerFailoverHandler.getReaderConnection(this.currentTopology);
+          this.currentReaderConnection = connResult != null && connResult.isSuccess() ? connResult.getConnection() : null;
+          connIndex =
+                  connResult != null && connResult.isSuccess() ? connResult.getConnectionIndex() : -1;
+        } catch (SQLException e) {
+          // eat
+        }
+
+        if (this.currentReaderConnection == null) {
+          // can't connect to any reader
+          this.log.logDebug(Messages.getString("ClusterAwareWriterFailoverHandler.11"));
+        } else {
+          this.currentReaderHost = this.currentTopology.get(connIndex);
+          if(currentReaderHost != null) {
+            this.log.logDebug(
+                    Messages.getString(
+                            "ClusterAwareWriterFailoverHandler.10",
+                            new Object[]{connIndex, this.currentReaderHost.getHostPortPair()}));
+            break;
+          }
+        }
+
+        TimeUnit.MILLISECONDS.sleep(1);
+      }
+    }
+
+    /**
+     * Re-read topology and wait for a new writer.
+     *
+     * @return Returns true if successful.
+     */
+    private boolean connectToNewWriter() throws InterruptedException {
+      while (true) {
+        this.latestTopology = this.topologyService.getTopology(this.currentReaderConnection, true);
+
+        if(this.latestTopology == null) {
+          // topology couldn't be obtained; it might be issues with reader connection
+          return false;
+        }
+
+        if (!this.latestTopology.isEmpty()) {
+
+          logTopology();
+          HostInfo writerCandidate = this.latestTopology.get(WRITER_CONNECTION_INDEX);
+
+          if (writerCandidate != null && (this.originalWriterHost == null || !isSame(writerCandidate, this.originalWriterHost))) {
+            // new writer is available and it's different from the previous writer
+            try {
+              this.log.logDebug(
+                      Messages.getString(
+                              "ClusterAwareWriterFailoverHandler.13",
+                              new Object[] {writerCandidate.getHostPortPair()}));
+
+              if(isSame(writerCandidate, this.currentReaderHost)) {
+                this.currentConnection = this.currentReaderConnection;
+              } else {
+                // connected to a new writer
+                this.currentConnection = this.connectionProvider.connect(writerCandidate);
+              }
+              this.isConnected = true;
+
+              this.topologyService.removeFromDownHostList(writerCandidate);
+              return true;
+            } catch (SQLException exception) {
+              this.topologyService.addToDownHostList(writerCandidate);
+            }
+          }
+        }
+
+        TimeUnit.MILLISECONDS.sleep(this.readTopologyIntervalMs);
       }
     }
 
