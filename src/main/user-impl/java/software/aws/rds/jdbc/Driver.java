@@ -62,7 +62,7 @@ public class Driver extends NonRegisteringDriver implements java.sql.Driver {
   }
 
   static {
-    System.out.println("You are using Atlas Driver, you can also use 'software.aws.rds.jdbc.Driver()' to register");
+    System.out.println("You are using Amazon Web Services (AWS) JDBC Driver for MySQL, you can also use 'software.aws.rds.jdbc.Driver()' to register");
   }
 
   /**
