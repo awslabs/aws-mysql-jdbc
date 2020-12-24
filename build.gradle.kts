@@ -86,6 +86,11 @@ tasks.register<JavaExec>("addMethods") {
 
 tasks.jar {
     setDependsOn(arrayOf("addMethods").asIterable())
+    from("${project.rootDir}") {
+        include("README")
+        include("LICENSE")
+        into("META-INF/")
+    }
     from("${buildDir}/META-INF/services/") {
         into("META-INF/services/")
     }
@@ -93,7 +98,7 @@ tasks.jar {
         mkdir("${buildDir}/META-INF/services/")
         val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
         if(driverFile.createNewFile()) {
-            driverFile.writeText("com.mysql.cj.jdbc.Driver")
+            driverFile.writeText("software.aws.rds.driver")
         }
     }
 }
