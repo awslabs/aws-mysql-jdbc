@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -44,9 +45,9 @@ public class ExceptionSubclassesTest extends BaseTestCase {
         assertEquals("java.sql.SQLNonTransientConnectionException", SQLError.createSQLException("test", "08000", 0, false, null).getClass().getCanonicalName());
         assertEquals("java.sql.SQLSyntaxErrorException", SQLError.createSQLException("test", "42000", null).getClass().getCanonicalName());
         assertEquals("java.sql.SQLIntegrityConstraintViolationException", SQLError.createSQLException("test", "23000", null).getClass().getCanonicalName());
-        assertEquals("com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException",
+        assertEquals(com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException.class.getName(),
                 SQLError.createSQLException("test", "40000", null).getClass().getCanonicalName());
-        assertEquals("com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException",
+        assertEquals(com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException.class.getName(),
                 SQLError.createSQLException("test", "70100", null).getClass().getCanonicalName());
     }
 }

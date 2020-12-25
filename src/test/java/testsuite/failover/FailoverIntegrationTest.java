@@ -83,7 +83,7 @@ public class FailoverIntegrationTest {
    * +------------------+--------+---------+
    *
    * */
-  private static final String DB_CONN_STR_PREFIX = "jdbc:mysql://";
+  private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
   private static final String DB_CONN_STR_SUFFIX = System.getenv("DB_CONN_STR_SUFFIX");
   private static final String DB_READONLY_CONN_STR_SUFFIX =
       System.getenv("DB_READONLY_CONN_STR_SUFFIX");
@@ -125,7 +125,7 @@ public class FailoverIntegrationTest {
    * */
   public FailoverIntegrationTest() throws SQLException {
     DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
-    this.log = LogFactory.getLogger("com.mysql.cj.log.StandardLogger", Log.LOGGER_INSTANCE_NAME);
+    this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 
     initiateInstanceNames();
 

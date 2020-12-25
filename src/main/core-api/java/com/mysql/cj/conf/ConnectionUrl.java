@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -102,26 +103,30 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
      */
     public enum Type {
         // DNS SRV schemes (cardinality is validated by implementing classes):
-        FAILOVER_DNS_SRV_CONNECTION("jdbc:mysql+srv:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.FailoverDnsSrvConnectionUrl"), //
-        LOADBALANCE_DNS_SRV_CONNECTION("jdbc:mysql+srv:loadbalance:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.LoadBalanceDnsSrvConnectionUrl"), //
-        REPLICATION_DNS_SRV_CONNECTION("jdbc:mysql+srv:replication:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.ReplicationDnsSrvConnectionUrl"), //
-        XDEVAPI_DNS_SRV_SESSION("mysqlx+srv:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.XDevApiDnsSrvConnectionUrl"), //
+        FAILOVER_DNS_SRV_CONNECTION("jdbc:mysql+srv:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.FailoverDnsSrvConnectionUrl.class.getName()), //
+        LOADBALANCE_DNS_SRV_CONNECTION("jdbc:mysql+srv:loadbalance:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.LoadBalanceDnsSrvConnectionUrl.class.getName()), //
+        REPLICATION_DNS_SRV_CONNECTION("jdbc:mysql+srv:replication:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.ReplicationDnsSrvConnectionUrl.class.getName()), //
+        XDEVAPI_DNS_SRV_SESSION("mysqlx+srv:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.XDevApiDnsSrvConnectionUrl.class.getName()), //
         // Standard schemes:
-        SINGLE_CONNECTION("jdbc:mysql:", HostsCardinality.SINGLE, "com.mysql.cj.conf.url.SingleConnectionUrl", PropertyKey.dnsSrv, FAILOVER_DNS_SRV_CONNECTION), //
-        FAILOVER_CONNECTION("jdbc:mysql:", HostsCardinality.MULTIPLE, "com.mysql.cj.conf.url.FailoverConnectionUrl", PropertyKey.dnsSrv,
+        SINGLE_CONNECTION("jdbc:mysql:", HostsCardinality.SINGLE, com.mysql.cj.conf.url.SingleConnectionUrl.class.getName(), PropertyKey.dnsSrv, FAILOVER_DNS_SRV_CONNECTION), //
+        FAILOVER_CONNECTION("jdbc:mysql:", HostsCardinality.MULTIPLE, com.mysql.cj.conf.url.FailoverConnectionUrl.class.getName(), PropertyKey.dnsSrv,
                 FAILOVER_DNS_SRV_CONNECTION), //
-        LOADBALANCE_CONNECTION("jdbc:mysql:loadbalance:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.LoadBalanceConnectionUrl", PropertyKey.dnsSrv,
+        LOADBALANCE_CONNECTION("jdbc:mysql:loadbalance:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.LoadBalanceConnectionUrl.class.getName(), PropertyKey.dnsSrv,
                 LOADBALANCE_DNS_SRV_CONNECTION), //
-        REPLICATION_CONNECTION("jdbc:mysql:replication:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.ReplicationConnectionUrl", PropertyKey.dnsSrv,
+        REPLICATION_CONNECTION("jdbc:mysql:replication:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.ReplicationConnectionUrl.class.getName(), PropertyKey.dnsSrv,
                 REPLICATION_DNS_SRV_CONNECTION), //
-        XDEVAPI_SESSION("mysqlx:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.XDevApiConnectionUrl", PropertyKey.xdevapiDnsSrv,
-                XDEVAPI_DNS_SRV_SESSION);
+        XDEVAPI_SESSION("mysqlx:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.XDevApiConnectionUrl.class.getName(), PropertyKey.xdevapiDnsSrv,
+                XDEVAPI_DNS_SRV_SESSION),
+        // AWS schemes:
+        SINGLE_CONNECTION_AWS("jdbc:mysql:aws", HostsCardinality.SINGLE, com.mysql.cj.conf.url.SingleConnectionUrl.class.getName());
 
         private String scheme;
         private HostsCardinality cardinality;
         private String implementingClass;
         private PropertyKey dnsSrvPropertyKey;
         private Type alternateDnsSrvType;
+
+        private static Type[] supportedTypes = { SINGLE_CONNECTION_AWS }; // This driver supports just AWS scheme.
 
         private Type(String scheme, HostsCardinality cardinality, String implementingClass) {
             this(scheme, cardinality, implementingClass, null, null);
@@ -219,7 +224,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
          * @return true if the given scheme is supported by driver
          */
         public static boolean isSupported(String scheme) {
-            for (Type t : values()) {
+            for (Type t : supportedTypes) {
                 if (t.getScheme().equalsIgnoreCase(scheme)) {
                     return true;
                 }
@@ -589,7 +594,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         String protocol = hostProps.get(PropertyKey.PROTOCOL.getKeyName());
         if (!isNullOrEmpty(protocol) && protocol.equalsIgnoreCase("PIPE")) {
             if (!hostProps.containsKey(PropertyKey.socketFactory.getKeyName())) {
-                hostProps.put(PropertyKey.socketFactory.getKeyName(), "com.mysql.cj.protocol.NamedPipeSocketFactory");
+                hostProps.put(PropertyKey.socketFactory.getKeyName(), com.mysql.cj.protocol.NamedPipeSocketFactory.class.getName());
             }
         }
     }

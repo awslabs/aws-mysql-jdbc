@@ -195,20 +195,8 @@ public class NonRegisteringDriver implements java.sql.Driver {
 
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
             switch (conStr.getType()) {
-                case SINGLE_CONNECTION:
+                case SINGLE_CONNECTION_AWS:
                     return ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
-
-                case FAILOVER_CONNECTION:
-                case FAILOVER_DNS_SRV_CONNECTION:
-                    return FailoverConnectionProxy.createProxyInstance(conStr);
-
-                case LOADBALANCE_CONNECTION:
-                case LOADBALANCE_DNS_SRV_CONNECTION:
-                    return LoadBalancedConnectionProxy.createProxyInstance(conStr);
-
-                case REPLICATION_CONNECTION:
-                case REPLICATION_DNS_SRV_CONNECTION:
-                    return ReplicationConnectionProxy.createProxyInstance(conStr);
 
                 default:
                     return null;

@@ -1495,7 +1495,7 @@ public class ConnectionTest extends BaseTestCase {
             props.setProperty(PropertyKey.useCursorFetch.getKeyName(), "true");
             fetchConn = getConnectionWithProps(props);
 
-            String classname = "com.mysql.cj.jdbc.ServerPreparedStatement";
+            String classname = com.mysql.cj.jdbc.ServerPreparedStatement.class.getName();
 
             assertEquals(classname, fetchConn.prepareStatement("SELECT 1").getClass().getName());
         } finally {

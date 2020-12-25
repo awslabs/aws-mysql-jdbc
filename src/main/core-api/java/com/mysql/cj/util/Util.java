@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -50,6 +51,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
+import com.mysql.cj.MysqlType;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.ExceptionInterceptor;
@@ -349,7 +351,10 @@ public class Util {
      */
     public static boolean isJdbcPackage(String packageName) {
         return packageName != null
-                && (packageName.startsWith("java.sql") || packageName.startsWith("javax.sql") || packageName.startsWith("com.mysql.cj.jdbc"));
+                && (packageName.startsWith("java.sql") ||
+                packageName.startsWith("javax.sql") ||
+                packageName.startsWith("com.mysql.cj.jdbc") ||
+                packageName.startsWith(Util.getPackageName(MysqlType.class) + ".jdbc")); // "<shading-prefix>.com.mysql.cj.jdbc"
     }
 
     /** Cache for the implemented interfaces searched. */

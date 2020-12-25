@@ -58,6 +58,7 @@ import com.mysql.cj.protocol.a.authentication.Sha256PasswordPlugin;
 import com.mysql.cj.util.LogUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.TimeUtil;
+import com.mysql.cj.util.Util;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import testsuite.BaseQueryInterceptor;
@@ -1726,14 +1727,14 @@ public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug29106() throws Exception {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> checkerClass = cl.loadClass("com.mysql.cj.jdbc.integration.jboss.MysqlValidConnectionChecker");
+        Class<?> checkerClass = cl.loadClass(com.mysql.cj.jdbc.integration.jboss.MysqlValidConnectionChecker.class.getName());
         ((MysqlValidConnectionChecker) checkerClass.newInstance()).isValidConnection(this.conn);
     }
 
     @Test
     public void testBug29852() throws Exception {
         Connection lbConn = getLoadBalancedConnection();
-        assertTrue(!lbConn.getClass().getName().startsWith("com.mysql.cj.jdbc"));
+        assertTrue(!lbConn.getClass().getName().startsWith(Util.getPackageName(MysqlType.class) + ".jdbc"));
         lbConn.close();
     }
 

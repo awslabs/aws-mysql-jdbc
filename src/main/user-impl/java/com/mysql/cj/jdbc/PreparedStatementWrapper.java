@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -886,7 +887,7 @@ public class PreparedStatementWrapper extends StatementWrapper implements Prepar
 
         String interfaceClassName = iface.getName();
 
-        return (interfaceClassName.equals("com.mysql.cj.jdbc.Statement") || interfaceClassName.equals("java.sql.Statement")
+        return (interfaceClassName.equals(com.mysql.cj.jdbc.JdbcStatement.class.getName()) || interfaceClassName.equals("java.sql.Statement")
                 || interfaceClassName.equals("java.sql.Wrapper") || interfaceClassName.equals("java.sql.PreparedStatement")); // TODO check other interfaces
     }
 

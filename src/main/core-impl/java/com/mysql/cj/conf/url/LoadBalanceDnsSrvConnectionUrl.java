@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -109,7 +110,7 @@ public class LoadBalanceDnsSrvConnectionUrl extends ConnectionUrl {
                 int autoCommitSwapThreshold = Integer.parseInt(props.get(PropertyKey.loadBalanceAutoCommitStatementThreshold.getKeyName()));
                 if (autoCommitSwapThreshold > 0) {
                     String queryInterceptors = props.get(PropertyKey.queryInterceptors.getKeyName());
-                    String lbi = "com.mysql.cj.jdbc.ha.LoadBalancedAutoCommitInterceptor";
+                    String lbi = com.mysql.cj.jdbc.ha.LoadBalancedAutoCommitInterceptor.class.getName();
                     if (StringUtils.isNullOrEmpty(queryInterceptors)) {
                         props.put(PropertyKey.queryInterceptors.getKeyName(), lbi);
                     } else {

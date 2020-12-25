@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -39,6 +40,7 @@ import java.sql.Types;
 
 import com.mysql.cj.exceptions.FeatureNotAvailableException;
 import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.Util;
 
 public enum MysqlType implements SQLType {
 
@@ -993,7 +995,7 @@ public enum MysqlType implements SQLType {
 
     @Override
     public String getVendor() {
-        return "com.mysql.cj";
+        return Util.getPackageName(MysqlType.class);
     }
 
     @Override

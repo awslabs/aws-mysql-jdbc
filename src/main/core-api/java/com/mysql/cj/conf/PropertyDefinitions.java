@@ -192,7 +192,7 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.connectionAttributes, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.connectionAttributes"), "0.1.0", CATEGORY_CONNECTION, 7),
 
-                new StringPropertyDefinition(PropertyKey.clientInfoProvider, "com.mysql.cj.jdbc.CommentClientInfoProvider", RUNTIME_MODIFIABLE,
+                new StringPropertyDefinition(PropertyKey.clientInfoProvider, com.mysql.cj.jdbc.CommentClientInfoProvider.class.getName(), RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.clientInfoProvider"), "0.1.0", CATEGORY_CONNECTION, Integer.MIN_VALUE),
 
                 new StringPropertyDefinition(PropertyKey.connectionLifecycleInterceptors, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
@@ -222,7 +222,7 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.disabledAuthenticationPlugins, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.disabledAuthenticationPlugins"), "0.1.0", CATEGORY_CONNECTION, Integer.MIN_VALUE),
 
-                new StringPropertyDefinition(PropertyKey.defaultAuthenticationPlugin, "com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin",
+                new StringPropertyDefinition(PropertyKey.defaultAuthenticationPlugin, com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin.class.getName(),
                         RUNTIME_MODIFIABLE, Messages.getString("ConnectionProperties.defaultAuthenticationPlugin"), "0.1.0", CATEGORY_CONNECTION,
                         Integer.MIN_VALUE),
 
@@ -262,7 +262,7 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.localSocketAddress, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.localSocketAddress"), "0.1.0", CATEGORY_NETWORK, Integer.MIN_VALUE),
 
-                new StringPropertyDefinition(PropertyKey.socketFactory, "com.mysql.cj.protocol.StandardSocketFactory", RUNTIME_MODIFIABLE,
+                new StringPropertyDefinition(PropertyKey.socketFactory, com.mysql.cj.protocol.StandardSocketFactory.class.getName(), RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.socketFactory"), "0.1.0", CATEGORY_NETWORK, 4),
 
                 new StringPropertyDefinition(PropertyKey.socksProxyHost, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
@@ -542,7 +542,7 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.loadBalanceConnectionGroup, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.loadBalanceConnectionGroup"), "0.1.0", CATEGORY_HA, Integer.MIN_VALUE),
 
-                new StringPropertyDefinition(PropertyKey.loadBalanceExceptionChecker, "com.mysql.cj.jdbc.ha.StandardLoadBalanceExceptionChecker",
+                new StringPropertyDefinition(PropertyKey.loadBalanceExceptionChecker, com.mysql.cj.jdbc.ha.StandardLoadBalanceExceptionChecker.class.getName(),
                         RUNTIME_MODIFIABLE, Messages.getString("ConnectionProperties.loadBalanceExceptionChecker"), "0.1.0", CATEGORY_HA, Integer.MIN_VALUE),
 
                 new StringPropertyDefinition(PropertyKey.loadBalanceSQLStateFailover, DEFAULT_VALUE_NULL_STRING, RUNTIME_MODIFIABLE,
@@ -714,7 +714,7 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.logger", new Object[] { Log.class.getName(), STANDARD_LOGGER_NAME }), "0.1.0",
                         CATEGORY_DEBUGING_PROFILING, 0),
 
-                new StringPropertyDefinition(PropertyKey.profilerEventHandler, "com.mysql.cj.log.LoggingProfilerEventHandler", RUNTIME_MODIFIABLE,
+                new StringPropertyDefinition(PropertyKey.profilerEventHandler, com.mysql.cj.log.LoggingProfilerEventHandler.class.getName(), RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.profilerEventHandler"), "0.1.0", CATEGORY_DEBUGING_PROFILING, 1),
 
                 new BooleanPropertyDefinition(PropertyKey.useNanosForElapsedTime, DEFAULT_VALUE_FALSE, RUNTIME_MODIFIABLE,

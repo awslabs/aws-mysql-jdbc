@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -28,6 +29,8 @@
  */
 
 package com.mysql.cj.log;
+
+import com.mysql.cj.util.Util;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -225,8 +228,10 @@ public class Jdk14Logger implements Log {
         for (int i = 0; i < numFrames; i++) {
             String callerClassName = stackTrace[i].getClassName();
 
-            if (!(callerClassName.startsWith("com.mysql.cj") || callerClassName.startsWith("com.mysql.cj.core")
-                    || callerClassName.startsWith("com.mysql.cj.jdbc"))) {
+            String basePackageName = Util.getPackageName(com.mysql.cj.MysqlType.class); // "com.mysql.cj"
+
+            if (!(callerClassName.startsWith(basePackageName) || callerClassName.startsWith(basePackageName + ".core")
+                    || callerClassName.startsWith(basePackageName + ".jdbc"))) {
                 return i;
             }
         }

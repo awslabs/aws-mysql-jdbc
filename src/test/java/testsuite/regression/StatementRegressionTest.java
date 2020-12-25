@@ -10540,13 +10540,15 @@ public class StatementRegressionTest extends BaseTestCase {
                 System.out.println("'" + ps3 + "'");
 
                 if (useSPS) {
-                    assertEquals(ps1.toString(), "com.mysql.cj.jdbc.ServerPreparedStatement[1]: Select 'aaaaaaaaa' from dual");
-                    assertEquals(ps2.toString(), "com.mysql.cj.jdbc.ServerPreparedStatement[2]: insert into testBug26748909 values(** NOT SPECIFIED **)");
-                    assertEquals(ps3.toString(), "com.mysql.cj.jdbc.ServerPreparedStatement[3]: select * from testBug26748909 where id=** NOT SPECIFIED **");
+                    String serverPreparedStatementClassName = com.mysql.cj.jdbc.ServerPreparedStatement.class.getName();
+                    assertEquals(ps1.toString(), serverPreparedStatementClassName +"[1]: Select 'aaaaaaaaa' from dual");
+                    assertEquals(ps2.toString(), serverPreparedStatementClassName + "[2]: insert into testBug26748909 values(** NOT SPECIFIED **)");
+                    assertEquals(ps3.toString(), serverPreparedStatementClassName+ "[3]: select * from testBug26748909 where id=** NOT SPECIFIED **");
                 } else {
-                    assertEquals(ps1.toString(), "com.mysql.cj.jdbc.ClientPreparedStatement: Select 'aaaaaaaaa' from dual");
-                    assertEquals(ps2.toString(), "com.mysql.cj.jdbc.ClientPreparedStatement: insert into testBug26748909 values(** NOT SPECIFIED **)");
-                    assertEquals(ps3.toString(), "com.mysql.cj.jdbc.ClientPreparedStatement: select * from testBug26748909 where id=** NOT SPECIFIED **");
+                    String clientPreparedStatementClassName = com.mysql.cj.jdbc.ClientPreparedStatement.class.getName();
+                    assertEquals(ps1.toString(), clientPreparedStatementClassName + ": Select 'aaaaaaaaa' from dual");
+                    assertEquals(ps2.toString(), clientPreparedStatementClassName + ": insert into testBug26748909 values(** NOT SPECIFIED **)");
+                    assertEquals(ps3.toString(), clientPreparedStatementClassName + ": select * from testBug26748909 where id=** NOT SPECIFIED **");
                 }
 
             } catch (Exception e) {

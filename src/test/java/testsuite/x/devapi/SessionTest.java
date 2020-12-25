@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -1127,7 +1128,7 @@ public class SessionTest extends DevApiBaseTestCase {
         }
 
         for (String path : new String[] { null, "\\\\.\\pipe\\MySQL80" }) {
-            String url = this.baseUrl + makeParam(PropertyKey.socketFactory, "com.mysql.cj.protocol.NamedPipeSocketFactory");
+            String url = this.baseUrl + makeParam(PropertyKey.socketFactory, com.mysql.cj.protocol.NamedPipeSocketFactory.class.getName());
             if (path != null) {
                 url += makeParam(PropertyKey.PATH, path);
             }
