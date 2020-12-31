@@ -124,7 +124,7 @@ public class FailoverIntegrationTest {
    * FailoverIntegrationTest constructor.
    * */
   public FailoverIntegrationTest() throws SQLException {
-    DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+    DriverManager.registerDriver(new software.aws.rds.jdbc.Driver());
     this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 
     initiateInstanceNames();

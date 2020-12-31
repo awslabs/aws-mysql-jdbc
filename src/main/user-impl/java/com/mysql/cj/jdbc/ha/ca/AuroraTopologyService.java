@@ -269,7 +269,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
 
   private String getUrlFromEndpoint(String endpoint, int port, String dbname) {
     return String.format(
-        "%s//%s:%d/%s", ConnectionUrl.Type.SINGLE_CONNECTION.getScheme(), endpoint, port, dbname);
+        "%s//%s:%d/%s", ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(), endpoint, port, dbname);
   }
 
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet) throws SQLException {
