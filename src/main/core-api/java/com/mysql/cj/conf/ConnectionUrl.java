@@ -118,7 +118,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         XDEVAPI_SESSION("mysqlx:", HostsCardinality.ONE_OR_MORE, com.mysql.cj.conf.url.XDevApiConnectionUrl.class.getName(), PropertyKey.xdevapiDnsSrv,
                 XDEVAPI_DNS_SRV_SESSION),
         // AWS schemes:
-        SINGLE_CONNECTION_AWS("jdbc:mysql:aws", HostsCardinality.SINGLE, com.mysql.cj.conf.url.SingleConnectionUrl.class.getName());
+        SINGLE_CONNECTION_AWS("jdbc:mysql:aws:", HostsCardinality.SINGLE, com.mysql.cj.conf.url.AwsSingleConnectionUrl.class.getName());
 
         private String scheme;
         private HostsCardinality cardinality;
