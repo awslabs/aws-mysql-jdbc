@@ -45,6 +45,7 @@ plugins {
     id("com.github.vlsi.gradle-extensions")
     id("com.github.vlsi.license-gather") apply false
     id("com.github.vlsi.stage-vote-release")
+    id("com.github.johnrengelman.shadow") version "6.1.0"
 }
 
 checkstyle {
@@ -86,6 +87,11 @@ tasks.register<JavaExec>("addMethods") {
 
 tasks.jar {
     setDependsOn(arrayOf("addMethods").asIterable())
+    from("${project.rootDir}") {
+        include("README")
+        include("LICENSE")
+        into("META-INF/")
+    }
     from("${buildDir}/META-INF/services/") {
         into("META-INF/services/")
     }
@@ -93,9 +99,46 @@ tasks.jar {
         mkdir("${buildDir}/META-INF/services/")
         val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
         if(driverFile.createNewFile()) {
-            driverFile.writeText("com.mysql.cj.jdbc.Driver")
+            driverFile.writeText("software.aws.rds.jdbc.Driver")
         }
     }
+    exclude("instrumentation/**")
+    exclude("demo/**")
+    exclude("documentation/**")
+}
+
+tasks.shadowJar {
+    setDependsOn(arrayOf("jar").asIterable())
+
+    from("${project.rootDir}") {
+        include("README")
+        include("LICENSE")
+        into("META-INF/")
+    }
+
+    from("${buildDir}/META-INF/services/") {
+        into("META-INF/services/")
+    }
+
+    doFirst {
+        mkdir("${buildDir}/META-INF/services/")
+        val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
+        if(driverFile.createNewFile()) {
+            driverFile.writeText("software.aws.rds.jdbc.Driver")
+        }
+    }
+
+    dependencies {
+        exclude(dependency(":"))
+    }
+
+    relocate ("com.mysql", "software.aws.rds.jdbc.shading.com.mysql")
+
+    exclude("instrumentation/**")
+    exclude("demo/**")
+    exclude("documentation/**")
+
+    setIncludeEmptyDirs(false)
 }
 
 tasks.compileJava {
@@ -163,14 +206,14 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-engine:1.6.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
     testImplementation("org.mockito:mockito-inline:3.6.28")
-    implementation("org.apiguardian:apiguardian-api:1.1.0")
-    implementation("org.opentest4j:opentest4j:1.2.0")
-    implementation("org.javassist:javassist:3.27.0-GA")
+    testImplementation("org.hamcrest:hamcrest:2.2")
+
     implementation("com.google.protobuf:protobuf-java:3.11.4")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.jboss.jbossas:jboss-as-connector:6.1.0.Final")
     implementation("org.slf4j:slf4j-api:1.7.30")
-    implementation("org.hamcrest:hamcrest:2.2")
+
+    runtimeOnly("org.javassist:javassist:3.27.0-GA")
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.0")
 }
 
