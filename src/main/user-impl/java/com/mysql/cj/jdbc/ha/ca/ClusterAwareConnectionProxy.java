@@ -32,7 +32,11 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
-import com.mysql.cj.conf.*;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.conf.RuntimeProperty;
+import com.mysql.cj.conf.ConnectionUrlParser;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
@@ -584,7 +588,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   private void attemptConnectionUsingCachedTopology() throws SQLException {
     this.hosts = topologyService.getCachedTopology();
-    if(this.hosts == null || this.hosts.isEmpty()) {
+    if (this.hosts == null || this.hosts.isEmpty()) {
       if (this.gatherPerfMetricsSetting) {
         this.metrics.registerUseCachedTopology(false);
       }
@@ -596,15 +600,15 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
 
     int candidateIndex = getCandidateIndexForInitialConnection();
-    if(candidateIndex != NO_CONNECTION_INDEX) {
+    if (candidateIndex != NO_CONNECTION_INDEX) {
       connectTo(candidateIndex);
     }
   }
 
   private int getCandidateIndexForInitialConnection() {
-    if(isExplicitlyReadOnly()) {
+    if (isExplicitlyReadOnly()) {
       int candidateReaderIndex = getCandidateReaderForInitialConnection();
-      if(candidateReaderIndex != NO_CONNECTION_INDEX) {
+      if (candidateReaderIndex != NO_CONNECTION_INDEX) {
         return candidateReaderIndex;
       }
     }
@@ -613,14 +617,14 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   private int getCandidateReaderForInitialConnection() {
     int lastUsedReaderIndex = getHostIndex(topologyService.getLastUsedReaderHost());
-    if(lastUsedReaderIndex != NO_CONNECTION_INDEX) {
-      if(this.gatherPerfMetricsSetting) {
+    if (lastUsedReaderIndex != NO_CONNECTION_INDEX) {
+      if (this.gatherPerfMetricsSetting) {
         this.metrics.registerUseLastConnectedReader(true);
       }
       return lastUsedReaderIndex;
     }
 
-    if(this.gatherPerfMetricsSetting) {
+    if (this.gatherPerfMetricsSetting) {
       this.metrics.registerUseLastConnectedReader(false);
     }
 
@@ -652,7 +656,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       return;
     }
 
-    if(!invalidWriterConnection()) {
+    if (!invalidWriterConnection()) {
       if (this.gatherPerfMetricsSetting) {
         this.metrics.registerInvalidInitialConnection(false);
       }
@@ -663,7 +667,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       this.metrics.registerInvalidInitialConnection(true);
     }
 
-    if(this.hosts.get(WRITER_CONNECTION_INDEX) == null) {
+    if (this.hosts.get(WRITER_CONNECTION_INDEX) == null) {
       if (this.gatherPerfMetricsSetting) {
         this.failoverStartTimeMs = System.currentTimeMillis();
       }
@@ -838,10 +842,10 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     } else if (t instanceof SQLException) {
       sqlState = ((SQLException) t).getSQLState();
     } else if (t instanceof CJException) {
-      if(t.getCause() instanceof EOFException) { // Can not read response from server
+      if (t.getCause() instanceof EOFException) { // Can not read response from server
         return true;
       }
-      if(t.getCause() instanceof SSLException) { // Incomplete packets from server may cause SSL communication issues
+      if (t.getCause() instanceof SSLException) { // Incomplete packets from server may cause SSL communication issues
         return true;
       }
       sqlState = ((CJException) t).getSQLState();
@@ -890,7 +894,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       return;
     }
 
-    if(this.hosts.get(WRITER_CONNECTION_INDEX) == null) {
+    if (this.hosts.get(WRITER_CONNECTION_INDEX) == null) {
       failover(WRITER_CONNECTION_INDEX);
       return;
     }
@@ -946,7 +950,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
             new StringBuilder("Connection to ")
                 .append(isWriterHostIndex(hostIndex) ? "writer" : "reader")
                 .append(" host '")
-                .append(host == null ? "<null>" :host.getHostPortPair())
+                .append(host == null ? "<null>" : host.getHostPortPair())
                 .append("' failed");
         try {
           this.log.logWarn(msg.toString(), e);
@@ -1168,7 +1172,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
               "ClusterAwareConnectionProxy.20",
               new Object[] {this.hosts.get(this.currentHostIndex)}));
       HostInfo currentHost = this.hosts.get(this.currentHostIndex);
-      if(currentHost != null) {
+      if (currentHost != null) {
         topologyService.setLastUsedReaderHost(currentHost);
       }
     }
@@ -1215,7 +1219,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       return;
     }
 
-    if(!isConnected()) {
+    if (!isConnected()) {
       this.hosts = latestTopology;
       pickNewConnection();
       return;
@@ -1327,7 +1331,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   private void connectToWriterIfRequired(Boolean readOnly) throws SQLException {
     if (readOnly != null && !readOnly && !isWriterHostIndex(this.currentHostIndex)) {
-      if(this.hosts.get(WRITER_CONNECTION_INDEX) == null) {
+      if (this.hosts.get(WRITER_CONNECTION_INDEX) == null) {
         failover(WRITER_CONNECTION_INDEX);
         return;
       }
