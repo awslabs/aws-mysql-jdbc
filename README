@@ -1,0 +1,34 @@
+AWS JDBC Driver for MySQL
+
+Copyright 2020 Amazon.com Inc. or affiliates.
+
+
+
+The Amazon Web Services (AWS) JDBC Driver for MySQL is a driver that enables
+
+applications to take full advantage of the features of clustered MySQL databases.
+
+It is based on and can be used as a drop-in replacement for the MySQL Connector/J driver
+
+(https://github.com/mysql/mysql-connector-j) and is compatible with all MySQL deployments.
+
+
+
+
+The AWS JDBC Driver for MySQL currently enables fast failover for Amazon Aurora with MySQL
+
+compatibility. Support for additional features of clustered databases, including features
+
+of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
+
+
+
+License information can be found in the LICENSE file.
+
+
+
+This distribution may include materials developed by third parties.
+
+For license and attribution notices for these materials, please refer to the
+
+LICENSE file.
