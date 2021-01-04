@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
- * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * AWS JDBC Driver for MySQL
+ * Copyright 2020 Amazon.com Inc. or affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -14,7 +14,7 @@
  * they have included with MySQL.
  *
  * Without limiting anything contained in the foregoing, this file, which is
- * part of MySQL Connector/J, is also subject to the Universal FOSS Exception,
+ * part of this connector, is also subject to the Universal FOSS Exception,
  * version 1.0, a copy of which can be found at
  * http://oss.oracle.com/licenses/universal-foss-exception.
  *
