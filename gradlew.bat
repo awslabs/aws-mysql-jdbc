@@ -1,18 +1,32 @@
 @rem
-@rem Copyright 2015 the original author or authors.
-@rem Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-@rem Licensed under the Apache License, Version 2.0 (the "License");
-@rem you may not use this file except in compliance with the License.
-@rem You may obtain a copy of the License at
+@rem AWS JDBC Driver for MySQL
+@rem Copyright 2020 Amazon.com Inc. or affiliates.
 @rem
-@rem      https://www.apache.org/licenses/LICENSE-2.0
+@rem This program is free software; you can redistribute it and/or modify it under
+@rem the terms of the GNU General Public License, version 2.0, as published by the
+@rem Free Software Foundation.
 @rem
-@rem Unless required by applicable law or agreed to in writing, software
-@rem distributed under the License is distributed on an "AS IS" BASIS,
-@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-@rem See the License for the specific language governing permissions and
-@rem limitations under the License.
+@rem This program is also distributed with certain software (including but not
+@rem limited to OpenSSL) that is licensed under separate terms, as designated in a
+@rem particular file or component or in included license documentation. The
+@rem authors of MySQL hereby grant you an additional permission to link the
+@rem program and your derivative works with the separately licensed software that
+@rem they have included with MySQL.
 @rem
+@rem Without limiting anything contained in the foregoing, this file, which is
+@rem part of this connector, is also subject to the Universal FOSS Exception,
+@rem version 1.0, a copy of which can be found at
+@rem http://oss.oracle.com/licenses/universal-foss-exception.
+@rem
+@rem This program is distributed in the hope that it will be useful, but WITHOUT
+@rem ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+@rem FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,
+@rem for more details.
+@rem
+@rem You should have received a copy of the GNU General Public License along with
+@rem this program; if not, write to the Free Software Foundation, Inc.,
+@rem 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+@rem 
 
 @if "%DEBUG%" == "" @echo off
 @rem ##########################################################################
