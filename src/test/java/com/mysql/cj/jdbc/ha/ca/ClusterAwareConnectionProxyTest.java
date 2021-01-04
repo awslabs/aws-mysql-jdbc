@@ -32,7 +32,13 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
-import com.mysql.cj.conf.*;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.conf.RuntimeProperty;
+import com.mysql.cj.conf.BooleanPropertyDefinition;
+import com.mysql.cj.conf.IntegerPropertyDefinition;
+import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySet;
@@ -43,12 +49,24 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Properties;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 
 /**
  * ClusterAwareConnectionProxyTest class.

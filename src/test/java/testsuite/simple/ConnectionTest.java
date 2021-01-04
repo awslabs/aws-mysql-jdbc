@@ -1798,7 +1798,7 @@ public class ConnectionTest extends BaseTestCase {
         for (String host : ipv6Addrs) {
             if (TestUtils.serverListening(host, port)) {
                 atLeastOne = true;
-                String ipv6Url = String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%d)", TestUtils.encodePercent(host), port);
+                String ipv6Url = String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%d)", TestUtils.encodePercent(host), port);
 
                 Connection testConn = null;
                 Statement testStmt = null;

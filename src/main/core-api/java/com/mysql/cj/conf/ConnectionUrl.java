@@ -224,7 +224,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
          * @return true if the given scheme is supported by driver
          */
         public static boolean isSupported(String scheme) {
-            for (Type t : supportedTypes) {
+            for (Type t : values()) {
                 if (t.getScheme().equalsIgnoreCase(scheme)) {
                     return true;
                 }

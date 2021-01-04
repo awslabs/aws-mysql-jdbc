@@ -89,7 +89,7 @@ public abstract class BaseTestCase {
     protected boolean DISABLED_testBug3620new = true; // TODO this test is working in c/J 5.1 but fails here; disabled for later analysis
 
     /**
-     * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:///test and its connection URL.
+     * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:aws:///test and its connection URL.
      */
     public static String dbUrl = "jdbc:mysql:aws///test";
     protected static ConnectionUrl mainConnectionUrl = null;
