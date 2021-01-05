@@ -357,8 +357,7 @@ public class AuroraTopologyServiceTest {
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
 
     // populate cache
-    List<HostInfo> topology = null;
-    topology = spyProvider.getTopology(mockConn, false);
+    List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
 
     final String connectionHostName = "replica-instance-2";
     final int connectionHostIndex = 2;
