@@ -85,15 +85,36 @@ tasks.register<JavaExec>("addMethods") {
     setDependsOn(arrayOf("translateExceptions").asIterable())
 }
 
+var originalJarFileName = ""
 tasks.jar {
     setDependsOn(arrayOf("addMethods").asIterable())
+    archiveClassifier.set("original")
+    originalJarFileName = archiveFileName.getOrElse("")
+    from("${project.rootDir}") {
+        include("README")
+        include("LICENSE")
+        into("META-INF/")
+    }
+    from("${buildDir}/META-INF/services/") {
+        into("META-INF/services/")
+    }
+    doFirst {
+        mkdir("${buildDir}/META-INF/services/")
+        val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
+        if(driverFile.createNewFile()) {
+            driverFile.writeText("software.aws.rds.jdbc.Driver")
+        }
+    }
+    exclude("instrumentation/**")
+    exclude("demo/**")
+    exclude("documentation/**")
 }
 
+var shadowJarFileName = ""
 tasks.shadowJar {
     setDependsOn(arrayOf("jar").asIterable())
-
-    archiveBaseName.set("aws-mysql-jdbc")
-    archiveClassifier.set("")
+    archiveClassifier.set("shaded")
+    shadowJarFileName = archiveFileName.getOrElse("")
 
     from("${project.rootDir}") {
         include("README")
@@ -123,7 +144,30 @@ tasks.shadowJar {
     exclude("demo/**")
     exclude("documentation/**")
 
-    setIncludeEmptyDirs(false)
+    includeEmptyDirs = false
+}
+
+tasks.register<Jar>("cleanShadowJar") {
+    setDependsOn(arrayOf("shadowJar").asIterable())
+
+    if (shadowJarFileName != "") {
+        val shadowJar = file("${buildDir}/libs/${shadowJarFileName}")
+
+        from(zipTree(shadowJar)) {
+            exclude("com/**")
+        }
+
+        doLast {
+            shadowJar.deleteRecursively()
+        }
+    }
+
+    doLast {
+        if(originalJarFileName != "") {
+            val originalFile = file("${buildDir}/libs/${originalJarFileName}")
+            originalFile.deleteRecursively()
+        }
+    }
 }
 
 tasks.compileJava {
@@ -143,6 +187,10 @@ tasks.test {
 
 tasks.javadoc {
     setDependsOn(arrayOf("addMethods").asIterable())
+}
+
+tasks.assemble {
+    setDependsOn(arrayOf("cleanShadowJar").asIterable())
 }
 
 tasks.named<Test>("test") {
