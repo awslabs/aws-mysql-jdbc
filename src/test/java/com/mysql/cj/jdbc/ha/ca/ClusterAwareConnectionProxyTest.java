@@ -32,7 +32,13 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
-import com.mysql.cj.conf.*;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.conf.RuntimeProperty;
+import com.mysql.cj.conf.BooleanPropertyDefinition;
+import com.mysql.cj.conf.IntegerPropertyDefinition;
+import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySet;
@@ -43,12 +49,24 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Properties;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 
 /**
  * ClusterAwareConnectionProxyTest class.
@@ -62,7 +80,7 @@ public class ClusterAwareConnectionProxyTest {
   @Test
   public void testFailoverDisabled() throws SQLException {
     final String url =
-        "jdbc:mysql://somehost:1234/test?"
+        "jdbc:mysql:aws://somehost:1234/test?"
             + PropertyKey.enableClusterAwareFailover.getKeyName()
             + "=false";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
@@ -85,7 +103,7 @@ public class ClusterAwareConnectionProxyTest {
     stubPropertySet(mockConn);
     when(mockConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
     final String url =
-        "jdbc:mysql://somehost:1234/test?"
+        "jdbc:mysql:aws://somehost:1234/test?"
             + PropertyKey.clusterInstanceHostPattern.getKeyName()
             + "=?.somehost";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
@@ -135,7 +153,7 @@ public class ClusterAwareConnectionProxyTest {
   @Test
   public void testIfClusterTopologyNotAvailable() throws SQLException {
     final ConnectionImpl mockConn = Mockito.mock(ConnectionImpl.class);
-    final String url = "jdbc:mysql://somehost:1234/test";
+    final String url = "jdbc:mysql:aws://somehost:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
     final List<HostInfo> emptyTopology = new ArrayList<>();
@@ -161,7 +179,7 @@ public class ClusterAwareConnectionProxyTest {
     stubPropertySet(mockConn);
     when(mockConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
 
-    final String url = "jdbc:mysql://somehost:1234/test";
+    final String url = "jdbc:mysql:aws://somehost:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -194,7 +212,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -239,7 +257,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -284,7 +302,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
     final String url =
-        "jdbc:mysql://my-custom-cluster-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-custom-cluster-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -327,7 +345,7 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
-    final String url = "jdbc:mysql://my-instance-name.XYZ.us-east-2.rds.amazonaws.com:1234/test";
+    final String url = "jdbc:mysql:aws://my-instance-name.XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -370,7 +388,7 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
-    final String url = "jdbc:mysql://test-proxy.proxy-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+    final String url = "jdbc:mysql:aws://test-proxy.proxy-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -415,7 +433,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
     final String url =
-        "jdbc:mysql://my-custom-domain.com:1234/test?"
+        "jdbc:mysql:aws://my-custom-domain.com:1234/test?"
             + PropertyKey.clusterInstanceHostPattern.getKeyName()
             + "=?.my-custom-domain.com:9999";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
@@ -461,7 +479,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
     final String url =
-        "jdbc:mysql://10.10.10.10:1234/test?"
+        "jdbc:mysql:aws://10.10.10.10:1234/test?"
             + PropertyKey.clusterInstanceHostPattern.getKeyName()
             + "=?.my-custom-domain.com:9999";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
@@ -507,7 +525,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
     final String url =
-        "jdbc:mysql://10.10.10.10:1234/test?"
+        "jdbc:mysql:aws://10.10.10.10:1234/test?"
             + PropertyKey.clusterInstanceHostPattern.getKeyName()
             + "=?.my-custom-domain.com:9999&"
             + PropertyKey.clusterId.getKeyName()
@@ -554,7 +572,7 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
-    final String url = "jdbc:mysql://10.10.10.10:1234/test";
+    final String url = "jdbc:mysql:aws://10.10.10.10:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -592,7 +610,7 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
-    final String url = "jdbc:mysql://10.10.10.10:1234/test";
+    final String url = "jdbc:mysql:aws://10.10.10.10:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -626,7 +644,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -665,7 +683,7 @@ public class ClusterAwareConnectionProxyTest {
   public void testReadOnlyTrueWhenReaderCluster() throws SQLException {
     final ConnectionImpl mockConn = Mockito.mock(ConnectionImpl.class);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     stubPropertySet(mockConn);
     when(mockConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
 
@@ -703,7 +721,7 @@ public class ClusterAwareConnectionProxyTest {
   public void testLastUsedReaderAvailable() throws SQLException {
     final ConnectionImpl mockConn = Mockito.mock(ConnectionImpl.class);
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     stubPropertySet(mockConn);
     when(mockConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
 
@@ -751,7 +769,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockActualWriterConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
 
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -808,7 +826,7 @@ public class ClusterAwareConnectionProxyTest {
     stubPropertySet(mockWriterConn);
     when(mockWriterConn.getSession()).thenReturn(Mockito.mock(NativeSession.class));
 
-    final String url = "jdbc:mysql://reader-b-host.XYZ.us-east-2.rds.amazonaws.com";
+    final String url = "jdbc:mysql:aws://reader-b-host.XYZ.us-east-2.rds.amazonaws.com";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
@@ -851,7 +869,7 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionImpl mockWriterConnection = Mockito.mock(ConnectionImpl.class);
 
     final String url =
-        "jdbc:mysql://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 

@@ -921,6 +921,7 @@ public class ConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverConnection() throws Exception {
 
         if (!isServerRunningOnWindows()) { // windows sockets don't work for this test
@@ -1495,7 +1496,7 @@ public class ConnectionTest extends BaseTestCase {
             props.setProperty(PropertyKey.useCursorFetch.getKeyName(), "true");
             fetchConn = getConnectionWithProps(props);
 
-            String classname = "com.mysql.cj.jdbc.ServerPreparedStatement";
+            String classname = com.mysql.cj.jdbc.ServerPreparedStatement.class.getName();
 
             assertEquals(classname, fetchConn.prepareStatement("SELECT 1").getClass().getName());
         } finally {
@@ -1668,7 +1669,7 @@ public class ConnectionTest extends BaseTestCase {
         String password = parsedProps.getProperty(PropertyKey.PASSWORD.getKeyName());
         String database = parsedProps.getProperty(PropertyKey.DBNAME.getKeyName());
 
-        String newUrl = String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%s)(user=%s)(password=%s)/%s", TestUtils.encodePercent(host), port,
+        String newUrl = String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%s)(user=%s)(password=%s)/%s", TestUtils.encodePercent(host), port,
                 user != null ? user : "", password != null ? password : "", database);
 
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
@@ -1798,7 +1799,7 @@ public class ConnectionTest extends BaseTestCase {
         for (String host : ipv6Addrs) {
             if (TestUtils.serverListening(host, port)) {
                 atLeastOne = true;
-                String ipv6Url = String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%d)", TestUtils.encodePercent(host), port);
+                String ipv6Url = String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%d)", TestUtils.encodePercent(host), port);
 
                 Connection testConn = null;
                 Statement testStmt = null;

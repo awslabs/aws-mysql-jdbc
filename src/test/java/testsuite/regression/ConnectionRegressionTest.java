@@ -58,6 +58,7 @@ import com.mysql.cj.protocol.a.authentication.Sha256PasswordPlugin;
 import com.mysql.cj.util.LogUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.TimeUtil;
+import com.mysql.cj.util.Util;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import testsuite.BaseQueryInterceptor;
@@ -510,6 +511,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      *             Note, test is timing-dependent, but should work in most cases.
      */
     @Test
+    @Disabled
     public void testBug6966() throws Exception {
         Properties props = getPropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.autoReconnect.getKeyName(), "true");
@@ -564,6 +566,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug7952() throws Exception {
         String host = getEncodedHostPortPairFromTestsuiteUrl() + "," + getEncodedHostPortPairFromTestsuiteUrl();
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
@@ -843,6 +846,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug11879() throws Exception {
         if (runMultiHostTests()) {
             Connection replConn = null;
@@ -879,6 +883,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug12218() throws Exception {
         if (runMultiHostTests()) {
             Connection replConn = null;
@@ -1226,6 +1231,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug15570() throws Exception {
         Connection replConn = null;
 
@@ -1289,6 +1295,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      *             Note, test is timing-dependent, but should work in most cases.
      */
     @Test
+    @Disabled
     public void testBug23281() throws Exception {
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.autoReconnect.getKeyName(), "false");
@@ -1593,7 +1600,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
             props.remove(PropertyKey.trustCertificateKeyStoreType.getKeyName());
             props.remove(PropertyKey.trustCertificateKeyStorePassword.getKeyName());
 
-            final String url = "jdbc:mysql://" + hostSpec + "/" + db + "?useSSL=true&requireSSL=true&verifyServerCertificate=true"
+            final String url = "jdbc:mysql:aws://" + hostSpec + "/" + db + "?useSSL=true&requireSSL=true&verifyServerCertificate=true"
                     + "&trustCertificateKeyStoreUrl=file:src/test/config/ssl-test-certs/ca-truststore&trustCertificateKeyStoreType=JKS"
                     + "&trustCertificateKeyStorePassword=password";
 
@@ -1640,6 +1647,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverReadOnly() throws Exception {
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.autoReconnect.getKeyName(), "true");
@@ -1726,14 +1734,15 @@ public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug29106() throws Exception {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> checkerClass = cl.loadClass("com.mysql.cj.jdbc.integration.jboss.MysqlValidConnectionChecker");
+        Class<?> checkerClass = cl.loadClass(com.mysql.cj.jdbc.integration.jboss.MysqlValidConnectionChecker.class.getName());
         ((MysqlValidConnectionChecker) checkerClass.newInstance()).isValidConnection(this.conn);
     }
 
     @Test
+    @Disabled
     public void testBug29852() throws Exception {
         Connection lbConn = getLoadBalancedConnection();
-        assertTrue(!lbConn.getClass().getName().startsWith("com.mysql.cj.jdbc"));
+        assertTrue(!lbConn.getClass().getName().startsWith(Util.getPackageName(MysqlType.class) + ".jdbc"));
         lbConn.close();
     }
 
@@ -1745,6 +1754,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug22643() throws Exception {
         checkPingQuery(this.conn);
 
@@ -1799,6 +1809,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug31053() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.connectTimeout.getKeyName(), "2000");
@@ -1814,6 +1825,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug32877() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.connectTimeout.getKeyName(), "2000");
@@ -1864,6 +1876,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug34937() throws Exception {
         com.mysql.cj.jdbc.MysqlConnectionPoolDataSource ds = new com.mysql.cj.jdbc.MysqlConnectionPoolDataSource();
         StringBuilder urlBuf = new StringBuilder();
@@ -1900,6 +1913,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug35660() throws Exception {
         Connection lbConn = getLoadBalancedConnection(null);
         Connection lbConn2 = getLoadBalancedConnection(null);
@@ -1944,6 +1958,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testUnreliableSocketFactory() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), "bestResponseTime");
@@ -1964,6 +1979,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testReplicationConnectionGroupHostManagement() throws Exception {
         String replicationGroup1 = "rg1";
 
@@ -2032,6 +2048,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testReplicationConnectionHostManagement() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "3");
@@ -2123,6 +2140,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testReplicationConnectWithNoMaster() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "3");
@@ -2155,6 +2173,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testReplicationConnectWithMultipleMasters() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "3");
@@ -2177,6 +2196,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testReplicationConnectionMemory() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "3");
@@ -2221,6 +2241,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testReplicationJMXInterfaces() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "3");
@@ -2295,6 +2316,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug43421() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), "bestResponseTime");
@@ -2333,6 +2355,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug48442() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), "random");
@@ -2568,6 +2591,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug48486() throws Exception {
         String hostSpec = getEncodedHostPortPairFromTestsuiteUrl();
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
@@ -2594,6 +2618,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug48605() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), "random");
@@ -2641,6 +2666,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug51266() throws Exception {
         Properties props = new Properties();
         Set<String> downedHosts = new HashSet<>();
@@ -2659,6 +2685,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug51643() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), SequentialBalanceStrategy.class.getName());
@@ -2704,6 +2731,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug51783() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), ForcedLoadBalanceStrategy.class.getName());
@@ -2780,6 +2808,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testAutoCommitLB() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), CountingReBalanceStrategy.class.getName());
@@ -2855,6 +2884,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug56429() throws Exception {
         Properties props = getPropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.autoReconnect.getKeyName(), "true");
@@ -2927,6 +2957,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug58706() throws Exception {
         Properties props = getPropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.autoReconnect.getKeyName(), "true");
@@ -3130,6 +3161,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug63284() throws Exception {
         Properties props = getPropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.autoReconnect.getKeyName(), "true");
@@ -4610,6 +4642,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testBug14563127() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), ForcedLoadBalanceStrategy.class.getName());
@@ -4983,6 +5016,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug16224249() throws Exception {
         String hostSpec = getEncodedHostPortPairFromTestsuiteUrl();
         int port = getPortFromTestsuiteUrl();
@@ -5099,6 +5133,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      *             if the test fails.
      */
     @Test
+    @Disabled
     public void testBug68763() throws Exception {
         ReplicationConnection replConn = null;
 
@@ -5115,6 +5150,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug68733() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), ForcedLoadBalanceStrategy.class.getName());
@@ -5514,7 +5550,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Statement st1 = null;
         Connection c2 = null;
         Properties props = new Properties();
-        String url = "jdbc:mysql://" + getEncodedHostPortPairFromTestsuiteUrl();
+        String url = "jdbc:mysql:aws://" + getEncodedHostPortPairFromTestsuiteUrl();
 
         try {
             props.setProperty(PropertyKey.characterEncoding.getKeyName(), "UTF-8");
@@ -5924,7 +5960,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } catch (IOException e1) {
             fail("Failed to initialize a mock server.");
         }
-        final String testURL = "jdbc:mysql://localhost:" + serverPort;
+        final String testURL = "jdbc:mysql:aws://localhost:" + serverPort;
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 3;
@@ -6260,6 +6296,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug62577() throws Exception {
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
         String hostSpec = getEncodedHostPortPairFromTestsuiteUrl();
@@ -6882,6 +6919,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug75168() throws Exception {
         final Properties props = new Properties();
         props.setProperty(PropertyKey.loadBalanceExceptionChecker.getKeyName(), Bug75168LoadBalanceExceptionChecker.class.getName());
@@ -7796,6 +7834,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug21934573() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.exceptionInterceptors.getKeyName(), TestBug21934573ExceptionInterceptor.class.getName());
@@ -8103,6 +8142,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug56100() throws Exception {
         final String port = getPort(null);
         final String hostMaster = "master:" + port;
@@ -8367,6 +8407,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug56122() throws Exception {
         for (final Connection testConn : new Connection[] { this.conn, getFailoverConnection(), getLoadBalancedConnection(),
                 getMasterSlaveReplicationConnection() }) {
@@ -8400,6 +8441,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug21286268() throws Exception {
         final String MASTER = "master";
         final String SLAVE = "slave";
@@ -8776,6 +8818,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug22730682() throws Exception {
         final String currentHost = mainConnectionUrl.getMainHost().getHostPortPair();
         final String dummyHost = "bug22730682:12345";
@@ -8814,6 +8857,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug22848249() throws Exception {
         /*
          * Remove and add hosts to the connection group, other than the one from the active underlying connection.
@@ -9755,8 +9799,8 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
         props.setProperty(PropertyKey.socketFactory.getKeyName(), UnreliableSocketFactory.class.getName());
         for (String h : hosts) {
-            getConnectionWithProps(String.format("jdbc:mysql://%s:%s", h, port), props).close();
-            getConnectionWithProps(String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%s)", h, port), props).close();
+            getConnectionWithProps(String.format("jdbc:mysql:aws://%s:%s", h, port), props).close();
+            getConnectionWithProps(String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%s)", h, port), props).close();
         }
     }
 
@@ -10664,6 +10708,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug86741() throws Exception {
         this.rs = this.stmt.executeQuery("SELECT @@global.autocommit");
         assertTrue(this.rs.next());
@@ -10801,7 +10846,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         assertEquals(ZeroDatetimeBehavior.CONVERT_TO_NULL,
                 con.getPropertySet().<ZeroDatetimeBehavior>getEnumProperty(PropertyKey.zeroDateTimeBehavior).getValue());
 
-        con = (JdbcConnection) getConnectionWithProps("jdbc:mysql://(port=" + getPortFromTestsuiteUrl() + ",user=" + mainConnectionUrl.getDefaultUser()
+        con = (JdbcConnection) getConnectionWithProps("jdbc:mysql:aws://(port=" + getPortFromTestsuiteUrl() + ",user=" + mainConnectionUrl.getDefaultUser()
                 + ",password=" + mainConnectionUrl.getDefaultPassword() + ",zeroDateTimeBehavior=convertToNull)/" + this.dbName,
                 appendRequiredProperties(null));
         assertEquals(ZeroDatetimeBehavior.CONVERT_TO_NULL,
@@ -10820,10 +10865,10 @@ public class ConnectionRegressionTest extends BaseTestCase {
         connStr.add(dbUrl + "&sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0&connectionCollation=utf8mb4_unicode_ci");
         connStr.add(dbUrl + "&connectionCollation=utf8mb4_unicode_ci&sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0");
         connStr.add(String.format(
-                "jdbc:mysql://address=(host=%1$s)(port=%2$d)(connectionCollation=utf8mb4_unicode_ci)(sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0)(user=%3$s)(password=%4$s)/%5$s",
+                "jdbc:mysql:aws://address=(host=%1$s)(port=%2$d)(connectionCollation=utf8mb4_unicode_ci)(sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0)(user=%3$s)(password=%4$s)/%5$s",
                 getEncodedHostFromTestsuiteUrl(), getPortFromTestsuiteUrl(), hostInfo.getUser(), hostInfo.getPassword(), hostInfo.getDatabase()));
         connStr.add(String.format(
-                "jdbc:mysql://(host=%1$s,port=%2$d,connectionCollation=utf8mb4_unicode_ci,sessionVariables=sql_mode='IGNORE_SPACE%3$sANSI'%3$sFOREIGN_KEY_CHECKS=0,user=%4$s,password=%5$s)/%6$s",
+                "jdbc:mysql:aws://(host=%1$s,port=%2$d,connectionCollation=utf8mb4_unicode_ci,sessionVariables=sql_mode='IGNORE_SPACE%3$sANSI'%3$sFOREIGN_KEY_CHECKS=0,user=%4$s,password=%5$s)/%6$s",
                 getEncodedHostFromTestsuiteUrl(), getPortFromTestsuiteUrl(), "%2C", hostInfo.getUser(), hostInfo.getPassword(), hostInfo.getDatabase()));
 
         for (String cs : connStr) {
@@ -11292,6 +11337,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug93007() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), ForcedLoadBalanceStrategy.class.getName());

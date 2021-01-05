@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -43,6 +44,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
@@ -140,6 +142,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverConnection() throws Exception {
         String hostPortPair = getEncodedHostPortPairFromTestsuiteUrl();
         String noHost = "testfoconn-nohost:12345";
@@ -188,6 +191,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverTransitions() throws Exception {
         Set<String> downedHosts = new HashSet<>();
 
@@ -311,6 +315,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverDefaultSettings() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "2");
@@ -441,6 +446,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverCombinations() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "2");
@@ -596,6 +602,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverReadOnly() throws Exception {
         Set<String> downedHosts = new HashSet<>();
         downedHosts.add(HOST_1);
@@ -701,6 +708,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverQueriesBeforeRetryMaster() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "2");
@@ -788,6 +796,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverSecondsBeforeRetryMaster() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.retriesAllDown.getKeyName(), "2");
@@ -888,6 +897,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverAutoFallBack() throws Exception {
         Set<String> downedHosts = new HashSet<>();
         downedHosts.add(HOST_1);
@@ -1050,6 +1060,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverAutoReconnect() throws Exception {
         Set<String> downedHosts = new HashSet<>();
         downedHosts.add(HOST_1);
@@ -1183,6 +1194,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverConnectionSynchronization() throws Exception {
         Set<String> downedHosts = new HashSet<>();
         downedHosts.add(HOST_1);
@@ -1313,6 +1325,7 @@ public class MultiHostConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testLoadBalanceServerAffinityStrategy() throws Exception {
         final String port = mainConnectionUrl.getMainHost().getPort() + "";
 

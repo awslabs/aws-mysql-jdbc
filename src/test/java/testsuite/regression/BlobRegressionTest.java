@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -48,6 +49,7 @@ import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.conf.PropertyKey;
@@ -435,6 +437,7 @@ public class BlobRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug95210() throws Exception {
         createTable("testBug95210", "(ID VARCHAR(10) PRIMARY KEY, DATA LONGBLOB)");
         this.stmt.executeUpdate("INSERT INTO testBug95210 (ID, DATA) VALUES (1, '111')");

@@ -269,7 +269,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
 
   private String getUrlFromEndpoint(String endpoint, int port, String dbname) {
     return String.format(
-        "%s//%s:%d/%s", ConnectionUrl.Type.SINGLE_CONNECTION.getScheme(), endpoint, port, dbname);
+        "%s//%s:%d/%s", ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(), endpoint, port, dbname);
   }
 
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet) throws SQLException {
@@ -325,7 +325,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    */
   @Override
   public void setLastUsedReaderHost(HostInfo reader) {
-    if(reader != null) {
+    if (reader != null) {
       synchronized (cacheLock) {
         ClusterTopologyInfo info = topologyCache.get(this.clusterId);
         if (info != null) {
@@ -395,7 +395,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    */
   @Override
   public void addToDownHostList(HostInfo downHost) {
-    if(downHost == null) {
+    if (downHost == null) {
       return;
     }
     synchronized (cacheLock) {
@@ -418,7 +418,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    */
   @Override
   public void removeFromDownHostList(HostInfo host) {
-    if(host == null) {
+    if (host == null) {
       return;
     }
     synchronized (cacheLock) {

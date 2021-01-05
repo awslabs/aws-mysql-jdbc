@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
  * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -28,26 +28,24 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package testsuite.regression;
+package com.mysql.cj.conf.url;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.Properties;
 
-import org.junit.jupiter.api.Test;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.ConnectionUrlParser;
 
-import com.mysql.cj.jdbc.exceptions.SQLError;
-
-import testsuite.BaseTestCase;
-
-public class ExceptionSubclassesTest extends BaseTestCase {
-    @Test
-    public void testBug17750877() throws Exception {
-        assertEquals("java.sql.SQLTransientConnectionException", SQLError.createSQLException("test", "08000", 0, true, null).getClass().getCanonicalName());
-        assertEquals("java.sql.SQLNonTransientConnectionException", SQLError.createSQLException("test", "08000", 0, false, null).getClass().getCanonicalName());
-        assertEquals("java.sql.SQLSyntaxErrorException", SQLError.createSQLException("test", "42000", null).getClass().getCanonicalName());
-        assertEquals("java.sql.SQLIntegrityConstraintViolationException", SQLError.createSQLException("test", "23000", null).getClass().getCanonicalName());
-        assertEquals(com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException.class.getName(),
-                SQLError.createSQLException("test", "40000", null).getClass().getCanonicalName());
-        assertEquals(com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException.class.getName(),
-                SQLError.createSQLException("test", "70100", null).getClass().getCanonicalName());
+public class AwsSingleConnectionUrl extends ConnectionUrl {
+    /**
+     * Constructs an instance of {@link FailoverConnectionUrl}, performing all the required initializations.
+     *
+     * @param connStrParser
+     *            a {@link ConnectionUrlParser} instance containing the parsed version of the original connection string
+     * @param info
+     *            the connection arguments map
+     */
+    public AwsSingleConnectionUrl(ConnectionUrlParser connStrParser, Properties info) {
+        super(connStrParser, info);
+        this.type = Type.SINGLE_CONNECTION_AWS;
     }
 }

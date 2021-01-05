@@ -38,7 +38,7 @@ import com.mysql.cj.util.TimeUtil;
  * Dumps the timezone of the MySQL server represented by the JDBC url given on the commandline (or localhost/test if none provided).
  */
 public class TimezoneDump {
-    private static final String DEFAULT_URL = "jdbc:mysql:///test";
+    private static final String DEFAULT_URL = "jdbc:mysql:aws:///test";
 
     /**
      * Constructor for TimezoneDump.

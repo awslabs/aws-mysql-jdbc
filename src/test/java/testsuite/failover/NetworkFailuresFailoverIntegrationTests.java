@@ -85,16 +85,16 @@ public class NetworkFailuresFailoverIntegrationTests {
   private static final String DB_HOST_CLUSTER_RO = DB_CLUSTER_NAME + ".cluster-ro-" + DB_CONN_HOST_BASE;
   private static final String DB_HOST_INSTANCE_PATTERN = "%s." + DB_CONN_HOST_BASE;
 
-  private static final String DB_CONN_CLUSTER = "jdbc:mysql://" + DB_HOST_CLUSTER + "/" + DB_DATABASE;
-  private static final String DB_CONN_CLUSTER_RO = "jdbc:mysql://" + DB_HOST_CLUSTER_RO + "/" + DB_DATABASE;
-  private static final String DB_CONN_INSTANCE_PATTERN = "jdbc:mysql://" + DB_HOST_INSTANCE_PATTERN + "/" + DB_DATABASE;
+  private static final String DB_CONN_CLUSTER = "jdbc:mysql:aws://" + DB_HOST_CLUSTER + "/" + DB_DATABASE;
+  private static final String DB_CONN_CLUSTER_RO = "jdbc:mysql:aws://" + DB_HOST_CLUSTER_RO + "/" + DB_DATABASE;
+  private static final String DB_CONN_INSTANCE_PATTERN = "jdbc:mysql:aws://" + DB_HOST_INSTANCE_PATTERN + "/" + DB_DATABASE;
 
   private static final String DB_USER = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.user");
   private static final String DB_PASS = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.password");
 
   public NetworkFailuresFailoverIntegrationTests() throws SQLException {
     DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
-    this.log = LogFactory.getLogger("com.mysql.cj.log.StandardLogger", Log.LOGGER_INSTANCE_NAME);
+    this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
   }
 
   /**
@@ -108,7 +108,7 @@ public class NetworkFailuresFailoverIntegrationTests {
     props.setProperty(PropertyKey.USER.getKeyName(), DB_USER);
     props.setProperty(PropertyKey.PASSWORD.getKeyName(), DB_PASS);
     props.setProperty(PropertyKey.gatherPerfMetrics.getKeyName(), "true");
-    props.setProperty(PropertyKey.socketFactory.getKeyName(), "testsuite.UnreliableSocketFactory");
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
     props.setProperty(PropertyKey.socketTimeout.getKeyName(), "1000");
     props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
     final Connection testConnection = DriverManager.getConnection(DB_CONN_CLUSTER, props);

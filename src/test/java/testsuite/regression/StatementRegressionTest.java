@@ -5732,7 +5732,7 @@ public class StatementRegressionTest extends BaseTestCase {
         UnreliableSocketFactory.flushAllStaticData();
         UnreliableSocketFactory.mapHost("first", host);
 
-        Connection testConn = getConnectionWithProps("jdbc:mysql://first:" + port + "/" + db, props);
+        Connection testConn = getConnectionWithProps("jdbc:mysql:aws://first:" + port + "/" + db, props);
         testConn.setAutoCommit(false);
         testConn.createStatement().execute("SELECT 1");
         UnreliableSocketFactory.downHost("first");
@@ -9266,6 +9266,7 @@ public class StatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug21876798() throws Exception {
         createTable("testBug21876798", "(tst INT, val INT)");
 
@@ -9335,6 +9336,7 @@ public class StatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug78961() throws Exception {
         createProcedure("testBug78961", "(IN c1 FLOAT, IN c2 FLOAT, OUT h FLOAT, INOUT t FLOAT) BEGIN SET h = SQRT(c1 * c1 + c2 * c2); SET t = t + h; END;");
 
@@ -9909,6 +9911,7 @@ public class StatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug84783() throws Exception {
         // Test using a standard connection.
         final Statement testStmt = this.conn.createStatement();
@@ -10075,6 +10078,7 @@ public class StatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug78313() throws Exception {
         Connection testConn;
 
@@ -10540,13 +10544,15 @@ public class StatementRegressionTest extends BaseTestCase {
                 System.out.println("'" + ps3 + "'");
 
                 if (useSPS) {
-                    assertEquals(ps1.toString(), "com.mysql.cj.jdbc.ServerPreparedStatement[1]: Select 'aaaaaaaaa' from dual");
-                    assertEquals(ps2.toString(), "com.mysql.cj.jdbc.ServerPreparedStatement[2]: insert into testBug26748909 values(** NOT SPECIFIED **)");
-                    assertEquals(ps3.toString(), "com.mysql.cj.jdbc.ServerPreparedStatement[3]: select * from testBug26748909 where id=** NOT SPECIFIED **");
+                    String serverPreparedStatementClassName = com.mysql.cj.jdbc.ServerPreparedStatement.class.getName();
+                    assertEquals(ps1.toString(), serverPreparedStatementClassName +"[1]: Select 'aaaaaaaaa' from dual");
+                    assertEquals(ps2.toString(), serverPreparedStatementClassName + "[2]: insert into testBug26748909 values(** NOT SPECIFIED **)");
+                    assertEquals(ps3.toString(), serverPreparedStatementClassName+ "[3]: select * from testBug26748909 where id=** NOT SPECIFIED **");
                 } else {
-                    assertEquals(ps1.toString(), "com.mysql.cj.jdbc.ClientPreparedStatement: Select 'aaaaaaaaa' from dual");
-                    assertEquals(ps2.toString(), "com.mysql.cj.jdbc.ClientPreparedStatement: insert into testBug26748909 values(** NOT SPECIFIED **)");
-                    assertEquals(ps3.toString(), "com.mysql.cj.jdbc.ClientPreparedStatement: select * from testBug26748909 where id=** NOT SPECIFIED **");
+                    String clientPreparedStatementClassName = com.mysql.cj.jdbc.ClientPreparedStatement.class.getName();
+                    assertEquals(ps1.toString(), clientPreparedStatementClassName + ": Select 'aaaaaaaaa' from dual");
+                    assertEquals(ps2.toString(), clientPreparedStatementClassName + ": insert into testBug26748909 values(** NOT SPECIFIED **)");
+                    assertEquals(ps3.toString(), clientPreparedStatementClassName + ": select * from testBug26748909 where id=** NOT SPECIFIED **");
                 }
 
             } catch (Exception e) {

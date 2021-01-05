@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -88,9 +89,9 @@ public abstract class BaseTestCase {
     protected boolean DISABLED_testBug3620new = true; // TODO this test is working in c/J 5.1 but fails here; disabled for later analysis
 
     /**
-     * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:///test and its connection URL.
+     * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:aws:///test and its connection URL.
      */
-    public static String dbUrl = "jdbc:mysql:///test";
+    public static String dbUrl = "jdbc:mysql:aws///test";
     protected static ConnectionUrl mainConnectionUrl = null;
 
     /**
@@ -114,7 +115,7 @@ public abstract class BaseTestCase {
     private List<String[]> createdObjects;
 
     /** The driver to use */
-    protected String dbClass = "com.mysql.cj.jdbc.Driver";
+    protected String dbClass = com.mysql.cj.jdbc.Driver.class.getName();
 
     /** My instance number */
     private int myInstanceNumber = 0;
@@ -521,7 +522,7 @@ public abstract class BaseTestCase {
         props.remove(PropertyKey.DBNAME.getKeyName());
         removeHostRelatedProps(props);
 
-        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql://").append(host).append(":").append(port).append("/?");
+        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql:aws://").append(host).append(":").append(port).append("/?");
 
         Enumeration<Object> keyEnum = props.keys();
         while (keyEnum.hasMoreElements()) {

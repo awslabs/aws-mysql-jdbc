@@ -52,13 +52,13 @@ There are many different types of URLs that can connect to an Aurora DB cluster.
 
 | URL Type        | Example           | Required Parameters  | Driver Behavior |
 | ------------- |-------------| :-----:| --- |
-| Cluster Endpoint      | `jdbc:mysql://db-identifier.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:3306` | None | *Initial connection:* primary DB instance<br/>*Failover behavior:* connect to the new primary DB instance |
-| Read-Only Cluster Endpoint      | `jdbc:mysql://db-identifier.cluster-ro-czygpppufgy4.us-east-2.rds.amazonaws.com:3306`      |   None |  *Initial connection:* any Aurora Replica<br/>*Failover behavior:* prioritize connecting to any active Aurora Replica but might connect to the primary DB instance if it provides a faster connection|
-| Instance Endpoint | `jdbc:mysql://instance-1.czygpppufgy4.us-east-2.rds.amazonaws.com:3306`      |    None | *Initial connection:* the instance specified (DB instance 1)<br/>*Failover behavior:* connect to the primary DB instance|
-| RDS Custom Cluster | `jdbc:mysql://db-identifier.cluster-custom-czygpppufgy4.us-east-2l.rds.amazonaws.com:3306`      |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
-| IP Address | `jdbc:mysql://10.10.10.10:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
-| Custom Domain | `jdbc:mysql://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
-| Non-Aurora Endpoint | `jdbc:mysql://localhost:3306`     |    `clusterInstanceHostPattern` | A regular JDBC connection will be returned - no failover functionality |
+| Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306` | None | *Initial connection:* primary DB instance<br/>*Failover behavior:* connect to the new primary DB instance |
+| Read-Only Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306`      |   None |  *Initial connection:* any Aurora Replica<br/>*Failover behavior:* prioritize connecting to any active Aurora Replica but might connect to the primary DB instance if it provides a faster connection|
+| Instance Endpoint | `jdbc:mysql:aws://instance-1.XYZ.us-east-2.rds.amazonaws.com:3306`      |    None | *Initial connection:* the instance specified (DB instance 1)<br/>*Failover behavior:* connect to the primary DB instance|
+| RDS Custom Cluster | `jdbc:mysql:aws://db-identifier.cluster-custom-XYZ.us-east-2l.rds.amazonaws.com:3306`      |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
+| IP Address | `jdbc:mysql:aws://10.10.10.10:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
+| Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
+| Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    `clusterInstanceHostPattern` | A regular JDBC connection will be returned - no failover functionality |
 
 For more information about parameters that can be configured with the AWS JDBC Driver, see "Getting started with AWS JDBC driver for MySQL" [TODO: insert link here]
 
@@ -81,7 +81,7 @@ import java.sql.*;
  * Scenario 1: Failover happens when autocommit is set to true - Catch SQLException with code 08S02.
  */
 public class FailoverSampleApp1 {
-  private static final String CONNECTION_STRING = "jdbc:mysql://database-mysql.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:3306/myDb";
+  private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/myDb";
   private static final String USERNAME = "username";
   private static final String PASSWORD = "password";
   private static final int MAX_RETRIES = 5;
@@ -171,7 +171,7 @@ import java.sql.*;
  * Scenario 2: Failover happens when autocommit is set to false - Catch SQLException with code 08007.
  */
 public class FailoverSampleApp2 {
-  private static final String CONNECTION_STRING = "jdbc:mysql://database-mysql.cluster-czygpppufgy4.us-east-2.rds.amazonaws.com:3306/myDb";
+  private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/myDb";
   private static final String USERNAME = "username";
   private static final String PASSWORD = "password";
   private static final int MAX_RETRIES = 5;

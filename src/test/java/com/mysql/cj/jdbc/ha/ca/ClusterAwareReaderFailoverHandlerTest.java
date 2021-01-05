@@ -65,12 +65,12 @@ import static org.mockito.Mockito.when;
  * */
 public class ClusterAwareReaderFailoverHandlerTest {
   static final int numTestUrls = 6;
-  static final String testUrl1 = "jdbc:mysql://writer-1:1234/";
-  static final String testUrl2 = "jdbc:mysql://reader-1:2345/";
-  static final String testUrl3 = "jdbc:mysql://reader-2:3456/";
-  static final String testUrl4 = "jdbc:mysql://reader-3:4567/";
-  static final String testUrl5 = "jdbc:mysql://reader-4:5678/";
-  static final String testUrl6 = "jdbc:mysql://reader-5:6789/";
+  static final String testUrl1 = "jdbc:mysql:aws://writer-1:1234/";
+  static final String testUrl2 = "jdbc:mysql:aws://reader-1:2345/";
+  static final String testUrl3 = "jdbc:mysql:aws://reader-2:3456/";
+  static final String testUrl4 = "jdbc:mysql:aws://reader-3:4567/";
+  static final String testUrl5 = "jdbc:mysql:aws://reader-4:5678/";
+  static final String testUrl6 = "jdbc:mysql:aws://reader-5:6789/";
   final Log mockLog = Mockito.mock(Log.class);
 
   @Test

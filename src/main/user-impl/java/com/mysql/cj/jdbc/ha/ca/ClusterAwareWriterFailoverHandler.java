@@ -38,7 +38,13 @@ import com.mysql.cj.log.NullLogger;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
 
 /**
  * An implementation of WriterFailoverHandler.
@@ -120,7 +126,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
 
       HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
       this.topologyService.addToDownHostList(writerHost);
-      if(writerHost != null) {
+      if (writerHost != null) {
         taskA = new ReconnectToWriterHandler(
                 taskCompletedLatch,
                 writerHost,
@@ -158,7 +164,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       if (!isLatchZero) {
         // latch isn't 0 and that means that tasks are not yet finished;
         // time is out; cancel them
-        if(futureA != null) {
+        if (futureA != null) {
           futureA.cancel(true);
         }
         futureB.cancel(true);
@@ -222,7 +228,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         if (taskB.isConnected()) {
           // taskB is done and it's connected to writer node
           // use this connection
-          if(futureA != null) {
+          if (futureA != null) {
             futureA.cancel(true);
           }
 
@@ -235,7 +241,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
 
           return new ResolvedHostInfo(
               true, true, taskB.getTopology(), taskB.getCurrentConnection());
-        } else if(futureA != null) {
+        } else if (futureA != null) {
           // taskB is completed but it's failed to connect to writer node
           // wait for taskA completes
 
@@ -264,7 +270,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         }
       }
 
-      if(futureA != null) {
+      if (futureA != null) {
         futureA.cancel(true);
       }
       futureB.cancel(true);
@@ -443,7 +449,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         }
 
         boolean success = false;
-        while(!success) {
+        while (!success) {
           connectoToReader();
           success = connectToNewWriter();
         }
@@ -461,10 +467,10 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         throw ex;
       } finally {
         // Close reader connection if it's not needed.
-        if(this.currentReaderConnection != null && this.currentConnection != this.currentReaderConnection) {
+        if (this.currentReaderConnection != null && this.currentConnection != this.currentReaderConnection) {
           try {
             this.currentReaderConnection.close();
-          } catch(SQLException e) {
+          } catch (SQLException e) {
             // eat
           }
         }
@@ -477,10 +483,10 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
 
       // Close reader connection if it's not needed.
       try {
-        if(this.currentReaderConnection != null && !this.currentReaderConnection.isClosed()) {
+        if (this.currentReaderConnection != null && !this.currentReaderConnection.isClosed()) {
           this.currentReaderConnection.close();
         }
-      } catch(SQLException e) {
+      } catch (SQLException e) {
         // eat
       }
 
@@ -504,7 +510,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           this.log.logDebug(Messages.getString("ClusterAwareWriterFailoverHandler.11"));
         } else {
           this.currentReaderHost = this.currentTopology.get(connIndex);
-          if(currentReaderHost != null) {
+          if (currentReaderHost != null) {
             this.log.logDebug(
                     Messages.getString(
                             "ClusterAwareWriterFailoverHandler.10",
@@ -526,7 +532,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       while (true) {
         this.latestTopology = this.topologyService.getTopology(this.currentReaderConnection, true);
 
-        if(this.latestTopology == null) {
+        if (this.latestTopology == null) {
           // topology couldn't be obtained; it might be issues with reader connection
           return false;
         }
@@ -544,7 +550,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
                               "ClusterAwareWriterFailoverHandler.13",
                               new Object[] {writerCandidate.getHostPortPair()}));
 
-              if(isSame(writerCandidate, this.currentReaderHost)) {
+              if (isSame(writerCandidate, this.currentReaderHost)) {
                 this.currentConnection = this.currentReaderConnection;
               } else {
                 // connected to a new writer
