@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -37,6 +38,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
@@ -47,6 +49,7 @@ import testsuite.BaseTestCase;
 
 public class ReadOnlyCallableStatementTest extends BaseTestCase {
     @Test
+    @Disabled
     public void testReadOnlyWithProcBodyAccess() throws Exception {
         Connection replConn = null;
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
@@ -83,6 +86,7 @@ public class ReadOnlyCallableStatementTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testNotReadOnlyWithProcBodyAccess() throws Exception {
         Connection replConn = null;
         Properties props = getHostFreePropertiesFromTestsuiteUrl();

@@ -921,6 +921,7 @@ public class ConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testFailoverConnection() throws Exception {
 
         if (!isServerRunningOnWindows()) { // windows sockets don't work for this test
@@ -1668,7 +1669,7 @@ public class ConnectionTest extends BaseTestCase {
         String password = parsedProps.getProperty(PropertyKey.PASSWORD.getKeyName());
         String database = parsedProps.getProperty(PropertyKey.DBNAME.getKeyName());
 
-        String newUrl = String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%s)(user=%s)(password=%s)/%s", TestUtils.encodePercent(host), port,
+        String newUrl = String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%s)(user=%s)(password=%s)/%s", TestUtils.encodePercent(host), port,
                 user != null ? user : "", password != null ? password : "", database);
 
         Properties props = getHostFreePropertiesFromTestsuiteUrl();

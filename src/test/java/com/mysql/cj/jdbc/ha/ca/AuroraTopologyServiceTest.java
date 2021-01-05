@@ -356,6 +356,10 @@ public class AuroraTopologyServiceTest {
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
     stubTopologyQuery(mockConn, mockStatement, mockResultSet);
 
+    // populate cache
+    List<HostInfo> topology = null;
+    topology = spyProvider.getTopology(mockConn, false);
+
     final String connectionHostName = "replica-instance-2";
     final int connectionHostIndex = 2;
 
@@ -365,9 +369,6 @@ public class AuroraTopologyServiceTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(AuroraTopologyService.GET_INSTANCE_NAME_COL))
         .thenReturn(connectionHostName);
-
-    // populate cache
-    List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
 
     final HostInfo host = spyProvider.getHostByName(mockConn);
     assertEquals(topology.get(connectionHostIndex), host);

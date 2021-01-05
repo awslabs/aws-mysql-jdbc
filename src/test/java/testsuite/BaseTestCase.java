@@ -522,7 +522,7 @@ public abstract class BaseTestCase {
         props.remove(PropertyKey.DBNAME.getKeyName());
         removeHostRelatedProps(props);
 
-        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql://").append(host).append(":").append(port).append("/?");
+        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql:aws://").append(host).append(":").append(port).append("/?");
 
         Enumeration<Object> keyEnum = props.keys();
         while (keyEnum.hasMoreElements()) {

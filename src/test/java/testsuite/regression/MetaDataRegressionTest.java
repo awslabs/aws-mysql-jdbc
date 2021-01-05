@@ -2553,7 +2553,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug61150() throws Exception {
-        StringBuilder newUrlToTestNoDB = new StringBuilder("jdbc:mysql://");
+        StringBuilder newUrlToTestNoDB = new StringBuilder("jdbc:mysql:aws://");
         newUrlToTestNoDB.append(getEncodedHostPortPairFromTestsuiteUrl()).append("/");
 
         Statement savedSt = this.stmt;

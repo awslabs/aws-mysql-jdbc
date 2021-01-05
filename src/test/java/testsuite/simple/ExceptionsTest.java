@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Modifications Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -63,7 +64,7 @@ public class ExceptionsTest extends BaseTestCase {
                 "Communications link failure\n\nThe last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.",
                 new Callable<Void>() {
                     public Void call() throws Exception {
-                        new NonRegisteringDriver().connect("jdbc:mysql://wrongurl?user=usr", null);
+                        new NonRegisteringDriver().connect("jdbc:mysql:aws://wrongurl?user=usr", null);
                         return null;
                     }
                 });

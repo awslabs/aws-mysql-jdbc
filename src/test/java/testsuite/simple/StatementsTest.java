@@ -2424,6 +2424,7 @@ public class StatementsTest extends BaseTestCase {
     }
 
     @Test
+    @Disabled
     public void testJdbc4LoadBalancing() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), CountingReBalanceStrategy.class.getName());
