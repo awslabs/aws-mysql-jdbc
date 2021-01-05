@@ -232,7 +232,7 @@ public class NonRegisteringDriver implements java.sql.Driver {
 
         if (!isNullOrEmpty(url)) {
             ConnectionUrl connStr = ConnectionUrl.getConnectionUrlInstance(url, info);
-            if (connStr.getType() == Type.SINGLE_CONNECTION) {
+            if (connStr.getType() == Type.SINGLE_CONNECTION || connStr.getType() == Type.SINGLE_CONNECTION_AWS) {
                 HostInfo hostInfo = connStr.getMainHost();
                 info = hostInfo.exposeAsProperties();
             }
