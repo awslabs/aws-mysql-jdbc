@@ -90,24 +90,6 @@ tasks.jar {
     setDependsOn(arrayOf("addMethods").asIterable())
     archiveClassifier.set("original")
     originalJarFileName = archiveFileName.getOrElse("")
-    from("${project.rootDir}") {
-        include("README")
-        include("LICENSE")
-        into("META-INF/")
-    }
-    from("${buildDir}/META-INF/services/") {
-        into("META-INF/services/")
-    }
-    doFirst {
-        mkdir("${buildDir}/META-INF/services/")
-        val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
-        if(driverFile.createNewFile()) {
-            driverFile.writeText("software.aws.rds.jdbc.Driver")
-        }
-    }
-    exclude("instrumentation/**")
-    exclude("demo/**")
-    exclude("documentation/**")
 }
 
 var shadowJarFileName = ""
