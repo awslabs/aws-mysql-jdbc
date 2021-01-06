@@ -67,7 +67,7 @@ For more information about parameters that can be configured with the AWS JDBC D
 In addition to [the parameters that can be configured for the MySQL Connector/J driver](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-configuration-properties.html), the following parameters can also be passed to the AWS JDBC Driver through the connection URL to configure additional driver behavior.
 
 | Parameter       | Value           | Description  |
-| ------------- |-------------| ----- |
+| ------------- |:-------------:| ----- |
 |`enableClusterAwareFailover` | Boolean | Set to true to enable the fast failover behavior offerred by the AWS JDBC Driver. Set to false for simple JDBC connections that do not require fast failover functionality.<br/><br/>**Default value:** `true` |
 |`clusterInstanceHostPattern` | String | The cluster instance DNS pattern that will be used to build a complete instance endpoint. A "?" character in this pattern should be used as a placeholder for cluster instance names. This pattern is required to be specified for IP address or custom domain connections to AWS RDS clusters. <br/><br/>Example: `?.my-domain.com`, `any-subdomain.?.my-domain.com:9999`<br/><br/>**Default value:** if unspecified, and the provided connection string is not an IP address or custom domain, the driver will automatically acquire the cluster instance host pattern from the customer-provided connection string. |
 |`clusterId` | String | A unique identifier for the cluster. Connections with the same cluster id share a cluster topology cache.<br/><br/>**Default value:** If unspecified, the driver will automatically acquire cluster Id for AWS RDS clusters. |
