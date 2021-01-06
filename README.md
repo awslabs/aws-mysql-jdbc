@@ -1,6 +1,6 @@
 # Amazon Web Services (AWS) JDBC Driver for MySQL
 
-**The Amazon Web Services (AWS) JDBC Driver for MySQL** is a driver that enables applications to take full advantage of the features of clustered MySQL databases. It is based on and can be used as a drop-in replacement for the [MySQL Connector/J driver](https://github.com/mysql/mysql-connector-j) and is compatible with all MySQL deployments.
+**The Amazon Web Services (AWS) JDBC Driver for MySQL** is a driver that enables applications to take full advantage of the features of clustered MySQL databases. It is based on and can be used as a drop-in compatible for the [MySQL Connector/J driver](https://github.com/mysql/mysql-connector-j) and is compatible with all MySQL deployments.
 
 The AWS JDBC Driver for MySQL currently enables fast failover for Amazon Aurora with MySQL compatibility. Support for additional features of clustered databases, including features of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
 
@@ -10,12 +10,12 @@ In an Amazon Aurora DB cluster, failover is a mechanism by which Aurora automati
 
 ## Benefits of the AWS JDBC Driver for MySQL
 
-Although Aurora is able to provide maximum availability through the use of failover, existing client drivers do not currently take full advantage of this functionality. This is partially due to the time required for the DNS of the new primary DB instance to be fully resolved in order to properly direct the connection. The AWS JDBC Driver for MySQL fully utilizes failover behavior by maintaining a cache of the Aurora cluster topology and each DB instance's role (Aurora Replica or primary DB instance). This topology is provided via a direct query to the Aurora database, essentially providing a shortcut to bypass the delays caused by DNS resolution. With this knowledge, the AWS JDBC Driver can more closely monitor the Aurora DB cluster status so that a connection to the new primary DB instance can be established as fast as possible. Additionally, as noted above, the AWS JDBC Driver is designed to be a drop-in replacement for other MySQL JDBC drivers and can be used to interact with regular RDS and MySQL databases as well as Aurora MySQL.
+Although Aurora is able to provide maximum availability through the use of failover, existing client drivers do not currently take full advantage of this functionality. This is partially due to the time required for the DNS of the new primary DB instance to be fully resolved in order to properly direct the connection. The AWS JDBC Driver for MySQL fully utilizes failover behavior by maintaining a cache of the Aurora cluster topology and each DB instance's role (Aurora Replica or primary DB instance). This topology is provided via a direct query to the Aurora database, essentially providing a shortcut to bypass the delays caused by DNS resolution. With this knowledge, the AWS JDBC Driver can more closely monitor the Aurora DB cluster status so that a connection to the new primary DB instance can be established as fast as possible. Additionally, as noted above, the AWS JDBC Driver is designed to be a drop-in compatible for other MySQL JDBC drivers and can be used to interact with regular RDS and MySQL databases as well as Aurora MySQL.
 
 ## The AWS JDBC Driver Failover Process
 
-<div style="text-align:center"><img src="./doc/failover_diagram.png" /></div>
-<br/>
+<div style="text-align:center"><img src="./docs/files/images/failover_diagram.png" /></div>
+
 The figure above provides a simplified overview of how the AWS JDBC Driver handles an Aurora failover encounter. Starting at the top of the diagram, an application with the AWS JDBC Driver on its class path uses the driver to get a logical connection to an Aurora database. In this example, the application requests a connection using the Aurora DB cluster endpoint and is returned a logical connection that is physically connected to the primary DB instance in the DB cluster, DB instance C. Due to how the application operates against the logical connection, the physical connection details about which specific DB instance it is connected to have been abstracted away. Over the course of the application's lifetime, it executes various statements against the logical connection. If DB instance C is stable and active, these statements succeed and the application continues as normal. If DB instance C later experiences a failure, Aurora will initiate failover to promote a new primary DB instance. At the same time, the AWS JDBC Driver will intercept the related communication exception and kick off its own internal failover process. In this case, in which the primary DB instance has failed, the driver will use its internal topology cache to temporarily connect to an active Aurora Replica. This Aurora Replica will be periodically queried for the DB cluster topology until the new primary DB instance is identified (DB instance A or B in this case). At this point, the driver will connect to the new primary DB instance and return control to the application by raising a SQLException with SQLState 08S02 so that they can re-configure their session state as required. Although the DNS endpoint for the DB cluster might not yet resolve to the new primary DB instance, the driver has already discovered this new DB instance during its failover process and will be directly connected to it when the application continues executing statements. In this way the driver provides a faster way to reconnect to a newly promoted DB instance, thus increasing the availability of the DB cluster.
 
 ## Getting Started
@@ -44,7 +44,7 @@ dependencies {
 }
 ```
 ### Using the AWS JDBC Driver for MySQL
-As a drop-in replacement, usage of the AWS JDBC Driver for MySQL, is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover.
+As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover.
 
 #### Connection URL Descriptions
 
@@ -268,7 +268,7 @@ After you have installed Amazon Corretto or Java according to the requirements s
 
 ```bash
 $ git clone https://github.com/awslabs/aws-mysql-jdbc.git
-$ cd mysql-connector-j
+$ cd aws-mysql-jdbc
 ```
 
 Changes can now be made in the repository.
@@ -312,7 +312,7 @@ $ cd ../
 
 ## Getting Help and Opening Issues
 
-If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear about it. Please search the existing issues and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we will need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please also include reproduction case for the issue when appropriate.
+If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear about it. Please search the [existing issues](https://github.com/awslabs/aws-mysql-jdbc/issues) and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we will need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please also include reproduction case for the issue when appropriate.
 
 The GitHub issues are intended for bug reports and feature requests. Keeping the list of open issues lean will help us respond in a timely manner.
 
