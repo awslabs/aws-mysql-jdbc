@@ -466,9 +466,9 @@ The Universal FOSS Exception, Version 1.0
        of any kind for use or distribution of the Software in conjunction
        with software other than Other FOSS.
 
-Licenses for Third-Party Components
+Licenses for Other Third-Party Components
 
-   The following sections contain licensing information for libraries that
+   The following sections contain licensing information for other libraries that
    we have included with the MySQL Connector/J 8.0 source and components
    used to test MySQL Connector/J 8.0. Commonly used licenses referenced
    herein can be found in Commonly Used Licenses. We are thankful to all
