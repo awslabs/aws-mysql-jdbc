@@ -1,21 +1,21 @@
-AWS JDBC Driver for MySQL 
-Copyright 2020 Amazon.com Inc. or affiliates. 
- 
+AWS JDBC Driver for MySQL and all Amazon modifications to MySQL Connector/J
+Copyright Amazon.com Inc. or affiliates.
+
    This software is released under version 2 of the GNU
    General Public License (GPLv2), as set forth below, with the following
    additional permissions:
- 
-   This distribution AWS JDBC Driver for MySQL is distributed with certain
+
+   This software is distributed with certain
    software that is licensed under separate terms, as designated in a
    particular file or component or in the license documentation. Without
-   limiting your rights under the GPLv2, the authors of AWS JDBC Driver for 
-   MySQL hereby grant you an additional permission to link the program and 
-   your derivative works with the separately licensed software that they 
+   limiting your rights under the GPLv2, the authors of this software
+   hereby grant you an additional permission to link the program and
+   your derivative works with the separately licensed software that they
    have included with the program.
- 
+
    Without limiting the foregoing grant of rights under the GPLv2 and
    additional permission as to separately licensed software, this
-   Connector is also subject to the Universal FOSS Exception, version 1.0,
+   software is also subject to the Universal FOSS Exception, version 1.0,
    a copy of which is reproduced below and can also be found along with
    its FAQ at http://oss.oracle.com/licenses/universal-foss-exception.
 
