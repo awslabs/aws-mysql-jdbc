@@ -40,7 +40,7 @@ import com.mysql.cj.protocol.InternalTimestamp;
 /**
  * A class implements the <code>ValueFactory&lt;T&gt;</code> interface to create value instances from intermediate forms.
  * <p>
- * A <code>ValueFactory</code> implementation is responsible for creating instance of a single type, supplying a value for the type parameter <code>T</code>. If an
+ * A <code>ValueFactory</code> implementation is responsible for creating instance of a single type, supplying a value for the type parameter <tt>T</tt>. If an
  * instance cannot be created from the intermediate form, an {@link java.lang.UnsupportedOperationException} can be thrown.
  * 
  * @param <T>
