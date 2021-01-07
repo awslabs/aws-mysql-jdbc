@@ -239,7 +239,7 @@ public class FailoverSampleApp2 {
           throw e;
         }
 
-        // Failure happens within the transaction and the driver failover to another instance successfully.
+        // Failure happens within the transaction and the driver failed over to another instance successfully.
         if (e.getSQLState().equalsIgnoreCase("08007")) {
           // Re-config the connection, re-start the transaction.
           setInitialSessionState(conn);
