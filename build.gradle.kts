@@ -40,12 +40,19 @@ plugins {
     base
     `java-library`
     checkstyle
+    `maven-publish`
+    signing
     // Release
     id("com.github.vlsi.crlf")
     id("com.github.vlsi.gradle-extensions")
     id("com.github.vlsi.license-gather") apply false
     id("com.github.vlsi.stage-vote-release")
     id("com.github.johnrengelman.shadow") version "6.1.0"
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
 }
 
 checkstyle {
@@ -68,35 +75,31 @@ tasks.register<JavaExec>("commonChecks") {
     classpath = sourceSets["main"].runtimeClasspath
     main = "instrumentation.CommonChecks"
     args = listOf("${buildDir}/classes/java/main", "false")
-    setDependsOn(arrayOf("classes").asIterable())
+    dependsOn("classes")
 }
 
 tasks.register<JavaExec>("translateExceptions") {
     classpath = sourceSets["main"].runtimeClasspath
     main = "instrumentation.TranslateExceptions"
     args = listOf("${buildDir}/classes/java/main", "false")
-    setDependsOn(arrayOf("commonChecks").asIterable())
+    dependsOn("commonChecks")
 }
 
 tasks.register<JavaExec>("addMethods") {
     classpath = sourceSets["main"].runtimeClasspath
     main = "instrumentation.AddMethods"
     args = listOf("${buildDir}/classes/java/main", "false")
-    setDependsOn(arrayOf("translateExceptions").asIterable())
+    dependsOn("translateExceptions")
 }
 
-var originalJarFileName = ""
 tasks.jar {
-    setDependsOn(arrayOf("addMethods").asIterable())
+    dependsOn("addMethods")
     archiveClassifier.set("original")
-    originalJarFileName = archiveFileName.getOrElse("")
 }
 
-var shadowJarFileName = ""
 tasks.shadowJar {
-    setDependsOn(arrayOf("jar").asIterable())
+    dependsOn("jar")
     archiveClassifier.set("shaded")
-    shadowJarFileName = archiveFileName.getOrElse("")
 
     from("${project.rootDir}") {
         include("README")
@@ -130,49 +133,48 @@ tasks.shadowJar {
 }
 
 tasks.register<Jar>("cleanShadowJar") {
-    setDependsOn(arrayOf("shadowJar").asIterable())
+    dependsOn("shadowJar")
 
-    if (shadowJarFileName != "") {
-        val shadowJar = file("${buildDir}/libs/${shadowJarFileName}")
-
-        from(zipTree(shadowJar)) {
-            exclude("com/**")
-        }
-
-        doLast {
-            shadowJar.deleteRecursively()
-        }
+    val shadowJar = tasks.shadowJar.get().archiveFile.get().asFile
+    from(zipTree(shadowJar)) {
+        exclude("com/**")
     }
 
     doLast {
-        if(originalJarFileName != "") {
-            val originalFile = file("${buildDir}/libs/${originalJarFileName}")
-            originalFile.deleteRecursively()
-        }
+        shadowJar.deleteRecursively()
+        val originalJar = tasks.jar.get().archiveFile.get().asFile
+        originalJar.deleteRecursively()
     }
 }
 
 tasks.compileJava {
     options.encoding = "UTF-8"
-    setDependsOn(arrayOf("replaceTokens").asIterable())
+    dependsOn("replaceTokens")
     source = fileTree(buildSrc)
 }
 
 tasks.compileTestJava {
     options.encoding = "UTF-8"
-    setDependsOn(arrayOf("addMethods").asIterable())
+    dependsOn("addMethods")
 }
 
 tasks.test {
-    setDependsOn(arrayOf("addMethods").asIterable())
+    dependsOn("addMethods")
 }
 
 tasks.javadoc {
-    setDependsOn(arrayOf("addMethods").asIterable())
+    dependsOn("addMethods")
+}
+
+tasks.withType(Javadoc::class) {
+    isFailOnError = true
+    options.outputLevel = JavadocOutputLevel.QUIET
+    (options as StandardJavadocDocletOptions)
+            .addStringOption("Xdoclint:none", "-quiet")
 }
 
 tasks.assemble {
-    setDependsOn(arrayOf("cleanShadowJar").asIterable())
+    dependsOn("cleanShadowJar")
 }
 
 tasks.named<Test>("test") {
@@ -269,4 +271,61 @@ tasks.register<Sync>("replaceTokens") {
             "MYSQL_CJ_REVISION" to revision
     ))
     filteringCharset = "UTF-8"
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "software.aws.rds"
+            artifactId = "aws-mysql-jdbc"
+            version = version
+
+            artifacts.clear()
+            artifact(tasks["sourcesJar"])
+            artifact(tasks["javadocJar"])
+            artifact(tasks["cleanShadowJar"])
+
+            pom {
+                name.set("Amazon Web Services (AWS) JDBC Driver for MySQL")
+                description.set("Public preview of the Amazon Web Services (AWS) JDBC Driver for MySQL.")
+                url.set("https://github.com/awslabs/aws-mysql-jdbc")
+
+                licenses {
+                    license {
+                        name.set("GPL 2.0")
+                        url.set("https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("amazonwebservices")
+                        organization.set("Amazon Web Services")
+                        organizationUrl.set("https://aws.amazon.com")
+                        email.set("aws-rds-oss@amazon.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:https://github.com/awslabs/aws-mysql-jdbc.git")
+                    developerConnection.set("scm:git@github.com:awslabs/aws-mysql-jdbc.git")
+                    url.set("https://github.com/awslabs/aws-mysql-jdbc")
+                }
+            }
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}
+
+signing {
+    if (project.hasProperty("signing.keyId")
+            && project.property("signing.keyId") != ""
+            && project.hasProperty("signing.password")
+            && project.property("signing.password") != ""
+            && project.hasProperty("signing.secretKeyRingFile")
+            && project.property("signing.secretKeyRingFile") != "") {
+        sign(publishing.publications["maven"])
+    }
 }

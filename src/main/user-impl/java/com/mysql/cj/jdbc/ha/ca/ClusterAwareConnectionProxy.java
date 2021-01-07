@@ -277,11 +277,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   protected synchronized void initLogger() {
-    String loggerClassName = this.loggerClassNameSetting;
-    if (StringUtils.isNullOrEmpty(loggerClassName)) {
-      loggerClassName = StandardLogger.class.getName();
+    if (!StringUtils.isNullOrEmpty(this.loggerClassNameSetting)) {
+      this.log = LogFactory.getLogger(this.loggerClassNameSetting, Log.LOGGER_INSTANCE_NAME);
     }
-    this.log = LogFactory.getLogger(loggerClassName, Log.LOGGER_INSTANCE_NAME);
   }
 
   /**
