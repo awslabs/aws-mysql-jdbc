@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -30,8 +30,8 @@
 package com.mysql.cj.protocol.x;
 
 /**
- * The modes which compression can be made. In message mode, each X Protocol message is compressed independently of the others; in stream mode all messages are
- * compressed as if they were in a continuous flow of compressed data.
+ * The modes by which compression can be made. In message mode each X Protocol message is compressed independently of the others; in stream mode all messages
+ * are compressed as if they belong to a continuous flow of compressed data.
  */
 public enum CompressionMode {
     MESSAGE, STREAM;

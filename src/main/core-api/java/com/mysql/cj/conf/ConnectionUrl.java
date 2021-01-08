@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
- *
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -119,7 +118,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
                 XDEVAPI_DNS_SRV_SESSION),
         // AWS schemes:
         SINGLE_CONNECTION_AWS("jdbc:mysql:aws:", HostsCardinality.SINGLE, com.mysql.cj.conf.url.AwsSingleConnectionUrl.class.getName());
-        
+
         private String scheme;
         private HostsCardinality cardinality;
         private String implementingClass;

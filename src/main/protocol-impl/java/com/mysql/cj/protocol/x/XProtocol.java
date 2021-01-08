@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -116,8 +116,6 @@ import com.mysql.cj.xdevapi.PreparableStatement.PreparableStatementFinalizer;
  * Low-level interface to communications with X Plugin.
  */
 public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XMessage> {
-    private static final String[] SUPPORTED_COMPRESSION_ALGORITHMS_PRIORITY = new String[] { "zstd_stream", "lz4_message", "deflate_stream" };
-
     private static int RETRY_PREPARE_STATEMENT_COUNTDOWN = 100;
 
     private MessageReader<XMessageHeader, XMessage> reader;
@@ -157,8 +155,7 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
             connectTimeout.setValue(xdevapiConnectTimeout.getValue());
         }
 
-        SocketConnection socketConn = propertySet.getBooleanProperty(PropertyKey.xdevapiUseAsyncProtocol).getValue() ? new XAsyncSocketConnection()
-                : new NativeSocketConnection();
+        SocketConnection socketConn = new NativeSocketConnection();
         socketConn.connect(host, port, propertySet, null, null, 0);
         init(null, socketConn, propertySet, null);
     }
@@ -181,8 +178,7 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
             connectTimeout.setValue(xdevapiConnectTimeout.getValue());
         }
 
-        SocketConnection socketConn = propertySet.getBooleanProperty(PropertyKey.xdevapiUseAsyncProtocol).getValue() ? new XAsyncSocketConnection()
-                : new NativeSocketConnection();
+        SocketConnection socketConn = new NativeSocketConnection();
         socketConn.connect(host, port, propertySet, null, null, 0);
         init(null, socketConn, propertySet, null);
     }
@@ -247,15 +243,8 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
         }
 
         try {
-            if (this.socketConnection.isSynchronous()) {
-                // i/o streams were replaced, build new packet sender/reader
-                this.sender = new SyncMessageSender(this.socketConnection.getMysqlOutput());
-                this.reader = new SyncMessageReader(this.socketConnection.getMysqlInput());
-            } else {
-                // resume message processing
-                ((AsyncMessageSender) this.sender).setChannel(this.socketConnection.getAsynchronousSocketChannel());
-                this.reader.start();
-            }
+            this.sender = new SyncMessageSender(this.socketConnection.getMysqlOutput());
+            this.reader = new SyncMessageReader(this.socketConnection.getMysqlInput());
         } catch (IOException e) {
             throw new XProtocolError(e.getMessage(), e);
         }
@@ -267,13 +256,7 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
      */
     public void negotiateCompression() {
         Compression compression = this.propertySet.<Compression>getEnumProperty(PropertyKey.xdevapiCompression.getKeyName()).getValue();
-        String compressionAlgorithmsTriplets = this.propertySet.getStringProperty(PropertyKey.xdevapiCompressionAlgorithm.getKeyName()).getValue();
-        compressionAlgorithmsTriplets = compressionAlgorithmsTriplets == null ? "" : compressionAlgorithmsTriplets.trim();
-
         if (compression == Compression.DISABLED) {
-            if (!compressionAlgorithmsTriplets.isEmpty()) {
-                throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.0"));
-            }
             return;
         }
 
@@ -281,30 +264,38 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
         if (compressionCapabilities.isEmpty() || !compressionCapabilities.containsKey(XServerCapabilities.SUBKEY_COMPRESSION_ALGORITHM)
                 || compressionCapabilities.get(XServerCapabilities.SUBKEY_COMPRESSION_ALGORITHM).isEmpty()) {
             if (compression == Compression.REQUIRED) {
-                throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.1"));
+                throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.0"));
             } // TODO Log "Compression negotiation failed. Connection will proceed uncompressed."
             return;
         }
 
-        if (!this.socketConnection.isSynchronous()) {
+        RuntimeProperty<String> compressionAlgorithmsProp = this.propertySet.getStringProperty(PropertyKey.xdevapiCompressionAlgorithms.getKeyName());
+        String compressionAlgorithmsList = compressionAlgorithmsProp.getValue();
+        compressionAlgorithmsList = compressionAlgorithmsList == null ? "" : compressionAlgorithmsList.trim();
+        String[] compressionAlgorithmsOrder;
+        String[] compressionAlgsOrder = compressionAlgorithmsList.split("\\s*,\\s*");
+        compressionAlgorithmsOrder = Arrays.stream(compressionAlgsOrder).sequential().filter(n -> n != null && n.length() > 0).map(String::toLowerCase)
+                .map(CompressionAlgorithm::getNormalizedAlgorithmName).toArray(String[]::new);
+
+        String compressionExtensions = this.propertySet.getStringProperty(PropertyKey.xdevapiCompressionExtensions.getKeyName()).getValue();
+        compressionExtensions = compressionExtensions == null ? "" : compressionExtensions.trim();
+        Map<String, CompressionAlgorithm> compressionAlgorithms = getCompressionExtensions(compressionExtensions);
+
+        Optional<String> algorithmOpt = Arrays.stream(compressionAlgorithmsOrder).sequential()
+                .filter(compressionCapabilities.get(XServerCapabilities.SUBKEY_COMPRESSION_ALGORITHM)::contains).filter(compressionAlgorithms::containsKey)
+                .findFirst();
+        if (!algorithmOpt.isPresent()) {
             if (compression == Compression.REQUIRED) {
                 throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.2"));
             } // TODO Log "Compression negotiation failed. Connection will proceed uncompressed."
             return;
         }
-
-        Map<String, CompressionAlgorithm> compressionAlgorithms = getCompressionAlgorithms(compressionAlgorithmsTriplets);
-        Optional<String> algorithmOpt = Arrays.stream(SUPPORTED_COMPRESSION_ALGORITHMS_PRIORITY).sequential()
-                .filter(compressionCapabilities.get(XServerCapabilities.SUBKEY_COMPRESSION_ALGORITHM)::contains).filter(compressionAlgorithms::containsKey)
-                .findFirst();
-        if (!algorithmOpt.isPresent()) {
-            if (compression == Compression.REQUIRED) {
-                throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.4"));
-            } // TODO Log "Compression negotiation failed. Connection will proceed uncompressed."
-            return;
-        }
         String algorithm = algorithmOpt.get();
         this.compressionAlgorithm = compressionAlgorithms.get(algorithm);
+
+        // Make sure the picked compression algorithm streams exist.
+        this.compressionAlgorithm.getInputStreamClass();
+        this.compressionAlgorithm.getOutputStreamClass();
 
         Map<String, Object> compressionCap = new HashMap<>();
         compressionCap.put(XServerCapabilities.SUBKEY_COMPRESSION_ALGORITHM, algorithm);
@@ -318,16 +309,9 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
         this.serverSession = new XServerSession();
 
         try {
-            if (this.socketConnection.isSynchronous()) {
-                this.sender = new SyncMessageSender(this.socketConnection.getMysqlOutput());
-                this.reader = new SyncMessageReader(this.socketConnection.getMysqlInput());
-                this.managedResource = this.socketConnection.getMysqlSocket();
-            } else {
-                this.sender = new AsyncMessageSender(this.socketConnection.getAsynchronousSocketChannel());
-                this.reader = new AsyncMessageReader(this.propertySet, this.socketConnection);
-                this.reader.start();
-                this.managedResource = this.socketConnection.getAsynchronousSocketChannel();
-            }
+            this.sender = new SyncMessageSender(this.socketConnection.getMysqlOutput());
+            this.reader = new SyncMessageReader(this.socketConnection.getMysqlInput());
+            this.managedResource = this.socketConnection.getMysqlSocket();
         } catch (IOException e) {
             throw new XProtocolError(e.getMessage(), e);
         }
@@ -341,35 +325,60 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
             this.clientCapabilities.put(XServerCapabilities.KEY_SESSION_CONNECT_ATTRS, attMap);
         }
 
-        // Override common SSL properties with xdevapi ones to provide unified logic in ExportControlled via common SSL properties
-        RuntimeProperty<XdevapiSslMode> xdevapiSslMode = this.propertySet.<XdevapiSslMode>getEnumProperty(PropertyKey.xdevapiSSLMode);
-        if (xdevapiSslMode.isExplicitlySet()) {
-            this.propertySet.<SslMode>getEnumProperty(PropertyKey.sslMode).setValue(SslMode.valueOf(xdevapiSslMode.getValue().toString()));
+        // Override JDBC (global) SSL properties with xdevapi ones to provide unified logic in ExportControlled via common SSL properties.
+        RuntimeProperty<XdevapiSslMode> xdevapiSslMode = this.propertySet.<XdevapiSslMode>getEnumProperty(PropertyKey.xdevapiSslMode);
+        RuntimeProperty<SslMode> jdbcSslMode = this.propertySet.<SslMode>getEnumProperty(PropertyKey.sslMode);
+        if (xdevapiSslMode.isExplicitlySet() || !jdbcSslMode.isExplicitlySet()) {
+            jdbcSslMode.setValue(SslMode.valueOf(xdevapiSslMode.getValue().toString()));
         }
-        RuntimeProperty<String> sslTrustStoreUrl = this.propertySet.getStringProperty(PropertyKey.xdevapiSSLTrustStoreUrl);
-        if (sslTrustStoreUrl.isExplicitlySet()) {
-            this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreUrl).setValue(sslTrustStoreUrl.getValue());
+        RuntimeProperty<String> xdevapiSslKeyStoreUrl = this.propertySet.getStringProperty(PropertyKey.xdevapiSslKeyStoreUrl);
+        RuntimeProperty<String> jdbcClientCertKeyStoreUrl = this.propertySet.getStringProperty(PropertyKey.clientCertificateKeyStoreUrl);
+        if (xdevapiSslKeyStoreUrl.isExplicitlySet() || !jdbcClientCertKeyStoreUrl.isExplicitlySet()) {
+            jdbcClientCertKeyStoreUrl.setValue(xdevapiSslKeyStoreUrl.getValue());
         }
-        RuntimeProperty<String> sslTrustStoreType = this.propertySet.getStringProperty(PropertyKey.xdevapiSSLTrustStoreType);
-        if (sslTrustStoreType.isExplicitlySet()) {
-            this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreType).setValue(sslTrustStoreType.getValue());
+        RuntimeProperty<String> xdevapiSslKeyStoreType = this.propertySet.getStringProperty(PropertyKey.xdevapiSslKeyStoreType);
+        RuntimeProperty<String> jdbcClientCertKeyStoreType = this.propertySet.getStringProperty(PropertyKey.clientCertificateKeyStoreType);
+        if (xdevapiSslKeyStoreType.isExplicitlySet() || !jdbcClientCertKeyStoreType.isExplicitlySet()) {
+            jdbcClientCertKeyStoreType.setValue(xdevapiSslKeyStoreType.getValue());
         }
-        RuntimeProperty<String> sslTrustStorePassword = this.propertySet.getStringProperty(PropertyKey.xdevapiSSLTrustStorePassword);
-        if (sslTrustStorePassword.isExplicitlySet()) {
-            this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStorePassword).setValue(sslTrustStorePassword.getValue());
+        RuntimeProperty<String> xdevapiSslKeyStorePassword = this.propertySet.getStringProperty(PropertyKey.xdevapiSslKeyStorePassword);
+        RuntimeProperty<String> jdbcClientCertKeyStorePassword = this.propertySet.getStringProperty(PropertyKey.clientCertificateKeyStorePassword);
+        if (xdevapiSslKeyStorePassword.isExplicitlySet() || !jdbcClientCertKeyStorePassword.isExplicitlySet()) {
+            jdbcClientCertKeyStorePassword.setValue(xdevapiSslKeyStorePassword.getValue());
+        }
+        RuntimeProperty<Boolean> xdevapiFallbackToSystemKeyStore = this.propertySet.getBooleanProperty(PropertyKey.xdevapiFallbackToSystemKeyStore);
+        RuntimeProperty<Boolean> jdbcFallbackToSystemKeyStore = this.propertySet.getBooleanProperty(PropertyKey.fallbackToSystemKeyStore);
+        if (xdevapiFallbackToSystemKeyStore.isExplicitlySet() || !jdbcFallbackToSystemKeyStore.isExplicitlySet()) {
+            jdbcFallbackToSystemKeyStore.setValue(xdevapiFallbackToSystemKeyStore.getValue());
+        }
+        RuntimeProperty<String> xdevapiSslTrustStoreUrl = this.propertySet.getStringProperty(PropertyKey.xdevapiSslTrustStoreUrl);
+        RuntimeProperty<String> jdbcTrustCertKeyStoreUrl = this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreUrl);
+        if (xdevapiSslTrustStoreUrl.isExplicitlySet() || !jdbcTrustCertKeyStoreUrl.isExplicitlySet()) {
+            jdbcTrustCertKeyStoreUrl.setValue(xdevapiSslTrustStoreUrl.getValue());
+        }
+        RuntimeProperty<String> xdevapiSslTrustStoreType = this.propertySet.getStringProperty(PropertyKey.xdevapiSslTrustStoreType);
+        RuntimeProperty<String> jdbcTrustCertKeyStoreType = this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreType);
+        if (xdevapiSslTrustStoreType.isExplicitlySet() || !jdbcTrustCertKeyStoreType.isExplicitlySet()) {
+            jdbcTrustCertKeyStoreType.setValue(xdevapiSslTrustStoreType.getValue());
+        }
+        RuntimeProperty<String> xdevapiSslTrustStorePassword = this.propertySet.getStringProperty(PropertyKey.xdevapiSslTrustStorePassword);
+        RuntimeProperty<String> jdbcTrustCertKeyStorePassword = this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStorePassword);
+        if (xdevapiSslTrustStorePassword.isExplicitlySet() || !jdbcTrustCertKeyStorePassword.isExplicitlySet()) {
+            jdbcTrustCertKeyStorePassword.setValue(xdevapiSslTrustStorePassword.getValue());
+        }
+        RuntimeProperty<Boolean> xdevapiFallbackToSystemTrustStore = this.propertySet.getBooleanProperty(PropertyKey.xdevapiFallbackToSystemTrustStore);
+        RuntimeProperty<Boolean> jdbcFallbackToSystemTrustStore = this.propertySet.getBooleanProperty(PropertyKey.fallbackToSystemTrustStore);
+        if (xdevapiFallbackToSystemTrustStore.isExplicitlySet() || !jdbcFallbackToSystemTrustStore.isExplicitlySet()) {
+            jdbcFallbackToSystemTrustStore.setValue(xdevapiFallbackToSystemTrustStore.getValue());
         }
 
-        // TODO WL#9925 will redefine other SSL connection properties for X Protocol
-
-        RuntimeProperty<SslMode> sslMode = this.propertySet.<SslMode>getEnumProperty(PropertyKey.sslMode);
-        if (sslMode.getValue() == SslMode.PREFERRED) { // PREFERRED mode is not applicable to X Protocol
+        RuntimeProperty<SslMode> sslMode = jdbcSslMode; // JDBC (global) sslMode is used from now on.
+        if (sslMode.getValue() == SslMode.PREFERRED) { // PREFERRED mode is not applicable for X Protocol.
             sslMode.setValue(SslMode.REQUIRED);
         }
 
-        boolean verifyServerCert = sslMode.getValue() == SslMode.VERIFY_CA || sslMode.getValue() == SslMode.VERIFY_IDENTITY;
-        String trustStoreUrl = this.propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreUrl).getValue();
-
         RuntimeProperty<String> xdevapiTlsVersions = this.propertySet.getStringProperty(PropertyKey.xdevapiTlsVersions);
+        RuntimeProperty<String> jdbcEnabledTlsProtocols = this.propertySet.getStringProperty(PropertyKey.enabledTLSProtocols);
         if (xdevapiTlsVersions.isExplicitlySet()) {
             if (sslMode.getValue() == SslMode.DISABLED) {
                 throw ExceptionFactory.createException(WrongArgumentException.class,
@@ -383,23 +392,32 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
             String[] tlsVersions = xdevapiTlsVersions.getValue().split("\\s*,\\s*");
             List<String> tryProtocols = Arrays.asList(tlsVersions);
             ExportControlled.checkValidProtocols(tryProtocols);
-            this.propertySet.getStringProperty(PropertyKey.enabledTLSProtocols).setValue(xdevapiTlsVersions.getValue());
+            jdbcEnabledTlsProtocols.setValue(xdevapiTlsVersions.getValue());
+
+        } else if (!jdbcEnabledTlsProtocols.isExplicitlySet()) {
+            jdbcEnabledTlsProtocols.setValue(xdevapiTlsVersions.getValue());
         }
 
         RuntimeProperty<String> xdevapiTlsCiphersuites = this.propertySet.getStringProperty(PropertyKey.xdevapiTlsCiphersuites);
+        RuntimeProperty<String> jdbcEnabledSslCipherSuites = this.propertySet.getStringProperty(PropertyKey.enabledSSLCipherSuites);
         if (xdevapiTlsCiphersuites.isExplicitlySet()) {
             if (sslMode.getValue() == SslMode.DISABLED) {
                 throw ExceptionFactory.createException(WrongArgumentException.class,
                         "Option '" + PropertyKey.xdevapiTlsCiphersuites.getKeyName() + "' can not be specified when SSL connections are disabled.");
             }
 
-            this.propertySet.getStringProperty(PropertyKey.enabledSSLCipherSuites).setValue(xdevapiTlsCiphersuites.getValue());
+            jdbcEnabledSslCipherSuites.setValue(xdevapiTlsCiphersuites.getValue());
+
+        } else if (!jdbcEnabledSslCipherSuites.isExplicitlySet()) {
+            jdbcEnabledSslCipherSuites.setValue(xdevapiTlsCiphersuites.getValue());
         }
 
+        boolean verifyServerCert = sslMode.getValue() == SslMode.VERIFY_CA || sslMode.getValue() == SslMode.VERIFY_IDENTITY;
+        String trustStoreUrl = jdbcTrustCertKeyStoreUrl.getValue();
         if (!verifyServerCert && !StringUtils.isNullOrEmpty(trustStoreUrl)) {
             StringBuilder msg = new StringBuilder("Incompatible security settings. The property '");
-            msg.append(PropertyKey.xdevapiSSLTrustStoreUrl.getKeyName()).append("' requires '");
-            msg.append(PropertyKey.xdevapiSSLMode.getKeyName()).append("' as '");
+            msg.append(PropertyKey.xdevapiSslTrustStoreUrl.getKeyName()).append("' requires '");
+            msg.append(PropertyKey.xdevapiSslMode.getKeyName()).append("' as '");
             msg.append(PropertyDefinitions.SslMode.VERIFY_CA).append("' or '");
             msg.append(PropertyDefinitions.SslMode.VERIFY_IDENTITY).append("'.");
             throw new CJCommunicationsException(msg.toString());
@@ -460,48 +478,35 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
     }
 
     /**
-     * Parses and validates the connection option 'xdevapi.compress-algorithm' value given. With the information obtained, creates a map of supported
-     * compression algorithms.
+     * Parses and validates the value given for the connection option 'xdevapi.compression-extensions'. With the information obtained, creates a map of
+     * supported compression algorithms.
      * 
-     * @param compressionAlgorithmsTriplets
-     *            the value of the option 'xdevapi.compress-algorithm' containing a list of triplets with the format
-     *            "algorithm-name,inflater-InputStream-class-name,deflater-OutputStream-class-name".
+     * @param compressionExtensions
+     *            the value of the option 'xdevapi.compression-algorithm' containing a comma separated list of triplets with the format
+     *            "algorithm-name:inflater-InputStream-class-name:deflater-OutputStream-class-name".
      * @return
-     *         a map with all the supported compression algorithms, booth natively supported an user configures.
+     *         a map with all the supported compression algorithms, both natively supported and user configured.
      */
-    private Map<String, CompressionAlgorithm> getCompressionAlgorithms(String compressionAlgorithmsTriplets) {
-        Map<String, CompressionAlgorithm> compressionAlgorithms = CompressionAlgorithm.getDefaultInstances();
+    private Map<String, CompressionAlgorithm> getCompressionExtensions(String compressionExtensions) {
+        Map<String, CompressionAlgorithm> compressionExtensionsMap = CompressionAlgorithm.getDefaultInstances();
 
-        if (compressionAlgorithmsTriplets.length() == 0) {
-            return compressionAlgorithms;
+        if (compressionExtensions.length() == 0) {
+            return compressionExtensionsMap;
         }
 
-        String[] compressionAlgorithmsParts = compressionAlgorithmsTriplets.split(",");
-        if (compressionAlgorithmsParts.length % 3 != 0) {
-            throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.3"));
-        }
-
-        for (int i = 0; i < compressionAlgorithmsParts.length; i += 3) {
-            String algorithmName = compressionAlgorithmsParts[i];
-            String inputStreamClassName = compressionAlgorithmsParts[i + 1];
-            Class<?> inputStreamClass = null;
-            try {
-                inputStreamClass = Class.forName(inputStreamClassName);
-            } catch (ClassNotFoundException e) {
-                throw ExceptionFactory.createException(WrongArgumentException.class,
-                        Messages.getString("Protocol.Compression.5", new Object[] { inputStreamClassName }), e);
+        String[] compressionExtAlgs = compressionExtensions.split(",");
+        for (String compressionExtAlg : compressionExtAlgs) {
+            String[] compressionExtAlgParts = compressionExtAlg.split(":");
+            if (compressionExtAlgParts.length != 3) {
+                throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString("Protocol.Compression.1"));
             }
-            String outputStreamClassName = compressionAlgorithmsParts[i + 2];
-            Class<?> outputStreamClass = null;
-            try {
-                outputStreamClass = Class.forName(outputStreamClassName);
-            } catch (ClassNotFoundException e) {
-                throw ExceptionFactory.createException(WrongArgumentException.class,
-                        Messages.getString("Protocol.Compression.5", new Object[] { outputStreamClassName }), e);
-            }
-            compressionAlgorithms.put(algorithmName, new CompressionAlgorithm(algorithmName, inputStreamClass, outputStreamClass));
+            String algorithmName = compressionExtAlgParts[0].toLowerCase();
+            String inputStreamClassName = compressionExtAlgParts[1];
+            String outputStreamClassName = compressionExtAlgParts[2];
+            CompressionAlgorithm compressionAlg = new CompressionAlgorithm(algorithmName, inputStreamClassName, outputStreamClassName);
+            compressionExtensionsMap.put(compressionAlg.getAlgorithmIdentifier(), compressionAlg);
         }
-        return compressionAlgorithms;
+        return compressionExtensionsMap;
     }
 
     private String currUser = null, currPassword = null, currDatabase = null; // TODO remove these variables after implementing mysql_reset_connection() in reset() method
@@ -532,13 +537,13 @@ public class XProtocol extends AbstractProtocol<XMessage> implements Protocol<XM
                 this.reader = new SyncMessageReader(new FullReadInputStream(
                         new CompressionSplittedInputStream(this.socketConnection.getMysqlInput(), new CompressorStreamsFactory(this.compressionAlgorithm))));
             } catch (IOException e) {
-                ExceptionFactory.createException(Messages.getString("Protocol.Compression.8"), e);
+                ExceptionFactory.createException(Messages.getString("Protocol.Compression.6"), e);
             }
             try {
                 this.sender = new SyncMessageSender(
                         new CompressionSplittedOutputStream(this.socketConnection.getMysqlOutput(), new CompressorStreamsFactory(this.compressionAlgorithm)));
             } catch (IOException e) {
-                ExceptionFactory.createException(Messages.getString("Protocol.Compression.9"), e);
+                ExceptionFactory.createException(Messages.getString("Protocol.Compression.7"), e);
             }
         }
 
