@@ -11733,7 +11733,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
             // OK hosts that match one of the DNS/IP SANs.
             for (String okHost : okHosts) {
-                try (Connection testConn = getConnectionWithProps("jdbc:mysql://" + okHost + ":" + port + "/", props)) {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql:aws://" + okHost + ":" + port + "/", props)) {
                     this.rs = testConn.createStatement().executeQuery("SELECT 1");
                     assertTrue(this.rs.next());
                     assertEquals(1, this.rs.getInt(1));
@@ -11742,7 +11742,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
             // Not OK hosts that don't match any of the DNS/IP SANs.
             for (String notOkHost : notOkHosts) {
-                Exception e = assertThrows(CommunicationsException.class, () -> getConnectionWithProps("jdbc:mysql://" + notOkHost + ":" + port + "/", props));
+                Exception e = assertThrows(CommunicationsException.class, () -> getConnectionWithProps("jdbc:mysql:aws://" + notOkHost + ":" + port + "/", props));
                 assertNotNull(e.getCause());
                 assertNotNull(e.getCause().getCause());
                 String errMsg = e.getCause().getCause().getMessage();
@@ -11756,7 +11756,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
             // Not OK hosts are OK if not verifying identity, though.
             props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.VERIFY_CA.toString());
             for (String okHost : notOkHosts) {
-                try (Connection testConn = getConnectionWithProps("jdbc:mysql://" + okHost + ":" + port + "/", props)) {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql:aws://" + okHost + ":" + port + "/", props)) {
                     this.rs = testConn.createStatement().executeQuery("SELECT 1");
                     assertTrue(this.rs.next());
                     assertEquals(1, this.rs.getInt(1));
