@@ -286,7 +286,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * @return true if the given exception should trigger a connection fail-over
      */
     @Override
-    boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
+    protected boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
         return t instanceof SQLException && this.exceptionChecker.shouldExceptionTriggerFailover(t);
     }
 
@@ -294,7 +294,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * Always returns 'true' as there are no "masters" and "slaves" in this type of connection.
      */
     @Override
-    boolean isMasterConnection() {
+    protected boolean isMasterConnection() {
         return true;
     }
 
@@ -307,7 +307,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      *             if an error occurs
      */
     @Override
-    synchronized void invalidateConnection(JdbcConnection conn) throws SQLException {
+    protected synchronized void invalidateConnection(JdbcConnection conn) throws SQLException {
         super.invalidateConnection(conn);
 
         // add host to the global blacklist, if enabled
