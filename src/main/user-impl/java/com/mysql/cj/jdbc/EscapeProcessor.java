@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -354,7 +354,7 @@ class EscapeProcessor {
 
             try {
                 Timestamp ts = Timestamp.valueOf(argument);
-                ts = TimeUtil.adjustTimestampNanosPrecision(ts, 6, !serverTruncatesFractionalSecond);
+                ts = TimeUtil.adjustNanosPrecision(ts, 6, !serverTruncatesFractionalSecond);
                 SimpleDateFormat tsdf = TimeUtil.getSimpleDateFormat(null, "''yyyy-MM-dd HH:mm:ss", tz);
 
                 newSql.append(tsdf.format(ts));

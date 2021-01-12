@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -273,13 +273,13 @@ public class InternalXBaseTestCase {
         return false;
     }
 
-    protected void assertSessionStatusEquals(Session sess, String statusVariable, String expected) {
+    protected static void assertSessionStatusEquals(Session sess, String statusVariable, String expected) {
         SqlResult rs = sess.sql("SHOW SESSION STATUS LIKE '" + statusVariable + "'").execute();
         String actual = rs.fetchOne().getString(1);
         assertEquals(expected, actual);
     }
 
-    protected void assertSessionStatusNotEquals(Session sess, String statusVariable, String unexpected) {
+    protected static void assertSessionStatusNotEquals(Session sess, String statusVariable, String unexpected) {
         SqlResult rs = sess.sql("SHOW SESSION STATUS LIKE '" + statusVariable + "'").execute();
         String actual = rs.fetchOne().getString(1);
         assertNotEquals(unexpected, actual);

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
- *
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -43,7 +42,6 @@ import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.jdbc.exceptions.MysqlDataTruncation;
 import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.ha.*;
-import com.mysql.cj.jdbc.integration.jboss.MysqlValidConnectionChecker;
 import com.mysql.cj.jdbc.jmx.ReplicationGroupManagerMBean;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.ProfilerEvent;
@@ -97,6 +95,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Regression tests for Connections
@@ -1729,13 +1729,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
                 fail("Suspiciously short description for configuration property " + propertyName);
             }
         }
-    }
-
-    @Test
-    public void testBug29106() throws Exception {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> checkerClass = cl.loadClass(com.mysql.cj.jdbc.integration.jboss.MysqlValidConnectionChecker.class.getName());
-        ((MysqlValidConnectionChecker) checkerClass.newInstance()).isValidConnection(this.conn);
     }
 
     @Test
@@ -4709,18 +4702,21 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
         BufferedOutputStream bOut = new BufferedOutputStream(new FileOutputStream(testFile));
 
+        byte[] bytes1 = new byte[fieldLength];
+        Arrays.fill(bytes1, (byte) 'a');
+        byte[] bytes2 = new byte[fieldLength];
+        Arrays.fill(bytes2, (byte) 'b');
+        byte tab = '\t';
+        byte nl = '\n';
+
         for (int i = 0; i < loops; i++) {
-            for (int j = 0; j < fieldLength; j++) {
-                bOut.write("a".getBytes()[0]);
-            }
-            bOut.write("\t".getBytes()[0]);
-            for (int j = 0; j < fieldLength; j++) {
-                bOut.write("b".getBytes()[0]);
-            }
-            bOut.write("\n".getBytes()[0]);
+            bOut.write(bytes1);
+            bOut.write(tab);
+            bOut.write(bytes2);
+            bOut.write(nl);
+            bOut.flush();
         }
 
-        bOut.flush();
         bOut.close();
 
         createTable("testBug11237", "(field1 VARCHAR(1024), field2 VARCHAR(1024))");
@@ -11006,7 +11002,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         });
 
         // 7. Explicit sslMode=VERIFY_IDENTITY, explicit useSSL=false, verifyServerCertificate=false, with trust store
-        // The server certificate used in this test has "CN=MySQL Connector/J Server" thus expecting identity check failure
+        // The server certificate used in this test has "CN=MySQL Connector/J Server" and several SAN entries that don't match thus identity check failure
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.VERIFY_IDENTITY.toString());
         props.setProperty(PropertyKey.useSSL.getKeyName(), "false");
         props.setProperty(PropertyKey.verifyServerCertificate.getKeyName(), "false");
@@ -11023,8 +11019,12 @@ public class ConnectionRegressionTest extends BaseTestCase {
                 cause = cause.getCause();
             }
             assertTrue(cause != null && cause instanceof CertificateException, "CertificateException expected");
-            assertTrue(cause.getMessage()
-                    .contains("Server certificate identity check failed. The certificate Common Name 'MySQL Connector/J Server' does not match"));
+            String errMsg = cause.getMessage();
+            if (errMsg.startsWith("java.security.cert.CertificateException: ")) {
+                errMsg = errMsg.substring("java.security.cert.CertificateException: ".length());
+            }
+            assertEquals("Server identity verification failed. None of the DNS or IP Subject Alternative Name " + "entries matched the server hostname/IP '"
+                    + getHostFromTestsuiteUrl() + "'.", errMsg);
         }
     }
 
@@ -11685,5 +11685,169 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
             testConn.close();
         } while (useSPS = !useSPS);
+    }
+
+    /**
+     * Tests fix for Bug#99767 (31443178), Contribution: Check SubjectAlternativeName for TLS instead of commonName.
+     *
+     * This test requires a server X509 certificate that contains the following X509v3 extension:
+     *
+     * <pre>
+     * X509v3 Subject Alternative Name:
+     *     DNS:bug99767.mysql.san1.tst,
+     *     DNS:*.mysql.san2.tst,
+     *     DNS:bug*.mysql.san3.tst,
+     *     DNS:*99767.mysql.san4.tst,
+     *     DNS:bug99767.*.san5.tst,
+     *     DNS:bug99767.*,
+     *     DNS:*,
+     *     IP Address:9.9.7.67,
+     *     IP Address:99.7.6.7
+     * </pre>
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug99767() throws Exception {
+        try {
+            final Properties props = getPropertiesFromTestsuiteUrl();
+            props.setProperty(PropertyKey.socketFactory.getKeyName(), "testsuite.UnreliableSocketFactory");
+            props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.VERIFY_IDENTITY.toString());
+            props.setProperty(PropertyKey.trustCertificateKeyStoreUrl.getKeyName(), "file:src/test/config/ssl-test-certs/ca-truststore");
+            props.setProperty(PropertyKey.trustCertificateKeyStoreType.getKeyName(), "JKS");
+            props.setProperty(PropertyKey.trustCertificateKeyStorePassword.getKeyName(), "password");
+
+            final String host = props.getProperty(PropertyKey.HOST.getKeyName());
+            final String port = props.getProperty(PropertyKey.PORT.getKeyName());
+
+            props.remove(PropertyKey.HOST.getKeyName());
+
+            String[] okHosts = { "bug99767.mysql.san1.tst", "bug99767.mysql.san2.tst", "bug99767.mysql.san3.tst", "bug99767.mysql.san4.tst", "9.9.7.67",
+                    "99.7.6.7" };
+            String[] notOkHosts = { "bug31443178.mysql.san1.tst", "bug99767.cj.mysql.san2.tst", "bug99767.cj.mysql.san3.tst", "cj.bug99767.mysql.san4.tst",
+                    "bug99767.mysql.san5.tst", "bug99767.cj.mysql.san5.tst", "bug99767.tst", "bug99767", "31.44.31.78" };
+
+            UnreliableSocketFactory.flushAllStaticData();
+            Arrays.stream(okHosts).forEach(h -> UnreliableSocketFactory.mapHost(h, host));
+            Arrays.stream(notOkHosts).forEach(h -> UnreliableSocketFactory.mapHost(h, host));
+
+            // OK hosts that match one of the DNS/IP SANs.
+            for (String okHost : okHosts) {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql:aws://" + okHost + ":" + port + "/", props)) {
+                    this.rs = testConn.createStatement().executeQuery("SELECT 1");
+                    assertTrue(this.rs.next());
+                    assertEquals(1, this.rs.getInt(1));
+                }
+            }
+
+            // Not OK hosts that don't match any of the DNS/IP SANs.
+            for (String notOkHost : notOkHosts) {
+                Exception e = assertThrows(CommunicationsException.class, () -> getConnectionWithProps("jdbc:mysql:aws://" + notOkHost + ":" + port + "/", props));
+                assertNotNull(e.getCause());
+                assertNotNull(e.getCause().getCause());
+                String errMsg = e.getCause().getCause().getMessage();
+                if (errMsg.startsWith("java.security.cert.CertificateException: ")) {
+                    errMsg = errMsg.substring("java.security.cert.CertificateException: ".length());
+                }
+                assertEquals("Server identity verification failed. None of the DNS or IP Subject Alternative Name " + "entries matched the server hostname/IP '"
+                        + notOkHost + "'.", errMsg);
+            }
+
+            // Not OK hosts are OK if not verifying identity, though.
+            props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.VERIFY_CA.toString());
+            for (String okHost : notOkHosts) {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql:aws://" + okHost + ":" + port + "/", props)) {
+                    this.rs = testConn.createStatement().executeQuery("SELECT 1");
+                    assertTrue(this.rs.next());
+                    assertEquals(1, this.rs.getInt(1));
+                }
+            }
+
+        } finally {
+            UnreliableSocketFactory.flushAllStaticData();
+        }
+    }
+
+    /**
+     * Tests fix for Bug#99076 (31083755), Unclear exception/error when connecting with jdbc:mysql to a mysqlx port.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug99076() throws Exception {
+        if (!versionMeetsMinimum(8, 0, 16)) {
+            return;
+        }
+
+        String xUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url_mysqlx);
+        if (xUrl == null || xUrl.length() == 0) {
+            return;
+        }
+
+        final ConnectionUrl conUrl = ConnectionUrl.getConnectionUrlInstance(xUrl, null);
+        final HostInfo hostInfo = conUrl.getMainHost();
+        final String host = hostInfo.getHost();
+        final int port = hostInfo.getPort();
+
+        assertThrows(SQLNonTransientConnectionException.class, "Unsupported protocol version: 11\\. Likely connecting to an X Protocol port\\.",
+                () -> getConnectionWithProps("jdbc:mysql://" + host + ":" + port, ""));
+    }
+
+    /**
+     * Tests fix for Bug#98667 (31711961), "All pipe instances are busy" exception on multiple connections to named Pipe.
+     *
+     * This test only runs on Windows with a MySQL instance started with named pipes enabled (--named-pipe=on).
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug98667() throws Exception {
+        this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'named_pipe'");
+        if (!this.rs.next() || !this.rs.getString(2).equalsIgnoreCase("on")) {
+            return; // Only runs on Windows with named pipes enabled.
+        }
+
+        this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'socket'");
+        assumeTrue(this.rs.next());
+        String namedPipeName = this.rs.getString(2);
+        assumeFalse(StringUtils.isNullOrEmpty(namedPipeName));
+
+        final String namedPipePath = "\\\\.\\pipe\\" + namedPipeName;
+        final Properties props = getHostFreePropertiesFromTestsuiteUrl();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.toString());
+
+        DriverManager.setLoginTimeout(0); // Make sure the login timeout is 0.
+
+        ExecutorService executor = Executors.newFixedThreadPool(100);
+        List<Future<Exception>> futures = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            futures.add(executor.submit(() -> {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql://address=(protocol=pipe)(path=" + namedPipePath + ")?connectTimeout=500",
+                        props)) {
+                    ResultSet testRs = testConn.createStatement().executeQuery("SELECT CURRENT_USER()");
+                    assertTrue(testRs.next());
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (SQLException e) {
+                    return e;
+                } catch (InterruptedException e) {
+                    return null;
+                }
+                return null;
+            }));
+        }
+        Exception oneFail = null;
+        for (Future<Exception> f : futures) {
+            Exception e = f.get();
+            if (oneFail == null && e != null) {
+                oneFail = e;
+            }
+        }
+        if (oneFail != null) {
+            oneFail.printStackTrace();
+        }
+        executor.shutdown();
+        executor.awaitTermination(3, TimeUnit.SECONDS);
+
+        assertNull(oneFail, "At least one connection failed.");
     }
 }

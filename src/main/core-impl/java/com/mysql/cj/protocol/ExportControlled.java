@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -34,9 +34,6 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.CompletionHandler;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -61,12 +58,10 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -80,10 +75,6 @@ import javax.naming.ldap.Rdn;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
-import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
@@ -111,7 +102,6 @@ import com.mysql.cj.util.Util;
  * Holds functionality that falls under export-control regulations.
  */
 public class ExportControlled {
-
     private static final String TLSv1 = "TLSv1";
     private static final String TLSv1_1 = "TLSv1.1";
     private static final String TLSv1_2 = "TLSv1.2";
@@ -224,19 +214,18 @@ public class ExportControlled {
         }
     }
 
-    private static KeyStoreConf getTrustStoreConf(PropertySet propertySet, PropertyKey keyStoreUrlPropertyKey, PropertyKey keyStorePasswordPropertyKey,
-            PropertyKey keyStoreTypePropertyKey, boolean required) {
+    private static KeyStoreConf getTrustStoreConf(PropertySet propertySet, boolean required) {
+        String trustStoreUrl = propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreUrl).getValue();
+        String trustStorePassword = propertySet.getStringProperty(PropertyKey.trustCertificateKeyStorePassword).getValue();
+        String trustStoreType = propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreType).getValue();
+        boolean fallbackToSystemTrustStore = propertySet.getBooleanProperty(PropertyKey.fallbackToSystemTrustStore).getValue();
 
-        String trustStoreUrl = propertySet.getStringProperty(keyStoreUrlPropertyKey).getValue();
-        String trustStorePassword = propertySet.getStringProperty(keyStorePasswordPropertyKey).getValue();
-        String trustStoreType = propertySet.getStringProperty(keyStoreTypePropertyKey).getValue();
-
-        if (StringUtils.isNullOrEmpty(trustStoreUrl)) {
+        if (fallbackToSystemTrustStore && StringUtils.isNullOrEmpty(trustStoreUrl)) {
             trustStoreUrl = System.getProperty("javax.net.ssl.trustStore");
             trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
             trustStoreType = System.getProperty("javax.net.ssl.trustStoreType");
             if (StringUtils.isNullOrEmpty(trustStoreType)) {
-                trustStoreType = propertySet.getStringProperty(keyStoreTypePropertyKey).getInitialValue();
+                trustStoreType = propertySet.getStringProperty(PropertyKey.trustCertificateKeyStoreType).getInitialValue();
             }
             // check URL
             if (!StringUtils.isNullOrEmpty(trustStoreUrl)) {
@@ -255,19 +244,18 @@ public class ExportControlled {
         return new KeyStoreConf(trustStoreUrl, trustStorePassword, trustStoreType);
     }
 
-    private static KeyStoreConf getKeyStoreConf(PropertySet propertySet, PropertyKey keyStoreUrlPropertyKey, PropertyKey keyStorePasswordPropertyKey,
-            PropertyKey keyStoreTypePropertyKey) {
+    private static KeyStoreConf getKeyStoreConf(PropertySet propertySet) {
+        String keyStoreUrl = propertySet.getStringProperty(PropertyKey.clientCertificateKeyStoreUrl).getValue();
+        String keyStorePassword = propertySet.getStringProperty(PropertyKey.clientCertificateKeyStorePassword).getValue();
+        String keyStoreType = propertySet.getStringProperty(PropertyKey.clientCertificateKeyStoreType).getValue();
+        boolean fallbackToSystemKeyStore = propertySet.getBooleanProperty(PropertyKey.fallbackToSystemKeyStore).getValue();
 
-        String keyStoreUrl = propertySet.getStringProperty(keyStoreUrlPropertyKey).getValue();
-        String keyStorePassword = propertySet.getStringProperty(keyStorePasswordPropertyKey).getValue();
-        String keyStoreType = propertySet.getStringProperty(keyStoreTypePropertyKey).getValue();
-
-        if (StringUtils.isNullOrEmpty(keyStoreUrl)) {
+        if (fallbackToSystemKeyStore && StringUtils.isNullOrEmpty(keyStoreUrl)) {
             keyStoreUrl = System.getProperty("javax.net.ssl.keyStore");
             keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
             keyStoreType = System.getProperty("javax.net.ssl.keyStoreType");
             if (StringUtils.isNullOrEmpty(keyStoreType)) {
-                keyStoreType = propertySet.getStringProperty(keyStoreTypePropertyKey).getInitialValue();
+                keyStoreType = propertySet.getStringProperty(PropertyKey.clientCertificateKeyStoreType).getInitialValue();
             }
             // check URL
             if (!StringUtils.isNullOrEmpty(keyStoreUrl)) {
@@ -283,43 +271,36 @@ public class ExportControlled {
     }
 
     /**
-     * Converts the socket being used in the given CoreIO to an SSLSocket by
-     * performing the SSL/TLS handshake.
+     * Converts the socket being used in the given SocketConnection to an SSLSocket by performing the SSL/TLS handshake.
      * 
      * @param rawSocket
      *            original non-SSL socket
      * @param socketConnection
-     *            the Protocol instance containing the socket to convert to an
-     *            SSLSocket.
+     *            the Protocol instance containing the socket to convert to an SSLSocket.
      * @param serverVersion
      *            ServerVersion object
      * @return SSL socket
      * @throws IOException
      *             if i/o exception occurs
      * @throws SSLParamsException
-     *             if the handshake fails, or if this distribution of
-     *             Connector/J doesn't contain the SSL crypto hooks needed to
-     *             perform the handshake.
+     *             if the handshake fails, or if this distribution of Connector/J doesn't contain the SSL crypto hooks needed to perform the handshake.
      * @throws FeatureNotAvailableException
      *             if TLS is not supported
      */
     public static Socket performTlsHandshake(Socket rawSocket, SocketConnection socketConnection, ServerVersion serverVersion)
             throws IOException, SSLParamsException, FeatureNotAvailableException {
-
         PropertySet pset = socketConnection.getPropertySet();
 
         SslMode sslMode = pset.<SslMode>getEnumProperty(PropertyKey.sslMode).getValue();
         boolean verifyServerCert = sslMode == SslMode.VERIFY_CA || sslMode == SslMode.VERIFY_IDENTITY;
+        boolean fallbackToSystemTrustStore = pset.getBooleanProperty(PropertyKey.fallbackToSystemTrustStore).getValue();
 
+        // (serverVersion == null) means that it was called from the X DevAPI.
         KeyStoreConf trustStore = !verifyServerCert ? new KeyStoreConf()
-                : getTrustStoreConf(pset, PropertyKey.trustCertificateKeyStoreUrl, PropertyKey.trustCertificateKeyStorePassword,
-                        PropertyKey.trustCertificateKeyStoreType, verifyServerCert && serverVersion == null);
+                : getTrustStoreConf(pset, serverVersion == null && verifyServerCert && !fallbackToSystemTrustStore);
+        KeyStoreConf keyStore = getKeyStoreConf(pset);
 
-        KeyStoreConf keyStore = getKeyStoreConf(pset, PropertyKey.clientCertificateKeyStoreUrl, PropertyKey.clientCertificateKeyStorePassword,
-                PropertyKey.clientCertificateKeyStoreType);
-
-        SSLSocketFactory socketFactory = getSSLContext(keyStore.keyStoreUrl, keyStore.keyStoreType, keyStore.keyStorePassword, trustStore.keyStoreUrl,
-                trustStore.keyStoreType, trustStore.keyStorePassword, serverVersion != null, verifyServerCert,
+        SSLSocketFactory socketFactory = getSSLContext(keyStore, trustStore, fallbackToSystemTrustStore, verifyServerCert,
                 sslMode == PropertyDefinitions.SslMode.VERIFY_IDENTITY ? socketConnection.getHost() : null, socketConnection.getExceptionInterceptor())
                         .getSocketFactory();
 
@@ -342,7 +323,6 @@ public class ExportControlled {
      * Implementation of X509TrustManager wrapping JVM X509TrustManagers to add expiration and identity check
      */
     public static class X509TrustManagerWrapper implements X509TrustManager {
-
         private X509TrustManager origTm = null;
         private boolean verifyServerCert = false;
         private String hostName = null;
@@ -389,11 +369,10 @@ public class ExportControlled {
 
                 try {
                     CertPath certPath = this.certFactory.generateCertPath(Arrays.asList(chain));
-                    // Validate against truststore
+                    // Validate against the truststore.
                     CertPathValidatorResult result = this.validator.validate(certPath, this.validatorParams);
-                    // Check expiration for the CA used to validate this path
+                    // Check expiration for the CA used to validate this path.
                     ((PKIXCertPathValidatorResult) result).getTrustAnchor().getTrustedCert().checkValidity();
-
                 } catch (InvalidAlgorithmParameterException e) {
                     throw new CertificateException(e);
                 } catch (CertPathValidatorException e) {
@@ -408,50 +387,102 @@ public class ExportControlled {
                     throw new CertificateException("Can't verify server certificate because no trust manager is found.");
                 }
 
-                // verify server certificate identity
+                // Validate server identity.
                 if (this.hostName != null) {
-                    String dn = chain[0].getSubjectX500Principal().getName(X500Principal.RFC2253);
-                    String cn = null;
-                    try {
-                        LdapName ldapDN = new LdapName(dn);
-                        for (Rdn rdn : ldapDN.getRdns()) {
-                            if (rdn.getType().equalsIgnoreCase("CN")) {
-                                cn = rdn.getValue().toString();
-                                break;
+                    boolean hostNameVerified = false;
+
+                    // Check each one of the DNS-ID (or IP) entries from the certificate 'subjectAltName' field.
+                    // See https://tools.ietf.org/html/rfc6125#section-6.4 and https://tools.ietf.org/html/rfc2818#section-3.1
+                    final Collection<List<?>> subjectAltNames = chain[0].getSubjectAlternativeNames();
+                    if (subjectAltNames != null) {
+                        boolean sanVerification = false;
+                        for (final List<?> san : subjectAltNames) {
+                            final Integer nameType = (Integer) san.get(0);
+                            // dNSName   [2] IA5String
+                            // iPAddress [7] OCTET STRING
+                            if (nameType == 2) {
+                                sanVerification = true;
+                                if (verifyHostName((String) san.get(1))) {  // May contain a wildcard char.
+                                    // Host name is valid.
+                                    hostNameVerified = true;
+                                    break;
+                                }
+                            } else if (nameType == 7) {
+                                sanVerification = true;
+                                if (this.hostName.equalsIgnoreCase((String) san.get(1))) {
+                                    // Host name (IP) is valid.
+                                    hostNameVerified = true;
+                                    break;
+                                }
                             }
                         }
-                    } catch (InvalidNameException e) {
-                        throw new CertificateException("Failed to retrieve the Common Name (CN) from the server certificate.");
+                        if (sanVerification && !hostNameVerified) {
+                            throw new CertificateException("Server identity verification failed. "
+                                    + "None of the DNS or IP Subject Alternative Name entries matched the server hostname/IP '" + this.hostName + "'.");
+                        }
                     }
 
-                    if (!this.hostName.equalsIgnoreCase(cn)) {
-                        throw new CertificateException("Server certificate identity check failed. The certificate Common Name '" + cn
-                                + "' does not match with '" + this.hostName + "'.");
+                    if (!hostNameVerified) {
+                        // Fall-back to checking the Relative Distinguished Name CN-ID (Common Name/CN) from the certificate 'subject' field.   
+                        // https://tools.ietf.org/html/rfc6125#section-6.4.4
+                        final String dn = chain[0].getSubjectX500Principal().getName(X500Principal.RFC2253);
+                        String cn = null;
+                        try {
+                            LdapName ldapDN = new LdapName(dn);
+                            for (Rdn rdn : ldapDN.getRdns()) {
+                                if (rdn.getType().equalsIgnoreCase("CN")) {
+                                    cn = rdn.getValue().toString();
+                                    break;
+                                }
+                            }
+                        } catch (InvalidNameException e) {
+                            throw new CertificateException("Failed to retrieve the Common Name (CN) from the server certificate.");
+                        }
+
+                        if (!verifyHostName(cn)) {
+                            throw new CertificateException(
+                                    "Server identity verification failed. The certificate Common Name '" + cn + "' does not match '" + this.hostName + "'.");
+                        }
                     }
                 }
             }
+
+            // Nothing else to validate.
         }
 
         public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
             this.origTm.checkClientTrusted(chain, authType);
+        }
+
+        /**
+         * Verify the host name against the given pattern, using the rules specified in <a href="https://tools.ietf.org/html/rfc6125#section-6.4.3">RFC 6125,
+         * Section 6.4.3</a>. Support wildcard character as defined in the RFC.
+         * 
+         * @param ptn
+         *            the pattern to match with the host name.
+         * @return
+         *         <code>true</code> if the host name matches the pattern, <code>false</code> otherwise.
+         */
+        private boolean verifyHostName(String ptn) {
+            final int indexOfStar = ptn.indexOf('*');
+            if (indexOfStar >= 0 && indexOfStar < ptn.indexOf('.')) {
+                final String head = ptn.substring(0, indexOfStar);
+                final String tail = ptn.substring(indexOfStar + 1);
+
+                return StringUtils.startsWithIgnoreCase(this.hostName, head) && StringUtils.endsWithIgnoreCase(this.hostName, tail)
+                        && this.hostName.substring(head.length(), this.hostName.length() - tail.length()).indexOf('.') == -1;
+            }
+            return this.hostName.equalsIgnoreCase(ptn);
         }
     }
 
     /**
      * Configure the {@link SSLContext} based on the supplier property set.
      * 
-     * @param clientCertificateKeyStoreUrl
-     *            clientCertificateKeyStoreUrl
-     * @param clientCertificateKeyStoreType
-     *            clientCertificateKeyStoreType
-     * @param clientCertificateKeyStorePassword
-     *            clientCertificateKeyStorePassword
-     * @param trustCertificateKeyStoreUrl
-     *            trustCertificateKeyStoreUrl
-     * @param trustCertificateKeyStoreType
-     *            trustCertificateKeyStoreType
-     * @param trustCertificateKeyStorePassword
-     *            trustCertificateKeyStorePassword
+     * @param clientCertificateKeyStore
+     *            clientCertificateKeyStore
+     * @param trustCertificateKeyStore
+     *            trustCertificateKeyStore
      * @param fallbackToDefaultTrustStore
      *            fallbackToDefaultTrustStore
      * @param verifyServerCert
@@ -464,10 +495,15 @@ public class ExportControlled {
      * @throws SSLParamsException
      *             if an error occurs
      */
-    public static SSLContext getSSLContext(String clientCertificateKeyStoreUrl, String clientCertificateKeyStoreType, String clientCertificateKeyStorePassword,
-            String trustCertificateKeyStoreUrl, String trustCertificateKeyStoreType, String trustCertificateKeyStorePassword,
-            boolean fallbackToDefaultTrustStore, boolean verifyServerCert, String hostName, ExceptionInterceptor exceptionInterceptor)
-            throws SSLParamsException {
+    public static SSLContext getSSLContext(KeyStoreConf clientCertificateKeyStore, KeyStoreConf trustCertificateKeyStore, boolean fallbackToDefaultTrustStore,
+            boolean verifyServerCert, String hostName, ExceptionInterceptor exceptionInterceptor) throws SSLParamsException {
+        String clientCertificateKeyStoreUrl = clientCertificateKeyStore.keyStoreUrl;
+        String clientCertificateKeyStoreType = clientCertificateKeyStore.keyStoreType;
+        String clientCertificateKeyStorePassword = clientCertificateKeyStore.keyStorePassword;
+        String trustCertificateKeyStoreUrl = trustCertificateKeyStore.keyStoreUrl;
+        String trustCertificateKeyStoreType = trustCertificateKeyStore.keyStoreType;
+        String trustCertificateKeyStorePassword = trustCertificateKeyStore.keyStorePassword;
+
         TrustManagerFactory tmf = null;
         KeyManagerFactory kmf = null;
 
@@ -539,7 +575,7 @@ public class ExportControlled {
                 trustKeyStore.load(trustStoreIS, trustStorePassword);
             }
 
-            if (trustKeyStore != null || fallbackToDefaultTrustStore) {
+            if (trustKeyStore != null || verifyServerCert && fallbackToDefaultTrustStore) {
                 tmf.init(trustKeyStore); // (trustKeyStore == null) initializes the TrustManagerFactory with the default truststore.  
 
                 // building the customized list of TrustManagers from original one if it's available
@@ -550,7 +586,6 @@ public class ExportControlled {
                     tms.add(tm instanceof X509TrustManager ? new X509TrustManagerWrapper((X509TrustManager) tm, verifyServerCert, hostName) : tm);
                 }
             }
-
         } catch (MalformedURLException e) {
             throw ExceptionFactory.createException(SSLParamsException.class, trustCertificateKeyStoreUrl + " does not appear to be a valid URL.", e,
                     exceptionInterceptor);
@@ -584,6 +619,7 @@ public class ExportControlled {
         try {
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(kms, tms.toArray(new TrustManager[tms.size()]), null);
+
             return sslContext;
 
         } catch (NoSuchAlgorithmException nsae) {
@@ -598,7 +634,6 @@ public class ExportControlled {
     }
 
     public static RSAPublicKey decodeRSAPublicKey(String key) throws RSAException {
-
         if (key == null) {
             throw ExceptionFactory.createException(RSAException.class, "Key parameter is null");
         }
@@ -631,184 +666,4 @@ public class ExportControlled {
     public static byte[] encryptWithRSAPublicKey(byte[] source, RSAPublicKey key) throws RSAException {
         return encryptWithRSAPublicKey(source, key, "RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
     }
-
-    public static AsynchronousSocketChannel startTlsOnAsynchronousChannel(AsynchronousSocketChannel channel, SocketConnection socketConnection)
-            throws SSLException {
-
-        PropertySet propertySet = socketConnection.getPropertySet();
-
-        SslMode sslMode = propertySet.<SslMode>getEnumProperty(PropertyKey.sslMode).getValue();
-
-        boolean verifyServerCert = sslMode == SslMode.VERIFY_CA || sslMode == SslMode.VERIFY_IDENTITY;
-        KeyStoreConf trustStore = !verifyServerCert ? new KeyStoreConf()
-                : getTrustStoreConf(propertySet, PropertyKey.trustCertificateKeyStoreUrl, PropertyKey.trustCertificateKeyStorePassword,
-                        PropertyKey.trustCertificateKeyStoreType, true);
-
-        KeyStoreConf keyStore = getKeyStoreConf(propertySet, PropertyKey.clientCertificateKeyStoreUrl, PropertyKey.clientCertificateKeyStorePassword,
-                PropertyKey.clientCertificateKeyStoreType);
-
-        SSLContext sslContext = ExportControlled.getSSLContext(keyStore.keyStoreUrl, keyStore.keyStoreType, keyStore.keyStorePassword, trustStore.keyStoreUrl,
-                trustStore.keyStoreType, trustStore.keyStorePassword, false, verifyServerCert,
-                sslMode == PropertyDefinitions.SslMode.VERIFY_IDENTITY ? socketConnection.getHost() : null, null);
-        SSLEngine sslEngine = sslContext.createSSLEngine();
-        sslEngine.setUseClientMode(true);
-
-        sslEngine.setEnabledProtocols(getAllowedProtocols(propertySet, null, sslEngine.getSupportedProtocols()));
-
-        String[] allowedCiphers = getAllowedCiphers(propertySet, Arrays.asList(sslEngine.getEnabledCipherSuites()));
-        if (allowedCiphers != null) {
-            sslEngine.setEnabledCipherSuites(allowedCiphers);
-        }
-
-        performTlsHandshake(sslEngine, channel);
-
-        return new TlsAsynchronousSocketChannel(channel, sslEngine);
-    }
-
-    /**
-     * Perform the handshaking step of the TLS connection. We use the `sslEngine' along with the `channel' to exchange messages with the server to setup an
-     * encrypted channel.
-     * 
-     * @param sslEngine
-     *            {@link SSLEngine}
-     * @param channel
-     *            {@link AsynchronousSocketChannel}
-     * @throws SSLException
-     *             in case of handshake error
-     */
-    private static void performTlsHandshake(SSLEngine sslEngine, AsynchronousSocketChannel channel) throws SSLException {
-        sslEngine.beginHandshake();
-        HandshakeStatus handshakeStatus = sslEngine.getHandshakeStatus();
-
-        // Create byte buffers to use for holding application data
-        int packetBufferSize = sslEngine.getSession().getPacketBufferSize();
-        ByteBuffer myNetData = ByteBuffer.allocate(packetBufferSize);
-        ByteBuffer peerNetData = ByteBuffer.allocate(packetBufferSize);
-        int appBufferSize = sslEngine.getSession().getApplicationBufferSize();
-        ByteBuffer myAppData = ByteBuffer.allocate(appBufferSize);
-        ByteBuffer peerAppData = ByteBuffer.allocate(appBufferSize);
-
-        SSLEngineResult res = null;
-
-        while (handshakeStatus != HandshakeStatus.FINISHED && handshakeStatus != HandshakeStatus.NOT_HANDSHAKING) {
-            switch (handshakeStatus) {
-                case NEED_WRAP:
-                    myNetData.clear();
-                    res = sslEngine.wrap(myAppData, myNetData);
-                    handshakeStatus = res.getHandshakeStatus();
-                    switch (res.getStatus()) {
-                        case OK:
-                            myNetData.flip();
-                            write(channel, myNetData);
-                            break;
-                        case BUFFER_OVERFLOW:
-                        case BUFFER_UNDERFLOW:
-                        case CLOSED:
-                            throw new CJCommunicationsException("Unacceptable SSLEngine result: " + res);
-                    }
-                    break;
-                case NEED_UNWRAP:
-                    peerNetData.flip(); // Process incoming handshaking data
-                    res = sslEngine.unwrap(peerNetData, peerAppData);
-                    handshakeStatus = res.getHandshakeStatus();
-                    switch (res.getStatus()) {
-                        case OK:
-                            peerNetData.compact();
-                            break;
-                        case BUFFER_OVERFLOW:
-                            // Check if we need to enlarge the peer application data buffer.
-                            final int newPeerAppDataSize = sslEngine.getSession().getApplicationBufferSize();
-                            if (newPeerAppDataSize > peerAppData.capacity()) {
-                                // enlarge the peer application data buffer
-                                ByteBuffer newPeerAppData = ByteBuffer.allocate(newPeerAppDataSize);
-                                newPeerAppData.put(peerAppData);
-                                newPeerAppData.flip();
-                                peerAppData = newPeerAppData;
-                            } else {
-                                peerAppData.compact();
-                            }
-                            break;
-                        case BUFFER_UNDERFLOW:
-                            // Check if we need to enlarge the peer network packet buffer
-                            final int newPeerNetDataSize = sslEngine.getSession().getPacketBufferSize();
-                            if (newPeerNetDataSize > peerNetData.capacity()) {
-                                // enlarge the peer network packet buffer
-                                ByteBuffer newPeerNetData = ByteBuffer.allocate(newPeerNetDataSize);
-                                newPeerNetData.put(peerNetData);
-                                newPeerNetData.flip();
-                                peerNetData = newPeerNetData;
-                            } else {
-                                peerNetData.compact();
-                            }
-                            // obtain more inbound network data and then retry the operation
-                            if (read(channel, peerNetData) < 0) {
-                                throw new CJCommunicationsException("Server does not provide enough data to proceed with SSL handshake.");
-                            }
-                            break;
-                        case CLOSED:
-                            throw new CJCommunicationsException("Unacceptable SSLEngine result: " + res);
-                    }
-                    break;
-
-                case NEED_TASK:
-                    sslEngine.getDelegatedTask().run();
-                    handshakeStatus = sslEngine.getHandshakeStatus();
-                    break;
-                case FINISHED:
-                case NOT_HANDSHAKING:
-                    break;
-            }
-        }
-    }
-
-    /**
-     * Synchronously send data to the server. (Needed here for TLS handshake)
-     * 
-     * @param channel
-     *            {@link AsynchronousSocketChannel}
-     * @param data
-     *            {@link ByteBuffer}
-     */
-    private static void write(AsynchronousSocketChannel channel, ByteBuffer data) {
-        CompletableFuture<Void> f = new CompletableFuture<>();
-        int bytesToWrite = data.limit();
-        CompletionHandler<Integer, Void> handler = new CompletionHandler<Integer, Void>() {
-            public void completed(Integer bytesWritten, Void nothing) {
-                if (bytesWritten < bytesToWrite) {
-                    channel.write(data, null, this);
-                } else {
-                    f.complete(null);
-                }
-            }
-
-            public void failed(Throwable exc, Void nothing) {
-                f.completeExceptionally(exc);
-            }
-        };
-        channel.write(data, null, handler);
-        try {
-            f.get();
-        } catch (InterruptedException | ExecutionException ex) {
-            throw new CJCommunicationsException(ex);
-        }
-    }
-
-    /**
-     * Synchronously read data from the server. (Needed here for TLS handshake)
-     * 
-     * @param channel
-     *            {@link AsynchronousSocketChannel}
-     * @param data
-     *            {@link ByteBuffer}
-     * @return the number of bytes read
-     */
-    private static Integer read(AsynchronousSocketChannel channel, ByteBuffer data) {
-        Future<Integer> f = channel.read(data);
-        try {
-            return f.get();
-        } catch (InterruptedException | ExecutionException ex) {
-            throw new CJCommunicationsException(ex);
-        }
-    }
-
 }
