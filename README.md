@@ -26,7 +26,7 @@ The figure above provides a simplified overview of how the AWS JDBC Driver handl
 To use the AWS JDBC Driver for MySQL, it requires Amazon Corretto 8+ or Java 8+.
 
 ### Install AWS JDBC Driver for MySQL
-The driver binaries are in [Maven Central] (https://search.maven.org/search?q=g:software.aws.rds).
+The driver binaries are in [Maven Central](https://search.maven.org/search?q=g:software.aws.rds).
 
 **Example - Maven**
 ```xml
