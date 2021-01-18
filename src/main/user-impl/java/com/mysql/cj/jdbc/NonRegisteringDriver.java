@@ -53,6 +53,8 @@ import com.mysql.cj.jdbc.ha.FailoverConnectionProxy;
 import com.mysql.cj.jdbc.ha.LoadBalancedConnectionProxy;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
 import com.mysql.cj.util.StringUtils;
+import software.aws.rds.jdbc.ConnectionByProtocolProvider;
+import software.aws.rds.jdbc.StandardConnectionByProtocolProvider;
 
 /**
  * The Java SQL framework allows for multiple database drivers. Each driver should supply a class that implements the Driver interface
@@ -73,6 +75,8 @@ import com.mysql.cj.util.StringUtils;
  * </p>
  */
 public class NonRegisteringDriver implements java.sql.Driver {
+
+    private ConnectionByProtocolProvider connProvider;
 
     /*
      * Standardizes OS name information to align with other drivers/clients
@@ -128,6 +132,11 @@ public class NonRegisteringDriver implements java.sql.Driver {
      */
     public NonRegisteringDriver() throws SQLException {
         // Required for Class.forName().newInstance()
+        this.connProvider = new StandardConnectionByProtocolProvider();
+    }
+
+    NonRegisteringDriver(ConnectionByProtocolProvider connProvider) {
+        this.connProvider = connProvider;
     }
 
     /**
@@ -196,7 +205,14 @@ public class NonRegisteringDriver implements java.sql.Driver {
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
             switch (conStr.getType()) {
                 case SINGLE_CONNECTION_AWS:
-                    return ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
+                    return connProvider.getAwsProtocolConnection(conStr);
+
+                case REPLICATION_CONNECTION:
+                case REPLICATION_DNS_SRV_CONNECTION:
+                    JdbcPropertySetImpl connProps = new JdbcPropertySetImpl();
+                    connProps.initializeProperties(conStr.getMainHost().exposeAsProperties());
+                    boolean acceptAwsProtocolOnly = connProps.getBooleanProperty(PropertyKey.acceptAwsProtocolOnly).getValue();
+                    return acceptAwsProtocolOnly ? null : connProvider.getReplicationProtocolConnection(conStr);
 
                 default:
                     return null;
