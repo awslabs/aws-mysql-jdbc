@@ -190,17 +190,18 @@ public class FailoverSampleApp2 {
 
   public static void main(String[] args) throws SQLException {
     // Create a connection
-    Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD);
-    // Configure the connection - set autocommit to false.
-    setInitialSessionState(conn);
-
-    // Do something with method "betterExecuteUpdate_setAutoCommitFalse" using the Cluster-Aware Driver.
-    String[] update_sql = new String[3];
-    // Add all queries that you want to execute inside a transaction.
-    update_sql[0] = "INSERT INTO employees(name, position, salary) VALUES('john', 'developer', 2000)";
-    update_sql[1] = "INSERT INTO employees(name, position, salary) VALUES('mary', 'manager', 2005)";
-    update_sql[2] = "INSERT INTO employees(name, position, salary) VALUES('Tom', 'accountant', 2019)";
-    betterExecuteUpdate_setAutoCommitFalse(conn, update_sql);
+    try(Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
+      // Configure the connection - set autocommit to false.
+      setInitialSessionState(conn);
+  
+      // Do something with method "betterExecuteUpdate_setAutoCommitFalse" using the Cluster-Aware Driver.
+      String[] update_sql = new String[3];
+      // Add all queries that you want to execute inside a transaction.
+      update_sql[0] = "INSERT INTO employees(name, position, salary) VALUES('john', 'developer', 2000)";
+      update_sql[1] = "INSERT INTO employees(name, position, salary) VALUES('mary', 'manager', 2005)";
+      update_sql[2] = "INSERT INTO employees(name, position, salary) VALUES('Tom', 'accountant', 2019)";
+      betterExecuteUpdate_setAutoCommitFalse(conn, update_sql);
+    }
   }
 
   private static void setInitialSessionState(Connection conn) throws SQLException {
@@ -223,6 +224,7 @@ public class FailoverSampleApp2 {
         for(String sql: queriesInTransaction){
           stmt.executeUpdate(sql);
         }
+        conn.commit();
         isSuccess = true;
 
       } catch (SQLException e) {
@@ -246,13 +248,7 @@ public class FailoverSampleApp2 {
           conn.rollback();
           throw e;
         }
-
-      } finally {
-        // Close the connection.
-        if (isSuccess) {
-          conn.close();
-        }
-      }
+      } 
     }
   }
 }
