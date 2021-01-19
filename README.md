@@ -98,76 +98,71 @@ import java.sql.*;
  * Scenario 1: Failover happens when autocommit is set to true - Catch SQLException with code 08S02.
  */
 public class FailoverSampleApp1 {
-  private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/myDb";
-  private static final String USERNAME = "username";
-  private static final String PASSWORD = "password";
-  private static final int MAX_RETRIES = 5;
+    private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/myDb";
+    private static final String USERNAME = "username";
+    private static final String PASSWORD = "password";
+    private static final int MAX_RETRIES = 5;
 
-  public static void main(String[] args) throws SQLException {
-    // Create a connection.
-    Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD);
-    // Configure the connection.
-    setInitialSessionState(conn);
-
-    // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
-    String select_sql = "SELECT * FROM employees";
-    ResultSet rs = betterExecuteQuery(conn, select_sql);
-    while (rs.next()) {
-      System.out.println(rs.getString("name"));
-    }
-  }
-
-  private static void setInitialSessionState(Connection conn) throws SQLException {
-    // Your code here for the initial connection setup.
-    Statement stmt1 = conn.createStatement();
-    stmt1.executeUpdate("SET time_zone = +00:00");
-  }
-
-  // A better executing query method when autocommit is set as the default value - True.
-  private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
-    // Create a boolean flag.
-    boolean isSuccess = false;
-    // Record the times of re-try.
-    int retries = 0;
-
-    ResultSet rs = null;
-    while (!isSuccess) {
-      try {
-        Statement stmt = conn.createStatement();
-        rs = stmt.executeQuery(query);
-        isSuccess = true;
-
-      } catch (SQLException e) {
-
-        // If the attempt to connect has failed MAX_RETRIES times,
-        // throw the exception to inform users of the failed connection.
-        if (retries > MAX_RETRIES) {
-          throw e;
+    public static void main(String[] args) throws SQLException {
+        // Create a connection.
+        try(Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
+            // Configure the connection.
+            setInitialSessionState(conn);
+    
+            // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
+            String select_sql = "SELECT * FROM employees";
+            ResultSet rs = betterExecuteQuery(conn, select_sql);
+            while (rs.next()) {
+              System.out.println(rs.getString("name"));
+            }
         }
-
-        // Failover has occurred and the driver has failed over to another instance successfully.
-        if (e.getSQLState().equalsIgnoreCase("08S02")) {
-          // Re-config the connection.
-          setInitialSessionState(conn);
-          // Re-execute that query again.
-          retries++;
-
-        } else {
-          // If some other exception occurs, throw the exception.
-          throw e;
-        }
-
-      } finally {
-        // Close the connection.
-        if (isSuccess) {
-          conn.close();
-        }
-      }
     }
 
-    // return the ResultSet successfully.
-    return rs;
-  }
+    private static void setInitialSessionState(Connection conn) throws SQLException {
+        // Your code here for the initial connection setup.
+        Statement stmt1 = conn.createStatement();
+        stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    }
+  
+    // A better executing query method when autocommit is set as the default value - True.
+    private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
+        // Create a boolean flag.
+        boolean isSuccess = false;
+        // Record the times of re-try.
+        int retries = 0;
+    
+        ResultSet rs = null;
+        while (!isSuccess) {
+            try {
+                Statement stmt = conn.createStatement();
+                rs = stmt.executeQuery(query);
+                isSuccess = true;
+    
+            } catch (SQLException e) {
+    
+                // If the attempt to connect has failed MAX_RETRIES times,
+                // throw the exception to inform users of the failed connection.
+                if (retries > MAX_RETRIES) {
+                    throw e;
+                }
+    
+                // Failover has occurred and the driver has failed over to another instance successfully.
+                if (e.getSQLState().equalsIgnoreCase("08S02")) {
+                    // Re-config the connection.
+                    setInitialSessionState(conn);
+                    // Re-execute that query again.
+                    retries++;
+  
+                } else {
+                    // If some other exception occurs, throw the exception.
+                    throw e;
+                }
+            }
+        }
+    
+        // return the ResultSet successfully.
+        return rs;
+    }
 }
 ```
 
