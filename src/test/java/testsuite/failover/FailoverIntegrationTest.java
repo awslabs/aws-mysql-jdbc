@@ -65,7 +65,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
-@Disabled
 @TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class FailoverIntegrationTest {
   /*
@@ -959,7 +958,8 @@ public class FailoverIntegrationTest {
   }
 
   @BeforeEach
-  private void resetCluster() throws InterruptedException {
+  private void resetCluster() throws InterruptedException, SQLException {
+    DriverManager.getConnection(DB_CONN_STR_PREFIX + "database-aurora-instance-1" + DB_CONN_STR_SUFFIX + "?acceptAwsProtocolOnly=true");
     this.log.logDebug("Resetting cluster.");
     waitUntilFirstInstanceIsWriter();
     waitUntilInstanceIsUp(INSTANCE_ID_1);
