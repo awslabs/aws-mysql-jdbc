@@ -37,7 +37,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
@@ -48,7 +47,6 @@ import testsuite.BaseTestCase;
 
 public class ReadOnlyCallableStatementTest extends BaseTestCase {
     @Test
-    @Disabled
     public void testReadOnlyWithProcBodyAccess() throws Exception {
         Connection replConn = null;
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
@@ -85,7 +83,6 @@ public class ReadOnlyCallableStatementTest extends BaseTestCase {
     }
 
     @Test
-    @Disabled
     public void testNotReadOnlyWithProcBodyAccess() throws Exception {
         Connection replConn = null;
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
