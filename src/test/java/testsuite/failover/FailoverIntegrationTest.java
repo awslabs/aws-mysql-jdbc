@@ -959,7 +959,7 @@ public class FailoverIntegrationTest {
   }
 
   @BeforeEach
-  private void resetCluster() throws InterruptedException, SQLException {
+  private void resetCluster() throws InterruptedException {
     this.log.logDebug("Resetting cluster.");
     waitUntilFirstInstanceIsWriter();
     waitUntilInstanceIsUp(INSTANCE_ID_1);
