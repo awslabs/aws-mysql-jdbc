@@ -11520,7 +11520,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         System.setErr(new PrintStream(newErr));
 
         // clientInfoProvider=CommentClientInfoProvider
-        testConn1 = getConnectionWithProps("clientInfoProvider=CommentClientInfoProvider,profileSQL=true");
+        testConn1 = getConnectionWithProps("clientInfoProvider=CommentClientInfoProvider,profileSQL=true,logger=StandardLogger");
         testConn1.setClientInfo("testBug98445", "testBug98445Data3");
         testStmt = testConn1.createStatement();
         this.rs = testStmt.executeQuery("SELECT 'testBug98445Data3'");
@@ -11533,7 +11533,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         newErr.reset();
 
         // clientInfoProvider=com.mysql.cj.jdbc.CommentClientInfoProvider
-        testConn1 = getConnectionWithProps("clientInfoProvider=com.mysql.cj.jdbc.CommentClientInfoProvider,profileSQL=true");
+        testConn1 = getConnectionWithProps("clientInfoProvider=com.mysql.cj.jdbc.CommentClientInfoProvider,profileSQL=true,logger=StandardLogger");
         testConn1.setClientInfo("testBug98445", "testBug98445Data4");
         testStmt = testConn1.createStatement();
         this.rs = testStmt.executeQuery("SELECT 'testBug98445Data4'");
