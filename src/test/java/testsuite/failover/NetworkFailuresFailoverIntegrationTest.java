@@ -63,6 +63,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * mysql-instance-5
  */
 
+@Disabled
 @TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class NetworkFailuresFailoverIntegrationTest {
 
@@ -334,11 +335,6 @@ public class NetworkFailuresFailoverIntegrationTest {
         myStmt.close();
       }
     }
-  }
-
-  @Test
-  public void testReplicationFailover() {
-
   }
 
 }
