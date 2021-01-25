@@ -127,7 +127,6 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   // Configuration settings
   protected boolean enableFailoverSetting = true;
   protected int clusterTopologyRefreshRateMsSetting;
-  protected String loggerClassNameSetting;
   protected boolean gatherPerfMetricsSetting;
   protected int failoverTimeoutMsSetting;
   protected int failoverClusterTopologyRefreshRateMsSetting;
@@ -148,7 +147,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   public ClusterAwareConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
     super(connectionUrl);
     initSettings(connectionUrl);
-    initLogger();
+    initLogger(connectionUrl);
 
     AuroraTopologyService topologyService = new AuroraTopologyService();
     topologyService.setPerformanceMetricsEnabled(this.gatherPerfMetricsSetting);
@@ -184,7 +183,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       throws SQLException {
     super(connectionUrl);
     initSettings(connectionUrl);
-    initLogger();
+    initLogger(connectionUrl);
 
     this.topologyService = service;
     this.topologyService.setRefreshRate(this.clusterTopologyRefreshRateMsSetting);
@@ -256,7 +255,6 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         connProps.getIntegerProperty(PropertyKey.clusterTopologyRefreshRateMs).getValue();
     this.gatherPerfMetricsSetting =
         connProps.getBooleanProperty(PropertyKey.gatherPerfMetrics).getValue();
-    this.loggerClassNameSetting = connProps.getStringProperty(PropertyKey.logger).getValue();
     this.failoverTimeoutMsSetting =
         connProps.getIntegerProperty(PropertyKey.failoverTimeoutMs).getValue();
     this.failoverClusterTopologyRefreshRateMsSetting =
@@ -276,9 +274,10 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     this.failoverSocketTimeoutMs = socketTimeout.isExplicitlySet() ? socketTimeout.getValue() : DEFAULT_SOCKET_TIMEOUT_MS;
   }
 
-  protected synchronized void initLogger() {
-    if (!StringUtils.isNullOrEmpty(this.loggerClassNameSetting)) {
-      this.log = LogFactory.getLogger(this.loggerClassNameSetting, Log.LOGGER_INSTANCE_NAME);
+  protected synchronized void initLogger(ConnectionUrl connUrl) {
+    String loggerClassName = connUrl.getOriginalProperties().get(PropertyKey.logger.getKeyName());
+    if (!StringUtils.isNullOrEmpty(loggerClassName)) {
+      this.log = LogFactory.getLogger(loggerClassName, Log.LOGGER_INSTANCE_NAME);
     }
   }
 

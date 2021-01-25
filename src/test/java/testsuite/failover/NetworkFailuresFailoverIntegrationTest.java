@@ -65,7 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Disabled
 @TestMethodOrder(MethodOrderer.Alphanumeric.class)
-public class NetworkFailuresFailoverIntegrationTests {
+public class NetworkFailuresFailoverIntegrationTest {
 
   private final Log log;
 
@@ -92,7 +92,7 @@ public class NetworkFailuresFailoverIntegrationTests {
   private static final String DB_USER = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.user");
   private static final String DB_PASS = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.password");
 
-  public NetworkFailuresFailoverIntegrationTests() throws SQLException {
+  public NetworkFailuresFailoverIntegrationTest() throws SQLException {
     DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
     this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
   }

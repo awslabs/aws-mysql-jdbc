@@ -73,7 +73,6 @@ import java.util.function.ToIntFunction;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.CharsetMapping;
@@ -2423,7 +2422,6 @@ public class StatementsTest extends BaseTestCase {
     }
 
     @Test
-    @Disabled
     public void testJdbc4LoadBalancing() throws Exception {
         Properties props = new Properties();
         props.setProperty(PropertyKey.ha_loadBalanceStrategy.getKeyName(), CountingReBalanceStrategy.class.getName());

@@ -78,7 +78,7 @@ In addition to [the parameters that can be configured for the MySQL Connector/J 
 |`failoverClusterTopologyRefreshRateMs` | Integer | Cluster topology refresh rate in milliseconds during a writer failover process. During the writer failover process, cluster topology may be refreshed at a faster pace than normal to speed up discovery of the newly promoted writer.<br/><br/>**Default value:** `5000` |
 |`failoverWriterReconnectIntervalMs` | Integer | Interval of time in milliseconds to wait between attempts to reconnect to a failed writer during a writer failover process.<br/><br/>**Default value:** `5000` |
 |`failoverReaderConnectTimeoutMs` | Integer | Maximum allowed time in milliseconds to attempt to connect to a reader instance during a reader failover process. <br/><br/>**Default value:** `5000`
-
+|`acceptAwsProtocolOnly` | Boolean | Set to true to only accept connections for URLs with the jdbc:mysql:aws:// protocol. This setting should be set to true when running an application that uses this driver simultaneously with another mysql driver that supports the same protocols (eg the mysql-connector-j driver), to ensure the driver protocols do not clash.<br/><br/>**Default value:** `false`
 #### Failover Exception Codes
 ##### 08001 - Unable to Establish SQL Connection
 When the driver throws a SQLException with code ```08001```, it means the original connection failed, and the driver tried to failover to a new instance, but was unable to. There are various reasons this may happen: no nodes were available, a network failure occurred, etc. In this scenario, please wait until the server is up or other problems are solved. (Exception will be thrown.)

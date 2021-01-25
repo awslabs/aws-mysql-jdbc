@@ -34,6 +34,7 @@ import static com.mysql.cj.util.StringUtils.isNullOrEmpty;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Map;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -194,9 +195,26 @@ public class NonRegisteringDriver implements java.sql.Driver {
             }
 
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
+            Map<String, String> connProps = conStr.getOriginalProperties();
+            boolean acceptAwsProtocolOnly = Boolean.parseBoolean(connProps.getOrDefault(PropertyKey.acceptAwsProtocolOnly.getKeyName(), "false"));
             switch (conStr.getType()) {
+                case SINGLE_CONNECTION:
+                    return acceptAwsProtocolOnly ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
+
                 case SINGLE_CONNECTION_AWS:
                     return ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
+
+                case FAILOVER_CONNECTION:
+                case FAILOVER_DNS_SRV_CONNECTION:
+                    return acceptAwsProtocolOnly ? null : FailoverConnectionProxy.createProxyInstance(conStr);
+
+                case LOADBALANCE_CONNECTION:
+                case LOADBALANCE_DNS_SRV_CONNECTION:
+                    return acceptAwsProtocolOnly ? null : LoadBalancedConnectionProxy.createProxyInstance(conStr);
+
+                case REPLICATION_CONNECTION:
+                case REPLICATION_DNS_SRV_CONNECTION:
+                    return acceptAwsProtocolOnly ? null : ReplicationConnectionProxy.createProxyInstance(conStr);
 
                 default:
                     return null;

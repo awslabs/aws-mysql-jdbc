@@ -436,7 +436,6 @@ public class BlobRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
-    @Disabled
     public void testBug95210() throws Exception {
         createTable("testBug95210", "(ID VARCHAR(10) PRIMARY KEY, DATA LONGBLOB)");
         this.stmt.executeUpdate("INSERT INTO testBug95210 (ID, DATA) VALUES (1, '111')");

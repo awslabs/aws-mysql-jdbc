@@ -65,8 +65,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
-@Disabled
 @TestMethodOrder(MethodOrderer.Alphanumeric.class)
+@Disabled
 public class FailoverIntegrationTest {
   /*
    * Before running these tests we need to initialize the test cluster as the following.
