@@ -111,21 +111,25 @@ public class FailoverSampleApp1 {
    
       // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
       String select_sql = "SELECT * FROM employees";
-      ResultSet rs = betterExecuteQuery(conn, select_sql);
-      while (rs.next()) {
-        System.out.println(rs.getString("name"));
+      try(Statement stmt = conn.createStatement()) {
+        try(ResultSet rs = betterExecuteQuery(conn, stmt, select_sql)) {
+          while (rs.next()) {
+            System.out.println(rs.getString("name"));
+          }
+        }
       }
     }
   }
 
   private static void setInitialSessionState(Connection conn) throws SQLException {
     // Your code here for the initial connection setup.
-    Statement stmt1 = conn.createStatement();
-    stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    try(Statement stmt1 = conn.createStatement()) {
+      stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    }
   }
   
   // A better executing query method when autocommit is set as the default value - True.
-  private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
+  private static ResultSet betterExecuteQuery(Connection conn, Statement stmt, String query) throws SQLException {
     // Create a boolean flag.
     boolean isSuccess = false;
     // Record the times of re-try.
@@ -134,7 +138,6 @@ public class FailoverSampleApp1 {
     ResultSet rs = null;
     while (!isSuccess) {
       try {
-        Statement stmt = conn.createStatement();
         rs = stmt.executeQuery(query);
         isSuccess = true;
     
@@ -206,8 +209,9 @@ public class FailoverSampleApp2 {
 
   private static void setInitialSessionState(Connection conn) throws SQLException {
     // Your code here for the initial connection setup.
-    Statement stmt1 = conn.createStatement();
-    stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    try(Statement stmt1 = conn.createStatement()) {
+      stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    }
     conn.setAutoCommit(false);
   }
 
@@ -219,14 +223,12 @@ public class FailoverSampleApp2 {
     int retries = 0;
 
     while (!isSuccess) {
-      try {
-        Statement stmt = conn.createStatement();
+      try(Statement stmt = conn.createStatement()) {
         for(String sql: queriesInTransaction){
           stmt.executeUpdate(sql);
         }
         conn.commit();
         isSuccess = true;
-
       } catch (SQLException e) {
 
         // If the attempt to connect has failed MAX_RETRIES times,
