@@ -111,11 +111,9 @@ public class FailoverSampleApp1 {
    
       // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
       String select_sql = "SELECT * FROM employees";
-      try(Statement stmt = conn.createStatement()) {
-        try(ResultSet rs = betterExecuteQuery(conn, stmt, select_sql)) {
-          while (rs.next()) {
-            System.out.println(rs.getString("name"));
-          }
+      try(ResultSet rs = betterExecuteQuery(conn, select_sql)) {
+        while (rs.next()) {
+          System.out.println(rs.getString("name"));
         }
       }
     }
@@ -129,7 +127,7 @@ public class FailoverSampleApp1 {
   }
   
   // A better executing query method when autocommit is set as the default value - True.
-  private static ResultSet betterExecuteQuery(Connection conn, Statement stmt, String query) throws SQLException {
+  private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
     // Create a boolean flag.
     boolean isSuccess = false;
     // Record the times of re-try.
@@ -138,6 +136,7 @@ public class FailoverSampleApp1 {
     ResultSet rs = null;
     while (!isSuccess) {
       try {
+        Statement stmt = conn.createStatement();
         rs = stmt.executeQuery(query);
         isSuccess = true;
     
