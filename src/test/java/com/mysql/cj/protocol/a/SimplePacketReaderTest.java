@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -39,7 +39,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.Optional;
 import java.util.Random;
 
@@ -311,12 +310,6 @@ public class SimplePacketReaderTest {
         }
 
         public PropertySet getPropertySet() {
-            return null;
-        }
-
-        @Override
-        public AsynchronousSocketChannel getAsynchronousSocketChannel() {
-            // TODO Auto-generated method stub
             return null;
         }
     }

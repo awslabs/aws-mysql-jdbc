@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -110,10 +110,8 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
         List<CompletableFuture<DocResult>> futures = new ArrayList<>();
         for (int i = 0; i < NUMBER_OF_QUERIES; ++i) {
             if (i % 5 == 0) {
-                //System.out.println("\nfutures.add(CompletableFuture.completedFuture(coll.find(\"mode = 'sync'\").execute()));");
                 futures.add(CompletableFuture.completedFuture(coll.find("mode = 'sync'").execute()));
             } else {
-                //System.out.println("\nfutures.add(coll.find(\"mode = 'async'\").executeAsync());");
                 futures.add(coll.find("mode = 'async'").executeAsync());
             }
         }

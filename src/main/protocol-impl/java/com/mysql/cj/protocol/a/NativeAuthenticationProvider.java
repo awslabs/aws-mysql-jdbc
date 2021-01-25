@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -52,6 +52,7 @@ import com.mysql.cj.protocol.ServerSession;
 import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
+import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
 import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin;
@@ -139,8 +140,10 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
                 | (this.propertySet.getBooleanProperty(PropertyKey.useCompression).getValue() ? (capabilityFlags & NativeServerSession.CLIENT_COMPRESS) : 0)
                 | (this.useConnectWithDb ? (capabilityFlags & NativeServerSession.CLIENT_CONNECT_WITH_DB) : 0)
                 | (this.propertySet.getBooleanProperty(PropertyKey.useAffectedRows).getValue() ? 0 : (capabilityFlags & NativeServerSession.CLIENT_FOUND_ROWS))
-                | (this.propertySet.getBooleanProperty(PropertyKey.allowLoadLocalInfile).getValue() ? (capabilityFlags & NativeServerSession.CLIENT_LOCAL_FILES)
-                        : 0)
+                | (this.propertySet.getBooleanProperty(PropertyKey.allowLoadLocalInfile).getValue()
+                        || this.propertySet.getStringProperty(PropertyKey.allowLoadLocalInfileInPath).isExplicitlySet()
+                                ? (capabilityFlags & NativeServerSession.CLIENT_LOCAL_FILES)
+                                : 0)
                 | (this.propertySet.getBooleanProperty(PropertyKey.interactiveClient).getValue() ? (capabilityFlags & NativeServerSession.CLIENT_INTERACTIVE)
                         : 0)
                 | (this.propertySet.getBooleanProperty(PropertyKey.allowMultiQueries).getValue()
@@ -240,6 +243,7 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         pluginsToInit.add(new Sha256PasswordPlugin());
         pluginsToInit.add(new CachingSha2PasswordPlugin());
         pluginsToInit.add(new MysqlOldPasswordPlugin());
+        pluginsToInit.add(new AuthenticationLdapSaslClientPlugin());
 
         // plugins from authenticationPluginClasses connection parameter
         String authenticationPluginClasses = this.propertySet.getStringProperty(PropertyKey.authenticationPlugins).getValue();
@@ -326,7 +330,6 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
      */
     @SuppressWarnings("unchecked")
     private AuthenticationPlugin<NativePacketPayload> getAuthenticationPlugin(String pluginName) {
-
         AuthenticationPlugin<NativePacketPayload> plugin = this.authenticationPlugins.get(pluginName);
 
         if (plugin != null && !plugin.isReusable()) {
