@@ -105,66 +105,63 @@ public class FailoverSampleApp1 {
 
   public static void main(String[] args) throws SQLException {
     // Create a connection.
-    Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD);
-    // Configure the connection.
-    setInitialSessionState(conn);
-
-    // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
-    String select_sql = "SELECT * FROM employees";
-    ResultSet rs = betterExecuteQuery(conn, select_sql);
-    while (rs.next()) {
-      System.out.println(rs.getString("name"));
+    try(Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
+      // Configure the connection.
+      setInitialSessionState(conn);
+   
+      // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
+      String select_sql = "SELECT * FROM employees";
+      try(ResultSet rs = betterExecuteQuery(conn, select_sql)) {
+        while (rs.next()) {
+          System.out.println(rs.getString("name"));
+        }
+      }
     }
   }
 
   private static void setInitialSessionState(Connection conn) throws SQLException {
     // Your code here for the initial connection setup.
-    Statement stmt1 = conn.createStatement();
-    stmt1.executeUpdate("SET time_zone = +00:00");
+    try(Statement stmt1 = conn.createStatement()) {
+      stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    }
   }
-
+  
   // A better executing query method when autocommit is set as the default value - True.
   private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
     // Create a boolean flag.
     boolean isSuccess = false;
     // Record the times of re-try.
     int retries = 0;
-
+    
     ResultSet rs = null;
     while (!isSuccess) {
       try {
         Statement stmt = conn.createStatement();
         rs = stmt.executeQuery(query);
         isSuccess = true;
-
+    
       } catch (SQLException e) {
-
+    
         // If the attempt to connect has failed MAX_RETRIES times,
         // throw the exception to inform users of the failed connection.
         if (retries > MAX_RETRIES) {
           throw e;
         }
-
+    
         // Failover has occurred and the driver has failed over to another instance successfully.
         if (e.getSQLState().equalsIgnoreCase("08S02")) {
           // Re-config the connection.
           setInitialSessionState(conn);
           // Re-execute that query again.
           retries++;
-
+  
         } else {
           // If some other exception occurs, throw the exception.
           throw e;
         }
-
-      } finally {
-        // Close the connection.
-        if (isSuccess) {
-          conn.close();
-        }
       }
     }
-
+    
     // return the ResultSet successfully.
     return rs;
   }
@@ -195,23 +192,25 @@ public class FailoverSampleApp2 {
 
   public static void main(String[] args) throws SQLException {
     // Create a connection
-    Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD);
-    // Configure the connection - set autocommit to false.
-    setInitialSessionState(conn);
-
-    // Do something with method "betterExecuteUpdate_setAutoCommitFalse" using the Cluster-Aware Driver.
-    String[] update_sql = new String[3];
-    // Add all queries that you want to execute inside a transaction.
-    update_sql[0] = "INSERT INTO employees(name, position, salary) VALUES('john', 'developer', 2000)";
-    update_sql[1] = "INSERT INTO employees(name, position, salary) VALUES('mary', 'manager', 2005)";
-    update_sql[2] = "INSERT INTO employees(name, position, salary) VALUES('Tom', 'accountant', 2019)";
-    betterExecuteUpdate_setAutoCommitFalse(conn, update_sql);
+    try(Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
+      // Configure the connection - set autocommit to false.
+      setInitialSessionState(conn);
+  
+      // Do something with method "betterExecuteUpdate_setAutoCommitFalse" using the Cluster-Aware Driver.
+      String[] update_sql = new String[3];
+      // Add all queries that you want to execute inside a transaction.
+      update_sql[0] = "INSERT INTO employees(name, position, salary) VALUES('john', 'developer', 2000)";
+      update_sql[1] = "INSERT INTO employees(name, position, salary) VALUES('mary', 'manager', 2005)";
+      update_sql[2] = "INSERT INTO employees(name, position, salary) VALUES('Tom', 'accountant', 2019)";
+      betterExecuteUpdate_setAutoCommitFalse(conn, update_sql);
+    }
   }
 
   private static void setInitialSessionState(Connection conn) throws SQLException {
     // Your code here for the initial connection setup.
-    Statement stmt1 = conn.createStatement();
-    stmt1.executeUpdate("SET time_zone = +00:00");
+    try(Statement stmt1 = conn.createStatement()) {
+      stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+    }
     conn.setAutoCommit(false);
   }
 
@@ -223,13 +222,12 @@ public class FailoverSampleApp2 {
     int retries = 0;
 
     while (!isSuccess) {
-      try {
-        Statement stmt = conn.createStatement();
+      try(Statement stmt = conn.createStatement()) {
         for(String sql: queriesInTransaction){
           stmt.executeUpdate(sql);
         }
+        conn.commit();
         isSuccess = true;
-
       } catch (SQLException e) {
 
         // If the attempt to connect has failed MAX_RETRIES times,
@@ -251,13 +249,7 @@ public class FailoverSampleApp2 {
           conn.rollback();
           throw e;
         }
-
-      } finally {
-        // Close the connection.
-        if (isSuccess) {
-          conn.close();
-        }
-      }
+      } 
     }
   }
 }
