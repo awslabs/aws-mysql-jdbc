@@ -28,7 +28,23 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc;
+package software.aws.rds.jdbc.mysql.log;
 
-public interface ParseInfoCacheFactory extends com.mysql.cj.CacheAdapterFactory<String, com.mysql.cj.ParseInfo> {
+import java.util.logging.Logger;
+
+/**
+ * Logging functionality for JDK1.4
+ */
+public class Jdk14Logger extends com.mysql.cj.log.Jdk14Logger implements Log {
+
+    /**
+     * Creates a new Jdk14Logger object.
+     *
+     * @param name
+     *            logger name as per {@link Logger#getLogger(String)}
+     */
+    public Jdk14Logger(String name) {
+        super(name);
+    }
+
 }

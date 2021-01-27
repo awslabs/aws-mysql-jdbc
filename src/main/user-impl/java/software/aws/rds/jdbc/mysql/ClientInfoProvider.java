@@ -28,9 +28,13 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc;
+package software.aws.rds.jdbc.mysql;
 
-import java.util.Map;
-
-public interface ServerConfigCacheFactory extends com.mysql.cj.CacheAdapterFactory<String, Map<String, String>> {
+/**
+ * Classes that implement this interface and provide a no-args constructor can be used by the driver to store and retrieve client information and/or labels.
+ *
+ * The driver will create an instance for each Connection instance, and call initialize() once and only once. When the connection is closed, destroy() will be
+ * called, and the provider is expected to clean up any resources at this time.
+ */
+public interface ClientInfoProvider extends com.mysql.cj.jdbc.ClientInfoProvider {
 }

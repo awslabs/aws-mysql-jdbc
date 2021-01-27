@@ -28,13 +28,13 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc;
+package software.aws.rds.jdbc.mysql;
 
-/**
- * Classes that implement this interface and provide a no-args constructor can be used by the driver to store and retrieve client information and/or labels.
- *
- * The driver will create an instance for each Connection instance, and call initialize() once and only once. When the connection is closed, destroy() will be
- * called, and the provider is expected to clean up any resources at this time.
- */
-public interface ClientInfoProvider extends com.mysql.cj.jdbc.ClientInfoProvider {
+public class MysqlDataSource extends com.mysql.cj.jdbc.MysqlDataSource {
+
+    /**
+     * Default no-arg constructor for Serialization
+     */
+    public MysqlDataSource() {
+    }
 }

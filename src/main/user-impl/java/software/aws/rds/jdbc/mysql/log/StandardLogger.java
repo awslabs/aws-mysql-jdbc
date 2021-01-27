@@ -28,23 +28,31 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.log;
-
-import java.util.logging.Logger;
+package software.aws.rds.jdbc.mysql.log;
 
 /**
- * Logging functionality for JDK1.4
+ * Provides logging facilities for those platforms that don't have built-in facilities. Simply logs messages to STDERR.
  */
-public class Jdk14Logger extends com.mysql.cj.log.Jdk14Logger implements Log {
+public class StandardLogger extends com.mysql.cj.log.StandardLogger implements Log {
 
     /**
-     * Creates a new Jdk14Logger object.
+     * Creates a new StandardLogger object.
      *
      * @param name
-     *            logger name as per {@link Logger#getLogger(String)}
+     *            the name of the configuration to use -- ignored
      */
-    public Jdk14Logger(String name) {
-        super(name);
+    public StandardLogger(String name) {
+        super(name, false);
+    }
+
+    /**
+     * @param name
+     *            the name of the configuration to use -- ignored
+     * @param logLocationInfo
+     *            logLocationInfo
+     */
+    public StandardLogger(String name, boolean logLocationInfo) {
+        super(name, logLocationInfo);
     }
 
 }

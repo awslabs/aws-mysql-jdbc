@@ -28,13 +28,20 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc;
+package software.aws.rds.jdbc.mysql.log;
 
-public class MysqlDataSource extends com.mysql.cj.jdbc.MysqlDataSource {
+/**
+ * A logger that does nothing. Used before the log is configured via the URL or properties.
+ */
+public class NullLogger extends com.mysql.cj.log.NullLogger implements Log {
 
     /**
-     * Default no-arg constructor for Serialization
+     * Creates a new NullLogger with the given name
+     *
+     * @param instanceName
+     *            (ignored)
      */
-    public MysqlDataSource() {
+    public NullLogger(String instanceName) {
+        super(instanceName);
     }
 }

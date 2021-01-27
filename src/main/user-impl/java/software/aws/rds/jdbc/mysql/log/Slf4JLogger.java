@@ -28,7 +28,11 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.exceptions;
+package software.aws.rds.jdbc.mysql.log;
 
-public interface ExceptionInterceptor extends com.mysql.cj.exceptions.ExceptionInterceptor {
+public class Slf4JLogger extends com.mysql.cj.log.Slf4JLogger implements Log {
+
+    public Slf4JLogger(String name) {
+        super(name);
+    }
 }

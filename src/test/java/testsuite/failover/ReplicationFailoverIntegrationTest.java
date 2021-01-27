@@ -6,6 +6,8 @@ import com.amazonaws.services.rds.model.*;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import org.junit.jupiter.api.*;
+import software.aws.rds.jdbc.mysql.Driver;
+import software.aws.rds.jdbc.mysql.log.StandardLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -56,8 +58,8 @@ public class ReplicationFailoverIntegrationTest {
      * ReplicationFailoverIntegrationTest constructor.
      * */
     public ReplicationFailoverIntegrationTest() throws SQLException {
-        DriverManager.registerDriver(new software.aws.rds.jdbc.Driver());
-        this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
+        DriverManager.registerDriver(new Driver());
+        this.log = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 
         initiateInstanceNames();
         hosts.add(INSTANCE_ID_1);

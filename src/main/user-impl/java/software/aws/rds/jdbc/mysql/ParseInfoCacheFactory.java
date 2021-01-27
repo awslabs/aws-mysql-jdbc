@@ -28,10 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.protocol;
+package software.aws.rds.jdbc.mysql;
 
-/**
- * Interface to allow pluggable socket creation in the driver
- */
-public interface SocketFactory extends com.mysql.cj.protocol.SocketFactory {
+public interface ParseInfoCacheFactory extends com.mysql.cj.CacheAdapterFactory<String, com.mysql.cj.ParseInfo> {
 }

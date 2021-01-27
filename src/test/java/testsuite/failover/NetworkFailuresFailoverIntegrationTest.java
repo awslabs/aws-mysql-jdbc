@@ -37,6 +37,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import software.aws.rds.jdbc.mysql.log.StandardLogger;
 import testsuite.UnreliableSocketFactory;
 
 import java.sql.Connection;
@@ -94,7 +95,7 @@ public class NetworkFailuresFailoverIntegrationTest {
 
   public NetworkFailuresFailoverIntegrationTest() throws SQLException {
     DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
-    this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
+    this.log = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
   }
 
   /**

@@ -115,7 +115,7 @@ tasks.shadowJar {
         mkdir("${buildDir}/META-INF/services/")
         val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
         if(driverFile.createNewFile()) {
-            driverFile.writeText("software.aws.rds.jdbc.Driver")
+            driverFile.writeText("software.aws.rds.jdbc.mysql.Driver")
         }
     }
 
@@ -123,7 +123,7 @@ tasks.shadowJar {
         exclude(dependency(":"))
     }
 
-    relocate ("com.mysql", "software.aws.rds.jdbc.shading.com.mysql")
+    relocate ("com.mysql", "software.aws.rds.jdbc.mysql.shading.com.mysql")
 
     exclude("instrumentation/**")
     exclude("demo/**")

@@ -46,6 +46,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import software.aws.rds.jdbc.mysql.Driver;
+import software.aws.rds.jdbc.mysql.log.StandardLogger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -124,8 +126,8 @@ public class FailoverIntegrationTest {
    * FailoverIntegrationTest constructor.
    * */
   public FailoverIntegrationTest() throws SQLException {
-    DriverManager.registerDriver(new software.aws.rds.jdbc.Driver());
-    this.log = LogFactory.getLogger(software.aws.rds.jdbc.log.StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
+    DriverManager.registerDriver(new Driver());
+    this.log = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 
     initiateInstanceNames();
 
