@@ -11821,6 +11821,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Properties props = new Properties();
         props.setProperty(PropertyKey.cacheDefaultTimeZone.getKeyName(), "false");
         props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "SERVER");
+        props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), "false");
 
         try (Connection testConn = getConnectionWithProps(props)) {
             TimeZone serverTz = (TimeZone) f.get(((MysqlConnection) testConn).getSession().getServerSession());
