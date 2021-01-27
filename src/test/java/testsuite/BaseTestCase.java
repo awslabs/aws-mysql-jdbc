@@ -92,6 +92,7 @@ public abstract class BaseTestCase {
      * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:aws:///test and its connection URL.
      */
     public static String dbUrl = "jdbc:mysql:aws///test";
+    public static String timeZoneFreeDbUrl = "jdbc:mysql:///test";
     protected static ConnectionUrl mainConnectionUrl = null;
 
     /**
@@ -159,6 +160,8 @@ public abstract class BaseTestCase {
         if ((newDbUrl != null) && (newDbUrl.trim().length() != 0)) {
             dbUrl = newDbUrl;
         }
+        timeZoneFreeDbUrl = dbUrl.replaceAll(PropertyKey.connectionTimeZone.getKeyName() + "=", PropertyKey.connectionTimeZone.getKeyName() + "VOID=")
+                .replaceAll("serverTimezone=", "serverTimezoneVOID=");
         mainConnectionUrl = ConnectionUrl.getConnectionUrlInstance(dbUrl, null);
         this.dbName = mainConnectionUrl.getDatabase();
 
@@ -473,7 +476,7 @@ public abstract class BaseTestCase {
 
     /**
      * Some tests build connections strings for internal usage but, in order for them to work, they may require some connection properties set in the main test
-     * suite URL. For example 'serverTimezone' is one of those properties.
+     * suite URL. For example 'connectionTimeZone' is one of those properties.
      * 
      * @param props
      *            the Properties object where to add the missing connection properties
@@ -485,8 +488,8 @@ public abstract class BaseTestCase {
             props = new Properties();
         }
 
-        // Add 'serverTimezone' if set in test suite URL and missing from props.
-        String propKey = PropertyKey.serverTimezone.getKeyName();
+        // Add 'connectionTimeZone' if set in test suite URL and missing from props.
+        String propKey = PropertyKey.connectionTimeZone.getKeyName();
         String origTzValue = null;
         if (!props.containsKey(propKey) && (origTzValue = mainConnectionUrl.getOriginalProperties().get(propKey)) != null) {
             props.setProperty(propKey, origTzValue);
@@ -1098,24 +1101,24 @@ public abstract class BaseTestCase {
     }
 
     protected Connection getFailoverConnection(Properties props) throws SQLException {
-        return DriverManager.getConnection(getMasterSlaveUrl(), getHostFreePropertiesFromTestsuiteUrl(props));
+        return DriverManager.getConnection(getSourceReplicaUrl(), getHostFreePropertiesFromTestsuiteUrl(props));
     }
 
-    protected Connection getMasterSlaveReplicationConnection() throws SQLException {
-        return getMasterSlaveReplicationConnection(null);
+    protected Connection getSourceReplicaReplicationConnection() throws SQLException {
+        return getSourceReplicaReplicationConnection(null);
     }
 
-    protected Connection getMasterSlaveReplicationConnection(Properties props) throws SQLException {
-        String replicationUrl = getMasterSlaveUrl(ConnectionUrl.Type.REPLICATION_CONNECTION.getScheme());
+    protected Connection getSourceReplicaReplicationConnection(Properties props) throws SQLException {
+        String replicationUrl = getSourceReplicaUrl(ConnectionUrl.Type.REPLICATION_CONNECTION.getScheme());
         Connection replConn = new NonRegisteringDriver().connect(replicationUrl, getHostFreePropertiesFromTestsuiteUrl(props));
         return replConn;
     }
 
-    protected String getMasterSlaveUrl() throws SQLException {
-        return getMasterSlaveUrl(ConnectionUrl.Type.FAILOVER_CONNECTION.getScheme());
+    protected String getSourceReplicaUrl() throws SQLException {
+        return getSourceReplicaUrl(ConnectionUrl.Type.FAILOVER_CONNECTION.getScheme());
     }
 
-    protected String getMasterSlaveUrl(String protocol) throws SQLException {
+    protected String getSourceReplicaUrl(String protocol) throws SQLException {
         HostInfo hostInfo = mainConnectionUrl.getMainHost();
         String hostPortPair = TestUtils.encodePercent(hostInfo.getHostPortPair());
         return String.format("%s//%s,%s/", protocol, hostPortPair, hostPortPair);

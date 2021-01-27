@@ -29,6 +29,18 @@
 
 package com.mysql.cj.result;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.TimeZone;
+import java.util.concurrent.Callable;
+
+import org.junit.jupiter.api.Test;
+
 import com.mysql.cj.MysqlType;
 import com.mysql.cj.conf.DefaultPropertySet;
 import com.mysql.cj.conf.PropertyKey;
@@ -38,17 +50,6 @@ import com.mysql.cj.exceptions.WrongArgumentException;
 import com.mysql.cj.protocol.InternalDate;
 import com.mysql.cj.protocol.InternalTime;
 import com.mysql.cj.protocol.InternalTimestamp;
-import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.sql.Date;
-import java.time.LocalDate;
-import java.util.TimeZone;
-import java.util.concurrent.Callable;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for JDBC {@link java.sql.Date} creation.
@@ -73,7 +74,7 @@ public class SqlDateValueFactoryTest extends CommonAsserts {
         assertEquals("1970-01-01", this.vf.createFromTime(new InternalTime(12, 20, 02, 4, 9)).toString());
         assertEquals("1970-01-01", this.vf.createFromTime(new InternalTime(1, 1, 1, 1, 9)).toString());
         assertEquals("1970-01-01", this.vf.createFromTime(new InternalTime(-1, 1, 1, 1, 9)).toString());
-        assertEquals("1970-01-03", this.vf.createFromTime(new InternalTime(48, 1, 1, 1, 9)).toString());
+        assertEquals("1970-01-01", this.vf.createFromTime(new InternalTime(48, 1, 1, 1, 9)).toString());
     }
 
     @Test

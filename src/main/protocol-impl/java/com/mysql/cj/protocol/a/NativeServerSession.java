@@ -44,6 +44,7 @@ import com.mysql.cj.exceptions.WrongArgumentException;
 import com.mysql.cj.protocol.ServerCapabilities;
 import com.mysql.cj.protocol.ServerSession;
 import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.TimeUtil;
 
 public class NativeServerSession implements ServerSession {
 
@@ -114,15 +115,15 @@ public class NativeServerSession implements ServerSession {
     private boolean autoCommit = true;
 
     /** The timezone of the server */
-    private TimeZone serverTimeZone = null;
+    private TimeZone sessionTimeZone = null;
 
     private TimeZone defaultTimeZone = TimeZone.getDefault();
 
-    private RuntimeProperty<Boolean> cacheDefaultTimezone = null;
+    private RuntimeProperty<Boolean> cacheDefaultTimeZone = null;
 
     public NativeServerSession(PropertySet propertySet) {
         this.propertySet = propertySet;
-        this.cacheDefaultTimezone = this.propertySet.getBooleanProperty(PropertyKey.cacheDefaultTimezone);
+        this.cacheDefaultTimeZone = this.propertySet.getBooleanProperty(PropertyKey.cacheDefaultTimeZone);
 
         // preconfigure some server variables which are consulted before their initialization from server
         this.serverVariables.put("character_set_server", "utf8");
@@ -534,16 +535,30 @@ public class NativeServerSession implements ServerSession {
         this.autoCommit = autoCommit;
     }
 
-    public TimeZone getServerTimeZone() {
-        return this.serverTimeZone;
+    public TimeZone getSessionTimeZone() {
+        if (this.sessionTimeZone == null) {
+            String configuredTimeZoneOnServer = getServerVariable("time_zone");
+            if ("SYSTEM".equalsIgnoreCase(configuredTimeZoneOnServer)) {
+                configuredTimeZoneOnServer = getServerVariable("system_time_zone");
+            }
+            if (configuredTimeZoneOnServer != null) {
+                try {
+                    this.sessionTimeZone = TimeZone.getTimeZone(TimeUtil.getCanonicalTimeZone(configuredTimeZoneOnServer, null));
+                } catch (IllegalArgumentException iae) {
+                    throw ExceptionFactory.createException(WrongArgumentException.class, iae.getMessage());
+                }
+            }
+        }
+
+        return this.sessionTimeZone;
     }
 
-    public void setServerTimeZone(TimeZone serverTimeZone) {
-        this.serverTimeZone = serverTimeZone;
+    public void setSessionTimeZone(TimeZone sessionTimeZone) {
+        this.sessionTimeZone = sessionTimeZone;
     }
 
     public TimeZone getDefaultTimeZone() {
-        if (this.cacheDefaultTimezone.getValue()) {
+        if (this.cacheDefaultTimeZone.getValue()) {
             return this.defaultTimeZone;
         }
         return TimeZone.getDefault();
