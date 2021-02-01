@@ -116,8 +116,7 @@ public abstract class BaseTestCase {
     private List<String[]> createdObjects;
 
     /** The driver to use */
-    protected String dbClass = com.mysql.cj.jdbc.Driver.class.getName();
-
+    protected String dbClass = software.aws.rds.jdbc.Driver.class.getName();
     /** My instance number */
     private int myInstanceNumber = 0;
 
