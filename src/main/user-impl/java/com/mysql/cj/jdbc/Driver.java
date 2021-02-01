@@ -50,13 +50,13 @@ public class Driver extends NonRegisteringDriver implements java.sql.Driver {
     //
     // Register ourselves with the DriverManager
     //
-    static {
-        try {
-            java.sql.DriverManager.registerDriver(new Driver());
-        } catch (SQLException E) {
-            throw new RuntimeException("Can't register driver!");
-        }
-    }
+//    static {
+//        try {
+//            java.sql.DriverManager.registerDriver(new Driver());
+//        } catch (SQLException E) {
+//            throw new RuntimeException("Can't register driver!");
+//        }
+//    }
 
     /**
      * Construct a new driver and register it with DriverManager
