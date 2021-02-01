@@ -32,11 +32,7 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
-import com.mysql.cj.conf.ConnectionUrl;
-import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.conf.PropertyKey;
-import com.mysql.cj.conf.RuntimeProperty;
-import com.mysql.cj.conf.ConnectionUrlParser;
+import com.mysql.cj.conf.*;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
@@ -54,14 +50,12 @@ import com.mysql.cj.log.LogFactory;
 import com.mysql.cj.log.NullLogger;
 import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
-import com.mysql.cj.util.Util;
 
 import javax.net.ssl.SSLException;
 import java.io.EOFException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
@@ -173,24 +167,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
   }
 
-  /**
-   * If the given return type is or implements a JDBC interface, proxies the given object so that we can catch SQL errors and fire a connection switch.
-   *
-   * @param returnType
-   *            The type the object instance to proxy is supposed to be.
-   * @param toProxy
-   *            The object instance to proxy.
-   * @return
-   *         The proxied object or the original one if it does not implement a JDBC interface.
-   */
-  protected Object proxyIfReturnTypeIsJdbcInterface(Class<?> returnType, Object toProxy) {
-    if (toProxy != null) {
-      if (Util.isJdbcInterface(returnType)) {
-        Class<?> toProxyClass = toProxy.getClass();
-        return Proxy.newProxyInstance(toProxyClass.getClassLoader(), Util.getImplementedInterfaces(toProxyClass), new JdbcInterfaceProxy(toProxy));
-      }
-    }
-    return toProxy;
+  @Override
+  protected InvocationHandler getNewJdbcInterfaceProxy(Object toProxy) {
+    return new JdbcInterfaceProxy(toProxy);
   }
 
   /**
