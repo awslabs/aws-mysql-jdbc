@@ -59,6 +59,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.Callable;
 
+import com.mysql.cj.jdbc.Driver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -116,7 +117,8 @@ public abstract class BaseTestCase {
     private List<String[]> createdObjects;
 
     /** The driver to use */
-    protected String dbClass = software.aws.rds.jdbc.Driver.class.getName();
+    protected String dbClass = com.mysql.cj.jdbc.Driver.class.getName();
+
     /** My instance number */
     private int myInstanceNumber = 0;
 
@@ -660,7 +662,7 @@ public abstract class BaseTestCase {
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
         System.out.println("Running test " + testInfo.getTestClass().get().getName() + "#" + testInfo.getDisplayName());
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-        Class.forName(this.dbClass);
+        DriverManager.registerDriver(new Driver());
         this.createdObjects = new ArrayList<>();
 
         Properties props = new Properties();

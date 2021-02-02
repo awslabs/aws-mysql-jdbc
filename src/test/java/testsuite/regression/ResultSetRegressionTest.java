@@ -4005,7 +4005,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
 
         this.rs = this.stmt.executeQuery("select firstName as 'first person' from bug49516");
 
-        crs = (CachedRowSet) Class.forName("com.sun.rowset.CachedRowSetImpl").newInstance();
+        crs = (CachedRowSet) Class.forName(com.sun.rowset.CachedRowSetImpl.class.getName()).newInstance();
         crs.populate(this.rs);
         crs.first();
 
@@ -4040,7 +4040,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
 
         this.rs = noBlobsConn.createStatement().executeQuery("SELECT PASSWORD ('SOMETHING')");
 
-        crs = (CachedRowSet) Class.forName("com.sun.rowset.CachedRowSetImpl").newInstance();
+        crs = (CachedRowSet) Class.forName(com.sun.rowset.CachedRowSetImpl.class.getName()).newInstance();
         crs.populate(this.rs);
         crs.first();
 
