@@ -28,11 +28,13 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.log;
+package software.aws.rds.jdbc.mysql.interceptors;
 
-public class Slf4JLogger extends com.mysql.cj.log.Slf4JLogger implements Log {
-
-    public Slf4JLogger(String name) {
-        super(name);
-    }
+/**
+ * Implementors of this interface can be installed via the "connectionLifecycleInterceptors" configuration property and receive events and alter behavior of
+ * "lifecycle" methods on our connection implementation.
+ *
+ * The driver will create one instance of a given interceptor per-connection.
+ */
+public interface ConnectionLifecycleInterceptor extends com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor {
 }

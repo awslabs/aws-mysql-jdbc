@@ -28,10 +28,10 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.log;
+package software.aws.rds.jdbc.mysql.protocol;
 
 /**
- * Unified interface to logging facilities on different platforms
+ * Interface to allow pluggable socket creation in the driver
  */
-public interface Log extends com.mysql.cj.log.Log {
+public interface SocketFactory extends com.mysql.cj.protocol.SocketFactory {
 }

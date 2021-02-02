@@ -28,20 +28,17 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.log;
+package software.aws.rds.jdbc.mysql.protocol;
 
 /**
- * A logger that does nothing. Used before the log is configured via the URL or properties.
+ * Implementors of this interface can be installed via the "authenticationPlugins" configuration property.
+ *
+ * The driver will create one instance of a given plugin per MysqlIO instance if it's reusable (see {@link #isReusable()}) or a new instance
+ * in each MysqlIO#proceedHandshakeWithPluggableAuthentication(String, String, String, Buffer) call.
+ *
+ * @param <M>
+ *            Message type
  */
-public class NullLogger extends com.mysql.cj.log.NullLogger implements Log {
-
-    /**
-     * Creates a new NullLogger with the given name
-     *
-     * @param instanceName
-     *            (ignored)
-     */
-    public NullLogger(String instanceName) {
-        super(instanceName);
-    }
+public interface AuthenticationPlugin
+        extends com.mysql.cj.protocol.AuthenticationPlugin<com.mysql.cj.protocol.a.NativePacketPayload>{
 }

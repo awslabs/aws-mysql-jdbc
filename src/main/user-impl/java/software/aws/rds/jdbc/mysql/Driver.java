@@ -28,7 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc;
+package software.aws.rds.jdbc.mysql;
 
 import com.mysql.cj.jdbc.NonRegisteringDriver;
 
@@ -55,14 +55,14 @@ public class Driver extends NonRegisteringDriver implements java.sql.Driver {
   //
   static {
     try {
-      java.sql.DriverManager.registerDriver(new software.aws.rds.jdbc.Driver());
+      java.sql.DriverManager.registerDriver(new Driver());
     } catch (SQLException E) {
       throw new RuntimeException("Can't register driver!");
     }
   }
 
   static {
-    System.out.println("You are using Amazon Web Services (AWS) JDBC Driver for MySQL, you can also use 'software.aws.rds.jdbc.Driver()' to register");
+    System.out.println("You are using Amazon Web Services (AWS) JDBC Driver for MySQL, you can also use 'software.aws.rds.jdbc.mysql.Driver()' to register");
   }
 
   /**

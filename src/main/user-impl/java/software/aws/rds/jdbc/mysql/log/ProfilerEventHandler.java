@@ -28,17 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.protocol;
+package software.aws.rds.jdbc.mysql.log;
 
-/**
- * Implementors of this interface can be installed via the "authenticationPlugins" configuration property.
- *
- * The driver will create one instance of a given plugin per MysqlIO instance if it's reusable (see {@link #isReusable()}) or a new instance
- * in each MysqlIO#proceedHandshakeWithPluggableAuthentication(String, String, String, Buffer) call.
- *
- * @param <M>
- *            Message type
- */
-public interface AuthenticationPlugin
-        extends com.mysql.cj.protocol.AuthenticationPlugin<com.mysql.cj.protocol.a.NativePacketPayload>{
+public interface ProfilerEventHandler extends com.mysql.cj.log.ProfilerEventHandler {
 }

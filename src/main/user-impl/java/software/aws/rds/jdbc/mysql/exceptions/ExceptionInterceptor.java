@@ -28,7 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.log;
+package software.aws.rds.jdbc.mysql.exceptions;
 
-public interface ProfilerEventHandler extends com.mysql.cj.log.ProfilerEventHandler {
+public interface ExceptionInterceptor extends com.mysql.cj.exceptions.ExceptionInterceptor {
 }

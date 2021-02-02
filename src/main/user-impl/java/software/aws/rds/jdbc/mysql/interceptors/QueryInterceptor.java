@@ -28,31 +28,13 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.log;
+package software.aws.rds.jdbc.mysql.interceptors;
 
 /**
- * Provides logging facilities for those platforms that don't have built-in facilities. Simply logs messages to STDERR.
+ * Implement this interface to be placed "in between" query execution, so that you can influence it.
+ *
+ * QueryInterceptors are "chainable" when configured by the user, the results returned by the "current" interceptor will be passed on to the next on in the
+ * chain, from left-to-right order, as specified by the user in the driver configuration property "queryInterceptors".
  */
-public class StandardLogger extends com.mysql.cj.log.StandardLogger implements Log {
-
-    /**
-     * Creates a new StandardLogger object.
-     *
-     * @param name
-     *            the name of the configuration to use -- ignored
-     */
-    public StandardLogger(String name) {
-        super(name, false);
-    }
-
-    /**
-     * @param name
-     *            the name of the configuration to use -- ignored
-     * @param logLocationInfo
-     *            logLocationInfo
-     */
-    public StandardLogger(String name, boolean logLocationInfo) {
-        super(name, logLocationInfo);
-    }
-
+public interface QueryInterceptor extends com.mysql.cj.interceptors.QueryInterceptor {
 }

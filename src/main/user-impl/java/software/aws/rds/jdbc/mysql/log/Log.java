@@ -28,13 +28,10 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.interceptors;
+package software.aws.rds.jdbc.mysql.log;
 
 /**
- * Implement this interface to be placed "in between" query execution, so that you can influence it.
- *
- * QueryInterceptors are "chainable" when configured by the user, the results returned by the "current" interceptor will be passed on to the next on in the
- * chain, from left-to-right order, as specified by the user in the driver configuration property "queryInterceptors".
+ * Unified interface to logging facilities on different platforms
  */
-public interface QueryInterceptor extends com.mysql.cj.interceptors.QueryInterceptor {
+public interface Log extends com.mysql.cj.log.Log {
 }

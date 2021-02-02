@@ -28,13 +28,9 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package software.aws.rds.jdbc.interceptors;
+package software.aws.rds.jdbc.mysql;
 
-/**
- * Implementors of this interface can be installed via the "connectionLifecycleInterceptors" configuration property and receive events and alter behavior of
- * "lifecycle" methods on our connection implementation.
- *
- * The driver will create one instance of a given interceptor per-connection.
- */
-public interface ConnectionLifecycleInterceptor extends com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor {
+import java.util.Map;
+
+public interface ServerConfigCacheFactory extends com.mysql.cj.CacheAdapterFactory<String, Map<String, String>> {
 }
