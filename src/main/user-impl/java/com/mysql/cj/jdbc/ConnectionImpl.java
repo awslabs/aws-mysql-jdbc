@@ -306,9 +306,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     /** isolation level */
     private int isolationLevel = java.sql.Connection.TRANSACTION_READ_COMMITTED;
 
-    /** When did the master fail? */
-    //	private long masterFailTimeMillis = 0L;
-
     /**
      * An array of currently open statements.
      * Copy-on-write used here to avoid ConcurrentModificationException when statements unregister themselves while we iterate over the list.
@@ -352,7 +349,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     /*
      * For testing failover scenarios
      */
-    private boolean hasTriedMasterFlag = false;
+    private boolean hasTriedSourceFlag = false;
 
     private List<QueryInterceptor> queryInterceptors;
 
@@ -642,7 +639,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Deprecated
     @Override
     public void clearHasTriedMaster() {
-        this.hasTriedMasterFlag = false;
+        this.hasTriedSourceFlag = false;
     }
 
     @Override
@@ -1286,7 +1283,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Deprecated
     @Override
     public boolean hasTriedMaster() {
-        return this.hasTriedMasterFlag;
+        return this.hasTriedSourceFlag;
     }
 
     /**
@@ -1432,7 +1429,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     @Override
-    public boolean isMasterConnection() {
+    public boolean isSourceConnection() {
         return false; // handled higher up
     }
 
@@ -1520,7 +1517,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             return null;
         }
 
-        Object escapedSqlResult = EscapeProcessor.escapeSQL(sql, getMultiHostSafeProxy().getSession().getServerSession().getServerTimeZone(),
+        Object escapedSqlResult = EscapeProcessor.escapeSQL(sql, getMultiHostSafeProxy().getSession().getServerSession().getSessionTimeZone(),
                 getMultiHostSafeProxy().getSession().getServerSession().getCapabilities().serverSupportsFracSecs(),
                 getMultiHostSafeProxy().getSession().getServerSession().isServerTruncatesFracSecs(), getExceptionInterceptor());
 
@@ -1532,7 +1529,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     private CallableStatement parseCallableStatement(String sql) throws SQLException {
-        Object escapedSqlResult = EscapeProcessor.escapeSQL(sql, getMultiHostSafeProxy().getSession().getServerSession().getServerTimeZone(),
+        Object escapedSqlResult = EscapeProcessor.escapeSQL(sql, getMultiHostSafeProxy().getSession().getServerSession().getSessionTimeZone(),
                 getMultiHostSafeProxy().getSession().getServerSession().getCapabilities().serverSupportsFracSecs(),
                 getMultiHostSafeProxy().getSession().getServerSession().isServerTruncatesFracSecs(), getExceptionInterceptor());
 

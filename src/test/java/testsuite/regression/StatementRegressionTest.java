@@ -81,6 +81,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -104,7 +105,6 @@ import java.util.function.ToIntFunction;
 
 import javax.sql.XAConnection;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.CharsetMapping;
@@ -551,6 +551,7 @@ public class StatementRegressionTest extends BaseTestCase {
             Locale.setDefault(new Locale("th", "TH"));
             Properties props = new Properties();
             props.setProperty(PropertyKey.jdbcCompliantTruncation.getKeyName(), "false");
+            props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "LOCAL");
 
             thaiConn = getConnectionWithProps(props);
             thaiStmt = thaiConn.createStatement();
@@ -576,8 +577,14 @@ public class StatementRegressionTest extends BaseTestCase {
             Timestamp testTimestamp = this.rs.getTimestamp(2);
             this.rs.close();
 
+            props = new Properties();
+            props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "LOCAL");
+            Connection testConn = getConnectionWithProps(props);
+            TimeZone serverTz = ((MysqlConnection) testConn).getSession().getServerSession().getSessionTimeZone();
+            Timestamp expTs = Timestamp.from(origTimestamp.toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(serverTz.toZoneId())
+                    .withZoneSameLocal(ZoneId.systemDefault()).toInstant());
             assertEquals(origDate, testDate);
-            assertEquals(origTimestamp, testTimestamp);
+            assertEquals(expTs, testTimestamp);
 
         } finally {
             Locale.setDefault(originalLocale);
@@ -1144,9 +1151,9 @@ public class StatementRegressionTest extends BaseTestCase {
             this.stmt.executeUpdate("DROP TABLE IF EXISTS testBug3103");
 
             if (versionMeetsMinimum(5, 6, 4)) {
-                this.stmt.executeUpdate("CREATE TABLE testBug3103 (field1 DATETIME(3))");
+                this.stmt.executeUpdate("CREATE TABLE testBug3103 (field1 TIMESTAMP(3))");
             } else {
-                this.stmt.executeUpdate("CREATE TABLE testBug3103 (field1 DATETIME)");
+                this.stmt.executeUpdate("CREATE TABLE testBug3103 (field1 TIMESTAMP)");
             }
 
             PreparedStatement pStmt = this.conn.prepareStatement("INSERT INTO testBug3103 VALUES (?)");
@@ -1354,7 +1361,7 @@ public class StatementRegressionTest extends BaseTestCase {
             createTable("testBug3620", "(field1 TIMESTAMP) ENGINE=InnoDB");
 
             Properties props = new Properties();
-            props.put(PropertyKey.cacheDefaultTimezone.getKeyName(), "false");
+            props.put(PropertyKey.cacheDefaultTimeZone.getKeyName(), "false");
 
             Connection connNoTz = getConnectionWithProps(props);
             PreparedStatement tsPstmt = connNoTz.prepareStatement("INSERT INTO testBug3620 VALUES (?)");
@@ -1892,18 +1899,15 @@ public class StatementRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug5874() throws Exception {
-        TimeZone defaultTimezone = TimeZone.getDefault();
+        TimeZone defaultTimeZone = TimeZone.getDefault();
 
         try {
-            String clientTimezoneName = "America/Los_Angeles";
-            String serverTimezoneName = "America/Chicago";
+            String clientTimeZoneName = "America/Los_Angeles";
+            String connectionTimeZoneName = "America/Chicago";
 
-            TimeZone.setDefault(TimeZone.getTimeZone(clientTimezoneName));
+            TimeZone.setDefault(TimeZone.getTimeZone(clientTimeZoneName));
 
-            long clientTimezoneOffsetMillis = TimeZone.getDefault().getRawOffset();
-            long serverTimezoneOffsetMillis = TimeZone.getTimeZone(serverTimezoneName).getRawOffset();
-
-            long offsetDifference = clientTimezoneOffsetMillis - serverTimezoneOffsetMillis;
+            long offsetDifference = TimeZone.getDefault().getRawOffset() - TimeZone.getTimeZone(connectionTimeZoneName).getRawOffset();
 
             SimpleDateFormat timestampFormat = TimeUtil.getSimpleDateFormat(null, "yyyy-MM-dd HH:mm:ss", null);
             SimpleDateFormat timeFormat = TimeUtil.getSimpleDateFormat(null, "HH:mm:ss", null);
@@ -1912,8 +1916,10 @@ public class StatementRegressionTest extends BaseTestCase {
 
             Properties props = new Properties();
             props.put("useTimezone", "true");
-            props.put(PropertyKey.serverTimezone.getKeyName(), serverTimezoneName);
-            props.put(PropertyKey.cacheDefaultTimezone.getKeyName(), "false");
+            props.put(PropertyKey.connectionTimeZone.getKeyName(), connectionTimeZoneName);
+            props.put(PropertyKey.forceConnectionTimeZoneToSession.getKeyName(), "true");
+            props.put(PropertyKey.cacheDefaultTimeZone.getKeyName(), "false");
+            props.setProperty(PropertyKey.preserveInstants.getKeyName(), "true");
 
             Connection tzConn = getConnectionWithProps(props);
             Statement tzStmt = tzConn.createStatement();
@@ -1946,12 +1952,12 @@ public class StatementRegressionTest extends BaseTestCase {
 
                 long retrievedOffsetForTime = retrTime.getTime() - timeOnServer.getTime();
 
-                assertEquals(offsetDifference, retrievedOffsetForTime, "Original time and time retrieved using client timezone are not the same");
+                assertEquals(0, retrievedOffsetForTime, "Original time and time retrieved using client timezone are not the same");
             }
 
             tzConn.close();
         } finally {
-            TimeZone.setDefault(defaultTimezone);
+            TimeZone.setDefault(defaultTimeZone);
         }
     }
 
@@ -3275,7 +3281,8 @@ public class StatementRegressionTest extends BaseTestCase {
         try {
             Properties props = new Properties();
             props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "true");
-            conn2 = super.getConnectionWithProps(props);
+            props.setProperty(PropertyKey.preserveInstants.getKeyName(), "false");
+            conn2 = getConnectionWithProps(props);
             this.pstmt = conn2.prepareStatement("INSERT INTO testBug24344 (t1) VALUES (?)");
             Calendar c = Calendar.getInstance();
             c.set(Calendar.MILLISECOND, 789);
@@ -3285,7 +3292,8 @@ public class StatementRegressionTest extends BaseTestCase {
             conn2.close();
 
             props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "false");
-            conn2 = super.getConnectionWithProps(props);
+            props.setProperty(PropertyKey.preserveInstants.getKeyName(), "false");
+            conn2 = getConnectionWithProps(props);
             this.pstmt = conn2.prepareStatement("INSERT INTO testBug24344 (t1) VALUES (?)");
             this.pstmt.setTimestamp(1, new Timestamp(c.getTime().getTime()));
             this.pstmt.execute();
@@ -3818,7 +3826,7 @@ public class StatementRegressionTest extends BaseTestCase {
         createTable("testBug32577", "(id INT, field_datetime DATETIME, field_timestamp TIMESTAMP)");
         Properties props = new Properties();
         props.setProperty(PropertyKey.sessionVariables.getKeyName(), "time_zone='+0:00'");
-        props.setProperty(PropertyKey.serverTimezone.getKeyName(), "UTC");
+        props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "UTC");
 
         Connection nonLegacyConn = getConnectionWithProps(props);
 
@@ -6090,7 +6098,7 @@ public class StatementRegressionTest extends BaseTestCase {
 
         try {
             Properties props = new Properties();
-            props.setProperty(PropertyKey.serverTimezone.getKeyName(), "UTC");
+            props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "UTC");
             props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "false");
             ps_conn = getConnectionWithProps(props);
 
@@ -8902,7 +8910,9 @@ public class StatementRegressionTest extends BaseTestCase {
         final TimeZone defaultTZ = TimeZone.getDefault();
 
         final Properties testConnProps = new Properties();
-        testConnProps.setProperty(PropertyKey.cacheDefaultTimezone.getKeyName(), "false");
+        testConnProps.setProperty(PropertyKey.cacheDefaultTimeZone.getKeyName(), "false");
+        testConnProps.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "SERVER");
+        testConnProps.setProperty(PropertyKey.preserveInstants.getKeyName(), "true");
 
         Connection testConn = null;
 
@@ -8919,14 +8929,11 @@ public class StatementRegressionTest extends BaseTestCase {
                 System.out.println("\nServer time zone: " + tz);
                 System.out.println("---------------------------------------------------");
 
-                testConnProps.setProperty(PropertyKey.serverTimezone.getKeyName(), tz);
+                testConnProps.setProperty(PropertyKey.connectionTimeZone.getKeyName(), tz);
                 testConn = getConnectionWithProps(testConnProps);
 
-                checkResultSetForTestBug50348(testConn, "2015-01-01 04:00:00.0", tz.equals("Europe/Lisbon") ? "03:00:00" : "04:00:00");
-                checkPreparedStatementForTestBug50348(testConn, timestamp, time,
-                        ((JdbcConnection) testConn).getSession().getServerSession().getCapabilities().serverSupportsFracSecs() ? "2015-01-01 16:00:00.0"
-                                : "2015-01-01 16:00:00",
-                        tz.equals("Europe/Lisbon") ? "17:00:00" : "16:00:00");
+                checkResultSetForTestBug50348(testConn, "2015-01-01 04:00:00.0", "10:00:00");
+                checkPreparedStatementForTestBug50348(testConn, timestamp, time, "2015-01-01 16:00:00", "10:00:00");
 
                 testConn.close();
             }
@@ -8940,7 +8947,7 @@ public class StatementRegressionTest extends BaseTestCase {
 
                     System.out.println("\nServer time zone: " + tz.toString());
                     System.out.println("---------------------------------------------------");
-                    testConnProps.setProperty(PropertyKey.serverTimezone.getKeyName(), tz.toString());
+                    testConnProps.setProperty(PropertyKey.connectionTimeZone.getKeyName(), tz.toString());
                     testConn = getConnectionWithProps(testConnProps);
 
                     final int diffTzOffset = tzOffset + 6; // CST offset = -6 hours
@@ -8953,19 +8960,16 @@ public class StatementRegressionTest extends BaseTestCase {
                     cal.setTime(tFormat.parse("10:00:00"));
                     cal.add(Calendar.HOUR, -diffTzOffset);
                     cal.add(Calendar.MINUTE, tzOffset < 0 ? tzSubOffset : -tzSubOffset);
-                    String expectedTimeFromRS = tFormat.format(cal.getTime());
-                    checkResultSetForTestBug50348(testConn, expectedTimestampFromRS, expectedTimeFromRS);
+                    checkResultSetForTestBug50348(testConn, expectedTimestampFromRS, "10:00:00");
 
                     cal.setTime(tsFormat.parse("2015-01-01 10:00:00"));
                     cal.add(Calendar.HOUR, diffTzOffset);
                     cal.add(Calendar.MINUTE, tzOffset < 0 ? -tzSubOffset : tzSubOffset);
-                    String expectedTimestampFromPS = tsFormat.format(cal.getTime())
-                            + (((JdbcConnection) testConn).getSession().getServerSession().getCapabilities().serverSupportsFracSecs() ? ".0" : "");
+                    String expectedTimestampFromPS = tsFormat.format(cal.getTime());
                     cal.setTime(tFormat.parse("10:00:00"));
                     cal.add(Calendar.HOUR, diffTzOffset);
                     cal.add(Calendar.MINUTE, tzOffset < 0 ? -tzSubOffset : tzSubOffset);
-                    String expectedTimeFromPS = tFormat.format(cal.getTime());
-                    checkPreparedStatementForTestBug50348(testConn, timestamp, time, expectedTimestampFromPS, expectedTimeFromPS);
+                    checkPreparedStatementForTestBug50348(testConn, timestamp, time, expectedTimestampFromPS, "10:00:00");
 
                     testConn.close();
                 }
@@ -9042,17 +9046,16 @@ public class StatementRegressionTest extends BaseTestCase {
         createProcedure("testBug77449_time", "(t_short TIME, t_long TIME(6)) BEGIN SELECT t_short, t_long; END");
 
         for (int tst = 0; tst < 8; tst++) {
-            boolean useLegacyDatetimeCode = (tst & 0x1) != 0;
             boolean useServerPrepStmts = (tst & 0x2) != 0;
             boolean sendFractionalSeconds = (tst & 0x4) != 0;
 
-            String testCase = String.format("Case: %d [ %s | %s | %s ]", tst, useLegacyDatetimeCode ? "useLegDTCode" : "-",
-                    useServerPrepStmts ? "useSSPS" : "-", sendFractionalSeconds ? "sendFracSecs" : "-");
+            String testCase = String.format("Case: %d [ useSSPS=%s | sendFracSecs=%s ]", tst, useServerPrepStmts, sendFractionalSeconds);
 
             Properties props = new Properties();
             props.setProperty(PropertyKey.queryInterceptors.getKeyName(), TestBug77449QueryInterceptor.class.getName());
             props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useServerPrepStmts));
             props.setProperty(PropertyKey.sendFractionalSeconds.getKeyName(), Boolean.toString(sendFractionalSeconds));
+            props.setProperty(PropertyKey.preserveInstants.getKeyName(), "false");
 
             Connection testConn = getConnectionWithProps(props);
 
@@ -9105,7 +9108,7 @@ public class StatementRegressionTest extends BaseTestCase {
 
             // Assert values from previous inserts/updates.
             // 1st row: from Statement sent as String, no subject to TZ conversions.
-            this.rs = this.stmt.executeQuery("SELECT * FROM testBug77449 WHERE id = 1");
+            this.rs = testStmt.executeQuery("SELECT * FROM testBug77449 WHERE id = 1");
             assertTrue(this.rs.next(), testCase);
             assertEquals(1, this.rs.getInt(1), testCase);
             assertEquals(roundedTs, this.rs.getTimestamp(2), testCase);
@@ -9396,7 +9399,7 @@ public class StatementRegressionTest extends BaseTestCase {
             Connection highLevelConn = getLoadBalancedConnection(props);
             assertTrue(highLevelConn.getClass().getName().startsWith("com.sun.proxy") || highLevelConn.getClass().getName().startsWith("$Proxy"), testCase);
 
-            Connection lowLevelConn = getMasterSlaveReplicationConnection(props);
+            Connection lowLevelConn = getSourceReplicaReplicationConnection(props);
             // This simulates the behavior from Fabric connections that are causing the problem.
             ((ReplicationConnection) lowLevelConn).setProxy((JdbcConnection) highLevelConn);
 
@@ -9454,7 +9457,7 @@ public class StatementRegressionTest extends BaseTestCase {
         Connection highLevelConn = getLoadBalancedConnection(null);
         assertTrue(highLevelConn.getClass().getName().startsWith("com.sun.proxy") || highLevelConn.getClass().getName().startsWith("$Proxy"));
 
-        Connection lowLevelConn = getMasterSlaveReplicationConnection(null);
+        Connection lowLevelConn = getSourceReplicaReplicationConnection(null);
         // This simulates the behavior from Fabric connections that are causing the problem.
         ((ReplicationConnection) lowLevelConn).setProxy((JdbcConnection) highLevelConn);
 
@@ -10266,7 +10269,7 @@ public class StatementRegressionTest extends BaseTestCase {
         testConn.close();
 
         // Replication connection; all JDBC objects are proxied.
-        testConn = getMasterSlaveReplicationConnection();
+        testConn = getSourceReplicaReplicationConnection();
         assertTrue(testConn.getClass().getName().matches("^(?:com\\.sun\\.proxy\\.)?\\$Proxy\\d*"));
         assertTrue(testConn.equals(testConn));
         this.stmt = testConn.createStatement();
@@ -10605,7 +10608,7 @@ public class StatementRegressionTest extends BaseTestCase {
     }
 
     /**
-     * Tests fix for Bug#26748909 - MASTER : ERROR - NO OPERATIONS ALLOWED AFTER STATEMENT CLOSED FOR TOSTRING()
+     * Tests fix for Bug#26748909, NO OPERATIONS ALLOWED AFTER STATEMENT CLOSED FOR TOSTRING()
      * 
      * @throws Exception
      */
@@ -10968,21 +10971,20 @@ public class StatementRegressionTest extends BaseTestCase {
         createTable("testBug91112", "(d1 DATE, d2 DATE, d3 DATE)");
         String query = "select d1, CONVERT(d1, CHAR(10)) as d1c, d2, CONVERT(d2, CHAR(10)) as d2c, d3, CONVERT(d3, CHAR(10)) as d3c from testBug91112";
 
-        TimeZone defaultTimezone = TimeZone.getDefault();
+        TimeZone defaultTimeZone = TimeZone.getDefault();
         Properties props = new Properties();
-        //props.put(PropertyKey.serverTimezone, "Europe/Berlin");
-        props.put(PropertyKey.serverTimezone, "UTC");
+        props.put(PropertyKey.connectionTimeZone, "UTC");
         try {
             // setting a custom calendar time zone later than the client one to detect day switch 
             Calendar cal_Los_Angeles = GregorianCalendar.getInstance(TimeZone.getTimeZone("America/Los_Angeles"), Locale.US);
             SimpleDateFormat sdf_Los_Angeles = TimeUtil.getSimpleDateFormat("yyyy-MM-dd HH:mm:ss", cal_Los_Angeles);
 
             for (boolean useSSPS : new boolean[] { false, true }) {
-                for (boolean cacheDefaultTimezone : new boolean[] { true, false }) {
-                    String errMsg = "Using useSSPS=" + useSSPS + ", cacheDefaultTimezone=" + cacheDefaultTimezone + ":";
+                for (boolean cacheDefaultTimeZone : new boolean[] { true, false }) {
+                    String errMsg = "Using useSSPS=" + useSSPS + ", cacheDefaultTimeZone=" + cacheDefaultTimeZone + ":";
                     System.out.println(errMsg);
                     props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "" + useSSPS);
-                    props.put(PropertyKey.cacheDefaultTimezone.getKeyName(), "" + cacheDefaultTimezone);
+                    props.put(PropertyKey.cacheDefaultTimeZone.getKeyName(), "" + cacheDefaultTimeZone);
 
                     // setting a client time zone ahead of the server one to detect day switch 
                     TimeZone.setDefault(TimeZone.getTimeZone("Europe/Moscow"));
@@ -11006,7 +11008,7 @@ public class StatementRegressionTest extends BaseTestCase {
                     this.rs = pst2.executeQuery();
                     testBug91112CheckResultMSK(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles);
 
-                    // check the cacheDefaultTimezone behaviour, changing time zone in runtime
+                    // check the cacheDefaultTimeZone behaviour, changing time zone in runtime
                     TimeZone.setDefault(TimeZone.getTimeZone("Europe/Berlin"));
 
                     this.stmt.execute("TRUNCATE TABLE testBug91112");
@@ -11017,21 +11019,21 @@ public class StatementRegressionTest extends BaseTestCase {
                     pst1.execute();
 
                     this.rs = con.createStatement().executeQuery(query);
-                    testBug91112CheckResultBerlin(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles, cacheDefaultTimezone);
+                    testBug91112CheckResultBerlin(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles, cacheDefaultTimeZone);
 
                     this.rs = pst2.executeQuery();
-                    testBug91112CheckResultBerlin(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles, cacheDefaultTimezone);
+                    testBug91112CheckResultBerlin(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles, cacheDefaultTimeZone);
 
                     PreparedStatement pst3 = con.prepareStatement(query);
                     this.rs = pst3.executeQuery();
-                    testBug91112CheckResultBerlin(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles, cacheDefaultTimezone);
+                    testBug91112CheckResultBerlin(d_1982_04_01_MSK, d_1990_10_20_MSK, cal_Los_Angeles, sdf_Los_Angeles, cacheDefaultTimeZone);
 
                     this.stmt.execute("TRUNCATE TABLE testBug91112");
                 }
             }
 
         } finally {
-            TimeZone.setDefault(defaultTimezone);
+            TimeZone.setDefault(defaultTimeZone);
         }
     }
 
@@ -11053,9 +11055,9 @@ public class StatementRegressionTest extends BaseTestCase {
     }
 
     public void testBug91112CheckResultBerlin(java.sql.Date d_1982_04_01_MSK, java.sql.Date d_1990_10_20_MSK, Calendar cal_Los_Angeles,
-            SimpleDateFormat sdf_Los_Angeles, boolean cacheDefaultTimezone) throws Exception {
+            SimpleDateFormat sdf_Los_Angeles, boolean cacheDefaultTimeZone) throws Exception {
         assertTrue(this.rs.next());
-        if (cacheDefaultTimezone) {
+        if (cacheDefaultTimeZone) {
             assertEquals("1982-04-01", this.rs.getString(1));
             assertEquals("1982-04-01", this.rs.getString(2));
             assertEquals("1982-03-30 13:00:00", sdf_Los_Angeles.format(this.rs.getDate(3)));
@@ -11071,7 +11073,7 @@ public class StatementRegressionTest extends BaseTestCase {
         java.sql.Date d_1982_03_31_Berlin = java.sql.Date.valueOf("1982-03-31");
         java.sql.Date d_1990_10_20_Berlin = java.sql.Date.valueOf("1990-10-20");
 
-        if (cacheDefaultTimezone) {
+        if (cacheDefaultTimeZone) {
             assertEquals(d_1982_04_01_MSK, this.rs.getDate(1));
             assertEquals(d_1982_04_01_MSK, this.rs.getDate(1, Calendar.getInstance(TimeZone.getTimeZone("Europe/Moscow"))));
         } else {
@@ -11082,7 +11084,7 @@ public class StatementRegressionTest extends BaseTestCase {
         assertEquals("1982-03-31", this.rs.getString(3));
         assertEquals("1982-03-31 00:00:00", sdf_Los_Angeles.format(this.rs.getDate(3, cal_Los_Angeles)));
 
-        if (cacheDefaultTimezone) {
+        if (cacheDefaultTimeZone) {
             assertEquals(d_1990_10_20_MSK, this.rs.getDate(5));
             assertEquals(d_1990_10_20_MSK, this.rs.getDate(5, Calendar.getInstance(TimeZone.getTimeZone("Europe/Moscow"))));
         } else {
@@ -11217,7 +11219,7 @@ public class StatementRegressionTest extends BaseTestCase {
     }
 
     /**
-     * Tests fix for Bug#Bug#99713 (31418928), NPE DURING COM.MYSQL.CJ.SERVERPREPAREDQUERYBINDVALUE.STOREDATE().
+     * Tests fix for Bug#99713 (31418928), NPE DURING COM.MYSQL.CJ.SERVERPREPAREDQUERYBINDVALUE.STOREDATE().
      *
      * @throws Exception
      */
@@ -11228,9 +11230,9 @@ public class StatementRegressionTest extends BaseTestCase {
         Properties props = new Properties();
         try {
             for (boolean useSSPS : new boolean[] { false, true }) {
-                for (boolean cacheDefaultTimezone : new boolean[] { true, false }) {
+                for (boolean cacheDefaultTimeZone : new boolean[] { true, false }) {
                     props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "" + useSSPS);
-                    props.put(PropertyKey.cacheDefaultTimezone.getKeyName(), "" + cacheDefaultTimezone);
+                    props.put(PropertyKey.cacheDefaultTimeZone.getKeyName(), "" + cacheDefaultTimeZone);
                     con = getConnectionWithProps(props);
                     this.pstmt = con.prepareStatement("INSERT into testBug99713 VALUES (?)");
                     this.pstmt.setDate(1, java.sql.Date.valueOf("1982-04-01"));
@@ -11241,6 +11243,150 @@ public class StatementRegressionTest extends BaseTestCase {
         } finally {
             if (con != null) {
                 con.close();
+            }
+        }
+    }
+
+    /**
+     * Tests fix for Bug#101242 (32046007), CANNOT USE BYTEARRAYINPUTSTREAM AS ARGUMENTS IN PREPARED STATEMENTS ANYMORE.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug101242() throws Exception {
+        createTable("testBug101242", "(my_column blob NOT NULL)");
+
+        byte[] value = "TEST".getBytes();
+
+        Connection con = null;
+        Properties props = new Properties();
+        try {
+            for (boolean useSSPS : new boolean[] { false, true }) {
+                props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "" + useSSPS);
+                con = getConnectionWithProps(props);
+
+                this.stmt.executeUpdate("TRUNCATE TABLE testBug101242");
+
+                this.pstmt = con.prepareStatement("INSERT INTO testBug101242(my_column) VALUES (?)");
+                this.pstmt.setObject(1, new ByteArrayInputStream(value));
+                this.pstmt.execute();
+
+                this.rs = this.stmt.executeQuery("SELECT * FROM testBug101242");
+                this.rs.next();
+
+                assertByteArrayEquals("Different value retrieved than inserted", value, this.rs.getBytes("my_column"));
+            }
+        } finally {
+            if (con != null) {
+                con.close();
+            }
+        }
+
+    }
+
+    /**
+     * Tests fix for Bug#98695 (30962953), EXECUTION OF "LOAD DATA LOCAL INFILE" COMMAND THROUGH JDBC FOR DATETIME COLUMN.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug98695() throws Exception {
+        createTable("testBug98695",
+                "(id bigint(20) NOT NULL AUTO_INCREMENT, ts timestamp NULL DEFAULT NULL, dt datetime DEFAULT NULL,date_input_str varchar(45) DEFAULT NULL, PRIMARY KEY (id)) ENGINE=InnoDB");
+
+        File tempFile = File.createTempFile("data", ".csv");
+        Writer out = new FileWriter(tempFile);
+        out.write("2019-03-09 23:01:54,2019-03-09 23:01:54,2019-03-09 23:01:54\n" + //
+                "2019-03-10 03:00:00,2019-03-10 03:00:00,2019-03-10 03:00:00\n" + //
+                "2019-03-10 23:01:54,2019-03-10 23:01:54,2019-03-10 23:01:54\n" + //
+                "2019-03-11 23:01:54,2019-03-11 23:01:54,2019-03-11 23:01:54\n" + //
+                "2019-04-13 23:01:54,2019-04-13 23:01:54,2019-04-13 23:01:54\n" + //
+                "2019-11-02 23:01:54,2019-11-02 23:01:54,2019-11-02 23:01:54\n" + //
+                "2019-11-03 02:00:00,2019-11-03 02:00:00,2019-11-03 02:00:00\n" + //
+                "2019-11-03 01:00:00,2019-11-03 01:00:00,2019-11-03 01:00:00\n" + //
+                "2019-11-03 03:00:00,2019-11-03 03:00:00,2019-11-03 03:00:00\n" + //
+                "2019-11-03 04:00:00,2019-11-03 04:00:00,2019-11-03 04:00:00\n" + //
+                "2019-11-03 23:01:54,2019-11-03 23:01:54,2019-11-03 23:01:54\n" + //
+                "2019-11-21 23:01:54,2019-11-21 23:01:54,2019-11-21 23:01:54");
+        out.close();
+
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "LOCAL");
+        props.setProperty(PropertyKey.allowLoadLocalInfile.getKeyName(), "true");
+        Connection testConn = getConnectionWithProps(props);
+
+        String fileName = tempFile.getAbsolutePath();
+
+        if (File.separatorChar == '\\') {
+            StringBuilder fileNameBuf = new StringBuilder();
+            int fileNameLength = fileName.length();
+            for (int i = 0; i < fileNameLength; i++) {
+                char c = fileName.charAt(i);
+                fileNameBuf.append(c == '\\' ? "/" : c);
+            }
+            fileName = fileNameBuf.toString();
+        }
+
+        PreparedStatement preparedStmt = testConn.prepareStatement(
+                "LOAD DATA LOCAL INFILE '" + fileName + "' INTO TABLE testBug98695 FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' (ts,dt,date_input_str)");
+        preparedStmt.execute();
+        preparedStmt.close();
+
+        preparedStmt = testConn.prepareStatement("select ts, dt, date_input_str from testBug98695");
+        ResultSet resultSet = preparedStmt.executeQuery();
+
+        while (resultSet.next()) {
+            Object ts = resultSet.getObject("ts");
+            Object dt = resultSet.getObject("dt");
+            String name = resultSet.getString("date_input_str");
+
+            assertTrue(ts instanceof Timestamp);
+            assertTrue(dt instanceof LocalDateTime);
+
+            System.out.print("ts:" + ts + " ,");
+            System.out.print("dt:" + ((LocalDateTime) dt).format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET) + ", ");
+            System.out.println("name:" + name);
+
+            assertEquals(name, ((Timestamp) ts).toLocalDateTime().format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET));
+            assertEquals(name, ((LocalDateTime) dt).format(TimeUtil.DATETIME_FORMATTER_NO_FRACT_NO_OFFSET));
+
+        }
+
+    }
+
+    /**
+     * Tests fix for Bug#101413 (32099505), JAVA.TIME.LOCALDATETIME CANNOT BE CAST TO JAVA.SQL.TIMESTAMP.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug101413() throws Exception {
+        createTable("testBug101413", "(createtime1 TIMESTAMP, createtime2 DATETIME)");
+
+        Properties props = new Properties();
+        for (boolean forceConnectionTimeZoneToSession : new boolean[] { false, true }) {
+            for (boolean preserveInstants : new boolean[] { false, true }) {
+                for (boolean useSSPS : new boolean[] { false, true }) {
+                    props.setProperty(PropertyKey.forceConnectionTimeZoneToSession.getKeyName(), "" + forceConnectionTimeZoneToSession);
+                    props.setProperty(PropertyKey.preserveInstants.getKeyName(), "" + preserveInstants);
+                    props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "" + useSSPS);
+                    props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
+
+                    Connection con = getConnectionWithProps(props);
+                    PreparedStatement ps = con.prepareStatement("insert into testBug101413(createtime1, createtime2) values(?, ?)");
+
+                    con.setAutoCommit(false);
+                    for (int i = 1; i <= 20000; i++) {
+                        ps.setObject(1, LocalDateTime.now());
+                        ps.setObject(2, LocalDateTime.now());
+                        ps.addBatch();
+                        if (i % 500 == 0) {
+                            ps.executeBatch();
+                            ps.clearBatch();
+                        }
+                    }
+                    con.commit();
+                }
             }
         }
     }

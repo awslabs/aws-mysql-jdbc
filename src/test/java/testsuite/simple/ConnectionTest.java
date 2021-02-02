@@ -68,6 +68,8 @@ import java.nio.file.Paths;
 import java.sql.CallableStatement;
 import java.sql.DatabaseMetaData;
 import java.sql.*;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
@@ -1973,6 +1975,7 @@ public class ConnectionTest extends BaseTestCase {
             props.setProperty(PropertyKey.enableEscapeProcessing.getKeyName(), Boolean.toString(enableEscapeProcessing));
             props.setProperty(PropertyKey.processEscapeCodesForPrepStmts.getKeyName(), Boolean.toString(processEscapeCodesForPrepStmts));
             props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useServerPrepStmts));
+            props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "LOCAL");
 
             Connection testConn = getConnectionWithProps(testUrl, props);
             this.stmt = testConn.createStatement();
@@ -1982,18 +1985,33 @@ public class ConnectionTest extends BaseTestCase {
                     processEscapeCodesForPrepStmts ? "procEscProcPS" : "-", useServerPrepStmts ? "useSSPS" : "-");
             assertTrue(this.rs.next(), testCase);
             assertEquals(1d, this.rs.getDouble(1), testCase);
-            assertEquals(testTimestamp, this.rs.getTimestamp(2), testCase);
+
+            Timestamp ts = !enableEscapeProcessing && this.rs.getMetaData().getColumnType(2) == Types.VARCHAR ?
+            // MySQL 5.5 returns {ts '2015-08-16 11:22:33'} as a VARCHAR column, while newer servers return it as a DATETIME
+                    Timestamp.from(ZonedDateTime
+                            .of(2015, 8, 16, 11, 22, 33, 0, ((MysqlConnection) testConn).getSession().getServerSession().getSessionTimeZone().toZoneId())
+                            .withZoneSameInstant(ZoneId.systemDefault()).toInstant())
+                    : testTimestamp;
+
+            assertEquals(ts, this.rs.getTimestamp(2), testCase);
             assertEquals("THIS IS MYSQL", this.rs.getString(3), testCase);
             assertFalse(this.rs.next(), testCase);
 
             this.pstmt = testConn.prepareStatement(String.format(query, tst));
             this.rs = this.pstmt.executeQuery();
 
+            ts = !processEscapeCodesForPrepStmts && this.rs.getMetaData().getColumnType(2) == Types.VARCHAR ?
+            // MySQL 5.5 returns {ts '2015-08-16 11:22:33'} as a VARCHAR column, while newer servers return it as a DATETIME
+                    Timestamp.from(ZonedDateTime
+                            .of(2015, 8, 16, 11, 22, 33, 0, ((MysqlConnection) testConn).getSession().getServerSession().getSessionTimeZone().toZoneId())
+                            .withZoneSameInstant(ZoneId.systemDefault()).toInstant())
+                    : testTimestamp;
+
             testCase = String.format("Case: %d [ %s | %s | %s ]/PreparedStatement", tst, enableEscapeProcessing ? "enEscProc" : "-",
                     processEscapeCodesForPrepStmts ? "procEscProcPS" : "-", useServerPrepStmts ? "useSSPS" : "-");
             assertTrue(this.rs.next(), testCase);
             assertEquals(1d, this.rs.getDouble(1), testCase);
-            assertEquals(testTimestamp, this.rs.getTimestamp(2), testCase);
+            assertEquals(ts, this.rs.getTimestamp(2), testCase);
             assertEquals("THIS IS MYSQL", this.rs.getString(3), testCase);
             assertFalse(this.rs.next(), testCase);
 

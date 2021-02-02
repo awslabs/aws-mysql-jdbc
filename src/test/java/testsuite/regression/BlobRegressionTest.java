@@ -48,7 +48,6 @@ import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.conf.PropertyKey;
@@ -442,7 +441,7 @@ public class BlobRegressionTest extends BaseTestCase {
 
         Properties props = new Properties();
         props.setProperty(PropertyKey.emulateLocators.getKeyName(), "true");
-        Connection locatorConn = getMasterSlaveReplicationConnection(props);
+        Connection locatorConn = getSourceReplicaReplicationConnection(props);
 
         this.rs = locatorConn.createStatement().executeQuery("SELECT ID, 'DATA' AS BLOB_DATA from testBug95210");
         assertTrue(this.rs.next());

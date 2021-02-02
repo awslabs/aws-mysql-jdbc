@@ -858,7 +858,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   /** Checks if current connection is to a master (writer) host. */
   @Override
-  protected boolean isMasterConnection() {
+  protected boolean isSourceConnection() {
     return isWriterHostIndex(this.currentHostIndex);
   }
 
