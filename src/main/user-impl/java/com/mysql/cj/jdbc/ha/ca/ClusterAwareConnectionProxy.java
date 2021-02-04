@@ -159,6 +159,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         new ClusterAwareReaderFailoverHandler(
             this.topologyService,
             this.connectionProvider,
+            this.failoverTimeoutMsSetting,
             this.failoverReaderConnectTimeoutMsSetting,
             this.log);
     this.writerFailoverHandler =

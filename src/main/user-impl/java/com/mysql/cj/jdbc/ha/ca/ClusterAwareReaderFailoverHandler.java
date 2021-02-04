@@ -49,6 +49,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * An implementation of ReaderFailoverHandler.
@@ -61,7 +62,8 @@ import java.util.concurrent.TimeUnit;
  * down, to connect to.
  */
 public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler {
-  protected static final int DEFAULT_FAILOVER_TIMEOUT = 30000; // 30 sec
+  protected static final int DEFAULT_FAILOVER_TIMEOUT = 60000; // 60 sec
+  protected static final int DEFAULT_READER_CONNECT_TIMEOUT = 30000; // 30 sec
 
   /** Null logger shared by all connections at startup. */
   protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
@@ -69,13 +71,14 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
 
+  protected int maxFailoverTimeoutMs;
   protected int timeoutMs;
   protected final ConnectionProvider connProvider;
   protected final TopologyService topologyService;
 
   public ClusterAwareReaderFailoverHandler(
       TopologyService topologyService, ConnectionProvider connProvider, Log log) {
-    this(topologyService, connProvider, DEFAULT_FAILOVER_TIMEOUT, log);
+    this(topologyService, connProvider, DEFAULT_FAILOVER_TIMEOUT, DEFAULT_READER_CONNECT_TIMEOUT, log);
   }
 
 
@@ -83,9 +86,10 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
    * ClusterAwareReaderFailoverHandler constructor.
    * */
   public ClusterAwareReaderFailoverHandler(
-      TopologyService topologyService, ConnectionProvider connProvider, int timeoutMs, Log log) {
+      TopologyService topologyService, ConnectionProvider connProvider, int failoverTimeoutMs, int timeoutMs, Log log) {
     this.topologyService = topologyService;
     this.connProvider = connProvider;
+    this.maxFailoverTimeoutMs = failoverTimeoutMs;
     this.timeoutMs = timeoutMs;
 
     if (log != null) {
@@ -116,10 +120,50 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
   @Override
   public ConnectionAttemptResult failover(List<HostInfo> hosts, HostInfo currentHost)
       throws SQLException {
+
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<ConnectionAttemptResult> future = executor.submit(() -> {
+      ConnectionAttemptResult result = null;
+      while(result == null) {
+        result = failoverInternal(hosts, currentHost);
+        TimeUnit.MILLISECONDS.sleep(1);
+      }
+      return result;
+    });
+    executor.shutdown();
+
+    ConnectionAttemptResult defaultResult = new ConnectionAttemptResult(
+            null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+
+
+    try {
+      return future.get(this.maxFailoverTimeoutMs, TimeUnit.MILLISECONDS);
+
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SQLException(
+              Messages.getString("ClusterAwareReaderFailoverHandler.1"), "70100", e);
+
+    } catch (ExecutionException e) {
+      return defaultResult;
+
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      return defaultResult;
+
+    } finally {
+      if (!executor.isTerminated()) {
+        executor.shutdownNow(); // terminate all remaining tasks
+      }
+    }
+  }
+
+  protected ConnectionAttemptResult failoverInternal(List<HostInfo> hosts, HostInfo currentHost)
+          throws SQLException {
     this.topologyService.addToDownHostList(currentHost);
     if (hosts == null || hosts.isEmpty()) {
       return new ConnectionAttemptResult(
-          null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+              null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
     }
     Set<String> downHosts = topologyService.getDownHosts();
     List<HostTuple> hostGroup = getHostTuplesByPriority(hosts, downHosts);
