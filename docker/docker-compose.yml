@@ -14,7 +14,7 @@ services:
     command:
       - --local_infile=1
       - --max_allowed_packet=40M
-      - --max-connections=301
+      - --max-connections=10001
       - --secure-file-priv=/var/lib/mysql
       - --ssl-key=/home/certdir/server-key.pem
       - --ssl-cert=/home/certdir/server-cert.pem
