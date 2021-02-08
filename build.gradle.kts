@@ -214,10 +214,6 @@ tasks.withType<Checkstyle>().configureEach {
     }
 }
 
-tasks.withType<Test>().configureEach {
-    maxParallelForks = 1
-}
-
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
     testImplementation("com.amazonaws:aws-java-sdk-rds:1.11.875")
