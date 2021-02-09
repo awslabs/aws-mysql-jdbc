@@ -154,6 +154,12 @@ public abstract class BaseTestCase {
      * Creates a new BaseTestCase object.
      */
     public BaseTestCase() {
+        try {
+            java.sql.DriverManager.registerDriver(new Driver());
+        } catch (SQLException E) {
+            throw new RuntimeException("Can't register driver!");
+        }
+
         this.myInstanceNumber = instanceCount++;
 
         String newDbUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url);
