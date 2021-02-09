@@ -92,7 +92,7 @@ public abstract class BaseTestCase {
     /**
      * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:aws:///test and its connection URL.
      */
-    public static String dbUrl = "jdbc:mysql:aws///test";
+    public static String dbUrl = "jdbc:mysql:///test";
     public static String timeZoneFreeDbUrl = "jdbc:mysql:///test";
     protected static ConnectionUrl mainConnectionUrl = null;
 
