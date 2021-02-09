@@ -49,16 +49,6 @@ import java.sql.SQLException;
 public class Driver extends NonRegisteringDriver implements java.sql.Driver {
     // Registration of this driver is disabled to prevent driver conflicts; users should register software.aws.rds.jdbc.Driver instead
 
-    // Register ourselves with the DriverManager
-    //
-    static {
-        try {
-            java.sql.DriverManager.registerDriver(new Driver());
-        } catch (SQLException E) {
-            throw new RuntimeException("Can't register driver!");
-        }
-    }
-
     /**
      * Construct a new driver and register it with DriverManager
      * 

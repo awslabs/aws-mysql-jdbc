@@ -32,7 +32,11 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
-import com.mysql.cj.conf.*;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.conf.RuntimeProperty;
+import com.mysql.cj.conf.ConnectionUrlParser;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
@@ -845,7 +849,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   private void dealWithOriginalException(Throwable originalException, Exception wrapperException) throws Throwable {
-    if(originalException != null) {
+    if (originalException != null) {
       this.log.logTrace(Messages.getString("ClusterAwareConnectionProxy.17"), originalException);
       if (this.lastExceptionDealtWith != originalException && shouldExceptionTriggerConnectionSwitch(originalException)) {
         if (this.gatherPerfMetricsSetting) {
