@@ -52,6 +52,9 @@ As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to
 
 There are many different types of URLs that can connect to an Aurora DB cluster. For some of these URL types, the AWS JDBC Driver requires the user to provide some information about the Aurora DB cluster to provide failover functionality. This section outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, if applicable.
 
+Note: The connection string follows standard URL parameters. In order to add parameters to the connection string, simpmly add `?parameter_name=value` at the end of the connection string. You may add multiple parameters using the same format. 
+ 
+
 | URL Type        | Example           | Required Parameters  | Driver Behavior |
 | ------------- |-------------| :-----:| --- |
 | Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306` | None | *Initial connection:* primary DB instance<br/>*Failover behavior:* connect to the new primary DB instance |
@@ -62,6 +65,8 @@ There are many different types of URLs that can connect to an Aurora DB cluster.
 | Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    `clusterInstanceHostPattern` | A regular JDBC connection will be returned - no failover functionality |
 
+(Information about the `clusterInstanceHostPattern` is mentioned in the section below.)
+
 For more information about parameters that can be configured with the AWS JDBC Driver, see the section below about failover parameters.
 
 #### Failover Parameters
@@ -71,7 +76,7 @@ In addition to [the parameters that can be configured for the MySQL Connector/J 
 | Parameter       | Value           | Description  |
 | ------------- |:-------------:| ----- |
 |`enableClusterAwareFailover` | Boolean | Set to true to enable the fast failover behavior offerred by the AWS JDBC Driver. Set to false for simple JDBC connections that do not require fast failover functionality.<br/><br/>**Default value:** `true` |
-|`clusterInstanceHostPattern` | String | The cluster instance DNS pattern that will be used to build a complete instance endpoint. A "?" character in this pattern should be used as a placeholder for cluster instance names. This pattern is required to be specified for IP address or custom domain connections to AWS RDS clusters. <br/><br/>Example: `?.my-domain.com`, `any-subdomain.?.my-domain.com:9999`<br/><br/>**Default value:** if unspecified, and the provided connection string is not an IP address or custom domain, the driver will automatically acquire the cluster instance host pattern from the customer-provided connection string. |
+|`clusterInstanceHostPattern` | String | The cluster instance DNS pattern that will be used to build a complete instance endpoint. A "?" character in this pattern should be used as a placeholder for cluster instance names. This pattern is required to be specified for IP address or custom domain connections to AWS RDS clusters. <br/><br/>Example: `?.my-domain.com`, `any-subdomain.?.my-domain.com:9999`<br/><br/>Usecase Example: If your instances endpoint came in the following pattern:`instance1.customHost`, `instance2.customHost`, etc. Then following connection string would look something like this: `jdbc:mysql:aws://customHost:1234/test?clusterInstanceHostPattern=?.customHost`<br/><br/>**Default value:** if unspecified, and the provided connection string is not an IP address or custom domain, the driver will automatically acquire the cluster instance host pattern from the customer-provided connection string. |
 |`clusterId` | String | A unique identifier for the cluster. Connections with the same cluster id share a cluster topology cache.<br/><br/>**Default value:** If unspecified, the driver will automatically acquire cluster Id for AWS RDS clusters. |
 |`clusterTopologyRefreshRateMs` | Integer | Cluster topology refresh rate in milliseconds. The cached topology for the cluster will be invalidated after the specified time, after which it will be updated during the next interaction with the connection.<br/><br/>**Default value:** `30000` |
 |`failoverTimeoutMs` | Integer | Maximum allowed time in milliseconds to attempt reconnecting to a new writer or reader instance after a cluster failover is initiated.<br/><br/>**Default value:** `60000` |
