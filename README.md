@@ -52,7 +52,7 @@ As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to
 
 There are many different types of URLs that can connect to an Aurora DB cluster. For some of these URL types, the AWS JDBC Driver requires the user to provide some information about the Aurora DB cluster to provide failover functionality. This section outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, if applicable.
 
-Note: The connection string follows standard URL parameters. In order to add parameters to the connection string, simpmly add `?parameter_name=value` at the end of the connection string. You may add multiple parameters using the same format. 
+Note: The connection string follows standard URL parameters. In order to add parameters to the connection string, simply add `?` and then do `parameter_name=value` at the end of the connection string. You may add multiple parameters by separating the parameter name and value set (`parameter_name=value`) with the `&` symbol. For example, to add 2 parameters simply add `?param_name=value&param_2=value2` 
  
 
 | URL Type        | Example           | Required Parameters  | Driver Behavior |
