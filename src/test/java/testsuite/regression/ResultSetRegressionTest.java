@@ -3990,6 +3990,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testBug49516() throws Exception {
         CachedRowSet crs;
@@ -4013,6 +4014,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testBug48820() throws Exception {
         if (versionMeetsMinimum(8, 0, 5)) {
             // old_passwords and PASSWORD() were removed since MySQL 8.0.5
