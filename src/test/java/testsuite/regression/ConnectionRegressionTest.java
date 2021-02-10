@@ -103,7 +103,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Regression tests for Connections
  */
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug1914() throws Exception {

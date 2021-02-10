@@ -150,12 +150,17 @@ public abstract class BaseTestCase {
 
     private boolean isOnCSFS = true;
 
+    private static Driver registeredDriver;
+
     /**
      * Creates a new BaseTestCase object.
      */
     public BaseTestCase() {
         try {
-            java.sql.DriverManager.registerDriver(new Driver());
+            if(registeredDriver == null) {
+                registeredDriver = new Driver();
+            }
+            DriverManager.registerDriver(registeredDriver);
         } catch (SQLException E) {
             throw new RuntimeException("Can't register driver!");
         }

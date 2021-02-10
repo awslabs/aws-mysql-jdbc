@@ -14,7 +14,7 @@ services:
     command:
       - --local_infile=1
       - --max_allowed_packet=40M
-      - --max-connections=10000
+      - --max-connections=2048
       - --secure-file-priv=/var/lib/mysql
       - --ssl-key=/home/certdir/server-key.pem
       - --ssl-cert=/home/certdir/server-cert.pem
@@ -40,7 +40,7 @@ services:
       - --log-error-verbosity=4
       - --local_infile=1
       - --max_allowed_packet=40M
-      - --max-connections=10000
+      - --max-connections=2048
       - --secure-file-priv=/var/lib/mysql
       - --ssl-key=/home/certdir/server-key.pem
       - --ssl-cert=/home/certdir/server-cert.pem
