@@ -2,19 +2,29 @@ package testsuite.failover;
 
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
-import com.amazonaws.services.rds.model.*;
+import com.amazonaws.services.rds.model.RebootDBInstanceRequest;
+import com.amazonaws.services.rds.model.DescribeDBClustersResult;
+import com.amazonaws.services.rds.model.DescribeDBClustersRequest;
+import com.amazonaws.services.rds.model.DBClusterMember;
+import com.amazonaws.services.rds.model.DBCluster;
+import com.amazonaws.services.rds.model.FailoverDBClusterRequest;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import org.junit.jupiter.api.*;
 import software.aws.rds.jdbc.mysql.Driver;
 import software.aws.rds.jdbc.mysql.log.StandardLogger;
 
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @Disabled
 public class ReplicationFailoverIntegrationTest {
@@ -84,7 +94,7 @@ public class ReplicationFailoverIntegrationTest {
         rebootInstance(replicaInstance);
         
         try {
-            while(true) {
+            while (true) {
                 queryInstanceId(testConnection);
             } 
         } catch (SQLException e) {
@@ -102,7 +112,7 @@ public class ReplicationFailoverIntegrationTest {
         int numHosts = 3;
         for(int i = 0; i < numHosts; i++) {
             hostsStringBuilder.append(hosts.get(i)).append(DB_CONN_STR_SUFFIX);
-            if(i < numHosts - 1) {
+            if (i < numHosts - 1) {
                 hostsStringBuilder.append(",");
             }
         }

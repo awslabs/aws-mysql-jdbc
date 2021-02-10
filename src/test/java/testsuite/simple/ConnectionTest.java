@@ -1784,6 +1784,7 @@ public class ConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled // This test is disabled since Github Actions doesn't support IPv6
     public void testIPv6() throws Exception {
         if (!versionMeetsMinimum(5, 6)) {
             return;

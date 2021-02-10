@@ -52,12 +52,12 @@ import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptorProvider;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import com.mysql.cj.log.NullLogger;
-import com.mysql.cj.log.StandardLogger;
 import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
 
 import javax.net.ssl.SSLException;
 import java.io.EOFException;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
@@ -81,6 +81,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   static final String METHOD_COMMIT = "commit";
   static final String METHOD_ROLLBACK = "rollback";
   static final String METHOD_CLOSE = "close";
+  static final String METHOD_EQUALS = "equals";
 
   private final Pattern auroraDnsPattern =
       Pattern.compile(
@@ -136,6 +137,44 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   protected String clusterInstanceHostPatternSetting;
   protected int failoverConnectTimeoutMs;
   protected int failoverSocketTimeoutMs;
+
+  /**
+   * Proxy class to intercept and deal with errors that may occur in any object bound to the current connection.
+   */
+  class JdbcInterfaceProxy implements InvocationHandler {
+    Object invokeOn;
+
+    JdbcInterfaceProxy(Object toInvokeOn) {
+      this.invokeOn = toInvokeOn;
+    }
+
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      if (METHOD_EQUALS.equals(method.getName())) {
+        // Let args[0] "unwrap" to its InvocationHandler if it is a proxy.
+        return args[0].equals(this);
+      }
+
+      synchronized (ClusterAwareConnectionProxy.this) {
+        Object result = null;
+
+        try {
+          result = method.invoke(this.invokeOn, args);
+          result = proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+        } catch (InvocationTargetException e) {
+          dealWithInvocationException(e);
+        } catch (IllegalStateException e) {
+          dealWithIllegalStateException(e);
+        }
+
+        return result;
+      }
+    }
+  }
+
+  @Override
+  protected InvocationHandler getNewJdbcInterfaceProxy(Object toProxy) {
+    return new JdbcInterfaceProxy(toProxy);
+  }
 
   /**
    * Instantiates a new AuroraConnectionProxy for the given list of hosts and connection properties.
@@ -802,11 +841,17 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   @Override
   protected synchronized void dealWithInvocationException(InvocationTargetException e)
       throws SQLException, Throwable, InvocationTargetException {
-    Throwable t = e.getTargetException();
+    dealWithOriginalException(e.getTargetException(), e);
+  }
 
-    if (t != null) {
-      this.log.logTrace(Messages.getString("ClusterAwareConnectionProxy.17"), t);
-      if (this.lastExceptionDealtWith != t && shouldExceptionTriggerConnectionSwitch(t)) {
+  protected void dealWithIllegalStateException(IllegalStateException e) throws Throwable {
+    dealWithOriginalException(e.getCause(), e);
+  }
+
+  private void dealWithOriginalException(Throwable originalException, Exception wrapperException) throws Throwable {
+    if (originalException != null) {
+      this.log.logTrace(Messages.getString("ClusterAwareConnectionProxy.17"), originalException);
+      if (this.lastExceptionDealtWith != originalException && shouldExceptionTriggerConnectionSwitch(originalException)) {
         if (this.gatherPerfMetricsSetting) {
           long currentTimeMs = System.currentTimeMillis();
           this.metrics.registerFailureDetectionTime(currentTimeMs - this.invokeStartTimeMs);
@@ -815,11 +860,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         }
         invalidateCurrentConnection();
         pickNewConnection();
-        this.lastExceptionDealtWith = t;
+        this.lastExceptionDealtWith = originalException;
       }
-      throw t;
+      throw originalException;
     }
-    throw e;
+    throw wrapperException;
   }
 
   /*
@@ -1303,6 +1348,8 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       result = proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (InvocationTargetException e) {
       dealWithInvocationException(e);
+    } catch (IllegalStateException e) {
+      dealWithIllegalStateException(e);
     }
 
     if (METHOD_SET_AUTO_COMMIT.equals(methodName)) {

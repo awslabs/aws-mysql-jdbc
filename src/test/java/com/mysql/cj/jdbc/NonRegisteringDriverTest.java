@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 public class NonRegisteringDriverTest {
     // TODO: test method javadocs and license headers for all added files
     /**

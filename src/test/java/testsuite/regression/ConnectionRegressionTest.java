@@ -58,7 +58,9 @@ import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.TimeUtil;
 import com.mysql.cj.util.Util;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import testsuite.BaseQueryInterceptor;
 import testsuite.BaseTestCase;
 import testsuite.BufferingLogger;
@@ -5921,7 +5923,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } catch (IOException e1) {
             fail("Failed to initialize a mock server.");
         }
-        final String testURL = "jdbc:mysql:aws://localhost:" + serverPort;
+        final String testURL = "jdbc:mysql://localhost:" + serverPort;
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 3;

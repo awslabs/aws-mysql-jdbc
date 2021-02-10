@@ -59,6 +59,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.Callable;
 
+import com.mysql.cj.jdbc.Driver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -91,7 +92,7 @@ public abstract class BaseTestCase {
     /**
      * JDBC URL, initialized from com.mysql.cj.testsuite.url system property, or defaults to jdbc:mysql:aws:///test and its connection URL.
      */
-    public static String dbUrl = "jdbc:mysql:aws///test";
+    public static String dbUrl = "jdbc:mysql:///test";
     public static String timeZoneFreeDbUrl = "jdbc:mysql:///test";
     protected static ConnectionUrl mainConnectionUrl = null;
 
@@ -149,10 +150,21 @@ public abstract class BaseTestCase {
 
     private boolean isOnCSFS = true;
 
+    private static Driver registeredDriver;
+
     /**
      * Creates a new BaseTestCase object.
      */
     public BaseTestCase() {
+        try {
+            if(registeredDriver == null) {
+                registeredDriver = new Driver();
+            }
+            DriverManager.registerDriver(registeredDriver);
+        } catch (SQLException E) {
+            throw new RuntimeException("Can't register driver!");
+        }
+
         this.myInstanceNumber = instanceCount++;
 
         String newDbUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url);
@@ -661,6 +673,7 @@ public abstract class BaseTestCase {
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
         System.out.println("Running test " + testInfo.getTestClass().get().getName() + "#" + testInfo.getDisplayName());
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+
         Class.forName(this.dbClass);
         this.createdObjects = new ArrayList<>();
 

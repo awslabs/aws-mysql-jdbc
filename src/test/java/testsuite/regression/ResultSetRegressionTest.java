@@ -3990,6 +3990,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testBug49516() throws Exception {
         CachedRowSet crs;
@@ -4005,7 +4006,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
 
         this.rs = this.stmt.executeQuery("select firstName as 'first person' from bug49516");
 
-        crs = (CachedRowSet) Class.forName("com.sun.rowset.CachedRowSetImpl").newInstance();
+        crs = (CachedRowSet) Class.forName(com.sun.rowset.CachedRowSetImpl.class.getName()).newInstance();
         crs.populate(this.rs);
         crs.first();
 
@@ -4013,6 +4014,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testBug48820() throws Exception {
         if (versionMeetsMinimum(8, 0, 5)) {
             // old_passwords and PASSWORD() were removed since MySQL 8.0.5
@@ -4040,7 +4042,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
 
         this.rs = noBlobsConn.createStatement().executeQuery("SELECT PASSWORD ('SOMETHING')");
 
-        crs = (CachedRowSet) Class.forName("com.sun.rowset.CachedRowSetImpl").newInstance();
+        crs = (CachedRowSet) Class.forName(com.sun.rowset.CachedRowSetImpl.class.getName()).newInstance();
         crs.populate(this.rs);
         crs.first();
 
