@@ -1784,7 +1784,6 @@ public class ConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
-    @Disabled
     public void testIPv6() throws Exception {
         if (!versionMeetsMinimum(5, 6)) {
             return;
