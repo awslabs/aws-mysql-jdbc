@@ -727,7 +727,7 @@ public class ClusterAwareConnectionProxyTest {
 
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
-    final int newConnectionHostIndex = 2;
+    final int newConnectionHostIndex = 1;
 
     final HostInfo writerHost = createBasicHostInfo("writer-host");
     final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
@@ -743,7 +743,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
     when(mockTopologyService.getLastUsedReaderHost()).thenReturn(readerA_Host);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class))).thenReturn(topology);
-    when(mockTopologyService.getHostByName(mockConn)).thenReturn(readerB_Host);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(readerA_Host);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
