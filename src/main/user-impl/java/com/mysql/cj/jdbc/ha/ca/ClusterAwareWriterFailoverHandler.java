@@ -131,13 +131,13 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       Future<?> futureA = null;
 
       HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
-      HostInfo writerHostWithProps = writerHost == null ?
-              null : ClusterAwareUtils.copyHostInfoAndAddProps(writerHost, this.initialConnectionProps);
-      if (writerHostWithProps != null) {
-        this.topologyService.addToDownHostList(writerHostWithProps);
+      HostInfo writerHostWithInitialProps = writerHost == null ?
+              null : ClusterAwareUtils.hostInfoCopyWithNewProps(writerHost, this.initialConnectionProps);
+      if (writerHostWithInitialProps != null) {
+        this.topologyService.addToDownHostList(writerHostWithInitialProps);
         taskA = new ReconnectToWriterHandler(
                 taskCompletedLatch,
-                writerHostWithProps,
+                writerHostWithInitialProps,
                 this.topologyService,
                 this.connectionProvider,
                 this.reconnectWriterIntervalMs,
@@ -150,7 +150,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
               taskCompletedLatch,
               currentTopology,
               this.topologyService,
-              writerHostWithProps,
+              writerHostWithInitialProps,
               this.connectionProvider,
               this.readerFailoverHandler,
               this.readTopologyIntervalMs,
@@ -199,7 +199,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           futureB.cancel(true);
           this.log.logDebug(
                   Messages.getString(
-                          "ClusterAwareWriterFailoverHandler.2", new Object[]{ writerHostWithProps.getHostPortPair() }));
+                          "ClusterAwareWriterFailoverHandler.2", new Object[]{ writerHostWithInitialProps.getHostPortPair() }));
 
           return new ResolvedHostInfo(
               true, false, taskA.getTopology(), taskA.getCurrentConnection());
@@ -269,7 +269,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           if (taskA.isConnected()) {
             this.log.logDebug(
                 Messages.getString(
-                    "ClusterAwareWriterFailoverHandler.2", new Object[] { writerHostWithProps.getHostPortPair() }));
+                    "ClusterAwareWriterFailoverHandler.2", new Object[] { writerHostWithInitialProps.getHostPortPair() }));
             return new ResolvedHostInfo(
                 true, false, taskA.getTopology(), taskA.getCurrentConnection());
           }
@@ -565,7 +565,8 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
                 this.currentConnection = this.currentReaderConnection;
               } else {
                 // connected to a new writer
-                HostInfo writerCandidateWithProps = ClusterAwareUtils.copyHostInfoAndAddProps(writerCandidate, this.initialConnectionProps);
+                HostInfo writerCandidateWithProps =
+                        ClusterAwareUtils.hostInfoCopyWithNewProps(writerCandidate, this.initialConnectionProps);
                 this.currentConnection = this.connectionProvider.connect(writerCandidateWithProps);
               }
               this.isConnected = true;

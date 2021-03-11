@@ -1033,8 +1033,8 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   @Override
   protected synchronized ConnectionImpl createConnectionForHost(HostInfo baseHostInfo)
       throws SQLException {
-    HostInfo hostInfo = ClusterAwareUtils.copyHostInfoAndAddProps(baseHostInfo, this.initialConnectionProps);
-    ConnectionImpl conn = this.connectionProvider.connect(hostInfo);
+    HostInfo hostInfoWithInitialProps = ClusterAwareUtils.hostInfoCopyWithNewProps(baseHostInfo, this.initialConnectionProps);
+    ConnectionImpl conn = this.connectionProvider.connect(hostInfoWithInitialProps);
     setConnectionProxy(conn);
     return conn;
   }
