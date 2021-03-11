@@ -34,6 +34,7 @@ import com.mysql.cj.conf.HostInfo;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for Writer Failover Process handler. This handler implements all necessary logic to try

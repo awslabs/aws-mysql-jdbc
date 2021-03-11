@@ -41,6 +41,7 @@ import org.mockito.stubbing.Answer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -102,7 +103,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     when(mockTopologyService.getDownHosts()).thenReturn(downHosts);
 
     final ReaderFailoverHandler target =
-        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, mockLog);
+        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, new HashMap<>(), mockLog);
     final ConnectionAttemptResult result = target.failover(hosts, hosts.get(currentHostIndex));
 
     assertTrue(result.isSuccess());
@@ -160,7 +161,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     when(mockTopologyService.getDownHosts()).thenReturn(downHosts);
 
     final ReaderFailoverHandler target =
-            new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, 5000, 30000, mockLog);
+            new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, new HashMap<>(), 5000, 30000, mockLog);
     final ConnectionAttemptResult result = target.failover(hosts, hosts.get(currentHostIndex));
 
     assertFalse(result.isSuccess());
@@ -173,7 +174,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
     final ClusterAwareReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
-            mockTopologyService, Mockito.mock(ConnectionProvider.class), mockLog);
+            mockTopologyService, Mockito.mock(ConnectionProvider.class), new HashMap<>(), mockLog);
     final HostInfo currentHost = new HostInfo(null, "writer", 1234, null, null);
 
     ConnectionAttemptResult result = target.failover(null, currentHost);
@@ -213,7 +214,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     when(mockConnProvider.connect(fastHost)).thenReturn(mockConnection);
 
     final ReaderFailoverHandler target =
-        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, mockLog);
+        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, new HashMap<>(), mockLog);
     final ConnectionAttemptResult result = target.getReaderConnection(hosts);
 
     assertTrue(result.isSuccess());
@@ -238,7 +239,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final int currentHostIndex = 2;
 
     final ReaderFailoverHandler target =
-        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, mockLog);
+        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, new HashMap<>(), mockLog);
     final ConnectionAttemptResult result = target.getReaderConnection(hosts);
 
     assertFalse(result.isSuccess());
@@ -275,7 +276,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
                 });
 
     final ClusterAwareReaderFailoverHandler target =
-        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockProvider, 60000, 1000, mockLog);
+        new ClusterAwareReaderFailoverHandler(mockTopologyService, mockProvider, new HashMap<>(), 60000, 1000, mockLog);
     final ConnectionAttemptResult result = target.getReaderConnection(hosts);
 
     assertFalse(result.isSuccess());
@@ -297,7 +298,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ClusterAwareReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
-            Mockito.mock(TopologyService.class), Mockito.mock(ConnectionProvider.class), mockLog);
+            Mockito.mock(TopologyService.class), Mockito.mock(ConnectionProvider.class), new HashMap<>(), mockLog);
     final List<ClusterAwareReaderFailoverHandler.HostTuple> tuplesByPriority =
         target.getHostTuplesByPriority(originalHosts, downHosts);
 
@@ -344,7 +345,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ClusterAwareReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
-            Mockito.mock(TopologyService.class), Mockito.mock(ConnectionProvider.class), mockLog);
+            Mockito.mock(TopologyService.class), Mockito.mock(ConnectionProvider.class), new HashMap<>(), mockLog);
     final List<ClusterAwareReaderFailoverHandler.HostTuple> readerTuples =
         target.getReaderTuplesByPriority(originalHosts, downHosts);
 

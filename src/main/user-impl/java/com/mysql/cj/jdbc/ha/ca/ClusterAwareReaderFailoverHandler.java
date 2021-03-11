@@ -35,11 +35,13 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;
+import com.mysql.cj.util.ClusterAwareUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
@@ -70,15 +72,15 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
 
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
-
+  protected Map<String, String> initialConnectionProps;
   protected int maxFailoverTimeoutMs;
   protected int timeoutMs;
   protected final ConnectionProvider connProvider;
   protected final TopologyService topologyService;
 
   public ClusterAwareReaderFailoverHandler(
-      TopologyService topologyService, ConnectionProvider connProvider, Log log) {
-    this(topologyService, connProvider, DEFAULT_FAILOVER_TIMEOUT, DEFAULT_READER_CONNECT_TIMEOUT, log);
+          TopologyService topologyService, ConnectionProvider connProvider, Map<String, String> initialConnectionProps, Log log) {
+    this(topologyService, connProvider, initialConnectionProps, DEFAULT_FAILOVER_TIMEOUT, DEFAULT_READER_CONNECT_TIMEOUT, log);
   }
 
 
@@ -86,9 +88,10 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
    * ClusterAwareReaderFailoverHandler constructor.
    * */
   public ClusterAwareReaderFailoverHandler(
-      TopologyService topologyService, ConnectionProvider connProvider, int failoverTimeoutMs, int timeoutMs, Log log) {
+      TopologyService topologyService, ConnectionProvider connProvider, Map<String, String> initialConnectionProps, int failoverTimeoutMs, int timeoutMs, Log log) {
     this.topologyService = topologyService;
     this.connProvider = connProvider;
+    this.initialConnectionProps = initialConnectionProps;
     this.maxFailoverTimeoutMs = failoverTimeoutMs;
     this.timeoutMs = timeoutMs;
 
@@ -256,12 +259,12 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
         Future<ConnectionAttemptResult> attempt1 =
                 completionService.submit(
                         new ConnectionAttemptTask(
-                                this.connProvider, hostGroup.get(i), this.topologyService, this.log));
+                                this.connProvider, hostGroup.get(i), this.topologyService, this.initialConnectionProps, this.log));
         if (secondAttemptPresent) {
           Future<ConnectionAttemptResult> attempt2 =
                   completionService.submit(
                           new ConnectionAttemptTask(
-                                  this.connProvider, hostGroup.get(i + 1), this.topologyService, this.log));
+                                  this.connProvider, hostGroup.get(i + 1), this.topologyService, this.initialConnectionProps, this.log));
           result = getResultFromAttemptPair(attempt1, attempt2, completionService);
         } else {
           result = getNextResult(completionService);
@@ -343,16 +346,19 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     private final ConnectionProvider connProvider;
     private final HostTuple newHostTuple;
     private final TopologyService topologyService;
+    private final Map<String, String> initialConnectionProps;
     private final transient Log log;
 
     private ConnectionAttemptTask(
         ConnectionProvider connProvider,
         HostTuple newHostTuple,
         TopologyService topologyService,
+        Map<String, String> initialConnectionProps,
         Log log) {
       this.connProvider = connProvider;
       this.newHostTuple = newHostTuple;
       this.topologyService = topologyService;
+      this.initialConnectionProps = initialConnectionProps;
       this.log = log;
     }
 
@@ -368,7 +374,8 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
               new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
 
       try {
-        JdbcConnection conn = this.connProvider.connect(newHost);
+        HostInfo newHostWithProps = ClusterAwareUtils.copyHostInfoAndAddProps(newHost, this.initialConnectionProps);
+        JdbcConnection conn = this.connProvider.connect(newHostWithProps);
         topologyService.removeFromDownHostList(newHost);
         this.log.logDebug(
             Messages.getString(

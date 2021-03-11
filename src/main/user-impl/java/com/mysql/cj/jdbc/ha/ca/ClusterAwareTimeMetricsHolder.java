@@ -66,14 +66,11 @@ public class ClusterAwareTimeMetricsHolder extends BaseMetricsHolder {
     logMessage.append(this.metricName);
     logMessage.append("' **\n");
     if (this.numberOfQueriesIssued > 0) {
-      logMessage.append("\nLongest reported time: " + this.longestQueryTimeMs + " ms");
-      logMessage.append("\nShortest reported time: " + this.shortestQueryTimeMs + " ms");
-      logMessage.append(
-          "\nAverage query execution time: "
-              + (this.totalQueryTimeMs / this.numberOfQueriesIssued)
-              + " ms");
+      logMessage.append("\nLongest reported time: ").append(this.longestQueryTimeMs).append(" ms");
+      logMessage.append("\nShortest reported time: ").append(this.shortestQueryTimeMs).append(" ms");
+      logMessage.append("\nAverage query execution time: ").append(this.totalQueryTimeMs / this.numberOfQueriesIssued).append(" ms");
     }
-    logMessage.append("\nNumber of reports: " + this.numberOfQueriesIssued);
+    logMessage.append("\nNumber of reports: ").append(this.numberOfQueriesIssued);
 
     if (this.numberOfQueriesIssued > 0 && this.perfMetricsHistBreakpoints != null) {
       logMessage.append("\n\n\tTiming Histogram:\n");
@@ -93,19 +90,9 @@ public class ClusterAwareTimeMetricsHolder extends BaseMetricsHolder {
       for (int i = 0; i < (HISTOGRAM_BUCKETS - 1); i++) {
 
         if (i == 0) {
-          logMessage.append(
-              "\n\tless than "
-                  + this.perfMetricsHistBreakpoints[i + 1]
-                  + " ms: \t"
-                  + this.perfMetricsHistCounts[i]);
+          logMessage.append("\n\tless than ").append(this.perfMetricsHistBreakpoints[i + 1]).append(" ms: \t").append(this.perfMetricsHistCounts[i]);
         } else {
-          logMessage.append(
-              "\n\tbetween "
-                  + this.perfMetricsHistBreakpoints[i]
-                  + " and "
-                  + this.perfMetricsHistBreakpoints[i + 1]
-                  + " ms: \t"
-                  + this.perfMetricsHistCounts[i]);
+          logMessage.append("\n\tbetween ").append(this.perfMetricsHistBreakpoints[i]).append(" and ").append(this.perfMetricsHistBreakpoints[i + 1]).append(" ms: \t").append(this.perfMetricsHistCounts[i]);
         }
 
         logMessage.append("\t");

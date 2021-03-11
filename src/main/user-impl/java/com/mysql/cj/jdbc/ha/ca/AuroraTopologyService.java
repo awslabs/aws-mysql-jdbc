@@ -77,8 +77,6 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   static final String FIELD_LAST_UPDATED = "LAST_UPDATE_TIMESTAMP";
   static final String FIELD_REPLICA_LAG = "REPLICA_LAG_IN_MILLISECONDS";
 
-  protected static final int NO_CONNECTION_INDEX = -1;
-
   protected static final ExpiringCache<String, ClusterTopologyInfo> topologyCache =
       new ExpiringCache<>(DEFAULT_CACHE_EXPIRE_MS);
   private static final Object cacheLock = new Object();
@@ -274,11 +272,6 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
 
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet) throws SQLException {
     Map<String, String> properties = new HashMap<>();
-
-    if (this.clusterInstanceHost != null) {
-      properties.putAll(this.clusterInstanceHost.getHostProperties());
-    }
-
     properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, resultSet.getString(FIELD_SERVER_ID));
     properties.put(TopologyServicePropertyKeys.SESSION_ID, resultSet.getString(FIELD_SESSION_ID));
     properties.put(

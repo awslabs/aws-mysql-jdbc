@@ -35,16 +35,18 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;
+import com.mysql.cj.util.ClusterAwareUtils;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.Executors;
 
 /**
  * An implementation of WriterFailoverHandler.
@@ -67,6 +69,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
   protected int maxFailoverTimeoutMs = 60000; // 60 sec
   protected int readTopologyIntervalMs = 5000; // 5 sec
   protected int reconnectWriterIntervalMs = 5000; // 5 sec
+  protected Map<String, String> initialConnectionProps;
   protected TopologyService topologyService;
   protected ConnectionProvider connectionProvider;
   protected ReaderFailoverHandler readerFailoverHandler;
@@ -78,10 +81,12 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       TopologyService topologyService,
       ConnectionProvider connectionProvider,
       ReaderFailoverHandler readerFailoverHandler,
+      Map<String, String> initialConnectionProps,
       Log log) {
     this.topologyService = topologyService;
     this.connectionProvider = connectionProvider;
     this.readerFailoverHandler = readerFailoverHandler;
+    this.initialConnectionProps = initialConnectionProps;
 
     if (log != null) {
       this.log = log;
@@ -95,11 +100,12 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       TopologyService topologyService,
       ConnectionProvider connectionProvider,
       ReaderFailoverHandler readerFailoverHandler,
+      Map<String, String> initialConnectionProps,
       int failoverTimeoutMs,
       int readTopologyIntervalMs,
       int reconnectWriterIntervalMs,
       Log log) {
-    this(topologyService, connectionProvider, readerFailoverHandler, log);
+    this(topologyService, connectionProvider, readerFailoverHandler, initialConnectionProps, log);
     this.maxFailoverTimeoutMs = failoverTimeoutMs;
     this.readTopologyIntervalMs = readTopologyIntervalMs;
     this.reconnectWriterIntervalMs = reconnectWriterIntervalMs;
@@ -125,11 +131,13 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       Future<?> futureA = null;
 
       HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
-      this.topologyService.addToDownHostList(writerHost);
-      if (writerHost != null) {
+      HostInfo writerHostWithProps = writerHost == null ?
+              null : ClusterAwareUtils.copyHostInfoAndAddProps(writerHost, this.initialConnectionProps);
+      if (writerHostWithProps != null) {
+        this.topologyService.addToDownHostList(writerHostWithProps);
         taskA = new ReconnectToWriterHandler(
                 taskCompletedLatch,
-                writerHost,
+                writerHostWithProps,
                 this.topologyService,
                 this.connectionProvider,
                 this.reconnectWriterIntervalMs,
@@ -142,10 +150,11 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
               taskCompletedLatch,
               currentTopology,
               this.topologyService,
-              writerHost,
+              writerHostWithProps,
               this.connectionProvider,
               this.readerFailoverHandler,
               this.readTopologyIntervalMs,
+              this.initialConnectionProps,
               this.log);
       Future<?> futureB = executorService.submit(taskB);
 
@@ -190,7 +199,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           futureB.cancel(true);
           this.log.logDebug(
                   Messages.getString(
-                          "ClusterAwareWriterFailoverHandler.2", new Object[]{ writerHost.getHostPortPair() }));
+                          "ClusterAwareWriterFailoverHandler.2", new Object[]{ writerHostWithProps.getHostPortPair() }));
 
           return new ResolvedHostInfo(
               true, false, taskA.getTopology(), taskA.getCurrentConnection());
@@ -260,7 +269,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           if (taskA.isConnected()) {
             this.log.logDebug(
                 Messages.getString(
-                    "ClusterAwareWriterFailoverHandler.2", new Object[] { writerHost.getHostPortPair() }));
+                    "ClusterAwareWriterFailoverHandler.2", new Object[] { writerHostWithProps.getHostPortPair() }));
             return new ResolvedHostInfo(
                 true, false, taskA.getTopology(), taskA.getCurrentConnection());
           }
@@ -403,6 +412,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
     private final ConnectionProvider connectionProvider;
     private final List<HostInfo> currentTopology;
     private final ReaderFailoverHandler readerFailoverHandler;
+    private final Map<String, String> initialConnectionProps;
     private final transient Log log;
     private HostInfo currentReaderHost;
     private JdbcConnection currentReaderConnection;
@@ -415,6 +425,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         ConnectionProvider connectionProvider,
         ReaderFailoverHandler readerFailoverHandler,
         int readTopologyIntervalMs,
+        Map<String, String> initialConnectionProps,
         Log log) {
       this.taskCompletedLatch = taskCompletedLatch;
       this.currentTopology = currentTopology;
@@ -423,6 +434,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       this.connectionProvider = connectionProvider;
       this.readerFailoverHandler = readerFailoverHandler;
       this.readTopologyIntervalMs = readTopologyIntervalMs;
+      this.initialConnectionProps = initialConnectionProps;
       this.log = log;
     }
 
@@ -499,8 +511,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
           ConnectionAttemptResult connResult =
                   this.readerFailoverHandler.getReaderConnection(this.currentTopology);
           this.currentReaderConnection = connResult != null && connResult.isSuccess() ? connResult.getConnection() : null;
-          connIndex =
-                  connResult != null && connResult.isSuccess() ? connResult.getConnectionIndex() : -1;
+          connIndex = connResult != null && connResult.isSuccess() ? connResult.getConnectionIndex() : -1;
         } catch (SQLException e) {
           // eat
         }
@@ -554,7 +565,8 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
                 this.currentConnection = this.currentReaderConnection;
               } else {
                 // connected to a new writer
-                this.currentConnection = this.connectionProvider.connect(writerCandidate);
+                HostInfo writerCandidateWithProps = ClusterAwareUtils.copyHostInfoAndAddProps(writerCandidate, this.initialConnectionProps);
+                this.currentConnection = this.connectionProvider.connect(writerCandidateWithProps);
               }
               this.isConnected = true;
 

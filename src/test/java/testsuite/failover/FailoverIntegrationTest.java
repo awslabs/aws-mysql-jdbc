@@ -37,6 +37,7 @@ import com.amazonaws.services.rds.model.DBClusterMember;
 import com.amazonaws.services.rds.model.DescribeDBClustersRequest;
 import com.amazonaws.services.rds.model.DescribeDBClustersResult;
 import com.amazonaws.services.rds.model.FailoverDBClusterRequest;
+import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -67,8 +68,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 @Disabled
+@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class FailoverIntegrationTest {
   /*
    * Before running these tests we need to initialize the test cluster as the following.
@@ -682,25 +683,25 @@ public class FailoverIntegrationTest {
 
   @Test
   public void test5_1_takeOverConnectionProperties() throws SQLException, InterruptedException {
-    final String initalWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initalWriterId);
-
     final Properties props = new Properties();
-    props.setProperty("user", TEST_USERNAME);
-    props.setProperty("password", TEST_PASSWORD);
-    props.setProperty("allowMultiQueries", "true");
-    props.setProperty("gatherPerfMetrics", "true");
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "false");
 
-    testConnection =
-        DriverManager.getConnection(
-            DB_CONN_STR_PREFIX + initalWriterId + DB_CONN_STR_SUFFIX, props);
+    // Establish the topology cache so that we can later assert that testConnection does not inherit properties from
+    // establishCacheConnection either before or after failover
+    final Connection establishCacheConnection = DriverManager.getConnection(getClusterEndpoint(), props);
+    establishCacheConnection.close();
+
+    props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "true");
+    testConnection = DriverManager.getConnection(getClusterEndpoint(), props);
 
     // Verify that connection accepts multi-statement sql
     final Statement myStmt = testConnection.createStatement();
     myStmt.executeQuery("select @@aurora_server_id; select 1; select 2;");
 
     // Crash Instance1 and nominate a new writer
-    failoverClusterAndWaitUntilWriterChanged(initalWriterId);
+    failoverClusterAndWaitUntilWriterChanged(INSTANCE_ID_1);
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -710,6 +711,10 @@ public class FailoverIntegrationTest {
   }
 
   /* Helper functions. */
+  private String getClusterEndpoint() {
+    String suffix = DB_CONN_STR_SUFFIX.startsWith(".") ? DB_CONN_STR_SUFFIX.substring(1) : DB_CONN_STR_SUFFIX;
+    return DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + ".cluster-" + suffix;
+  }
 
   private DBCluster getDBCluster(String dbClusterIdentifier) {
     DescribeDBClustersRequest dbClustersRequest =
