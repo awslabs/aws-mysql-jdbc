@@ -30,9 +30,7 @@
 
 package com.mysql.cj.jdbc.ha.ca;
 
-import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
@@ -46,8 +44,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -80,9 +76,9 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockConnection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo writerHost = ClusterAwareTestUtil.createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(writerHost);
     currentTopology.add(readerA_Host);
@@ -119,17 +115,6 @@ public class ClusterAwareWriterFailoverHandlerTest {
     inOrder.verify(mockTopologyService).removeFromDownHostList(refEq(writerHost));
   }
 
-  private static HostInfo createBasicHostInfo(String instanceName, String db) {
-    final Map<String, String> properties = new HashMap<>();
-    properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
-    String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
-    db = db == null ? "" : db;
-    properties.put(PropertyKey.DBNAME.getKeyName(), db);
-    url += db;
-    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    return new HostInfo(conStr, instanceName, 1234, null, null, properties);
-  }
-
   /**
    * Verify that writer failover handler can re-connect to a current writer node.
    *
@@ -146,15 +131,15 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockReaderA_Connection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo writerHost = ClusterAwareTestUtil.createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(writerHost);
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    final HostInfo newWriterHost = createBasicHostInfo("new-writer-host", "test");
+    final HostInfo newWriterHost = ClusterAwareTestUtil.createBasicHostInfo("new-writer-host", "test");
     final List<HostInfo> newTopology = new ArrayList<>();
     newTopology.add(newWriterHost);
     newTopology.add(readerA_Host);
@@ -212,9 +197,9 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockReaderA_Connection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo writerHost = ClusterAwareTestUtil.createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(writerHost);
     currentTopology.add(readerA_Host);
@@ -274,15 +259,15 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockReaderB_Connection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo writerHost = ClusterAwareTestUtil.createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(writerHost);
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    final HostInfo newWriterHost = createBasicHostInfo("new-writer-host", "test");
+    final HostInfo newWriterHost = ClusterAwareTestUtil.createBasicHostInfo("new-writer-host", "test");
     final List<HostInfo> newTopology = new ArrayList<>();
     newTopology.add(newWriterHost);
     newTopology.add(readerA_Host);
@@ -345,15 +330,15 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockReaderB_Connection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo initialWriterHost = createBasicHostInfo("initial-writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo initialWriterHost = ClusterAwareTestUtil.createBasicHostInfo("initial-writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(initialWriterHost);
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    final HostInfo newWriterHost = createBasicHostInfo("new-writer-host", "test");
+    final HostInfo newWriterHost = ClusterAwareTestUtil.createBasicHostInfo("new-writer-host", "test");
     final List<HostInfo> newTopology = new ArrayList<>();
     newTopology.add(newWriterHost);
     newTopology.add(initialWriterHost);
@@ -418,15 +403,15 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockReaderB_Connection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo writerHost = ClusterAwareTestUtil.createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(writerHost);
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    final HostInfo newWriterHost = createBasicHostInfo("new-writer-host", "test");
+    final HostInfo newWriterHost = ClusterAwareTestUtil.createBasicHostInfo("new-writer-host", "test");
     final List<HostInfo> newTopology = new ArrayList<>();
     newTopology.add(newWriterHost);
     newTopology.add(readerA_Host);
@@ -490,15 +475,15 @@ public class ClusterAwareWriterFailoverHandlerTest {
     final ConnectionImpl mockReaderB_Connection = Mockito.mock(ConnectionImpl.class);
     final ReaderFailoverHandler mockReaderFailover = Mockito.mock(ReaderFailoverHandler.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
+    final HostInfo writerHost = ClusterAwareTestUtil.createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = ClusterAwareTestUtil.createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> currentTopology = new ArrayList<>();
     currentTopology.add(writerHost);
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    final HostInfo newWriterHost = createBasicHostInfo("new-writer-host", "test");
+    final HostInfo newWriterHost = ClusterAwareTestUtil.createBasicHostInfo("new-writer-host", "test");
     final List<HostInfo> newTopology = new ArrayList<>();
     newTopology.add(newWriterHost);
     newTopology.add(readerA_Host);

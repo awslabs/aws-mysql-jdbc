@@ -54,7 +54,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticConnectionImpl = mockStatic(ConnectionImpl.class)) {
+        try (MockedStatic<ConnectionImpl> mockStaticConnectionImpl = mockStatic(ConnectionImpl.class)) {
             mockStaticConnectionImpl.when(() -> ConnectionImpl.getInstance(eq(connUrl.getMainHost()))).thenReturn(mockConnectionImplConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockConnectionImplConn, conn);
@@ -68,7 +68,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticClusterAwareConnectionProxy = mockStatic(ClusterAwareConnectionProxy.class)) {
+        try (MockedStatic<ClusterAwareConnectionProxy> mockStaticClusterAwareConnectionProxy = mockStatic(ClusterAwareConnectionProxy.class)) {
             mockStaticClusterAwareConnectionProxy.when(() -> ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(eq(connUrl))).thenReturn(mockAwsProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockAwsProtocolConn, conn);
@@ -82,7 +82,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticFailoverConnectionProxy = mockStatic(FailoverConnectionProxy.class)) {
+        try (MockedStatic<FailoverConnectionProxy> mockStaticFailoverConnectionProxy = mockStatic(FailoverConnectionProxy.class)) {
             mockStaticFailoverConnectionProxy.when(() -> FailoverConnectionProxy.createProxyInstance(eq(connUrl))).thenReturn(mockFailoverProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockFailoverProtocolConn, conn);
@@ -96,7 +96,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticLoadBalancedConnectionProxy = mockStatic(LoadBalancedConnectionProxy.class)) {
+        try (MockedStatic<LoadBalancedConnectionProxy> mockStaticLoadBalancedConnectionProxy = mockStatic(LoadBalancedConnectionProxy.class)) {
             mockStaticLoadBalancedConnectionProxy.when(() -> LoadBalancedConnectionProxy.createProxyInstance(eq(connUrl))).thenReturn(mockLoadBalancedProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockLoadBalancedProtocolConn, conn);
@@ -110,7 +110,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticReplicationConnectionProxy = mockStatic(ReplicationConnectionProxy.class)) {
+        try (MockedStatic<ReplicationConnectionProxy> mockStaticReplicationConnectionProxy = mockStatic(ReplicationConnectionProxy.class)) {
             mockStaticReplicationConnectionProxy.when(() -> ReplicationConnectionProxy.createProxyInstance(eq(connUrl))).thenReturn(mockReplicationProtocolConn);
             Connection replicationConn = driver.connect(url, new Properties());
             assertEquals(mockReplicationProtocolConn, replicationConn);

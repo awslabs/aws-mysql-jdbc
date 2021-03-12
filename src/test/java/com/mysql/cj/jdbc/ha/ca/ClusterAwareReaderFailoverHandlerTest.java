@@ -30,7 +30,6 @@
 
 package com.mysql.cj.jdbc.ha.ca;
 
-import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
@@ -39,7 +38,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
-import java.sql.Array;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +45,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,7 +78,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             "reader-5"
     );
     for(String instance : instances) {
-      HostInfo host = createBasicHostInfo(instance, "test");
+      HostInfo host = ClusterAwareTestUtil.createBasicHostInfo(instance, "test");
       testHosts.add(host);
     }
   }
@@ -147,16 +144,6 @@ public class ClusterAwareReaderFailoverHandlerTest {
     return hosts;
   }
 
-  private static HostInfo createBasicHostInfo(String instanceName, String db) {
-    final Map<String, String> properties = new HashMap<>();
-    String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
-    db = db == null ? "" : db;
-    properties.put(PropertyKey.DBNAME.getKeyName(), db);
-    url += db;
-    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    return new HostInfo(conStr, instanceName, 1234, null, null, properties);
-  }
-
   @Test
   public void testFailover_timeout() throws SQLException {
     // original host list: [active writer, active reader, current connection (reader), active
@@ -169,14 +156,12 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final ConnectionImpl mockConnection = Mockito.mock(ConnectionImpl.class);
     final List<HostInfo> hosts = getHostsFromTestUrls(6);
     final int currentHostIndex = 2;
-    for (int i = 0; i < hosts.size(); i++) {
-        when(mockConnProvider.connect(refEq(hosts.get(i))))
-                .thenAnswer(
-                        (Answer<ConnectionImpl>)
-                                invocation -> {
-                                  Thread.sleep(20000);
-                                  return mockConnection;
-                                });
+    for (HostInfo host : hosts) {
+      when(mockConnProvider.connect(refEq(host)))
+              .thenAnswer((Answer<ConnectionImpl>) invocation -> {
+                Thread.sleep(20000);
+                return mockConnection;
+              });
     }
 
     final Set<String> downHosts = new HashSet<>();
