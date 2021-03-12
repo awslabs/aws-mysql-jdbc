@@ -4,37 +4,27 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 public class ClusterAwareUtils {
     /**
      * Create a copy of the given {@link HostInfo} object where all details are the same except for the host properties,
-     * which are set to the given map of properties
+     * which will contain both the original properties and the properties passed into the function
      *
      * @param baseHostInfo The {@link HostInfo} object to copy
-     * @param props The map of properties to add to the new {@link HostInfo} object
+     * @param newProps The map of properties to add to the new {@link HostInfo} copy
      *
      * @return A copy of the given {@link HostInfo} object where all details are the same except for the host properties,
-     *      which are set to the given map of properties
+     *      will contain both the original properties and the properties passed into the function
      */
-    public static HostInfo hostInfoCopyWithNewProps(HostInfo baseHostInfo, Map<String, String> props) {
-        DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(baseHostInfo.getDatabaseUrl(), convertMapToProperties(props));
-        return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), props);
-    }
-
-    /**
-     * Converts the format of the given properties from a {@link Map} to a {@link Properties} object
-     *
-     * @param mapProps A {@link Map} representation of a set of properties
-     *
-     * @return A {@link Properties} object containing the same entries as the given map
-     */
-    public static Properties convertMapToProperties(Map<String, String> mapProps) {
-        Properties props = new Properties();
-        for(Map.Entry<String, String> mapProp : mapProps.entrySet()) {
-            props.setProperty(mapProp.getKey(), mapProp.getValue());
-        }
-        return props;
+    public static HostInfo hostInfoCopyWithAdditionalProps(HostInfo baseHostInfo, Map<String, String> newProps) {
+        DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(baseHostInfo.getDatabaseUrl(), new Properties());
+        Map<String, String> originalProps = baseHostInfo.getHostProperties();
+        Map<String, String> mergedProps = new HashMap<>();
+        mergedProps.putAll(originalProps);
+        mergedProps.putAll(newProps);
+        return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), mergedProps);
     }
 }

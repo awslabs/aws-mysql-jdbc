@@ -132,7 +132,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
 
       HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
       HostInfo writerHostWithInitialProps = writerHost == null ?
-              null : ClusterAwareUtils.hostInfoCopyWithNewProps(writerHost, this.initialConnectionProps);
+              null : ClusterAwareUtils.hostInfoCopyWithAdditionalProps(writerHost, this.initialConnectionProps);
       if (writerHostWithInitialProps != null) {
         this.topologyService.addToDownHostList(writerHostWithInitialProps);
         taskA = new ReconnectToWriterHandler(
@@ -462,7 +462,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
 
         boolean success = false;
         while (!success) {
-          connectoToReader();
+          connectToReader();
           success = connectToNewWriter();
         }
 
@@ -491,7 +491,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
       }
     }
 
-    private void connectoToReader() throws InterruptedException {
+    private void connectToReader() throws InterruptedException {
 
       // Close reader connection if it's not needed.
       try {
@@ -566,7 +566,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
               } else {
                 // connected to a new writer
                 HostInfo writerCandidateWithProps =
-                        ClusterAwareUtils.hostInfoCopyWithNewProps(writerCandidate, this.initialConnectionProps);
+                        ClusterAwareUtils.hostInfoCopyWithAdditionalProps(writerCandidate, this.initialConnectionProps);
                 this.currentConnection = this.connectionProvider.connect(writerCandidateWithProps);
               }
               this.isConnected = true;

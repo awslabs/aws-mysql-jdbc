@@ -46,7 +46,10 @@ import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import software.aws.rds.jdbc.mysql.Driver;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeastOnce;
@@ -111,10 +115,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
@@ -185,10 +191,12 @@ public class ClusterAwareConnectionProxyTest {
     ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(any(HostInfo.class))).thenReturn(mockConn);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     assertThrows(
         SQLException.class,
@@ -215,10 +223,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -258,10 +268,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -301,10 +313,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -342,10 +356,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -428,10 +444,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -472,10 +490,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
         .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -518,10 +538,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -559,10 +581,12 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
+    HostInfo writerHost = createBasicHostInfo("writer", "test");
     final List<HostInfo> mockTopology = new ArrayList<>();
-    mockTopology.add(Mockito.mock(HostInfo.class));
+    mockTopology.add(writerHost);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class)))
-        .thenReturn(mockTopology);
+            .thenReturn(mockTopology);
+    when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
 
     final WriterFailoverHandler writerFailoverHandler = Mockito.mock(WriterFailoverHandler.class);
     final ReaderFailoverHandler readerFailoverHandler = Mockito.mock(ReaderFailoverHandler.class);
@@ -627,9 +651,9 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host");
+    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerA_Host);
@@ -638,7 +662,7 @@ public class ClusterAwareConnectionProxyTest {
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class))).thenReturn(topology);
     when(mockTopologyService.getHostByName(mockConn)).thenReturn(writerHost);
-    when(mockConnectionProvider.connect(writerHost)).thenReturn(mockConn);
+    when(mockConnectionProvider.connect(refEq(writerHost))).thenReturn(mockConn);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
@@ -653,9 +677,14 @@ public class ClusterAwareConnectionProxyTest {
     assertFalse(proxy.isCurrentConnectionReadOnly());
   }
 
-  private HostInfo createBasicHostInfo(String instanceName) {
+  private HostInfo createBasicHostInfo(String instanceName, String db) {
     final Map<String, String> properties = new HashMap<>();
-    return new HostInfo(null, instanceName, 1234, null, null, properties);
+    String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
+    db = db == null ? "" : db;
+    properties.put(PropertyKey.DBNAME.getKeyName(), db);
+    url += db;
+    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    return new HostInfo(conStr, instanceName, 1234, null, null, properties);
   }
 
   @Test
@@ -670,14 +699,14 @@ public class ClusterAwareConnectionProxyTest {
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
     final int connectionHostIndex = 1;
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host");
-    final HostInfo readerAHost = createBasicHostInfo("reader-a-host");
+    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
+    final HostInfo readerAHost = createBasicHostInfo("reader-a-host", "test");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerAHost);
 
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
-    when(mockConnectionProvider.connect(readerAHost)).thenReturn(mockConn);
+    when(mockConnectionProvider.connect(refEq(readerAHost))).thenReturn(mockConn);
 
     when(mockTopologyService.getTopology(eq(mockConn), any(Boolean.class))).thenReturn(topology);
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
@@ -708,16 +737,16 @@ public class ClusterAwareConnectionProxyTest {
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
     final int newConnectionHostIndex = 1;
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host");
+    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerA_Host);
     topology.add(readerB_Host);
 
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
-    when(mockConnectionProvider.connect(readerA_Host)).thenReturn(mockConn);
+    when(mockConnectionProvider.connect(refEq(readerA_Host))).thenReturn(mockConn);
 
     when(mockTopologyService.getCachedTopology()).thenReturn(topology);
     when(mockTopologyService.getLastUsedReaderHost()).thenReturn(readerA_Host);
@@ -752,16 +781,16 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
-    final HostInfo cachedWriterHost = createBasicHostInfo("cached-writer-host");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host");
+    final HostInfo cachedWriterHost = createBasicHostInfo("cached-writer-host", "test");
+    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> cachedTopology = new ArrayList<>();
     cachedTopology.add(cachedWriterHost);
     cachedTopology.add(readerA_Host);
     cachedTopology.add(readerB_Host);
 
-    final HostInfo actualWriterHost = createBasicHostInfo("actual-writer-host");
-    final HostInfo obsoleteWriterHost = createBasicHostInfo("obsolete-writer-host");
+    final HostInfo actualWriterHost = createBasicHostInfo("actual-writer-host", "test");
+    final HostInfo obsoleteWriterHost = createBasicHostInfo("obsolete-writer-host", "test");
     final List<HostInfo> actualTopology = new ArrayList<>();
     actualTopology.add(actualWriterHost);
     actualTopology.add(readerA_Host);
@@ -773,8 +802,8 @@ public class ClusterAwareConnectionProxyTest {
     when(mockTopologyService.getHostByName(mockCachedWriterConn)).thenReturn(obsoleteWriterHost);
 
     ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
-    when(mockConnectionProvider.connect(cachedWriterHost)).thenReturn(mockCachedWriterConn);
-    when(mockConnectionProvider.connect(actualWriterHost)).thenReturn(mockActualWriterConn);
+    when(mockConnectionProvider.connect(refEq(cachedWriterHost))).thenReturn(mockCachedWriterConn);
+    when(mockConnectionProvider.connect(refEq(actualWriterHost))).thenReturn(mockActualWriterConn);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
@@ -809,9 +838,9 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host");
-    final HostInfo readerAHost = createBasicHostInfo("reader-a-host");
-    final HostInfo readerBHost = createBasicHostInfo("reader-b-host");
+    final HostInfo writerHost = createBasicHostInfo("writer-host", null);
+    final HostInfo readerAHost = createBasicHostInfo("reader-a-host", null);
+    final HostInfo readerBHost = createBasicHostInfo("reader-b-host", null);
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerAHost);
@@ -824,7 +853,7 @@ public class ClusterAwareConnectionProxyTest {
 
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(conStr.getMainHost())).thenReturn(mockDirectReaderConn);
-    when(mockConnectionProvider.connect(writerHost)).thenReturn(mockWriterConn);
+    when(mockConnectionProvider.connect(refEq(writerHost))).thenReturn(mockWriterConn);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(
@@ -852,9 +881,9 @@ public class ClusterAwareConnectionProxyTest {
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     final TopologyService mockTopologyService = Mockito.mock(TopologyService.class);
 
-    final HostInfo writerHost = createBasicHostInfo("writer-host");
-    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host");
-    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host");
+    final HostInfo writerHost = createBasicHostInfo("writer-host", "test");
+    final HostInfo readerA_Host = createBasicHostInfo("reader-a-host", "test");
+    final HostInfo readerB_Host = createBasicHostInfo("reader-b-host", "test");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerA_Host);
@@ -866,7 +895,7 @@ public class ClusterAwareConnectionProxyTest {
 
     final ConnectionProvider mockConnectionProvider = Mockito.mock(ConnectionProvider.class);
     when(mockConnectionProvider.connect(conStr.getMainHost())).thenReturn(mockReaderConnection);
-    when(mockConnectionProvider.connect(writerHost)).thenReturn(mockWriterConnection);
+    when(mockConnectionProvider.connect(refEq(writerHost))).thenReturn(mockWriterConnection);
 
     final ClusterAwareConnectionProxy proxy =
         new ClusterAwareConnectionProxy(

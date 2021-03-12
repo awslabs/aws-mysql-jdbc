@@ -227,6 +227,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       ReaderFailoverHandler readerFailoverHandler)
       throws SQLException {
     super(connectionUrl);
+    this.initialConnectionProps = connectionUrl.getMainHost().getHostProperties();
     initSettings(connectionUrl);
     initLogger(connectionUrl);
 
@@ -1033,7 +1034,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   @Override
   protected synchronized ConnectionImpl createConnectionForHost(HostInfo baseHostInfo)
       throws SQLException {
-    HostInfo hostInfoWithInitialProps = ClusterAwareUtils.hostInfoCopyWithNewProps(baseHostInfo, this.initialConnectionProps);
+    HostInfo hostInfoWithInitialProps = ClusterAwareUtils.hostInfoCopyWithAdditionalProps(baseHostInfo, this.initialConnectionProps);
     ConnectionImpl conn = this.connectionProvider.connect(hostInfoWithInitialProps);
     setConnectionProxy(conn);
     return conn;
