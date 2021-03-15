@@ -35,7 +35,6 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;
-import com.mysql.cj.util.ClusterAwareUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -257,14 +256,10 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
       for (int i = 0; i < hostGroup.size(); i += 2) {
         boolean secondAttemptPresent = i + 1 < hostGroup.size();
         Future<ConnectionAttemptResult> attempt1 =
-                completionService.submit(
-                        new ConnectionAttemptTask(
-                                this.connProvider, hostGroup.get(i), this.topologyService, this.initialConnectionProps, this.log));
+                completionService.submit(new ConnectionAttemptTask(hostGroup.get(i)));
         if (secondAttemptPresent) {
           Future<ConnectionAttemptResult> attempt2 =
-                  completionService.submit(
-                          new ConnectionAttemptTask(
-                                  this.connProvider, hostGroup.get(i + 1), this.topologyService, this.initialConnectionProps, this.log));
+                  completionService.submit(new ConnectionAttemptTask(hostGroup.get(i + 1)));
           result = getResultFromAttemptPair(attempt1, attempt2, completionService);
         } else {
           result = getNextResult(completionService);
@@ -342,24 +337,11 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     }
   }
 
-  private static class ConnectionAttemptTask implements Callable<ConnectionAttemptResult> {
-    private final ConnectionProvider connProvider;
+  private class ConnectionAttemptTask implements Callable<ConnectionAttemptResult> {
     private final HostTuple newHostTuple;
-    private final TopologyService topologyService;
-    private final Map<String, String> initialConnectionProps;
-    private final transient Log log;
 
-    private ConnectionAttemptTask(
-        ConnectionProvider connProvider,
-        HostTuple newHostTuple,
-        TopologyService topologyService,
-        Map<String, String> initialConnectionProps,
-        Log log) {
-      this.connProvider = connProvider;
+    private ConnectionAttemptTask(HostTuple newHostTuple) {
       this.newHostTuple = newHostTuple;
-      this.topologyService = topologyService;
-      this.initialConnectionProps = initialConnectionProps;
-      this.log = log;
     }
 
     /**
@@ -368,23 +350,23 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     @Override
     public ConnectionAttemptResult call() {
       HostInfo newHost = this.newHostTuple.getHost();
-      this.log.logDebug(
+      log.logDebug(
           Messages.getString(
               "ClusterAwareReaderFailoverHandler.3",
               new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
 
       try {
-        HostInfo newHostWithProps = ClusterAwareUtils.hostInfoCopyWithAdditionalProps(newHost, this.initialConnectionProps);
-        JdbcConnection conn = this.connProvider.connect(newHostWithProps);
+        HostInfo newHostWithProps = ClusterAwareUtils.copyWithAdditionalProps(newHost, initialConnectionProps);
+        JdbcConnection conn = connProvider.connect(newHostWithProps);
         topologyService.removeFromDownHostList(newHost);
-        this.log.logDebug(
+        log.logDebug(
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.4",
                 new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
         return new ConnectionAttemptResult(conn, this.newHostTuple.getIndex(), true);
       } catch (SQLException e) {
         topologyService.addToDownHostList(newHost);
-        this.log.logDebug(
+        log.logDebug(
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.5",
                 new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));

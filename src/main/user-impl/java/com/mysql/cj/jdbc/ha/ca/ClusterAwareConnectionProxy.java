@@ -52,7 +52,6 @@ import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptorProvider;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import com.mysql.cj.log.NullLogger;
-import com.mysql.cj.util.ClusterAwareUtils;
 import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
 
@@ -1034,7 +1033,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   @Override
   protected synchronized ConnectionImpl createConnectionForHost(HostInfo baseHostInfo)
       throws SQLException {
-    HostInfo hostInfoWithInitialProps = ClusterAwareUtils.hostInfoCopyWithAdditionalProps(baseHostInfo, this.initialConnectionProps);
+    HostInfo hostInfoWithInitialProps = ClusterAwareUtils.copyWithAdditionalProps(baseHostInfo, this.initialConnectionProps);
     ConnectionImpl conn = this.connectionProvider.connect(hostInfoWithInitialProps);
     setConnectionProxy(conn);
     return conn;

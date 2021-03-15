@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-public class ClusterAwareTestUtil {
+public class ClusterAwareTestUtils {
     protected static HostInfo createBasicHostInfo(String instanceName, String db) {
         final Map<String, String> properties = new HashMap<>();
         properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);

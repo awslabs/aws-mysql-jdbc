@@ -78,7 +78,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             "reader-5"
     );
     for(String instance : instances) {
-      HostInfo host = ClusterAwareTestUtil.createBasicHostInfo(instance, "test");
+      HostInfo host = ClusterAwareTestUtils.createBasicHostInfo(instance, "test");
       testHosts.add(host);
     }
   }
