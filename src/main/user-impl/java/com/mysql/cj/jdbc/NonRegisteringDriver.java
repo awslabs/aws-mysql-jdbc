@@ -75,6 +75,8 @@ import com.mysql.cj.util.StringUtils;
  */
 public class NonRegisteringDriver implements java.sql.Driver {
 
+    protected static boolean acceptAwsProtocolOnly = false;
+
     /*
      * Standardizes OS name information to align with other drivers/clients
      * for MySQL connection attributes
@@ -196,7 +198,8 @@ public class NonRegisteringDriver implements java.sql.Driver {
 
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
             Map<String, String> connProps = conStr.getOriginalProperties();
-            boolean acceptAwsProtocolOnly = Boolean.parseBoolean(connProps.getOrDefault(PropertyKey.acceptAwsProtocolOnly.getKeyName(), "false"));
+            acceptAwsProtocolOnly = Boolean.parseBoolean(connProps.getOrDefault(PropertyKey.acceptAwsProtocolOnly.getKeyName(), "false"));
+
             switch (conStr.getType()) {
                 case SINGLE_CONNECTION:
                     return acceptAwsProtocolOnly ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());

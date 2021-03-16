@@ -37,16 +37,36 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 public class NonRegisteringDriverTest {
+
+    @Test
+    public void testSetAwsProtocolOnlySwitch() throws Exception {
+        software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
+        assertNotNull(drv);
+
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
+        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
+        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+    }
+
     @Test
     public void testSingleConnectionProtocolReturnsConnectionImpl() throws SQLException {
         String url = "jdbc:mysql://somehost:1234/test";
