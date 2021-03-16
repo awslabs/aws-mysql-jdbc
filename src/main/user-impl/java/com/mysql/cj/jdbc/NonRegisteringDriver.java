@@ -77,6 +77,9 @@ public class NonRegisteringDriver implements java.sql.Driver {
 
     protected static boolean acceptAwsProtocolOnly = false;
 
+    private static final String MYSQL_PROTOCOL = "jdbc:mysql:";
+    private static final String AWS_PROTOCOL = MYSQL_PROTOCOL + "aws:";
+
     /*
      * Standardizes OS name information to align with other drivers/clients
      * for MySQL connection attributes
@@ -148,6 +151,9 @@ public class NonRegisteringDriver implements java.sql.Driver {
      */
     @Override
     public boolean acceptsURL(String url) throws SQLException {
+        if(acceptAwsProtocolOnly && !url.startsWith(AWS_PROTOCOL)){
+            return false;
+        }
         return (ConnectionUrl.acceptsUrl(url));
     }
 
