@@ -55,19 +55,19 @@ import com.mysql.cj.log.Log;
  */
 public class ClusterAwareMetrics {
 
-  private ClusterAwareTimeMetricsHolder failureDetection =
+  private final ClusterAwareTimeMetricsHolder failureDetection =
       new ClusterAwareTimeMetricsHolder("Failover Detection");
-  private ClusterAwareTimeMetricsHolder writerFailoverProcedure =
+  private final ClusterAwareTimeMetricsHolder writerFailoverProcedure =
       new ClusterAwareTimeMetricsHolder("Writer Failover Procedure");
-  private ClusterAwareTimeMetricsHolder readerFailoverProcedure =
+  private final ClusterAwareTimeMetricsHolder readerFailoverProcedure =
       new ClusterAwareTimeMetricsHolder("Reader Failover Procedure");
-  private ClusterAwareHitMissMetricsHolder failoverConnects =
+  private final ClusterAwareHitMissMetricsHolder failoverConnects =
       new ClusterAwareHitMissMetricsHolder("Successful Failover Reconnects");
-  private ClusterAwareHitMissMetricsHolder invalidInitialConnection =
+  private final ClusterAwareHitMissMetricsHolder invalidInitialConnection =
       new ClusterAwareHitMissMetricsHolder("Invalid Initial Connection");
-  private ClusterAwareHitMissMetricsHolder useLastConnectedReader =
+  private final ClusterAwareHitMissMetricsHolder useLastConnectedReader =
       new ClusterAwareHitMissMetricsHolder("Used Last Connected Reader");
-  private ClusterAwareHitMissMetricsHolder useCachedTopology =
+  private final ClusterAwareHitMissMetricsHolder useCachedTopology =
       new ClusterAwareHitMissMetricsHolder("Used Cached Topology");
 
   public ClusterAwareMetrics() {}

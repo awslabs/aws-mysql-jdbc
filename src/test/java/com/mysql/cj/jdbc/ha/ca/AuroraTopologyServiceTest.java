@@ -32,7 +32,6 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.StatementImpl;
@@ -82,7 +81,6 @@ public class AuroraTopologyServiceTest {
     final String url =
         "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final Properties mainHostProps = new Properties();
-    mainHostProps.put("anyCustomProperty", "anyTestValue");
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, mainHostProps);
     final HostInfo mainHost = conStr.getMainHost();
 
@@ -115,8 +113,6 @@ public class AuroraTopologyServiceTest {
         AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props.get(PropertyKey.DBNAME.getKeyName()));
-    assertEquals("anyTestValue", props.get("anyCustomProperty"));
 
     assertFalse(spyProvider.isMultiWriterCluster());
     assertEquals(3, topology.size());
@@ -182,7 +178,6 @@ public class AuroraTopologyServiceTest {
         props1.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props1.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props1.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props1.get(PropertyKey.DBNAME.getKeyName()));
 
     Map<String, String> props2 = master2.getHostProperties();
     assertEquals("writer-instance-2", props2.get(TopologyServicePropertyKeys.INSTANCE_NAME));
@@ -191,7 +186,6 @@ public class AuroraTopologyServiceTest {
         props2.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props2.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props2.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props2.get(PropertyKey.DBNAME.getKeyName()));
 
     Map<String, String> props3 = master3.getHostProperties();
     assertEquals("writer-instance-3", props3.get(TopologyServicePropertyKeys.INSTANCE_NAME));
@@ -200,7 +194,6 @@ public class AuroraTopologyServiceTest {
         props3.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props3.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props3.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props3.get(PropertyKey.DBNAME.getKeyName()));
   }
 
   private void stubTopologyQuery(Connection conn, Statement stmt, ResultSet results)

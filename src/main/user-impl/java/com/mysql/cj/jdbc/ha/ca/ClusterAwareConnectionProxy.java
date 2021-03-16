@@ -33,10 +33,10 @@ package com.mysql.cj.jdbc.ha.ca;
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.ConnectionUrlParser;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.RuntimeProperty;
-import com.mysql.cj.conf.ConnectionUrlParser;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
@@ -108,6 +108,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   protected static final int WRITER_CONNECTION_INDEX = 0; // writer host is always stored at index 0
 
   protected int currentHostIndex = NO_CONNECTION_INDEX;
+  protected Map<String, String> initialConnectionProps;
   protected Boolean explicitlyReadOnly = null;
   protected boolean inTransaction = false;
   protected boolean explicitlyAutoCommit = true;
@@ -185,6 +186,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
    */
   public ClusterAwareConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
     super(connectionUrl);
+    this.initialConnectionProps = connectionUrl.getMainHost().getHostProperties();
     initSettings(connectionUrl);
     initLogger(connectionUrl);
 
@@ -198,6 +200,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         new ClusterAwareReaderFailoverHandler(
             this.topologyService,
             this.connectionProvider,
+            this.initialConnectionProps,
             this.failoverTimeoutMsSetting,
             this.failoverReaderConnectTimeoutMsSetting,
             this.log);
@@ -206,6 +209,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
             this.topologyService,
             this.connectionProvider,
             this.readerFailoverHandler,
+            this.initialConnectionProps,
             this.failoverTimeoutMsSetting,
             this.failoverClusterTopologyRefreshRateMsSetting,
             this.failoverWriterReconnectIntervalMsSetting,
@@ -222,6 +226,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       ReaderFailoverHandler readerFailoverHandler)
       throws SQLException {
     super(connectionUrl);
+    this.initialConnectionProps = connectionUrl.getMainHost().getHostProperties();
     initSettings(connectionUrl);
     initLogger(connectionUrl);
 
@@ -1021,14 +1026,15 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   /**
    * Creates a new physical connection for the given {@link HostInfo}.
    *
-   * @param hostInfo The host info instance.
+   * @param baseHostInfo The host info instance to base the connection off of.
    * @return The new Connection instance.
    * @throws SQLException if an error occurs
    */
   @Override
-  protected synchronized ConnectionImpl createConnectionForHost(HostInfo hostInfo)
+  protected synchronized ConnectionImpl createConnectionForHost(HostInfo baseHostInfo)
       throws SQLException {
-    ConnectionImpl conn = this.connectionProvider.connect(hostInfo);
+    HostInfo hostInfoWithInitialProps = ClusterAwareUtils.copyWithAdditionalProps(baseHostInfo, this.initialConnectionProps);
+    ConnectionImpl conn = this.connectionProvider.connect(hostInfoWithInitialProps);
     setConnectionProxy(conn);
     return conn;
   }
