@@ -126,9 +126,9 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     ExecutorService executor = Executors.newSingleThreadExecutor();
     Future<ConnectionAttemptResult> future = executor.submit(() -> {
       ConnectionAttemptResult result = null;
-      while(result == null) {
+      while(result == null || !result.isSuccess()) {
         result = failoverInternal(hosts, currentHost);
-        TimeUnit.MILLISECONDS.sleep(1);
+        TimeUnit.SECONDS.sleep(1);
       }
       return result;
     });
