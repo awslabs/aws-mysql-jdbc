@@ -147,7 +147,7 @@ public class NonRegisteringDriver implements java.sql.Driver {
      *                if a database access error occurs or the url is null
      */
     @Override
-    public boolean acceptsURL(String url) throws SQLException {
+    public boolean acceptsURL(String url) {
         if(acceptAwsProtocolOnly && !url.startsWith(Type.SINGLE_CONNECTION_AWS.getScheme())){
             return false;
         }
@@ -201,7 +201,7 @@ public class NonRegisteringDriver implements java.sql.Driver {
 
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
             Map<String, String> connProps = conStr.getOriginalProperties();
-            acceptAwsProtocolOnly = Boolean.parseBoolean(connProps.getOrDefault(PropertyKey.acceptAwsProtocolOnly.getKeyName(), "false"));
+            acceptAwsProtocolOnly = Boolean.parseBoolean(connProps.getOrDefault(PropertyKey.acceptAwsProtocolOnly.getKeyName(), String.valueOf(acceptAwsProtocolOnly)));
 
             switch (conStr.getType()) {
                 case SINGLE_CONNECTION:
