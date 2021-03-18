@@ -192,7 +192,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertFalse(result.isSuccess());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
-    verify(mockTopologyService, times(1)).addToDownHostList(eq(currentHost));
+    verify(mockTopologyService, atLeast(1)).addToDownHostList(eq(currentHost));
 
     final List<HostInfo> hosts = new ArrayList<>();
     result = target.failover(hosts, currentHost);
@@ -200,7 +200,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 
-    verify(mockTopologyService, times(2)).addToDownHostList(eq(currentHost));
+    verify(mockTopologyService, atLeast(2)).addToDownHostList(eq(currentHost));
   }
 
   @Test
