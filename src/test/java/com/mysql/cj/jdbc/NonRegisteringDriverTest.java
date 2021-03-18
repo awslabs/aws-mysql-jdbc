@@ -58,37 +58,22 @@ public class NonRegisteringDriverTest {
         software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
         assertNotNull(drv);
 
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+
         software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
         assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
         assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+
+        // Check if the connection property is prioritized over the global setting.
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
 
         software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
         assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
         assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
 
-
-        String url1 = "jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true";
-        JdbcConnection mockConnectionImplConn = Mockito.mock(JdbcConnection.class);
-        ConnectionUrl connUrl1 = ConnectionUrl.getConnectionUrlInstance(url1, new Properties());
-
-        try (MockedStatic<ConnectionImpl> mockStaticConnectionImpl = mockStatic(ConnectionImpl.class)) {
-            mockStaticConnectionImpl.when(() -> ConnectionImpl.getInstance(eq(connUrl1.getMainHost()))).thenReturn(mockConnectionImplConn);
-            Connection conn1 = drv.connect(url1, new Properties());
-        }
-
-        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
-        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
-
-        String url2 = "jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false";
-        ConnectionUrl connUrl2 = ConnectionUrl.getConnectionUrlInstance(url2, new Properties());
-
-        try (MockedStatic<ConnectionImpl> mockStaticConnectionImpl = mockStatic(ConnectionImpl.class)) {
-            mockStaticConnectionImpl.when(() -> ConnectionImpl.getInstance(eq(connUrl2.getMainHost()))).thenReturn(mockConnectionImplConn);
-            Connection conn2 = drv.connect(url2, new Properties());
-        }
-
-        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
-        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
     }
 
     @Test
