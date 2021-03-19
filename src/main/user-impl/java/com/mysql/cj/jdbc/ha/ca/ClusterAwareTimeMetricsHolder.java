@@ -62,22 +62,14 @@ public class ClusterAwareTimeMetricsHolder extends BaseMetricsHolder {
   public void reportMetrics(Log log) {
     StringBuilder logMessage = new StringBuilder(256);
 
-    logMessage.append("** Performance Metrics Report for '");
-    logMessage.append(this.metricName);
-    logMessage.append("' **\n");
+    logMessage.append("** Performance Metrics Report for '").append(this.metricName).append("' **\n");
     if (this.numberOfQueriesIssued > 0) {
-      logMessage.append("\nLongest reported time: ")
-              .append(this.longestQueryTimeMs)
-              .append(" ms");
-      logMessage.append("\nShortest reported time: ")
-              .append(this.shortestQueryTimeMs)
-              .append(" ms");
-      logMessage.append("\nAverage query execution time: ")
-              .append(this.totalQueryTimeMs / this.numberOfQueriesIssued)
-              .append(" ms");
+      logMessage.append("\nLongest reported time: ").append(this.longestQueryTimeMs).append(" ms");
+      logMessage.append("\nShortest reported time: ").append(this.shortestQueryTimeMs).append(" ms");
+      double avgTime = this.totalQueryTimeMs / this.numberOfQueriesIssued;
+      logMessage.append("\nAverage query execution time: ").append(avgTime).append(" ms");
     }
-    logMessage.append("\nNumber of reports: ")
-            .append(this.numberOfQueriesIssued);
+    logMessage.append("\nNumber of reports: ").append(this.numberOfQueriesIssued);
 
     if (this.numberOfQueriesIssued > 0 && this.perfMetricsHistBreakpoints != null) {
       logMessage.append("\n\n\tTiming Histogram:\n");

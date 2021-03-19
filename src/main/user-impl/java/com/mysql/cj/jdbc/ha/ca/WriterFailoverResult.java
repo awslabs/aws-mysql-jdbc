@@ -36,7 +36,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import java.util.List;
 
 /** This class holds results of Writer Failover Process. */
-public class ResolvedHostInfo {
+public class WriterFailoverResult {
   private final boolean isConnected;
   private final boolean isNewHost;
   private final List<HostInfo> topology;
@@ -45,7 +45,7 @@ public class ResolvedHostInfo {
   /**
    * ResolvedHostInfo constructor.
    * */
-  public ResolvedHostInfo(
+  public WriterFailoverResult(
       boolean isConnected,
       boolean isNewHost,
       List<HostInfo> topology,

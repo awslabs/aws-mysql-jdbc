@@ -30,10 +30,12 @@
 
 package com.mysql.cj.jdbc.ha.ca;
 
+import com.mysql.cj.Messages;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
+import com.mysql.cj.log.NullLogger;
 import com.mysql.cj.util.ExpiringCache;
 
 import java.sql.ResultSet;
@@ -82,15 +84,21 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   private static final Object cacheLock = new Object();
 
   protected String clusterId;
-  protected HostInfo clusterInstanceHost;
+  protected HostInfo clusterInstanceTemplate;
 
   protected ClusterAwareTimeMetricsHolder queryTopologyMetrics =
       new ClusterAwareTimeMetricsHolder("Topology Query");
   protected boolean gatherPerfMetrics = false;
 
+  /** Null logger shared by all connections at startup. */
+  protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
+
+  /** The logger we're going to use. */
+  protected transient Log log = NULL_LOGGER;
+
   /** Initializes a service with topology default refresh rate. */
-  public AuroraTopologyService() {
-    this(DEFAULT_REFRESH_RATE_IN_MILLISECONDS);
+  public AuroraTopologyService(Log log) {
+    this(DEFAULT_REFRESH_RATE_IN_MILLISECONDS, log);
   }
 
   /**
@@ -98,10 +106,14 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    *
    * @param refreshRateInMilliseconds Topology refresh rate in millis
    */
-  public AuroraTopologyService(int refreshRateInMilliseconds) {
+  public AuroraTopologyService(int refreshRateInMilliseconds, Log log) {
     this.refreshRateInMilliseconds = refreshRateInMilliseconds;
     this.clusterId = UUID.randomUUID().toString();
-    this.clusterInstanceHost = new HostInfo(null, "?", HostInfo.NO_PORT, null, null);
+    this.clusterInstanceTemplate = new HostInfo(null, "?", HostInfo.NO_PORT, null, null);
+
+    if (log != null) {
+      this.log = log;
+    }
   }
 
   /**
@@ -122,6 +134,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    */
   @Override
   public void setClusterId(String clusterId) {
+    this.log.logTrace(Messages.getString("AuroraTopologyService.1", new Object[]{clusterId}));
     this.clusterId = clusterId;
   }
 
@@ -132,11 +145,13 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    *
    * <p>Examples: "?.mydomain.com", "db-instance.?.mydomain.com"
    *
-   * @param clusterInstanceHost Cluster instance details including host dns pattern.
+   * @param clusterInstanceTemplate Cluster instance details including host dns pattern.
    */
   @Override
-  public void setClusterInstanceHost(HostInfo clusterInstanceHost) {
-    this.clusterInstanceHost = clusterInstanceHost;
+  public void setClusterInstanceTemplate(HostInfo clusterInstanceTemplate) {
+    this.log.logTrace(Messages.getString("AuroraTopologyService.2",
+            new Object[]{clusterInstanceTemplate.getHost(), clusterInstanceTemplate.getPort(), clusterInstanceTemplate.getDatabase()}));
+    this.clusterInstanceTemplate = clusterInstanceTemplate;
   }
 
   /**
@@ -163,14 +178,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
 
       if (latestTopologyInfo != null && latestTopologyInfo.hosts != null) {
         synchronized (cacheLock) {
-          if (clusterTopologyInfo == null) {
-            clusterTopologyInfo = new ClusterTopologyInfo();
-          }
-          clusterTopologyInfo.hosts = latestTopologyInfo.hosts;
-          clusterTopologyInfo.isMultiWriterCluster = latestTopologyInfo.isMultiWriterCluster;
-          clusterTopologyInfo.lastUpdated = Instant.now();
-          clusterTopologyInfo.downHosts = new HashSet<>();
-          topologyCache.put(this.clusterId, clusterTopologyInfo);
+          clusterTopologyInfo = updateCache(clusterTopologyInfo, latestTopologyInfo);
         }
       } else {
         return (clusterTopologyInfo == null || forceUpdate) ? null : clusterTopologyInfo.hosts;
@@ -182,12 +190,11 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
 
   private boolean refreshNeeded(ClusterTopologyInfo info) {
     Instant lastUpdateTime = info.lastUpdated;
-    return lastUpdateTime == null
-        || Duration.between(lastUpdateTime, Instant.now()).toMillis() > refreshRateInMilliseconds;
+    return lastUpdateTime == null || Duration.between(lastUpdateTime, Instant.now()).toMillis() > refreshRateInMilliseconds;
   }
 
   /**
-   * Obtain a cluster topology from database.
+   * Query the database for the cluster topology and use the results to record information about the topology.
    *
    * @param conn A connection to database to fetch the latest topology.
    * @return Cluster topology details.
@@ -199,29 +206,8 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
     try (Statement stmt = conn.createStatement()) {
       try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
         result.hosts = new ArrayList<>();
-        result.hosts.add(null); // reserve space for a writer node
-        int writerCount = 0;
-
-        int i = 1;
-        while (resultSet.next()) {
-          if (WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
-            if (writerCount == 0) {
-              // store the first writer to its expected position [0]
-              result.hosts.set(
-                      ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX, createHost(resultSet));
-            } else {
-              // store other writers, if any, to reader position
-              // the goal is to not lose them
-              result.hosts.add(i, createHost(resultSet));
-              i++;
-            }
-            writerCount++;
-          } else {
-            result.hosts.add(i, createHost(resultSet));
-            i++;
-          }
-        }
-        result.isMultiWriterCluster = (writerCount > 1);
+        result.hosts.add(null); // reserve space for a writer node\
+        processQueryResults(result, resultSet);
       }
     } catch (SQLException e) {
       // eat
@@ -231,27 +217,55 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
       long currentTimeMs = System.currentTimeMillis();
       this.queryTopologyMetrics.registerQueryExecutionTime(currentTimeMs - startTimeMs);
     }
-
     return result;
+  }
+
+  /**
+   * Process the results of the topology query to the database. This method creates a {@link HostInfo} object for each
+   * host in the topology, as well as storing some additional information about the cluster.
+   *
+   * @param clusterInfo A connection to database to fetch the latest topology.
+   * @param resultSet The {@link ResultSet} returned by the topology database query.
+   */
+  private void processQueryResults(ClusterTopologyInfo clusterInfo, ResultSet resultSet) throws SQLException {
+    int i = 1;
+    int writerCount = 0;
+    while (resultSet.next()) {
+      if (!WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
+        clusterInfo.hosts.add(i, createHost(resultSet));
+        i++;
+        continue;
+      }
+
+      if (writerCount == 0) {
+        // store the first writer to its expected position [0]
+        clusterInfo.hosts.set(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX, createHost(resultSet));
+      } else {
+        // append other writers, if any, to the end of the host list
+        clusterInfo.hosts.add(i, createHost(resultSet));
+        i++;
+      }
+      writerCount++;
+    }
+    clusterInfo.isMultiWriterCluster = (writerCount > 1);
   }
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
     String hostEndpoint = getHostEndpoint(resultSet.getString(FIELD_SERVER_ID));
-    ConnectionUrl hostUrl =
-        ConnectionUrl.getConnectionUrlInstance(
-            getUrlFromEndpoint(
-                hostEndpoint,
-                this.clusterInstanceHost.getPort(),
-                this.clusterInstanceHost.getDatabase()),
-            new Properties());
+    ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
+                    getUrlFromEndpoint(
+                            hostEndpoint,
+                            this.clusterInstanceTemplate.getPort(),
+                            this.clusterInstanceTemplate.getDatabase()),
+                    new Properties());
     return new HostInfo(
-        hostUrl,
-        hostEndpoint,
-        this.clusterInstanceHost.getPort(),
-        this.clusterInstanceHost.getUser(),
-        this.clusterInstanceHost.getPassword(),
-        this.clusterInstanceHost.isPasswordless(),
-        getPropertiesFromTopology(resultSet));
+            hostUrl,
+            hostEndpoint,
+            this.clusterInstanceTemplate.getPort(),
+            this.clusterInstanceTemplate.getUser(),
+            this.clusterInstanceTemplate.getPassword(),
+            this.clusterInstanceTemplate.isPasswordless(),
+            getPropertiesFromTopology(resultSet));
   }
 
   /**
@@ -261,13 +275,13 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    * @return Instance dns endpoint
    */
   private String getHostEndpoint(String nodeName) {
-    String host = this.clusterInstanceHost.getHost();
+    String host = this.clusterInstanceTemplate.getHost();
     return host.replace("?", nodeName);
   }
 
   private String getUrlFromEndpoint(String endpoint, int port, String dbname) {
     return String.format(
-        "%s//%s:%d/%s", ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(), endpoint, port, dbname);
+            "%s//%s:%d/%s", ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(), endpoint, port, dbname);
   }
 
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet) throws SQLException {
@@ -275,16 +289,38 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
     properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, resultSet.getString(FIELD_SERVER_ID));
     properties.put(TopologyServicePropertyKeys.SESSION_ID, resultSet.getString(FIELD_SESSION_ID));
     properties.put(
-        TopologyServicePropertyKeys.LAST_UPDATED,
-        convertTimestampToString(resultSet.getTimestamp(FIELD_LAST_UPDATED)));
+            TopologyServicePropertyKeys.LAST_UPDATED,
+            convertTimestampToString(resultSet.getTimestamp(FIELD_LAST_UPDATED)));
     properties.put(
-        TopologyServicePropertyKeys.REPLICA_LAG,
-        Double.valueOf(resultSet.getDouble(FIELD_REPLICA_LAG)).toString());
+            TopologyServicePropertyKeys.REPLICA_LAG,
+            Double.valueOf(resultSet.getDouble(FIELD_REPLICA_LAG)).toString());
     return properties;
   }
 
   private String convertTimestampToString(Timestamp timestamp) {
     return timestamp == null ? null : timestamp.toString();
+  }
+
+  /**
+   * Store the information for the topology in the cache, creating the information object if it did not previously exist
+   * in the cache.
+   *
+   * @param clusterTopologyInfo The cluster topology info that existed in the cache before the topology query. This
+   *          parameter will be null if no topology info for the cluster has been created in the cache yet.
+   * @param latestTopologyInfo The results of the current topology query
+   * @return The {@link ClusterTopologyInfo} stored in the cache by this method, representing the most up-to-date
+   *         information we have about the topology.
+   */
+  private ClusterTopologyInfo updateCache(ClusterTopologyInfo clusterTopologyInfo, ClusterTopologyInfo latestTopologyInfo) {
+    if (clusterTopologyInfo == null) {
+      clusterTopologyInfo = new ClusterTopologyInfo();
+    }
+    clusterTopologyInfo.hosts = latestTopologyInfo.hosts;
+    clusterTopologyInfo.isMultiWriterCluster = latestTopologyInfo.isMultiWriterCluster;
+    clusterTopologyInfo.lastUpdated = Instant.now();
+    clusterTopologyInfo.downHosts = new HashSet<>();
+    topologyCache.put(this.clusterId, clusterTopologyInfo);
+    return clusterTopologyInfo;
   }
 
   /**

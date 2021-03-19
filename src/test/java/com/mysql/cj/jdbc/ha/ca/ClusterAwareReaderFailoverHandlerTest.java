@@ -121,9 +121,9 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, testConnectionProps, mockLog);
-    final ConnectionAttemptResult result = target.failover(hosts, hosts.get(currentHostIndex));
+    final ReaderFailoverResult result = target.failover(hosts, hosts.get(currentHostIndex));
 
-    assertTrue(result.isSuccess());
+    assertTrue(result.isConnected());
     assertSame(mockConnection, result.getConnection());
     assertEquals(successHostIndex, result.getConnectionIndex());
 
@@ -173,9 +173,9 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ReaderFailoverHandler target =
             new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, testConnectionProps, 5000, 30000, mockLog);
-    final ConnectionAttemptResult result = target.failover(hosts, hosts.get(currentHostIndex));
+    final ReaderFailoverResult result = target.failover(hosts, hosts.get(currentHostIndex));
 
-    assertFalse(result.isSuccess());
+    assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
   }
@@ -188,15 +188,15 @@ public class ClusterAwareReaderFailoverHandlerTest {
             mockTopologyService, Mockito.mock(ConnectionProvider.class), testConnectionProps, mockLog);
     final HostInfo currentHost = new HostInfo(null, "writer", 1234, null, null);
 
-    ConnectionAttemptResult result = target.failover(null, currentHost);
-    assertFalse(result.isSuccess());
+    ReaderFailoverResult result = target.failover(null, currentHost);
+    assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
     verify(mockTopologyService, atLeast(1)).addToDownHostList(eq(currentHost));
 
     final List<HostInfo> hosts = new ArrayList<>();
     result = target.failover(hosts, currentHost);
-    assertFalse(result.isSuccess());
+    assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 
@@ -226,9 +226,9 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, testConnectionProps, mockLog);
-    final ConnectionAttemptResult result = target.getReaderConnection(hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(hosts);
 
-    assertTrue(result.isSuccess());
+    assertTrue(result.isConnected());
     assertSame(mockConnection, result.getConnection());
     assertEquals(2, result.getConnectionIndex());
 
@@ -251,9 +251,9 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(mockTopologyService, mockConnProvider, testConnectionProps, mockLog);
-    final ConnectionAttemptResult result = target.getReaderConnection(hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(hosts);
 
-    assertFalse(result.isSuccess());
+    assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 
@@ -288,9 +288,9 @@ public class ClusterAwareReaderFailoverHandlerTest {
 
     final ClusterAwareReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(mockTopologyService, mockProvider, testConnectionProps, 60000, 1000, mockLog);
-    final ConnectionAttemptResult result = target.getReaderConnection(hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(hosts);
 
-    assertFalse(result.isSuccess());
+    assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, result.getConnectionIndex());
 

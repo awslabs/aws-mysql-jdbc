@@ -126,7 +126,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isClusterTopologyAvailable());
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   private void stubPropertySet(JdbcConnection mockConn) {
@@ -242,7 +242,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce())
         .setClusterId("my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234");
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -287,7 +287,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce())
         .setClusterId("my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234");
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -331,7 +331,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isClusterTopologyAvailable());
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -374,7 +374,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isClusterTopologyAvailable());
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -416,7 +416,7 @@ public class ClusterAwareConnectionProxyTest {
     assertFalse(proxy.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce())
         .setClusterId("test-proxy.proxy-XYZ.us-east-2.rds.amazonaws.com:1234");
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -462,7 +462,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isClusterTopologyAvailable());
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -508,7 +508,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isClusterTopologyAvailable());
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test
@@ -556,7 +556,7 @@ public class ClusterAwareConnectionProxyTest {
     assertTrue(proxy.isClusterTopologyAvailable());
     assertTrue(proxy.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce()).setClusterId("test-cluster-id");
-    verify(mockTopologyService, atLeastOnce()).setClusterInstanceHost(any());
+    verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
   }
 
   @Test

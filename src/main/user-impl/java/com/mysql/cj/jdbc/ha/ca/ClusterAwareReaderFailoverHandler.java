@@ -116,30 +116,35 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
    *
    * @param hosts Cluster current topology
    * @param currentHost The currently connected host that has failed.
-   * @return {@link ConnectionAttemptResult} The results of this process. May return null, which is
-   *     considered an unsuccessful result.
+   * @return {@link ReaderFailoverResult} The results of this process.
    */
   @Override
-  public ConnectionAttemptResult failover(List<HostInfo> hosts, HostInfo currentHost)
+  public ReaderFailoverResult failover(List<HostInfo> hosts, HostInfo currentHost)
       throws SQLException {
-
     ExecutorService executor = Executors.newSingleThreadExecutor();
-    Future<ConnectionAttemptResult> future = executor.submit(() -> {
-      ConnectionAttemptResult result = null;
-      while(result == null || !result.isSuccess()) {
+    Future<ReaderFailoverResult> future = submitInternalFailoverTask(hosts, currentHost, executor);
+    return getInternalFailoverResult(executor, future);
+  }
+
+  private Future<ReaderFailoverResult> submitInternalFailoverTask(List<HostInfo> hosts, HostInfo currentHost, ExecutorService executor) {
+    Future<ReaderFailoverResult> future = executor.submit(() -> {
+      ReaderFailoverResult result = null;
+      while(result == null || !result.isConnected()) {
         result = failoverInternal(hosts, currentHost);
         TimeUnit.SECONDS.sleep(1);
       }
       return result;
     });
     executor.shutdown();
+    return future;
+  }
 
-    ConnectionAttemptResult defaultResult = new ConnectionAttemptResult(
+  private ReaderFailoverResult getInternalFailoverResult(ExecutorService executor, Future<ReaderFailoverResult> future) throws SQLException {
+    ReaderFailoverResult defaultResult = new ReaderFailoverResult(
             null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
-
-
     try {
-      return future.get(this.maxFailoverTimeoutMs, TimeUnit.MILLISECONDS);
+      ReaderFailoverResult result = future.get(this.maxFailoverTimeoutMs, TimeUnit.MILLISECONDS);
+      return result == null ? defaultResult : result;
 
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -160,12 +165,11 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     }
   }
 
-  protected ConnectionAttemptResult failoverInternal(List<HostInfo> hosts, HostInfo currentHost)
+  protected ReaderFailoverResult failoverInternal(List<HostInfo> hosts, HostInfo currentHost)
           throws SQLException {
     this.topologyService.addToDownHostList(currentHost);
     if (hosts == null || hosts.isEmpty()) {
-      return new ConnectionAttemptResult(
-              null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+      return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
     }
     Set<String> downHosts = topologyService.getDownHosts();
     List<HostTuple> hostGroup = getHostTuplesByPriority(hosts, downHosts);
@@ -215,11 +219,10 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
    * is unsuccessful. This process will not attempt to connect to the writer.
    *
    * @param hostList Cluster current topology
-   * @return {@link ConnectionAttemptResult} The results of this process. May return null, which is
-   *     considered an unsuccessful result.
+   * @return {@link ReaderFailoverResult} The results of this process.
    */
   @Override
-  public ConnectionAttemptResult getReaderConnection(List<HostInfo> hostList) throws SQLException {
+  public ReaderFailoverResult getReaderConnection(List<HostInfo> hostList) throws SQLException {
     Set<String> downHosts = topologyService.getDownHosts();
     List<HostTuple> tuples = getReaderTuplesByPriority(hostList, downHosts);
     return getConnectionFromHostGroup(tuples);
@@ -244,31 +247,17 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     list.addAll(downReaders);
   }
 
-  private ConnectionAttemptResult getConnectionFromHostGroup(List<HostTuple> hostGroup)
+  private ReaderFailoverResult getConnectionFromHostGroup(List<HostTuple> hostGroup)
       throws SQLException {
     ExecutorService executor = Executors.newFixedThreadPool(2);
-    CompletionService<ConnectionAttemptResult> completionService =
+    CompletionService<ReaderFailoverResult> completionService =
         new ExecutorCompletionService<>(executor);
-
-    ConnectionAttemptResult result;
 
     try {
       for (int i = 0; i < hostGroup.size(); i += 2) {
-        boolean secondAttemptPresent = i + 1 < hostGroup.size();
-        Future<ConnectionAttemptResult> attempt1 =
-                completionService.submit(new ConnectionAttemptTask(hostGroup.get(i)));
-        if (secondAttemptPresent) {
-          Future<ConnectionAttemptResult> attempt2 =
-                  completionService.submit(new ConnectionAttemptTask(hostGroup.get(i + 1)));
-          result = getResultFromAttemptPair(attempt1, attempt2, completionService);
-        } else {
-          result = getNextResult(completionService);
-        }
-
-        if (result.isSuccess()) {
-          this.log.logDebug(
-                  Messages.getString(
-                          "ClusterAwareReaderFailoverHandler.2", new Object[]{result.getConnectionIndex()}));
+        // submit connection attempt tasks in batches of 2
+        ReaderFailoverResult result = getResultFromNextTaskBatch(hostGroup, executor, completionService, i);
+        if (result.isConnected()) {
           return result;
         }
 
@@ -281,55 +270,45 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
         }
       }
 
-      return new ConnectionAttemptResult(
-              null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
-
+      return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
     } finally {
       executor.shutdownNow();
     }
   }
 
-  private ConnectionAttemptResult getResultFromAttemptPair(
-      Future<ConnectionAttemptResult> attempt1,
-      Future<ConnectionAttemptResult> attempt2,
-      CompletionService<ConnectionAttemptResult> service)
-      throws SQLException {
-    try {
-      Future<ConnectionAttemptResult> firstCompleted =
-          service.poll(this.timeoutMs, TimeUnit.MILLISECONDS);
-      if (firstCompleted != null) {
-        ConnectionAttemptResult result = firstCompleted.get();
-        if (result.isSuccess()) {
-          if (firstCompleted.equals(attempt1)) {
-            attempt2.cancel(true);
-          } else {
-            attempt1.cancel(true);
-          }
-          return result;
-        }
-      }
-    } catch (ExecutionException e) {
-      return getNextResult(service);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      // "Thread was interrupted"
-      throw new SQLException(Messages.getString("ClusterAwareReaderFailoverHandler.1"), "70100", e);
+  private ReaderFailoverResult getResultFromNextTaskBatch(List<HostTuple> hostGroup, ExecutorService executor, CompletionService<ReaderFailoverResult> completionService, int i) throws SQLException {
+    ReaderFailoverResult result;
+    int numTasks = i + 1 < hostGroup.size() ? 2 : 1;
+    completionService.submit(new ConnectionAttemptTask(hostGroup.get(i)));
+    if (numTasks == 2) {
+      completionService.submit(new ConnectionAttemptTask(hostGroup.get(i + 1)));
     }
-    return getNextResult(service);
+    for(int taskNum = 0; taskNum < numTasks; taskNum++) {
+      result = getNextResult(completionService);
+      if (result.isConnected()) {
+        executor.shutdownNow();
+        this.log.logDebug(
+                Messages.getString(
+                        "ClusterAwareReaderFailoverHandler.2", new Object[]{result.getConnectionIndex()}));
+        return result;
+      }
+    }
+    return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
   }
 
-  private ConnectionAttemptResult getNextResult(CompletionService<ConnectionAttemptResult> service)
+  private ReaderFailoverResult getNextResult(CompletionService<ReaderFailoverResult> service)
       throws SQLException {
-    try {
-      Future<ConnectionAttemptResult> result = service.poll(this.timeoutMs, TimeUnit.MILLISECONDS);
-      if (result == null) {
-        return new ConnectionAttemptResult(
+    ReaderFailoverResult defaultResult = new ReaderFailoverResult(
             null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+    try {
+      Future<ReaderFailoverResult> future = service.poll(this.timeoutMs, TimeUnit.MILLISECONDS);
+      if (future == null) {
+        return defaultResult;
       }
-      return result.get();
+      ReaderFailoverResult result = future.get();
+      return result == null ? defaultResult : result;
     } catch (ExecutionException e) {
-      return new ConnectionAttemptResult(
-          null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+      return defaultResult;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       // "Thread was interrupted"
@@ -337,7 +316,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     }
   }
 
-  private class ConnectionAttemptTask implements Callable<ConnectionAttemptResult> {
+  private class ConnectionAttemptTask implements Callable<ReaderFailoverResult> {
     private final HostTuple newHostTuple;
 
     private ConnectionAttemptTask(HostTuple newHostTuple) {
@@ -348,7 +327,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
      * Call ConnectionAttemptResult.
      * */
     @Override
-    public ConnectionAttemptResult call() {
+    public ReaderFailoverResult call() {
       HostInfo newHost = this.newHostTuple.getHost();
       log.logDebug(
           Messages.getString(
@@ -363,15 +342,14 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.4",
                 new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
-        return new ConnectionAttemptResult(conn, this.newHostTuple.getIndex(), true);
+        return new ReaderFailoverResult(conn, this.newHostTuple.getIndex(), true);
       } catch (SQLException e) {
         topologyService.addToDownHostList(newHost);
         log.logDebug(
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.5",
                 new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
-        return new ConnectionAttemptResult(
-            null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+        return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
       }
     }
   }
