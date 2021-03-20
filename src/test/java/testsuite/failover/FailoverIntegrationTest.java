@@ -115,13 +115,7 @@ public class FailoverIntegrationTest {
   private final AmazonRDS rdsClient = AmazonRDSClientBuilder.standard().build();
   private Connection testConnection;
 
-  private CrashInstanceRunnable instanceCrasher1;
-  private CrashInstanceRunnable instanceCrasher2;
-  private CrashInstanceRunnable instanceCrasher3;
-  private CrashInstanceRunnable instanceCrasher4;
-  private CrashInstanceRunnable instanceCrasher5;
-
-  private Map<String, CrashInstanceRunnable> instanceCrasherMap = new HashMap<>();
+  private final Map<String, CrashInstanceRunnable> instanceCrasherMap = new HashMap<>();
 
   /**
    * FailoverIntegrationTest constructor.
@@ -132,11 +126,11 @@ public class FailoverIntegrationTest {
 
     initiateInstanceNames();
 
-    instanceCrasher1 = new CrashInstanceRunnable(INSTANCE_ID_1);
-    instanceCrasher2 = new CrashInstanceRunnable(INSTANCE_ID_2);
-    instanceCrasher3 = new CrashInstanceRunnable(INSTANCE_ID_3);
-    instanceCrasher4 = new CrashInstanceRunnable(INSTANCE_ID_4);
-    instanceCrasher5 = new CrashInstanceRunnable(INSTANCE_ID_5);
+    CrashInstanceRunnable instanceCrasher1 = new CrashInstanceRunnable(INSTANCE_ID_1);
+    CrashInstanceRunnable instanceCrasher2 = new CrashInstanceRunnable(INSTANCE_ID_2);
+    CrashInstanceRunnable instanceCrasher3 = new CrashInstanceRunnable(INSTANCE_ID_3);
+    CrashInstanceRunnable instanceCrasher4 = new CrashInstanceRunnable(INSTANCE_ID_4);
+    CrashInstanceRunnable instanceCrasher5 = new CrashInstanceRunnable(INSTANCE_ID_5);
 
     instanceCrasherMap.put(INSTANCE_ID_1, instanceCrasher1);
     instanceCrasherMap.put(INSTANCE_ID_2, instanceCrasher2);
@@ -716,9 +710,9 @@ public class FailoverIntegrationTest {
     return DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + ".cluster-" + suffix;
   }
 
-  private DBCluster getDBCluster(String dbClusterIdentifier) {
+  private DBCluster getDBCluster() {
     DescribeDBClustersRequest dbClustersRequest =
-        new DescribeDBClustersRequest().withDBClusterIdentifier(dbClusterIdentifier);
+        new DescribeDBClustersRequest().withDBClusterIdentifier(FailoverIntegrationTest.TEST_DB_CLUSTER_IDENTIFIER);
     DescribeDBClustersResult dbClustersResult = rdsClient.describeDBClusters(dbClustersRequest);
     List<DBCluster> dbClusterList = dbClustersResult.getDBClusters();
     return dbClusterList.get(0);
@@ -737,7 +731,7 @@ public class FailoverIntegrationTest {
   }
 
   private List<DBClusterMember> getDBClusterMemberList() {
-    DBCluster dbCluster = getDBCluster(TEST_DB_CLUSTER_IDENTIFIER);
+    DBCluster dbCluster = getDBCluster();
     return dbCluster.getDBClusterMembers();
   }
 
@@ -845,10 +839,10 @@ public class FailoverIntegrationTest {
 
   private void waitUntilClusterHasRightState() throws InterruptedException {
     this.log.logDebug("Wait until cluster is in available state.");
-    String status = getDBCluster(TEST_DB_CLUSTER_IDENTIFIER).getStatus();
+    String status = getDBCluster().getStatus();
     while (!"available".equalsIgnoreCase(status)) {
       Thread.sleep(3000);
-      status = getDBCluster(TEST_DB_CLUSTER_IDENTIFIER).getStatus();
+      status = getDBCluster().getStatus();
     }
     this.log.logDebug("Cluster is available.");
   }

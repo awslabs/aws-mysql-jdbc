@@ -1,13 +1,10 @@
 package com.mysql.cj.jdbc.ha.ca;
 
-import com.mysql.cj.Messages;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.log.Log;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 

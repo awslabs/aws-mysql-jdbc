@@ -86,7 +86,7 @@ public class WriterFailoverResult {
   }
 
   /**
-   * Get new connection to a host.
+   * Get connection to a host.
    *
    * @return {@link JdbcConnection} New connection to a host. Returns null if no connection is
    *     established.

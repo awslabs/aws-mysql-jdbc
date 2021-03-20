@@ -859,45 +859,37 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
 
     if (failoverResult == null || !failoverResult.isConnected()) {
-      if (this.gatherPerfMetricsSetting) {
-        this.metrics.registerFailoverConnects(false);
-      }
-
       // "Unable to establish SQL connection to writer node"
-      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.2"));
-      throw new SQLException(
-              Messages.getString("ClusterAwareConnectionProxy.2"),
-              MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE);
-    } else if (failoverResult.isNewHost()) {
-      if (this.gatherPerfMetricsSetting) {
-        this.metrics.registerFailoverConnects(true);
-      }
-
-      // connected to a new writer host; take it over
-      this.hosts = failoverResult.getTopology();
-      this.currentHostIndex = WRITER_CONNECTION_INDEX;
-      this.currentConnection = failoverResult.getNewConnection();
-      setConnectionProxy(this.currentConnection);
-
-      this.log.logDebug(
-              Messages.getString(
-                      "ClusterAwareConnectionProxy.15",
-                      new Object[] {this.hosts.get(this.currentHostIndex)}));
-    } else {
-      if (this.gatherPerfMetricsSetting) {
-        this.metrics.registerFailoverConnects(true);
-      }
-
-      // successfully re-connected to the same writer node
-      this.currentHostIndex = WRITER_CONNECTION_INDEX;
-      this.currentConnection = failoverResult.getNewConnection();
-      setConnectionProxy(this.currentConnection);
-
-      this.log.logDebug(
-              Messages.getString(
-                      "ClusterAwareConnectionProxy.15",
-                      new Object[] {this.hosts.get(this.currentHostIndex)}));
+      processFailoverFailure(Messages.getString("ClusterAwareConnectionProxy.2"));
+      return;
     }
+
+    if (failoverResult.isNewHost()) {
+      this.hosts = failoverResult.getTopology();
+    }
+
+    if (this.gatherPerfMetricsSetting) {
+      this.metrics.registerFailoverConnects(true);
+    }
+
+    // successfully re-connected to the same writer node
+    this.currentHostIndex = WRITER_CONNECTION_INDEX;
+    this.currentConnection = failoverResult.getNewConnection();
+    setConnectionProxy(this.currentConnection);
+
+    this.log.logDebug(
+            Messages.getString(
+                    "ClusterAwareConnectionProxy.15",
+                    new Object[] {this.hosts.get(this.currentHostIndex)}));
+  }
+
+  private void processFailoverFailure(String message) throws SQLException {
+    if (this.gatherPerfMetricsSetting) {
+      this.metrics.registerFailoverConnects(false);
+    }
+
+    this.log.logError(message);
+    throw new SQLException(message, MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE);
   }
 
   protected void failoverReader(int failedHostIdx) throws SQLException {
@@ -914,32 +906,25 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
 
     if (result == null || !result.isConnected()) {
-      if (this.gatherPerfMetricsSetting) {
-        this.metrics.registerFailoverConnects(false);
-      }
-
       // "Unable to establish SQL connection to reader node"
-      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.4"));
-      throw new SQLException(
-              Messages.getString("ClusterAwareConnectionProxy.4"),
-              MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE);
-    } else {
-      if (this.gatherPerfMetricsSetting) {
-        this.metrics.registerFailoverConnects(true);
-      }
+      processFailoverFailure(Messages.getString("ClusterAwareConnectionProxy.4"));
+    }
 
-      this.currentConnection = result.getConnection();
-      setConnectionProxy(this.currentConnection);
-      this.currentHostIndex = result.getConnectionIndex();
-      updateTopologyAndConnectIfNeeded(true);
-      this.log.logDebug(
-              Messages.getString(
-                      "ClusterAwareConnectionProxy.15",
-                      new Object[] {this.hosts.get(this.currentHostIndex)}));
-      HostInfo currentHost = this.hosts.get(this.currentHostIndex);
-      if (currentHost != null) {
-        topologyService.setLastUsedReaderHost(currentHost);
-      }
+    if (this.gatherPerfMetricsSetting) {
+      this.metrics.registerFailoverConnects(true);
+    }
+
+    this.currentConnection = result.getConnection();
+    setConnectionProxy(this.currentConnection);
+    this.currentHostIndex = result.getConnectionIndex();
+    updateTopologyAndConnectIfNeeded(true);
+    this.log.logDebug(
+            Messages.getString(
+                    "ClusterAwareConnectionProxy.15",
+                    new Object[] {this.hosts.get(this.currentHostIndex)}));
+    HostInfo currentHost = this.hosts.get(this.currentHostIndex);
+    if (currentHost != null) {
+      topologyService.setLastUsedReaderHost(currentHost);
     }
   }
 
@@ -948,8 +933,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       return;
     }
 
-    List<HostInfo> latestTopology =
-            this.topologyService.getTopology(this.currentConnection, forceUpdate);
+    List<HostInfo> latestTopology = this.topologyService.getTopology(this.currentConnection, forceUpdate);
     if (latestTopology == null) {
       return;
     }
@@ -960,6 +944,10 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       return;
     }
 
+    updateHostIndex(latestTopology);
+  }
+
+  private void updateHostIndex(List<HostInfo> latestTopology) throws SQLException {
     HostInfo currentHost = this.hosts.get(this.currentHostIndex);
 
     int latestHostIndex = NO_CONNECTION_INDEX;
@@ -1086,24 +1074,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     updateTopologyAndConnectIfNeeded(false);
 
     if (this.isClosed && !allowedOnClosedConnection(method)) {
-      if (this.autoReconnect && !this.closedExplicitly) {
-        this.currentHostIndex = NO_CONNECTION_INDEX; // Act as if this is the first connection but let it sync with the previous one.
-        this.isClosed = false;
-        this.closedReason = null;
-        pickNewConnection();
-
-        // "The active SQL connection has changed. Please re-configure session state if required."
-        this.log.logError(Messages.getString("ClusterAwareConnectionProxy.19"));
-        throw new SQLException(
-                Messages.getString("ClusterAwareConnectionProxy.19"),
-                MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED);
-      } else {
-        String reason = "No operations allowed after connection closed.";
-        if (this.closedReason != null) {
-          reason += ("  " + this.closedReason);
-        }
-        throw SQLError.createSQLException(reason, MysqlErrorNumbers.SQL_STATE_CONNECTION_NOT_OPEN, null /* no access to a interceptor here... */);
-      }
+      invalidInvocationOnClosedConnection();
     }
 
     Object result = null;
@@ -1116,25 +1087,29 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       dealWithIllegalStateException(e);
     }
 
-    if (METHOD_SET_AUTO_COMMIT.equals(methodName)) {
-      this.explicitlyAutoCommit = (Boolean) args[0];
-      this.inTransaction = !this.explicitlyAutoCommit;
-    }
-
-    if (METHOD_COMMIT.equals(methodName) || METHOD_ROLLBACK.equals(methodName)) {
-      this.inTransaction = false;
-    }
-
-    if (METHOD_SET_READ_ONLY.equals(methodName)) {
-      this.explicitlyReadOnly = (Boolean) args[0];
-      this.log.logTrace(
-              Messages.getString(
-                      "ClusterAwareConnectionProxy.10",
-                      new Object[] {"explicitlyReadOnly", this.explicitlyReadOnly}));
-      connectToWriterIfRequired(this.explicitlyReadOnly);
-    }
-
+    performExtraActionsIfRequired(args, methodName);
     return result;
+  }
+
+  private void invalidInvocationOnClosedConnection() throws SQLException {
+    if (this.autoReconnect && !this.closedExplicitly) {
+      this.currentHostIndex = NO_CONNECTION_INDEX; // Act as if this is the first connection but let it sync with the previous one.
+      this.isClosed = false;
+      this.closedReason = null;
+      pickNewConnection();
+
+      // "The active SQL connection has changed. Please re-configure session state if required."
+      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.19"));
+      throw new SQLException(
+              Messages.getString("ClusterAwareConnectionProxy.19"),
+              MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED);
+    } else {
+      String reason = "No operations allowed after connection closed.";
+      if (this.closedReason != null) {
+        reason += ("  " + this.closedReason);
+      }
+      throw SQLError.createSQLException(reason, MysqlErrorNumbers.SQL_STATE_CONNECTION_NOT_OPEN, null /* no access to a interceptor here... */);
+    }
   }
 
   /**
@@ -1223,6 +1198,26 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       }
     }
     super.invalidateConnection(this.currentConnection);
+  }
+
+  private void performExtraActionsIfRequired(Object[] args, String methodName) throws SQLException {
+    if (METHOD_SET_AUTO_COMMIT.equals(methodName)) {
+      this.explicitlyAutoCommit = (Boolean) args[0];
+      this.inTransaction = !this.explicitlyAutoCommit;
+    }
+
+    if (METHOD_COMMIT.equals(methodName) || METHOD_ROLLBACK.equals(methodName)) {
+      this.inTransaction = false;
+    }
+
+    if (METHOD_SET_READ_ONLY.equals(methodName)) {
+      this.explicitlyReadOnly = (Boolean) args[0];
+      this.log.logTrace(
+              Messages.getString(
+                      "ClusterAwareConnectionProxy.10",
+                      new Object[] {"explicitlyReadOnly", this.explicitlyReadOnly}));
+      connectToWriterIfRequired(this.explicitlyReadOnly);
+    }
   }
 
   private void connectToWriterIfRequired(Boolean readOnly) throws SQLException {
