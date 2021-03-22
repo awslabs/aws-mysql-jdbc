@@ -33,6 +33,7 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -52,6 +53,11 @@ import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 public class NonRegisteringDriverTest {
+
+    @BeforeEach
+    public void setAwsProtocolOnlyToFalse() {
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+    }
 
     @Test
     public void testSetAwsProtocolOnlySwitch() throws Exception {
