@@ -33,19 +33,19 @@ package com.mysql.cj.jdbc.ha.ca;
 import com.mysql.cj.jdbc.JdbcConnection;
 
 /** This class holds results of Reader Failover Process. */
-public class ConnectionAttemptResult {
+public class ReaderFailoverResult {
   private final JdbcConnection newConnection;
   private final int newConnectionIndex;
-  private final boolean success;
+  private final boolean isConnected;
 
   /**
    * ConnectionAttemptResult constructor.
    * */
-  public ConnectionAttemptResult(
-      JdbcConnection newConnection, int newConnectionIndex, boolean success) {
+  public ReaderFailoverResult(
+      JdbcConnection newConnection, int newConnectionIndex, boolean isConnected) {
     this.newConnection = newConnection;
     this.newConnectionIndex = newConnectionIndex;
-    this.success = success;
+    this.isConnected = isConnected;
   }
 
   /**
@@ -73,7 +73,7 @@ public class ConnectionAttemptResult {
    *
    * @return True, if process successfully connected to a host.
    */
-  public boolean isSuccess() {
-    return success;
+  public boolean isConnected() {
+    return isConnected;
   }
 }

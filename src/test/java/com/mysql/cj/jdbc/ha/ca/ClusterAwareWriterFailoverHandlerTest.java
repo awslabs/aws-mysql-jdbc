@@ -104,7 +104,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertTrue(result.isConnected());
     assertFalse(result.isNewHost());
@@ -155,10 +155,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
 
     when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
         .thenAnswer(
-            (Answer<ConnectionAttemptResult>)
+            (Answer<ReaderFailoverResult>)
                 invocation -> {
                   Thread.sleep(5000);
-                  return new ConnectionAttemptResult(mockReaderA_Connection, 1, true);
+                  return new ReaderFailoverResult(mockReaderA_Connection, 1, true);
                 });
 
     final ClusterAwareWriterFailoverHandler target =
@@ -171,7 +171,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertTrue(result.isConnected());
     assertFalse(result.isNewHost());
@@ -218,7 +218,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
         .thenReturn(currentTopology);
 
     when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
-        .thenReturn(new ConnectionAttemptResult(mockReaderA_Connection, 1, true));
+        .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -230,7 +230,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertTrue(result.isConnected());
     assertFalse(result.isNewHost());
@@ -290,7 +290,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
         .thenReturn(newTopology);
 
     when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
-        .thenReturn(new ConnectionAttemptResult(mockReaderA_Connection, 1, true));
+        .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -302,7 +302,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertTrue(result.isConnected());
     assertTrue(result.isNewHost());
@@ -361,7 +361,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
         .thenReturn(newTopology);
 
     when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
-        .thenReturn(new ConnectionAttemptResult(mockReaderA_Connection, 1, true));
+        .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -373,7 +373,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertTrue(result.isConnected());
     assertTrue(result.isNewHost());
@@ -440,7 +440,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
         .thenReturn(newTopology);
 
     when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
-        .thenReturn(new ConnectionAttemptResult(mockReaderA_Connection, 1, true));
+        .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -452,7 +452,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());
@@ -498,7 +498,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
         .thenReturn(newTopology);
 
     when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
-        .thenReturn(new ConnectionAttemptResult(mockReaderA_Connection, 1, true));
+        .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -510,7 +510,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final ResolvedHostInfo result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(currentTopology);
 
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());

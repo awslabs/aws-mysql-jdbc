@@ -45,7 +45,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SuppressWarnings("unchecked")
 public class NonRegisteringDriverTest {
     @Test
     public void testSingleConnectionProtocolReturnsConnectionImpl() throws SQLException {
