@@ -75,6 +75,8 @@ import com.mysql.cj.util.StringUtils;
  */
 public class NonRegisteringDriver implements java.sql.Driver {
 
+    protected static boolean acceptAwsProtocolOnly = false;
+
     /*
      * Standardizes OS name information to align with other drivers/clients
      * for MySQL connection attributes
@@ -145,8 +147,23 @@ public class NonRegisteringDriver implements java.sql.Driver {
      *                if a database access error occurs or the url is null
      */
     @Override
-    public boolean acceptsURL(String url) throws SQLException {
+    public boolean acceptsURL(String url) {
+        if (isAcceptAwsProtocolOnly(url) && !url.startsWith(Type.SINGLE_CONNECTION_AWS.getScheme())) {
+            return false;
+        }
         return (ConnectionUrl.acceptsUrl(url));
+    }
+
+    private boolean isAcceptAwsProtocolOnly(String url) {
+        Properties info = new Properties();
+        ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
+        Map<String, String> connProps = conStr.getOriginalProperties();
+
+        if (connProps.containsKey("acceptAwsProtocolOnly")) {
+            return Boolean.parseBoolean(connProps.get("acceptAwsProtocolOnly"));
+        } else {
+            return acceptAwsProtocolOnly;
+        }
     }
 
     //
@@ -195,26 +212,25 @@ public class NonRegisteringDriver implements java.sql.Driver {
             }
 
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
-            Map<String, String> connProps = conStr.getOriginalProperties();
-            boolean acceptAwsProtocolOnly = Boolean.parseBoolean(connProps.getOrDefault(PropertyKey.acceptAwsProtocolOnly.getKeyName(), "false"));
+
             switch (conStr.getType()) {
                 case SINGLE_CONNECTION:
-                    return acceptAwsProtocolOnly ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
+                    return isAcceptAwsProtocolOnly(url) ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
 
                 case SINGLE_CONNECTION_AWS:
                     return ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
 
                 case FAILOVER_CONNECTION:
                 case FAILOVER_DNS_SRV_CONNECTION:
-                    return acceptAwsProtocolOnly ? null : FailoverConnectionProxy.createProxyInstance(conStr);
+                    return isAcceptAwsProtocolOnly(url) ? null : FailoverConnectionProxy.createProxyInstance(conStr);
 
                 case LOADBALANCE_CONNECTION:
                 case LOADBALANCE_DNS_SRV_CONNECTION:
-                    return acceptAwsProtocolOnly ? null : LoadBalancedConnectionProxy.createProxyInstance(conStr);
+                    return isAcceptAwsProtocolOnly(url) ? null : LoadBalancedConnectionProxy.createProxyInstance(conStr);
 
                 case REPLICATION_CONNECTION:
                 case REPLICATION_DNS_SRV_CONNECTION:
-                    return acceptAwsProtocolOnly ? null : ReplicationConnectionProxy.createProxyInstance(conStr);
+                    return isAcceptAwsProtocolOnly(url) ? null : ReplicationConnectionProxy.createProxyInstance(conStr);
 
                 default:
                     return null;
