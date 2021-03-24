@@ -5927,9 +5927,8 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 6;
-        final int testTimeout = loginTimeout * 100;
-        long timestamp = System.currentTimeMillis();
-
+        final int testTimeout = loginTimeout * 20;
+        long timestamp = 0;
         try {
             DriverManager.setLoginTimeout(loginTimeout);
 
@@ -5942,6 +5941,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
                 }
             });
 
+            timestamp = System.currentTimeMillis();
             testConn = future.get(testTimeout, TimeUnit.SECONDS);
             testConn.close();
 
