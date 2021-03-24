@@ -5923,11 +5923,11 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } catch (IOException e1) {
             fail("Failed to initialize a mock server.");
         }
-        final String testURL = "jdbc:mysql:aws://localhost:" + serverPort;
+        final String testURL = "jdbc:mysql://localhost:" + serverPort;
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 3;
-        final int testTimeout = loginTimeout * 2;
+        final int testTimeout = loginTimeout * 20;
         long timestamp = System.currentTimeMillis();
 
         try {
