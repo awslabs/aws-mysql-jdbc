@@ -63,9 +63,9 @@ public interface TopologyService {
    *
    * <p>Examples: "?.mydomain.com", "db-instance.?.mydomain.com"
    *
-   * @param clusterInstanceHost Cluster instance details including host dns pattern.
+   * @param clusterInstanceTemplate Cluster instance details including host dns pattern.
    */
-  void setClusterInstanceHost(HostInfo clusterInstanceHost);
+  void setClusterInstanceTemplate(HostInfo clusterInstanceTemplate);
 
   /**
    * Get cluster topology. A writer host is always at position 0.

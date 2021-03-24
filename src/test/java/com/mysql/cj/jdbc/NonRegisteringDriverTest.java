@@ -1,27 +1,86 @@
+/*
+ * AWS JDBC Driver for MySQL
+ * Copyright Amazon.com Inc. or affiliates.
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License, version 2.0, as published by the
+ * Free Software Foundation.
+ *
+ * This program is also distributed with certain software (including but not
+ * limited to OpenSSL) that is licensed under separate terms, as designated in a
+ * particular file or component or in included license documentation. The
+ * authors of this program hereby grant you an additional permission to link the
+ * program and your derivative works with the separately licensed software that
+ * they have included with MySQL.
+ *
+ * Without limiting anything contained in the foregoing, this file, which is
+ * part of this connector, is also subject to the Universal FOSS Exception,
+ * version 1.0, a copy of which can be found at
+ * http://oss.oracle.com/licenses/universal-foss-exception.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,
+ * for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+ */
+
 package com.mysql.cj.jdbc;
 
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SuppressWarnings("unchecked")
 public class NonRegisteringDriverTest {
-    // TODO: test method javadocs and license headers for all added files
-    /**
-     * Tests {@link ClusterAwareConnectionProxy} return original connection if failover is not
-     * enabled.
-     */
+
+    @BeforeEach
+    public void setAwsProtocolOnlyToFalse() {
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+    }
+
+    @Test
+    public void testSetAwsProtocolOnlySwitch() throws Exception {
+        software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
+        assertNotNull(drv);
+
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
+        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+
+        // Check if the connection property is prioritized over the global setting.
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
+        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+    }
+
     @Test
     public void testSingleConnectionProtocolReturnsConnectionImpl() throws SQLException {
         String url = "jdbc:mysql://somehost:1234/test";
@@ -29,7 +88,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticConnectionImpl = mockStatic(ConnectionImpl.class)) {
+        try (MockedStatic<ConnectionImpl> mockStaticConnectionImpl = mockStatic(ConnectionImpl.class)) {
             mockStaticConnectionImpl.when(() -> ConnectionImpl.getInstance(eq(connUrl.getMainHost()))).thenReturn(mockConnectionImplConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockConnectionImplConn, conn);
@@ -43,7 +102,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticClusterAwareConnectionProxy = mockStatic(ClusterAwareConnectionProxy.class)) {
+        try (MockedStatic<ClusterAwareConnectionProxy> mockStaticClusterAwareConnectionProxy = mockStatic(ClusterAwareConnectionProxy.class)) {
             mockStaticClusterAwareConnectionProxy.when(() -> ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(eq(connUrl))).thenReturn(mockAwsProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockAwsProtocolConn, conn);
@@ -57,7 +116,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticFailoverConnectionProxy = mockStatic(FailoverConnectionProxy.class)) {
+        try (MockedStatic<FailoverConnectionProxy> mockStaticFailoverConnectionProxy = mockStatic(FailoverConnectionProxy.class)) {
             mockStaticFailoverConnectionProxy.when(() -> FailoverConnectionProxy.createProxyInstance(eq(connUrl))).thenReturn(mockFailoverProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockFailoverProtocolConn, conn);
@@ -71,7 +130,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticLoadBalancedConnectionProxy = mockStatic(LoadBalancedConnectionProxy.class)) {
+        try (MockedStatic<LoadBalancedConnectionProxy> mockStaticLoadBalancedConnectionProxy = mockStatic(LoadBalancedConnectionProxy.class)) {
             mockStaticLoadBalancedConnectionProxy.when(() -> LoadBalancedConnectionProxy.createProxyInstance(eq(connUrl))).thenReturn(mockLoadBalancedProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockLoadBalancedProtocolConn, conn);
@@ -85,7 +144,7 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic mockStaticReplicationConnectionProxy = mockStatic(ReplicationConnectionProxy.class)) {
+        try (MockedStatic<ReplicationConnectionProxy> mockStaticReplicationConnectionProxy = mockStatic(ReplicationConnectionProxy.class)) {
             mockStaticReplicationConnectionProxy.when(() -> ReplicationConnectionProxy.createProxyInstance(eq(connUrl))).thenReturn(mockReplicationProtocolConn);
             Connection replicationConn = driver.connect(url, new Properties());
             assertEquals(mockReplicationProtocolConn, replicationConn);

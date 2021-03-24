@@ -1,0 +1,62 @@
+diff --git a/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/AuroraTopologyService.java b/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/AuroraTopologyService.java
+index d77655b..3b66dbc 100644
+--- a/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/AuroraTopologyService.java
++++ b/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/AuroraTopologyService.java
+@@ -285,7 +285,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
+   }
+ 
+   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet) throws SQLException {
+-    Map<String, String> properties = new HashMap<>(this.clusterInstanceTemplate.getHostProperties());
++    Map<String, String> properties = new HashMap<>();
+     properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, resultSet.getString(FIELD_SERVER_ID));
+     properties.put(TopologyServicePropertyKeys.SESSION_ID, resultSet.getString(FIELD_SESSION_ID));
+     properties.put(
+diff --git a/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/ClusterAwareConnectionProxy.java b/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/ClusterAwareConnectionProxy.java
+index 84b88aa..adc9445 100644
+--- a/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/ClusterAwareConnectionProxy.java
++++ b/src/main/user-impl/java/com/mysql/cj/jdbc/ha/ca/ClusterAwareConnectionProxy.java
+@@ -467,7 +467,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
+   }
+ 
+   private HostInfo createClusterInstanceTemplate(HostInfo mainHost, String host, int port) {
+-    Map<String, String> properties = new HashMap<>(this.initialConnectionProps);
++    Map<String, String> properties = new HashMap<>(mainHost.getHostProperties());
+     properties.put(PropertyKey.connectTimeout.getKeyName(), String.valueOf(this.failoverConnectTimeoutMs));
+     properties.put(PropertyKey.socketTimeout.getKeyName(), String.valueOf(this.failoverSocketTimeoutMs));
+ 
+diff --git a/src/test/java/testsuite/regression/ConnectionRegressionTest.java b/src/test/java/testsuite/regression/ConnectionRegressionTest.java
+index 1431965..66afc74 100644
+--- a/src/test/java/testsuite/regression/ConnectionRegressionTest.java
++++ b/src/test/java/testsuite/regression/ConnectionRegressionTest.java
+@@ -57,7 +57,10 @@ import com.mysql.cj.util.LogUtils;
+ import com.mysql.cj.util.StringUtils;
+ import com.mysql.cj.util.TimeUtil;
+ import com.mysql.cj.util.Util;
+-import org.junit.jupiter.api.*;
++import org.junit.jupiter.api.Disabled;
++import org.junit.jupiter.api.MethodOrderer;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.TestMethodOrder;
+ import testsuite.BaseQueryInterceptor;
+ import testsuite.BaseTestCase;
+ import testsuite.BufferingLogger;
+@@ -5867,7 +5870,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
+      * 
+      * @throws Exception
+      */
+-    @Disabled
+     @Test
+     public void testBug69579() throws Exception {
+         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
+@@ -5924,9 +5926,10 @@ public class ConnectionRegressionTest extends BaseTestCase {
+         final String testURL = "jdbc:mysql://localhost:" + serverPort;
+         Connection testConn = null;
+         final int oldLoginTimeout = DriverManager.getLoginTimeout();
+-        final int loginTimeout = 6;
++        final int loginTimeout = 3;
+         final int testTimeout = loginTimeout * 2;
+         long timestamp = System.currentTimeMillis();
++
+         try {
+             DriverManager.setLoginTimeout(loginTimeout);
+ 

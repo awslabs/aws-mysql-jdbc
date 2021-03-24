@@ -48,18 +48,16 @@ public interface ReaderFailoverHandler {
    *
    * @param hosts Cluster current topology.
    * @param currentHost The currently connected host that has failed.
-   * @return {@link ConnectionAttemptResult} The results of this process. May return null, which is
-   *     considered an unsuccessful result.
+   * @return {@link ReaderFailoverResult} The results of this process.
    */
-  ConnectionAttemptResult failover(List<HostInfo> hosts, HostInfo currentHost) throws SQLException;
+  ReaderFailoverResult failover(List<HostInfo> hosts, HostInfo currentHost) throws SQLException;
 
   /**
    * Called to get any available reader connection. If no reader is available then result of process
    * is unsuccessful. This process will not attempt to connect to the writer host.
    *
    * @param hostList Cluster current topology.
-   * @return {@link ConnectionAttemptResult} The results of this process. May return null, which is
-   *     considered an unsuccessful result.
+   * @return {@link ReaderFailoverResult} The results of this process.
    */
-  ConnectionAttemptResult getReaderConnection(List<HostInfo> hostList) throws SQLException;
+  ReaderFailoverResult getReaderConnection(List<HostInfo> hostList) throws SQLException;
 }

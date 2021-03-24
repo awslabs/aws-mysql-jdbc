@@ -37,6 +37,7 @@ import com.amazonaws.services.rds.model.DBClusterMember;
 import com.amazonaws.services.rds.model.DescribeDBClustersRequest;
 import com.amazonaws.services.rds.model.DescribeDBClustersResult;
 import com.amazonaws.services.rds.model.FailoverDBClusterRequest;
+import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -67,8 +68,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 @Disabled
+@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class FailoverIntegrationTest {
   /*
    * Before running these tests we need to initialize the test cluster as the following.
@@ -114,13 +115,7 @@ public class FailoverIntegrationTest {
   private final AmazonRDS rdsClient = AmazonRDSClientBuilder.standard().build();
   private Connection testConnection;
 
-  private CrashInstanceRunnable instanceCrasher1;
-  private CrashInstanceRunnable instanceCrasher2;
-  private CrashInstanceRunnable instanceCrasher3;
-  private CrashInstanceRunnable instanceCrasher4;
-  private CrashInstanceRunnable instanceCrasher5;
-
-  private Map<String, CrashInstanceRunnable> instanceCrasherMap = new HashMap<>();
+  private final Map<String, CrashInstanceRunnable> instanceCrasherMap = new HashMap<>();
 
   /**
    * FailoverIntegrationTest constructor.
@@ -131,11 +126,11 @@ public class FailoverIntegrationTest {
 
     initiateInstanceNames();
 
-    instanceCrasher1 = new CrashInstanceRunnable(INSTANCE_ID_1);
-    instanceCrasher2 = new CrashInstanceRunnable(INSTANCE_ID_2);
-    instanceCrasher3 = new CrashInstanceRunnable(INSTANCE_ID_3);
-    instanceCrasher4 = new CrashInstanceRunnable(INSTANCE_ID_4);
-    instanceCrasher5 = new CrashInstanceRunnable(INSTANCE_ID_5);
+    CrashInstanceRunnable instanceCrasher1 = new CrashInstanceRunnable(INSTANCE_ID_1);
+    CrashInstanceRunnable instanceCrasher2 = new CrashInstanceRunnable(INSTANCE_ID_2);
+    CrashInstanceRunnable instanceCrasher3 = new CrashInstanceRunnable(INSTANCE_ID_3);
+    CrashInstanceRunnable instanceCrasher4 = new CrashInstanceRunnable(INSTANCE_ID_4);
+    CrashInstanceRunnable instanceCrasher5 = new CrashInstanceRunnable(INSTANCE_ID_5);
 
     instanceCrasherMap.put(INSTANCE_ID_1, instanceCrasher1);
     instanceCrasherMap.put(INSTANCE_ID_2, instanceCrasher2);
@@ -682,25 +677,25 @@ public class FailoverIntegrationTest {
 
   @Test
   public void test5_1_takeOverConnectionProperties() throws SQLException, InterruptedException {
-    final String initalWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initalWriterId);
-
     final Properties props = new Properties();
-    props.setProperty("user", TEST_USERNAME);
-    props.setProperty("password", TEST_PASSWORD);
-    props.setProperty("allowMultiQueries", "true");
-    props.setProperty("gatherPerfMetrics", "true");
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "false");
 
-    testConnection =
-        DriverManager.getConnection(
-            DB_CONN_STR_PREFIX + initalWriterId + DB_CONN_STR_SUFFIX, props);
+    // Establish the topology cache so that we can later assert that testConnection does not inherit properties from
+    // establishCacheConnection either before or after failover
+    final Connection establishCacheConnection = DriverManager.getConnection(getClusterEndpoint(), props);
+    establishCacheConnection.close();
+
+    props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "true");
+    testConnection = DriverManager.getConnection(getClusterEndpoint(), props);
 
     // Verify that connection accepts multi-statement sql
     final Statement myStmt = testConnection.createStatement();
     myStmt.executeQuery("select @@aurora_server_id; select 1; select 2;");
 
     // Crash Instance1 and nominate a new writer
-    failoverClusterAndWaitUntilWriterChanged(initalWriterId);
+    failoverClusterAndWaitUntilWriterChanged(INSTANCE_ID_1);
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -710,10 +705,14 @@ public class FailoverIntegrationTest {
   }
 
   /* Helper functions. */
+  private String getClusterEndpoint() {
+    String suffix = DB_CONN_STR_SUFFIX.startsWith(".") ? DB_CONN_STR_SUFFIX.substring(1) : DB_CONN_STR_SUFFIX;
+    return DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + ".cluster-" + suffix;
+  }
 
-  private DBCluster getDBCluster(String dbClusterIdentifier) {
+  private DBCluster getDBCluster() {
     DescribeDBClustersRequest dbClustersRequest =
-        new DescribeDBClustersRequest().withDBClusterIdentifier(dbClusterIdentifier);
+        new DescribeDBClustersRequest().withDBClusterIdentifier(FailoverIntegrationTest.TEST_DB_CLUSTER_IDENTIFIER);
     DescribeDBClustersResult dbClustersResult = rdsClient.describeDBClusters(dbClustersRequest);
     List<DBCluster> dbClusterList = dbClustersResult.getDBClusters();
     return dbClusterList.get(0);
@@ -732,7 +731,7 @@ public class FailoverIntegrationTest {
   }
 
   private List<DBClusterMember> getDBClusterMemberList() {
-    DBCluster dbCluster = getDBCluster(TEST_DB_CLUSTER_IDENTIFIER);
+    DBCluster dbCluster = getDBCluster();
     return dbCluster.getDBClusterMembers();
   }
 
@@ -840,10 +839,10 @@ public class FailoverIntegrationTest {
 
   private void waitUntilClusterHasRightState() throws InterruptedException {
     this.log.logDebug("Wait until cluster is in available state.");
-    String status = getDBCluster(TEST_DB_CLUSTER_IDENTIFIER).getStatus();
+    String status = getDBCluster().getStatus();
     while (!"available".equalsIgnoreCase(status)) {
       Thread.sleep(3000);
-      status = getDBCluster(TEST_DB_CLUSTER_IDENTIFIER).getStatus();
+      status = getDBCluster().getStatus();
     }
     this.log.logDebug("Cluster is available.");
   }

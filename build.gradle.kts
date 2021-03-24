@@ -104,6 +104,7 @@ tasks.shadowJar {
     from("${project.rootDir}") {
         include("README")
         include("LICENSE")
+        include("THIRD-PARTY-LICENSES")
         into("META-INF/")
     }
 

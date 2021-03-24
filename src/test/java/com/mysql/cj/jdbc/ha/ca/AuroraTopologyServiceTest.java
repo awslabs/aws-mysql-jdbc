@@ -32,11 +32,11 @@ package com.mysql.cj.jdbc.ha.ca;
 
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.StatementImpl;
 import com.mysql.cj.jdbc.result.ResultSetImpl;
+import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -62,12 +62,12 @@ import static org.mockito.Mockito.when;
 /** AuroraTopologyServiceTest class. */
 public class AuroraTopologyServiceTest {
 
-  private final AuroraTopologyService spyProvider = Mockito.spy(new AuroraTopologyService());
+  private final AuroraTopologyService spyProvider = Mockito.spy(new AuroraTopologyService(Mockito.mock(Log.class)));
 
   @BeforeEach
   void resetProvider() {
     spyProvider.setClusterId(UUID.randomUUID().toString());
-    spyProvider.setClusterInstanceHost(new HostInfo(null, "?", HostInfo.NO_PORT, null, null));
+    spyProvider.setClusterInstanceTemplate(new HostInfo(null, "?", HostInfo.NO_PORT, null, null));
     spyProvider.setRefreshRate(AuroraTopologyService.DEFAULT_REFRESH_RATE_IN_MILLISECONDS);
     spyProvider.clearAll();
     AuroraTopologyService.setExpireTime(AuroraTopologyService.DEFAULT_CACHE_EXPIRE_MS);
@@ -82,7 +82,6 @@ public class AuroraTopologyServiceTest {
     final String url =
         "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final Properties mainHostProps = new Properties();
-    mainHostProps.put("anyCustomProperty", "anyTestValue");
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, mainHostProps);
     final HostInfo mainHost = conStr.getMainHost();
 
@@ -95,7 +94,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     final List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
 
@@ -115,8 +114,6 @@ public class AuroraTopologyServiceTest {
         AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props.get(PropertyKey.DBNAME.getKeyName()));
-    assertEquals("anyTestValue", props.get("anyCustomProperty"));
 
     assertFalse(spyProvider.isMultiWriterCluster());
     assertEquals(3, topology.size());
@@ -143,7 +140,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     final List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
     final List<HostInfo> readers =
@@ -182,7 +179,6 @@ public class AuroraTopologyServiceTest {
         props1.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props1.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props1.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props1.get(PropertyKey.DBNAME.getKeyName()));
 
     Map<String, String> props2 = master2.getHostProperties();
     assertEquals("writer-instance-2", props2.get(TopologyServicePropertyKeys.INSTANCE_NAME));
@@ -191,7 +187,6 @@ public class AuroraTopologyServiceTest {
         props2.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props2.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props2.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props2.get(PropertyKey.DBNAME.getKeyName()));
 
     Map<String, String> props3 = master3.getHostProperties();
     assertEquals("writer-instance-3", props3.get(TopologyServicePropertyKeys.INSTANCE_NAME));
@@ -200,7 +195,6 @@ public class AuroraTopologyServiceTest {
         props3.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props3.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props3.get(TopologyServicePropertyKeys.REPLICA_LAG));
-    assertEquals("test", props3.get(PropertyKey.DBNAME.getKeyName()));
   }
 
   private void stubTopologyQuery(Connection conn, Statement stmt, ResultSet results)
@@ -286,7 +280,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     spyProvider.getTopology(mockConn, false);
     spyProvider.getTopology(mockConn, false);
@@ -310,7 +304,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
     when(mockConn.createStatement()).thenThrow(SQLException.class);
 
     final List<HostInfo> hosts = spyProvider.getTopology(mockConn, true);
@@ -336,7 +330,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
     spyProvider.setRefreshRate(1);
 
     final List<HostInfo> hosts = spyProvider.getTopology(mockConn, false);
@@ -422,7 +416,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     spyProvider.setRefreshRate(1);
     spyProvider.getTopology(mockConn, false);
@@ -452,7 +446,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     AuroraTopologyService.setExpireTime(1000); // 1 sec
     spyProvider.setRefreshRate(
@@ -497,7 +491,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     AuroraTopologyService.setExpireTime(10000); // 10 sec
     spyProvider.setRefreshRate(1000); // 1 sec
@@ -536,7 +530,7 @@ public class AuroraTopologyServiceTest {
             mainHost.getPassword(),
             mainHost.isPasswordless(),
             mainHost.getHostProperties());
-    spyProvider.setClusterInstanceHost(clusterInstanceInfo);
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     spyProvider.getTopology(mockConn, false);
     spyProvider.addToDownHostList(clusterInstanceInfo);
