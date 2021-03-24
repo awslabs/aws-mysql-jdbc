@@ -57,10 +57,7 @@ import com.mysql.cj.util.LogUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.TimeUtil;
 import com.mysql.cj.util.Util;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import testsuite.BaseQueryInterceptor;
 import testsuite.BaseTestCase;
 import testsuite.BufferingLogger;
@@ -5870,6 +5867,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * 
      * @throws Exception
      */
+    @Disabled
     @Test
     public void testBug69579() throws Exception {
         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
@@ -5927,8 +5925,8 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 6;
-        final int testTimeout = loginTimeout * 20;
-        long timestamp = 0;
+        final int testTimeout = loginTimeout * 2;
+        long timestamp = System.currentTimeMillis();
         try {
             DriverManager.setLoginTimeout(loginTimeout);
 
@@ -5941,7 +5939,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
                 }
             });
 
-            timestamp = System.currentTimeMillis();
             testConn = future.get(testTimeout, TimeUnit.SECONDS);
             testConn.close();
 
