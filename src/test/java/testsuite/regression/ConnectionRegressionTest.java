@@ -5924,7 +5924,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         final String testURL = "jdbc:mysql://localhost:" + serverPort;
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
-        final int loginTimeout = 6;
+        final int loginTimeout = 3;
         final int testTimeout = loginTimeout * 2;
         long timestamp = System.currentTimeMillis();
         try {
