@@ -86,7 +86,6 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.security.cert.CertificateException;
 import java.sql.*;
-import java.sql.Driver;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.*;
@@ -5874,7 +5873,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug69579() throws Exception {
         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
-
         class MockServer implements Runnable {
             private ServerSocket serverSocket = null;
 
