@@ -5874,11 +5874,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug69579() throws Exception {
         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
-        Driver test = DriverManager.getDriver("jdbc:mysql://localhost");
-        if (test instanceof software.aws.rds.jdbc.mysql.Driver)
-        {
-            DriverManager.deregisterDriver(test);
-        }
+
         class MockServer implements Runnable {
             private ServerSocket serverSocket = null;
 

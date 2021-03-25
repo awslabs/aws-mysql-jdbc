@@ -33,15 +33,14 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -60,6 +59,14 @@ public class NonRegisteringDriverTest {
         software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
     }
 
+    @AfterAll
+    public static void cleanup() throws SQLException {
+        Driver test = DriverManager.getDriver("jdbc:mysql://localhost");
+        if (test instanceof software.aws.rds.jdbc.mysql.Driver)
+        {
+            DriverManager.deregisterDriver(test);
+        }
+    }
     @Test
     public void testSetAwsProtocolOnlySwitch() throws Exception {
         software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
