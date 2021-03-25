@@ -33,6 +33,8 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
+import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -40,6 +42,7 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -53,35 +56,39 @@ import static org.mockito.Mockito.*;
 
 public class NonRegisteringDriverTest {
 
-//    @BeforeEach
-//    public void setAwsProtocolOnlyToFalse() {
-//        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
-//    }
-//
-//    @Test
-//    public void testSetAwsProtocolOnlySwitch() throws Exception {
-//        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
-//        software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
-//        assertNotNull(drv);
-//
-//        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
-//        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-//
-//        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
-//        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
-//        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
-//
-//        // Check if the connection property is prioritized over the global setting.
-//        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-//
-//        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
-//        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
-//        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
-//
-//        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
-//        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-//
-//    }
+    @BeforeEach
+    public void setAwsProtocolOnlyToFalse() {
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+    }
+
+    @AfterEach
+    public void setAwsProtocolOnlyToFalseCleanup() {
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+    }
+    @Test
+    public void testSetAwsProtocolOnlySwitch() throws Exception {
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+        software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
+        assertNotNull(drv);
+
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
+        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+
+        // Check if the connection property is prioritized over the global setting.
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
+        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
+
+        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
+        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
+        DriverManager.deregisterDriver(drv);
+    }
 
     @Test
     public void testSingleConnectionProtocolReturnsConnectionImpl() throws SQLException {
