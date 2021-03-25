@@ -5915,7 +5915,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
             }
         }
 
-
         ExecutorService executor = Executors.newCachedThreadPool();
         MockServer mockServer = new MockServer();
         int serverPort = 0;

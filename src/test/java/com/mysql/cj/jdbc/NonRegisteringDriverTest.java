@@ -33,9 +33,6 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
-import org.junit.After;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -43,7 +40,6 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -62,13 +58,8 @@ public class NonRegisteringDriverTest {
         software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
     }
 
-    @AfterAll
-    public static void setAwsProtocolOnlyToFalseCleanup() {
-        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
-    }
     @Test
     public void testSetAwsProtocolOnlySwitch() throws Exception {
-        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
         software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
         assertNotNull(drv);
 
@@ -88,7 +79,9 @@ public class NonRegisteringDriverTest {
 
         assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
         assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-        DriverManager.deregisterDriver(drv);
+
+        drv = null;
+        System.gc();
     }
 
     @Test
