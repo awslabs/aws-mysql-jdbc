@@ -155,6 +155,7 @@ public class FailoverIntegrationTest {
     // Crash Instance1 and nominate a new writer
     failoverClusterAndWaitUntilWriterChanged(initalWriterId);
 
+    // Failure occurs on Connection invocation
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that we are connected to the new writer after failover happens.
@@ -174,11 +175,13 @@ public class FailoverIntegrationTest {
     final String initalWriterId = INSTANCE_ID_1;
 
     testConnection = connectToWriterInstance(initalWriterId);
+    Statement stmt = testConnection.createStatement();
 
     // Crash Instance1 and nominate a new writer
     failoverClusterAndWaitUntilWriterChanged(initalWriterId);
 
-    assertFirstQueryThrows(testConnection, "08S02");
+    // Failure occurs on Statement invocation
+    assertFirstQueryThrows(stmt, "08S02");
 
     // Assert that the driver is connected to the new writer after failover happens.
     final String currentConnectionId = queryInstanceId(testConnection);
@@ -892,11 +895,15 @@ public class FailoverIntegrationTest {
   }
 
   private String queryInstanceId(Connection connection) throws SQLException {
-    try (Statement myStmt = connection.createStatement();
-         ResultSet resultSet = myStmt.executeQuery("select @@aurora_server_id")
-    ) {
-      if (resultSet.next()) {
-        return resultSet.getString("@@aurora_server_id");
+    try (Statement myStmt = connection.createStatement()) {
+      return executeInstanceIdQuery(myStmt);
+    }
+  }
+
+  private String executeInstanceIdQuery(Statement stmt) throws SQLException {
+    try (ResultSet rs = stmt.executeQuery("select @@aurora_server_id")) {
+      if (rs.next()) {
+        return rs.getString("@@aurora_server_id");
       }
     }
     throw new SQLException();
@@ -910,6 +917,14 @@ public class FailoverIntegrationTest {
         "Assert that the first read query throws, "
             + "this should kick off the driver failover process..");
     SQLException exception = assertThrows(SQLException.class, () -> queryInstanceId(connection));
+    assertEquals(expectedSQLErrorCode, exception.getSQLState());
+  }
+
+  private void assertFirstQueryThrows(Statement stmt, String expectedSQLErrorCode) {
+    this.log.logDebug(
+            "Assert that the first read query throws, "
+                    + "this should kick off the driver failover process..");
+    SQLException exception = assertThrows(SQLException.class, () -> executeInstanceIdQuery(stmt));
     assertEquals(expectedSQLErrorCode, exception.getSQLState());
   }
 
