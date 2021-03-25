@@ -55,13 +55,9 @@ import static org.mockito.Mockito.*;
 
 public class NonRegisteringDriverTest {
 
-    @BeforeEach
-    public void setAwsProtocolOnlyToFalse() {
-        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
-    }
-
     @Test
     public void testSetAwsProtocolOnlySwitch() throws Exception {
+        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
         software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
         assertNotNull(drv);
 
@@ -81,8 +77,6 @@ public class NonRegisteringDriverTest {
 
         assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
         assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-
-        drv = null;
     }
 
     @Test
