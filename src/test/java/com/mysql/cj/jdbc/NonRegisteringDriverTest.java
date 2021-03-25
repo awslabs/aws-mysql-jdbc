@@ -34,7 +34,9 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -51,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class NonRegisteringDriverTest {
 
     @BeforeEach
@@ -79,9 +82,6 @@ public class NonRegisteringDriverTest {
 
         assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
         assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-
-        drv = null;
-        System.gc();
     }
 
     @Test

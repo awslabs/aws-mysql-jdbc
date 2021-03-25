@@ -86,6 +86,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.security.cert.CertificateException;
 import java.sql.*;
+import java.sql.Driver;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.*;
@@ -103,6 +104,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Regression tests for Connections
  */
+@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug1914() throws Exception {
@@ -5873,6 +5875,11 @@ public class ConnectionRegressionTest extends BaseTestCase {
     @Test
     public void testBug69579() throws Exception {
         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
+        Driver test = DriverManager.getDriver("jdbc:mysql://localhost");
+        if (test instanceof software.aws.rds.jdbc.mysql.Driver)
+        {
+            DriverManager.deregisterDriver(test);
+        }
         class MockServer implements Runnable {
             private ServerSocket serverSocket = null;
 
@@ -5923,7 +5930,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         } catch (IOException e1) {
             fail("Failed to initialize a mock server.");
         }
-        final String testURL = "jdbc:mysql:aws://localhost:" + serverPort;
+        final String testURL = "jdbc:mysql://localhost:" + serverPort;
         Connection testConn = null;
         final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 3;
