@@ -53,7 +53,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class NonRegisteringDriverTest {
 
     @BeforeEach
