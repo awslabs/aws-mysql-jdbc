@@ -61,21 +61,6 @@ public class Driver extends NonRegisteringDriver implements java.sql.Driver {
     }
   }
 
-  /**
-   * Set the acceptAwsProtocolOnly property for the driver, which controls whether protocols other than
-   * jdbc:postgresql:aws:// will be accepted by the driver. This setting should be set to true when
-   * running an application that uses this driver simultaneously with another MySQL
-   * driver that supports the same protocols (eg the MySQL JDBC Driver), to ensure the driver
-   * protocols do not clash. The property can also be set at the connection level via a connection
-   * parameter, which will take priority over this driver-level property.
-   *
-   * @param awsProtocolOnly enables the acceptAwsProtocolOnly mode of the driver
-   */
-  public static void setAcceptAwsProtocolOnly(boolean awsProtocolOnly) {
-    acceptAwsProtocolOnly = awsProtocolOnly;
-  }
-
-
   static {
     System.out.println("You are using Amazon Web Services (AWS) JDBC Driver for MySQL, you can also use 'software.aws.rds.jdbc.mysql.Driver()' to register");
   }

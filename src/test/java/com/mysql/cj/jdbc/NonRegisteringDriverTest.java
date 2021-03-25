@@ -33,54 +33,19 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 public class NonRegisteringDriverTest {
-
-    @BeforeEach
-    public void setAwsProtocolOnlyToFalse() {
-        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
-    }
-
-    @Test
-    public void testSetAwsProtocolOnlySwitch() throws Exception {
-        software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
-        assertNotNull(drv);
-
-        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
-        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-
-        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
-        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
-        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
-
-        // Check if the connection property is prioritized over the global setting.
-        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-
-        software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(false);
-        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test"));
-        assertTrue(drv.acceptsURL("jdbc:mysql:aws://localhost:5432/test"));
-
-        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
-        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
-    }
-
     @Test
     public void testSingleConnectionProtocolReturnsConnectionImpl() throws SQLException {
         String url = "jdbc:mysql://somehost:1234/test";
