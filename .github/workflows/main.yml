@@ -30,7 +30,7 @@ jobs:
         run: docker-compose up -d && docker-compose logs
       - name: 'Build And Run Tests'
         run: |
-          ./gradlew --no-parallel --no-daemon build test --tests *NonRegisteringDriverTest --tests *ConnectionRegressionTest
+          ./gradlew --no-parallel --no-daemon build test --tests *ConnectionRegressionTest --tests *NonRegisteringDriverTest
 
       - name: Archive junit results
         if: ${{ always() }}
