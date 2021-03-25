@@ -33,8 +33,6 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.*;
 import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
-import org.junit.After;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -83,7 +81,6 @@ public class NonRegisteringDriverTest {
 //        assertFalse(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=true"));
 //        assertTrue(drv.acceptsURL("jdbc:mysql://localhost:5432/test?acceptAwsProtocolOnly=false"));
 //
-//        drv = null;
 //    }
 
     @Test
