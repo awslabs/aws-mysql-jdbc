@@ -63,7 +63,7 @@ public class NonRegisteringDriverTest {
     }
 
     @AfterAll
-    public void setAwsProtocolOnlyToFalseCleanup() {
+    public static void setAwsProtocolOnlyToFalseCleanup() {
         software.aws.rds.jdbc.mysql.Driver.setAcceptAwsProtocolOnly(true);
     }
     @Test
