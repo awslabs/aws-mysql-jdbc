@@ -5867,7 +5867,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * 
      * @throws Exception
      */
-    @Disabled
     @Test
     public void testBug69579() throws Exception {
         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
