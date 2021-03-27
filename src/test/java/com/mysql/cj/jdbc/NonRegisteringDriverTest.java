@@ -61,10 +61,10 @@ public class NonRegisteringDriverTest {
 
     @AfterAll
     public static void cleanup() throws SQLException {
-        Driver test = DriverManager.getDriver("jdbc:mysql://localhost");
-        if (test instanceof software.aws.rds.jdbc.mysql.Driver)
+        Driver registeredDriver = DriverManager.getDriver("jdbc:mysql://localhost");
+        if (registeredDriver instanceof software.aws.rds.jdbc.mysql.Driver)
         {
-            DriverManager.deregisterDriver(test);
+            DriverManager.deregisterDriver(registeredDriver);
         }
     }
     @Test
