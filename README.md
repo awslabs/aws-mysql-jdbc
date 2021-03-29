@@ -67,7 +67,7 @@ dependencies {
 As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover.
 
 #### Driver Name
-The driver name to use is: ```software.aws.rds.jdbc.Driver```. This will be needed when loading the driver explicitly to the driver manager.
+The driver name to use is: ```software.aws.rds.jdbc.mysql.Driver```. This will be needed when loading the driver explicitly to the driver manager.
 #### Connection URL Descriptions
 
 There are many different types of URLs that can connect to an Aurora DB cluster. For some of these URL types, the AWS JDBC Driver requires the user to provide some information about the Aurora DB cluster to provide failover functionality. This section outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, if applicable.
@@ -83,7 +83,7 @@ Note: The connection string follows standard URL parameters. In order to add par
 | RDS Custom Cluster | `jdbc:mysql:aws://db-identifier.cluster-custom-XYZ.us-east-2l.rds.amazonaws.com:3306`      |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
 | IP Address | `jdbc:mysql:aws://10.10.10.10:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
-| Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    `clusterInstanceHostPattern` | A regular JDBC connection will be returned - no failover functionality |
+| Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    None | A regular JDBC connection will be returned - no failover functionality |
 
 (Information about the `clusterInstanceHostPattern` is mentioned in the section below.)
 
