@@ -467,7 +467,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   private HostInfo createClusterInstanceTemplate(HostInfo mainHost, String host, int port) {
-    Map<String, String> properties = new HashMap<>(mainHost.getHostProperties());
+    Map<String, String> properties = new HashMap<>(this.initialConnectionProps);
     properties.put(PropertyKey.connectTimeout.getKeyName(), String.valueOf(this.failoverConnectTimeoutMs));
     properties.put(PropertyKey.socketTimeout.getKeyName(), String.valueOf(this.failoverSocketTimeoutMs));
 

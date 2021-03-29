@@ -57,10 +57,7 @@ import com.mysql.cj.util.LogUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.TimeUtil;
 import com.mysql.cj.util.Util;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import testsuite.BaseQueryInterceptor;
 import testsuite.BaseTestCase;
 import testsuite.BufferingLogger;
@@ -5929,7 +5926,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
         final int loginTimeout = 3;
         final int testTimeout = loginTimeout * 2;
         long timestamp = System.currentTimeMillis();
-
         try {
             DriverManager.setLoginTimeout(loginTimeout);
 

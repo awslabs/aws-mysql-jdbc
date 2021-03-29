@@ -285,7 +285,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   }
 
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet) throws SQLException {
-    Map<String, String> properties = new HashMap<>();
+    Map<String, String> properties = new HashMap<>(this.clusterInstanceTemplate.getHostProperties());
     properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, resultSet.getString(FIELD_SERVER_ID));
     properties.put(TopologyServicePropertyKeys.SESSION_ID, resultSet.getString(FIELD_SESSION_ID));
     properties.put(
