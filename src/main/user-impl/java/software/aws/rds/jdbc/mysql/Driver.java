@@ -75,7 +75,6 @@ public class Driver extends NonRegisteringDriver implements java.sql.Driver {
     acceptAwsProtocolOnly = awsProtocolOnly;
   }
 
-
   static {
     System.out.println("You are using Amazon Web Services (AWS) JDBC Driver for MySQL, you can also use 'software.aws.rds.jdbc.mysql.Driver()' to register");
   }
