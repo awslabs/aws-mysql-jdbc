@@ -67,6 +67,7 @@ public class NonRegisteringDriverTest {
             DriverManager.deregisterDriver(registeredDriver);
         }
     }
+
     @Test
     public void testSetAwsProtocolOnlySwitch() throws Exception {
         software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
