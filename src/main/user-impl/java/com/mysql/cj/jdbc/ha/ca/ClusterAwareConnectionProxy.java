@@ -202,7 +202,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
    *
    * @return true if cluster-aware failover is enabled
    */
-  public boolean isFailoverEnabled() {
+  public synchronized boolean isFailoverEnabled() {
     return this.enableFailoverSetting
             && !this.isRdsProxy
             && this.isClusterTopologyAvailable
@@ -333,7 +333,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
   }
 
-  protected void initProxy(ConnectionUrl connUrl) throws SQLException {
+  protected synchronized void initProxy(ConnectionUrl connUrl) throws SQLException {
     if (!this.enableFailoverSetting) {
       // Use a standard default connection - no further initialization required
       this.currentConnection = this.connectionProvider.connect(connUrl.getMainHost());
@@ -389,7 +389,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     return pair;
   }
 
-  private void validateHostPatternSetting(String hostPattern) throws SQLException {
+  private synchronized void validateHostPatternSetting(String hostPattern) throws SQLException {
     if (!isDnsPatternValid(hostPattern)) {
       // "Invalid value in 'clusterInstanceHostPattern' configuration property."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.5"));
@@ -466,7 +466,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
   }
 
-  private HostInfo createClusterInstanceTemplate(HostInfo mainHost, String host, int port) {
+  private synchronized HostInfo createClusterInstanceTemplate(HostInfo mainHost, String host, int port) {
     Map<String, String> properties = new HashMap<>(this.initialConnectionProps);
     properties.put(PropertyKey.connectTimeout.getKeyName(), String.valueOf(this.failoverConnectTimeoutMs));
     properties.put(PropertyKey.socketTimeout.getKeyName(), String.valueOf(this.failoverSocketTimeoutMs));
@@ -883,7 +883,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
                     new Object[] {this.hosts.get(this.currentHostIndex)}));
   }
 
-  private void processFailoverFailure(String message) throws SQLException {
+  private synchronized void processFailoverFailure(String message) throws SQLException {
     if (this.gatherPerfMetricsSetting) {
       this.metrics.registerFailoverConnects(false);
     }
@@ -987,7 +987,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
    *
    * @return true if proxy is connected to cluster through RDS proxy
    */
-  public boolean isRdsProxy() {
+  public synchronized boolean isRdsProxy() {
     return this.isRdsProxy;
   }
 
@@ -1091,7 +1091,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     return result;
   }
 
-  private void invalidInvocationOnClosedConnection() throws SQLException {
+  private synchronized void invalidInvocationOnClosedConnection() throws SQLException {
     if (this.autoReconnect && !this.closedExplicitly) {
       this.currentHostIndex = NO_CONNECTION_INDEX; // Act as if this is the first connection but let it sync with the previous one.
       this.isClosed = false;
@@ -1130,7 +1130,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     dealWithOriginalException(e.getCause(), e);
   }
 
-  private void dealWithOriginalException(Throwable originalException, Exception wrapperException) throws Throwable {
+  private synchronized void dealWithOriginalException(Throwable originalException, Exception wrapperException) throws Throwable {
     if (originalException != null) {
       this.log.logTrace(Messages.getString("ClusterAwareConnectionProxy.12"), originalException);
       if (this.lastExceptionDealtWith != originalException && shouldExceptionTriggerConnectionSwitch(originalException)) {
@@ -1272,7 +1272,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   /** Checks if current connection is to a master (writer) host. */
   @Override
-  protected boolean isSourceConnection() {
+  protected synchronized boolean isSourceConnection() {
     return isWriterHostIndex(this.currentHostIndex);
   }
 
@@ -1298,7 +1298,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
    *
    * @return true if proxy is connected to cluster that can report its topology
    */
-  public boolean isClusterTopologyAvailable() {
+  public synchronized boolean isClusterTopologyAvailable() {
     return this.isClusterTopologyAvailable;
   }
 
