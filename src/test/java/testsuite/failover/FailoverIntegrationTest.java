@@ -30,6 +30,8 @@
 
 package testsuite.failover;
 
+import testsuite.UnreliableSocketFactory;
+
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
 import com.amazonaws.services.rds.model.DBCluster;
@@ -55,10 +57,14 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -71,21 +77,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Disabled
 @TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class FailoverIntegrationTest {
-  /*
-   * Before running these tests we need to initialize the test cluster as the following.
-   *
-   * Expected cluster state:
-   * +------------------+--------+---------+
-   * |   Instance Id    |  Role  | Status  |
-   * +------------------+--------+---------+
-   * | mysql-instance-1 | Writer | Running |
-   * | mysql-instance-2 | Reader | Running |
-   * | mysql-instance-3 | Reader | Running |
-   * | mysql-instance-4 | Reader | Running |
-   * | mysql-instance-5 | Reader | Running |
-   * +------------------+--------+---------+
-   *
-   * */
+
   private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
   private static final String DB_CONN_STR_SUFFIX = System.getenv("DB_CONN_STR_SUFFIX");
   private static final String DB_READONLY_CONN_STR_SUFFIX =
@@ -95,12 +87,15 @@ public class FailoverIntegrationTest {
       System.getenv("TEST_DB_CLUSTER_IDENTIFIER");
   private static final String TEST_USERNAME = System.getenv("TEST_USERNAME");
   private static final String TEST_PASSWORD = System.getenv("TEST_PASSWORD");
-  private static final int TEST_CLUSTER_SIZE = 5;
-  private static String INSTANCE_ID_1 = "";
-  private static String INSTANCE_ID_2 = "";
-  private static String INSTANCE_ID_3 = "";
-  private static String INSTANCE_ID_4 = "";
-  private static String INSTANCE_ID_5 = "";
+
+  private static final String TEST_DATABASE = "test";
+  private static final String DB_HOST_PATTERN = "%s" + DB_CONN_STR_SUFFIX;
+
+  protected int clusterSize = 0;
+  protected String[] instanceIDs; // index 0 is always writer!
+  protected final HashSet<String> instancesToCrash = new HashSet<>();
+  protected ExecutorService crashInstancesExecutorService;
+
   private static final int CP_MIN_IDLE = 5;
   private static final int CP_MAX_IDLE = 10;
   private static final int CP_MAX_OPEN_PREPARED_STATEMENTS = 100;
@@ -110,12 +105,13 @@ public class FailoverIntegrationTest {
   private static final String NO_WRITER_AVAILABLE =
       "Cannot get the id of the writer Instance in the cluster.";
 
+  protected static final String SOCKET_TIMEOUT_VAL = "1000"; //ms
+  protected static final String CONNECT_TIMEOUT_VAL = "3000"; //ms
+
   private final Log log;
 
   private final AmazonRDS rdsClient = AmazonRDSClientBuilder.standard().build();
   private Connection testConnection;
-
-  private final Map<String, CrashInstanceRunnable> instanceCrasherMap = new HashMap<>();
 
   /**
    * FailoverIntegrationTest constructor.
@@ -125,18 +121,6 @@ public class FailoverIntegrationTest {
     this.log = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 
     initiateInstanceNames();
-
-    CrashInstanceRunnable instanceCrasher1 = new CrashInstanceRunnable(INSTANCE_ID_1);
-    CrashInstanceRunnable instanceCrasher2 = new CrashInstanceRunnable(INSTANCE_ID_2);
-    CrashInstanceRunnable instanceCrasher3 = new CrashInstanceRunnable(INSTANCE_ID_3);
-    CrashInstanceRunnable instanceCrasher4 = new CrashInstanceRunnable(INSTANCE_ID_4);
-    CrashInstanceRunnable instanceCrasher5 = new CrashInstanceRunnable(INSTANCE_ID_5);
-
-    instanceCrasherMap.put(INSTANCE_ID_1, instanceCrasher1);
-    instanceCrasherMap.put(INSTANCE_ID_2, instanceCrasher2);
-    instanceCrasherMap.put(INSTANCE_ID_3, instanceCrasher3);
-    instanceCrasherMap.put(INSTANCE_ID_4, instanceCrasher4);
-    instanceCrasherMap.put(INSTANCE_ID_5, instanceCrasher5);
   }
 
   /* Writer connection failover tests. */
@@ -148,7 +132,7 @@ public class FailoverIntegrationTest {
   @Test
   public void test1_1_failFromWriterToNewWriter_failOnConnectionInvocation()
       throws SQLException, InterruptedException {
-    final String initalWriterId = INSTANCE_ID_1;
+    final String initalWriterId = instanceIDs[0];
 
     testConnection = connectToWriterInstance(initalWriterId);
 
@@ -172,7 +156,7 @@ public class FailoverIntegrationTest {
   @Test
   public void test1_2_failFromWriterToNewWriter_failOnConnectionBoundObjectInvocation()
       throws SQLException, InterruptedException {
-    final String initalWriterId = INSTANCE_ID_1;
+    final String initalWriterId = instanceIDs[0];
 
     testConnection = connectToWriterInstance(initalWriterId);
     Statement stmt = testConnection.createStatement();
@@ -193,18 +177,24 @@ public class FailoverIntegrationTest {
   @Test
   public void test1_3_writerConnectionFailsDueToNoReader()
       throws SQLException, InterruptedException {
-    final String initalWriterId = INSTANCE_ID_1;
+    final String initalWriterId = instanceIDs[0];
 
-    testConnection = connectToWriterInstance(initalWriterId);
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10000");
+    testConnection = connectToWriterInstance(initalWriterId, props);
 
     // Crash all reader instances (2 - 5).
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_3);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_4);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_5);
+    for (int i = 2; i < instanceIDs.length; i++) {
+      UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[i]));
+    }
 
     // Crash the writer Instance1.
-    startCrashingInstanceAndWaitUntilDown(initalWriterId);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, initalWriterId));
 
     // All instances should be down, assert exception thrown with SQLState code 08001
     // (SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE)
@@ -216,37 +206,55 @@ public class FailoverIntegrationTest {
   /** Current reader dies, the driver failover to another reader. */
   @Test
   public void test2_1_failFromReaderToAnotherReader() throws SQLException, InterruptedException {
-    testConnection = connectToReaderInstance(INSTANCE_ID_2);
+    assertTrue(clusterSize >= 3, "Minimal cluster configuration: 1 writer + 2 readers");
 
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    testConnection = connectToReaderInstance(instanceIDs[1], props);
+
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[1]));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that we are now connected to a new reader instance.
     final String currentConnectionId = queryInstanceId(testConnection);
     assertTrue(isDBInstanceReader(currentConnectionId));
-    assertNotEquals(currentConnectionId, INSTANCE_ID_2);
+    assertNotEquals(currentConnectionId, instanceIDs[1]);
   }
 
   /** Current reader dies, other known reader instances do not respond, failover to writer. */
   @Test
   public void test2_2_failFromReaderToWriterWhenAllReadersAreDown()
       throws SQLException, InterruptedException {
-    testConnection = connectToReaderInstance(INSTANCE_ID_2);
+    assertTrue(clusterSize >= 2, "Minimal cluster configuration: 1 writer + 1 reader");
 
-    // Fist kill instances 3-5.
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_3);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_4);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_5);
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    testConnection = connectToReaderInstance(instanceIDs[1], props);
 
-    // Then kill instance 2.
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
+    // Fist kill instances other than writer and connected reader
+    for (int i = 2; i < instanceIDs.length; i++) {
+      UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[i]));
+    }
+
+    TimeUnit.SECONDS.sleep(3);
+
+    // Then kill connected reader.
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[1]));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that the driver failed over to the writer instance (Instance1).
     final String currentConnectionId = queryInstanceId(testConnection);
-    assertEquals(INSTANCE_ID_1, currentConnectionId);
+    assertEquals(instanceIDs[0], currentConnectionId);
     assertTrue(isDBInstanceWriter(currentConnectionId));
   }
 
@@ -257,19 +265,29 @@ public class FailoverIntegrationTest {
   @Test
   public void test2_3_failFromReaderToReaderWithSomeReadersAreDown()
       throws SQLException, InterruptedException {
-    testConnection = connectToReaderInstance(INSTANCE_ID_2);
+    assertTrue(clusterSize >= 3, "Minimal cluster configuration: 1 writer + 2 readers");
 
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_3);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_4);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    testConnection = connectToReaderInstance(instanceIDs[1], props);
 
+    // First kill all reader instances except one
+    for (int i = 1; i < instanceIDs.length - 1; i++) {
+      UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[i]));
+    }
+
+    TimeUnit.SECONDS.sleep(2);
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that we failed over to the only remaining reader instance (Instance5) OR Writer
     // instance (Instance1).
     final String currentConnectionId = queryInstanceId(testConnection);
     assertTrue(
-        currentConnectionId.equals(INSTANCE_ID_5) || currentConnectionId.equals(INSTANCE_ID_1));
+        currentConnectionId.equals(instanceIDs[instanceIDs.length - 1]) || currentConnectionId.equals(instanceIDs[0]));
   }
 
   /**
@@ -279,13 +297,21 @@ public class FailoverIntegrationTest {
   @Test
   public void test2_4_failoverBackToThePreviouslyDownReader()
       throws SQLException, InterruptedException {
-    final String firstReaderInstanceId = INSTANCE_ID_2;
+    assertTrue(clusterSize >= 5, "Minimal cluster configuration: 1 writer + 4 readers");
+
+    final String firstReaderInstanceId = instanceIDs[1];
 
     // Connect to reader (Instance2).
-    testConnection = connectToReaderInstance(firstReaderInstanceId);
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    testConnection = connectToReaderInstance(firstReaderInstanceId, props);
 
     // Start crashing reader (Instance2).
-    startCrashingInstanceAndWaitUntilDown(firstReaderInstanceId);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, firstReaderInstanceId));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -295,7 +321,7 @@ public class FailoverIntegrationTest {
     assertNotEquals(firstReaderInstanceId, secondReaderInstanceId);
 
     // Crash the second reader instance.
-    startCrashingInstanceAndWaitUntilDown(secondReaderInstanceId);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, secondReaderInstanceId));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -306,29 +332,26 @@ public class FailoverIntegrationTest {
     assertNotEquals(secondReaderInstanceId, thirdReaderInstanceId);
 
     // Grab the id of the fourth reader instance.
-    final List<String> readerInstanceIds = getDBClusterReaderInstanceIds();
-    readerInstanceIds.remove(INSTANCE_ID_1);
-    readerInstanceIds.remove(INSTANCE_ID_2);
+    final HashSet<String> readerInstanceIds = new HashSet<String>(Arrays.asList(instanceIDs));
+    readerInstanceIds.remove(instanceIDs[0]);
+    readerInstanceIds.remove(firstReaderInstanceId);
     readerInstanceIds.remove(secondReaderInstanceId);
     readerInstanceIds.remove(thirdReaderInstanceId);
 
-    final String fourthInstanceId = readerInstanceIds.get(0);
+    final String fourthInstanceId = readerInstanceIds.stream().findFirst().get();
 
     // Crash the fourth reader instance.
-    startCrashingInstanceAndWaitUntilDown(fourthInstanceId);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, fourthInstanceId));
 
     // Stop crashing the first and second.
-    stopCrashingInstanceAndWaitUntilUp(firstReaderInstanceId);
-    stopCrashingInstanceAndWaitUntilUp(secondReaderInstanceId);
-
-    // Sleep 30+ seconds to force cache update upon successful query.
-    Thread.sleep(31000);
+    UnreliableSocketFactory.dontDownHost(String.format(DB_HOST_PATTERN, firstReaderInstanceId));
+    UnreliableSocketFactory.dontDownHost(String.format(DB_HOST_PATTERN, secondReaderInstanceId));
 
     final String currentInstanceId = queryInstanceId(testConnection);
     assertEquals(thirdReaderInstanceId, currentInstanceId);
 
     // Start crashing the third instance.
-    startCrashingInstanceAndWaitUntilDown(thirdReaderInstanceId);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, thirdReaderInstanceId));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -346,47 +369,57 @@ public class FailoverIntegrationTest {
   @Test
   public void test2_5_failFromReaderToWriterToAnyAvailableInstance()
       throws SQLException, InterruptedException {
-    // Crashing Instance3, Instance4 and Instance5
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_3);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_4);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_5);
+
+    assertTrue(clusterSize >= 3, "Minimal cluster configuration: 1 writer + 2 readers");
+
+    // Crashing all readers except the first one
+    for (int i = 2; i < instanceIDs.length; i++) {
+      UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[i]));
+    }
 
     // Connect to Instance2 which is the only reader that is up.
-    testConnection = connectToReaderInstance(INSTANCE_ID_2);
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    testConnection = connectToReaderInstance(instanceIDs[1], props);
 
     // Crash Instance2
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[1]));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that we are currently connected to the writer Instance1.
     String currentConnectionId = queryInstanceId(testConnection);
-    assertEquals(INSTANCE_ID_1, currentConnectionId);
+    assertEquals(instanceIDs[0], currentConnectionId);
     assertTrue(isDBInstanceWriter(currentConnectionId));
 
     // Stop Crashing reader Instance2 and Instance3
-    stopCrashingInstanceAndWaitUntilUp(INSTANCE_ID_2);
-    stopCrashingInstanceAndWaitUntilUp(INSTANCE_ID_3);
+    UnreliableSocketFactory.dontDownHost(String.format(DB_HOST_PATTERN, instanceIDs[1]));
+    UnreliableSocketFactory.dontDownHost(String.format(DB_HOST_PATTERN, instanceIDs[2]));
 
     // Crash writer Instance1.
-    failoverClusterToATargetAndWaitUntilWriterChanged(INSTANCE_ID_1, INSTANCE_ID_3);
+    failoverClusterToATargetAndWaitUntilWriterChanged(instanceIDs[0], instanceIDs[2]);
 
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that we are connected to one of the available instances.
     currentConnectionId = queryInstanceId(testConnection);
     assertTrue(
-        INSTANCE_ID_2.equals(currentConnectionId) || INSTANCE_ID_3.equals(currentConnectionId));
+        instanceIDs[1].equals(currentConnectionId) || instanceIDs[2].equals(currentConnectionId));
   }
 
   /** Current reader dies, execute a “write“ statement, an exception should be thrown. */
   @Test
   public void test2_6_readerDiesAndExecuteWriteQuery() throws SQLException, InterruptedException {
     // Connect to Instance2 which is a reader.
-    testConnection = connectToReaderInstance(INSTANCE_ID_2);
+    testConnection = connectToReaderInstance(instanceIDs[1]);
 
     // Crash Instance2.
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
+    startCrashingInstances(instanceIDs[1]);
+    makeSureInstancesDown(instanceIDs[1]);
 
     final Statement testStmt1 = testConnection.createStatement();
 
@@ -403,12 +436,19 @@ public class FailoverIntegrationTest {
   /** Connect to a readonly cluster endpoint and ensure that we are doing a reader failover. */
   @Test
   public void test2_7_clusterEndpointReadOnlyFailover() throws SQLException, InterruptedException {
-    testConnection = createConnectionToReadonlyClusterEndpoint();
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), CONNECT_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), SOCKET_TIMEOUT_VAL);
+    props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
+    testConnection = createConnectionToReadonlyClusterEndpoint(props);
 
     final String initialConnectionId = queryInstanceId(testConnection);
     assertTrue(isDBInstanceReader(initialConnectionId));
 
-    startCrashingInstanceAndWaitUntilDown(initialConnectionId);
+    UnreliableSocketFactory.downHost(TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX);
+    UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, initialConnectionId));
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -424,7 +464,7 @@ public class FailoverIntegrationTest {
   public void test3_1_writerFailWithinTransaction_setAutocommitSqlZero()
       throws SQLException, InterruptedException {
     final String initialClusterWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initialClusterWriterId);
+    assertEquals(instanceIDs[0], initialClusterWriterId);
 
     testConnection = connectToWriterInstance(initialClusterWriterId);
 
@@ -469,7 +509,7 @@ public class FailoverIntegrationTest {
   public void test3_2_writerFailWithinTransaction_setAutoCommitFalse()
       throws SQLException, InterruptedException {
     final String initialClusterWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initialClusterWriterId);
+    assertEquals(instanceIDs[0], initialClusterWriterId);
 
     testConnection = connectToWriterInstance(initialClusterWriterId);
 
@@ -515,7 +555,7 @@ public class FailoverIntegrationTest {
   public void test3_3_writerFailWithinTransaction_startTransaction()
       throws SQLException, InterruptedException {
     final String initialClusterWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initialClusterWriterId);
+    assertEquals(instanceIDs[0], initialClusterWriterId);
 
     testConnection = connectToWriterInstance(initialClusterWriterId);
 
@@ -560,7 +600,7 @@ public class FailoverIntegrationTest {
   @Test
   public void test3_4_writerFailWithNoTransaction() throws SQLException, InterruptedException {
     final String initialClusterWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initialClusterWriterId);
+    assertEquals(instanceIDs[0], initialClusterWriterId);
 
     testConnection = connectToWriterInstance(initialClusterWriterId);
 
@@ -610,72 +650,47 @@ public class FailoverIntegrationTest {
   public void test4_1_pooledWriterConnection_basicfailover()
       throws SQLException, InterruptedException {
     final String initalWriterId = getDBClusterWriterInstanceId();
-    assertEquals(INSTANCE_ID_1, initalWriterId);
+    assertEquals(instanceIDs[0], initalWriterId);
 
     testConnection = createPooledConnectionWithInstanceId(initalWriterId);
 
     // Crash writer Instance1 and nominate Instance2 as the new writer
-    failoverClusterToATargetAndWaitUntilWriterChanged(initalWriterId, INSTANCE_ID_2);
+    failoverClusterToATargetAndWaitUntilWriterChanged(initalWriterId, instanceIDs[1]);
 
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Execute Query again to get the current connection id;
     final String currentConnectionId = queryInstanceId(testConnection);
+
     // Assert that we are connected to the new writer after failover happens.
     assertTrue(isDBInstanceWriter(currentConnectionId));
     final String nextWriterId = getDBClusterWriterInstanceId();
     assertEquals(nextWriterId, currentConnectionId);
-    assertEquals(INSTANCE_ID_2, currentConnectionId);
+    assertEquals(instanceIDs[1], currentConnectionId);
 
     // Assert that the pooled connection is valid.
     assertTrue(testConnection.isValid(IS_VALID_TIMEOUT));
-
-    // Start crashing all other instances
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_3);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_4);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_5);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_1);
-
-    // Starting crashing current connection - Instance2
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
-
-    // Assert exception thrown with SQLState code 08001 (SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE)
-    assertFirstQueryThrows(testConnection, "08001");
-
-    // Assert that the pooled connection is invalid.
-    assertFalse(testConnection.isValid(IS_VALID_TIMEOUT));
   }
 
   /** Reader connection failover within the connection pool. */
   @Test
   public void test4_2_pooledReaderConnection_basicfailover()
       throws SQLException, InterruptedException {
-    testConnection = createPooledConnectionWithInstanceId(INSTANCE_ID_2);
+    testConnection = createPooledConnectionWithInstanceId(instanceIDs[1]);
     testConnection.setReadOnly(true);
 
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_2);
+    startCrashingInstances(instanceIDs[1]);
+    makeSureInstancesDown(instanceIDs[1]);
 
     assertFirstQueryThrows(testConnection, "08S02");
 
     // Assert that we are now connected to a new reader instance.
     final String currentConnectionId = queryInstanceId(testConnection);
     assertTrue(isDBInstanceReader(currentConnectionId));
-    assertNotEquals(currentConnectionId, INSTANCE_ID_2);
+    assertNotEquals(currentConnectionId, instanceIDs[1]);
 
     // Assert that the pooled connection is valid.
     assertTrue(testConnection.isValid(IS_VALID_TIMEOUT));
-
-    // Start crashing all other instances
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_1);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_3);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_4);
-    startCrashingInstanceAndWaitUntilDown(INSTANCE_ID_5);
-
-    // Assert exception thrown with SQLState code 08001 (SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE)
-    assertFirstQueryThrows(testConnection, "08001");
-
-    // Assert that the pooled connection is invalid.
-    assertFalse(testConnection.isValid(IS_VALID_TIMEOUT));
   }
 
   @Test
@@ -698,7 +713,7 @@ public class FailoverIntegrationTest {
     myStmt.executeQuery("select @@aurora_server_id; select 1; select 2;");
 
     // Crash Instance1 and nominate a new writer
-    failoverClusterAndWaitUntilWriterChanged(INSTANCE_ID_1);
+    failoverClusterAndWaitUntilWriterChanged(instanceIDs[0]);
 
     assertFirstQueryThrows(testConnection, "08S02");
 
@@ -725,12 +740,14 @@ public class FailoverIntegrationTest {
     this.log.logDebug("Initiating db instance names.");
     List<DBClusterMember> dbClusterMembers = getDBClusterMemberList();
 
-    assertEquals(TEST_CLUSTER_SIZE, dbClusterMembers.size());
-    INSTANCE_ID_1 = dbClusterMembers.get(0).getDBInstanceIdentifier();
-    INSTANCE_ID_2 = dbClusterMembers.get(1).getDBInstanceIdentifier();
-    INSTANCE_ID_3 = dbClusterMembers.get(2).getDBInstanceIdentifier();
-    INSTANCE_ID_4 = dbClusterMembers.get(3).getDBInstanceIdentifier();
-    INSTANCE_ID_5 = dbClusterMembers.get(4).getDBInstanceIdentifier();
+    clusterSize = dbClusterMembers.size();
+    assertTrue(clusterSize >= 2); // many tests assume that cluster contains at least a writer and a reader
+
+    instanceIDs = dbClusterMembers.stream()
+      .sorted(Comparator.comparing((DBClusterMember x) -> !x.isClusterWriter())
+                .thenComparing((DBClusterMember x) -> x.getDBInstanceIdentifier()))
+      .map((DBClusterMember m) -> m.getDBInstanceIdentifier())
+      .toArray(String[]::new);
   }
 
   private List<DBClusterMember> getDBClusterMemberList() {
@@ -795,7 +812,7 @@ public class FailoverIntegrationTest {
         rdsClient.failoverDBCluster(request);
         break;
       } catch (Exception e) {
-        Thread.sleep(3000);
+        Thread.sleep(1000);
       }
     }
   }
@@ -820,7 +837,7 @@ public class FailoverIntegrationTest {
         rdsClient.failoverDBCluster(request);
         break;
       } catch (Exception e) {
-        Thread.sleep(3000);
+        Thread.sleep(1000);
       }
     }
 
@@ -844,32 +861,58 @@ public class FailoverIntegrationTest {
     this.log.logDebug("Wait until cluster is in available state.");
     String status = getDBCluster().getStatus();
     while (!"available".equalsIgnoreCase(status)) {
-      Thread.sleep(3000);
+      Thread.sleep(1000);
       status = getDBCluster().getStatus();
     }
     this.log.logDebug("Cluster is available.");
   }
 
-  private Connection createConnectionToReadonlyClusterEndpoint() throws SQLException {
+  protected Connection createConnectionToReadonlyClusterEndpoint() throws SQLException {
+    DriverManager.setLoginTimeout(30);
     return DriverManager.getConnection(
         DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX,
         TEST_USERNAME,
         TEST_PASSWORD);
   }
 
-  private Connection createConnectionToInstanceWithId(String instanceID) throws SQLException {
-    return DriverManager.getConnection(
-        DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX, TEST_USERNAME, TEST_PASSWORD);
+  protected Connection createConnectionToReadonlyClusterEndpoint(Properties props) throws SQLException {
+    DriverManager.setLoginTimeout(30);
+    return DriverManager.getConnection(DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX, props);
   }
 
-  private Connection createConnectionWithProxyDisabled(String instanceID) throws SQLException {
+  protected Connection createConnectionToInstanceWithId(String instanceID) throws SQLException {
+    DriverManager.setLoginTimeout(30);
+    return DriverManager.getConnection(
+        DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX + "/" + TEST_DATABASE, TEST_USERNAME, TEST_PASSWORD);
+  }
+
+  protected Connection createConnectionToInstanceWithId(String instanceID, Properties props) throws SQLException {
+    DriverManager.setLoginTimeout(30);
+    return DriverManager.getConnection(
+            DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX + "/" + TEST_DATABASE, props);
+  }
+
+  protected Connection createConnectionWithProxyDisabled(String instanceID) throws SQLException {
+    DriverManager.setLoginTimeout(30);
     return DriverManager.getConnection(
         DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX + "?enableClusterAwareFailover=false",
         TEST_USERNAME,
         TEST_PASSWORD);
   }
 
-  private Connection createPooledConnectionWithInstanceId(String instanceID) throws SQLException {
+  private Connection createCrashConnection(String instanceID) throws SQLException {
+    final Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), "false");
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), "2000");
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), "2000");
+    DriverManager.setLoginTimeout(2);
+
+    return DriverManager.getConnection(DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX, props);
+  }
+
+  protected Connection createPooledConnectionWithInstanceId(String instanceID) throws SQLException {
     BasicDataSource ds = new BasicDataSource();
     ds.setUrl(DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX);
     ds.setUsername(TEST_USERNAME);
@@ -881,32 +924,45 @@ public class FailoverIntegrationTest {
     return ds.getConnection();
   }
 
-  private Connection connectToReaderInstance(String readerInstanceId) throws SQLException {
+  protected Connection connectToReaderInstance(String readerInstanceId) throws SQLException {
     final Connection testConnection = createConnectionToInstanceWithId(readerInstanceId);
     testConnection.setReadOnly(true);
     assertTrue(isDBInstanceReader(queryInstanceId(testConnection)));
     return testConnection;
   }
 
-  private Connection connectToWriterInstance(String writerInstanceId) throws SQLException {
+  protected Connection connectToReaderInstance(String readerInstanceId, Properties props) throws SQLException {
+    final Connection testConnection = createConnectionToInstanceWithId(readerInstanceId, props);
+    testConnection.setReadOnly(true);
+    assertTrue(isDBInstanceReader(queryInstanceId(testConnection)));
+    return testConnection;
+  }
+
+  protected Connection connectToWriterInstance(String writerInstanceId) throws SQLException {
     final Connection testConnection = createConnectionToInstanceWithId(writerInstanceId);
     assertTrue(isDBInstanceWriter(queryInstanceId(testConnection)));
     return testConnection;
   }
 
-  private String queryInstanceId(Connection connection) throws SQLException {
+  protected Connection connectToWriterInstance(String writerInstanceId, Properties props) throws SQLException {
+    final Connection testConnection = createConnectionToInstanceWithId(writerInstanceId, props);
+    assertTrue(isDBInstanceWriter(queryInstanceId(testConnection)));
+    return testConnection;
+  }
+
+  protected String queryInstanceId(Connection connection) throws SQLException {
     try (Statement myStmt = connection.createStatement()) {
       return executeInstanceIdQuery(myStmt);
     }
   }
 
-  private String executeInstanceIdQuery(Statement stmt) throws SQLException {
+  protected String executeInstanceIdQuery(Statement stmt) throws SQLException {
     try (ResultSet rs = stmt.executeQuery("select @@aurora_server_id")) {
       if (rs.next()) {
         return rs.getString("@@aurora_server_id");
       }
     }
-    throw new SQLException();
+    return null;
   }
 
   // Attempt to run a query after the instance is down.
@@ -928,140 +984,129 @@ public class FailoverIntegrationTest {
     assertEquals(expectedSQLErrorCode, exception.getSQLState());
   }
 
-  private void waitUntilFirstInstanceIsWriter() throws InterruptedException {
-    this.log.logDebug("Failover cluster to Instance 1.");
-    failoverClusterWithATargetInstance(INSTANCE_ID_1);
-    String clusterWriterId = getDBClusterWriterInstanceId();
-
-    this.log.logDebug("Wait until Instance 1 becomes the writer.");
-    while (!INSTANCE_ID_1.equals(clusterWriterId)) {
-      clusterWriterId = getDBClusterWriterInstanceId();
-      System.out.println("Writer is still " + clusterWriterId);
-      Thread.sleep(3000);
-    }
-  }
-
-  /**
-   * Block until the specified instance is inaccessible.
-   * */
-  public void waitUntilInstanceIsDown(String instanceId) throws InterruptedException {
-    this.log.logDebug("Wait until " + instanceId + " is down.");
-    while (true) {
-      try (Connection conn = createConnectionWithProxyDisabled(instanceId)) {
-        // Continue waiting until instance is down.
-      } catch (SQLException e) {
-        break;
-      }
-      Thread.sleep(3000);
-    }
-    this.log.logDebug(instanceId + " is down.");
-  }
-
-  /**
-   * Block until the specified instance is accessible again.
-   * */
-  public void waitUntilInstanceIsUp(String instanceId) throws InterruptedException {
-    this.log.logDebug("Wait until " + instanceId + " is up.");
-    while (true) {
-      try (Connection conn = createConnectionWithProxyDisabled(instanceId)) {
-        conn.close();
-        break;
-      } catch (SQLException ex) {
-        // Continue waiting until instance is up.
-      }
-      Thread.sleep(3000);
-    }
-    this.log.logDebug(instanceId + " is up.");
-  }
-
   @BeforeEach
-  private void resetCluster() throws InterruptedException {
-    this.log.logDebug("Resetting cluster.");
-    waitUntilFirstInstanceIsWriter();
-    waitUntilInstanceIsUp(INSTANCE_ID_1);
-    waitUntilInstanceIsUp(INSTANCE_ID_2);
-    waitUntilInstanceIsUp(INSTANCE_ID_3);
-    waitUntilInstanceIsUp(INSTANCE_ID_4);
-    waitUntilInstanceIsUp(INSTANCE_ID_5);
+  private void validateCluster() throws InterruptedException {
+    this.log.logDebug("Validating cluster.");
+
+    crashInstancesExecutorService = Executors.newFixedThreadPool(instanceIDs.length);
+    instancesToCrash.clear();
+    for (String id : instanceIDs) {
+      crashInstancesExecutorService.submit(() -> {
+        while (true) {
+          if (instancesToCrash.contains(id)) {
+            try (Connection conn = createCrashConnection(id);
+                 Statement myStmt = conn.createStatement()
+            ) {
+              myStmt.execute("ALTER SYSTEM CRASH INSTANCE");
+            } catch (SQLException e) {
+              // Do nothing and keep creating connection to crash instance.
+            }
+          }
+          Thread.sleep(100);
+        }
+      });
+    }
+    crashInstancesExecutorService.shutdown();
+
+    makeSureInstancesUp(instanceIDs);
+    UnreliableSocketFactory.flushAllStaticData();
+
+    this.log.logDebug("===================== Pre-Test init is done. Ready for test =====================");
   }
 
   @AfterEach
-  private void reviveInstancesAndCloseTestConnection() throws SQLException {
-    reviveAllInstances();
-    testConnection.close();
+  private void reviveInstancesAndCloseTestConnection() throws SQLException, InterruptedException {
+    this.log.logDebug("===================== Test is over. Post-Test clean-up is below. =====================");
+
+    try {
+      testConnection.close();
+    } catch (Exception ex) {
+      // ignore
+    }
+    testConnection = null;
+
+    instancesToCrash.clear();
+    crashInstancesExecutorService.shutdownNow();
+
+    makeSureInstancesUp(instanceIDs, false);
   }
 
-  private void reviveAllInstances() {
-    this.log.logDebug("Revive all crashed instances in the test and wait until they are up.");
-    instanceCrasherMap.forEach(
-        (instanceId, instanceCrasher) -> {
-          try {
-            stopCrashingInstanceAndWaitUntilUp(instanceId);
-          } catch (InterruptedException ex) {
-            this.log.logDebug("Exception occured while trying to stop crashing an instance.");
+  protected void startCrashingInstances(String... instances) {
+    instancesToCrash.addAll(Arrays.asList(instances));
+  }
+
+  protected void stopCrashingInstances(String... instances) {
+    instancesToCrash.removeAll(Arrays.asList(instances));
+  }
+
+  protected void makeSureInstancesUp(String... instances) throws InterruptedException {
+    makeSureInstancesUp(instances, true);
+  }
+
+  protected void makeSureInstancesUp(String[] instances, boolean finalCheck) throws InterruptedException {
+    this.log.logDebug("Wait until the following instances are up: \n" + String.join("\n", instances));
+    ExecutorService executorService = Executors.newFixedThreadPool(instances.length);
+    final HashSet<String> remainingInstances = new HashSet<String>();
+    remainingInstances.addAll(Arrays.asList(instances));
+
+    for (String id : instances) {
+      executorService.submit(() -> {
+        while (true) {
+          try (Connection conn = createCrashConnection(id)) {
+            conn.close();
+            remainingInstances.remove(id);
+            break;
+          } catch (SQLException ex) {
+            // Continue waiting until instance is up.
           }
-        });
-  }
-
-  private void stopCrashingInstanceAndWaitUntilUp(String instanceId)
-      throws InterruptedException {
-    this.log.logDebug("Stop crashing " + instanceId + ".");
-    CrashInstanceRunnable instanceCrasher = instanceCrasherMap.get(instanceId);
-    instanceCrasher.stopCrashingInstance();
-    waitUntilInstanceIsUp(instanceId);
-  }
-
-  /**
-   * Start crashing the specified instance and wait until its inaccessible.
-   * */
-  private void startCrashingInstanceAndWaitUntilDown(String instanceId)
-      throws InterruptedException {
-    this.log.logDebug("Start crashing " + instanceId + ".");
-    CrashInstanceRunnable instanceCrasher = instanceCrasherMap.get(instanceId);
-    instanceCrasher.startCrashingInstance();
-    Thread instanceCrasherThread = new Thread(instanceCrasher);
-    instanceCrasherThread.start();
-    waitUntilInstanceIsDown(instanceId);
-  }
-
-  /**
-   * Runnable class implementation that is used to crash an instance.
-   * */
-  public class CrashInstanceRunnable implements Runnable {
-    static final String CRASH_QUERY = "ALTER SYSTEM CRASH INSTANCE";
-    private final String instanceId;
-    private boolean keepCrashingInstance = false;
-
-    CrashInstanceRunnable(String instanceId) {
-      System.out.println("create runnable for " + instanceId);
-      this.instanceId = instanceId;
-    }
-
-    public String getInstanceId() {
-      return this.instanceId;
-    }
-
-    public synchronized void stopCrashingInstance() {
-      this.keepCrashingInstance = false;
-    }
-
-    public synchronized void startCrashingInstance() {
-      this.keepCrashingInstance = true;
-    }
-
-    @Override
-    public void run() {
-      while (keepCrashingInstance) {
-        try (Connection conn = createConnectionWithProxyDisabled(instanceId);
-             Statement myStmt = conn.createStatement()
-        ) {
-          myStmt.execute(CRASH_QUERY);
-        } catch (SQLException e) {
-          // Do nothing and keep creating connection to crash instance.
+          Thread.sleep(500);
         }
-      }
-      // Run the garbage collector in the Java Virtual Machine to abandon thread.
-      System.gc();
+        return null;
+      });
     }
+    executorService.shutdown();
+    executorService.awaitTermination(120, TimeUnit.SECONDS);
+
+    if (finalCheck) {
+      assertTrue(remainingInstances.isEmpty(), "The following instances are still down: \n"
+              + String.join("\n", remainingInstances));
+    }
+
+    this.log.logDebug("The following instances are up: \n" + String.join("\n", instances));
+  }
+
+  protected void makeSureInstancesDown(String... instances) throws InterruptedException {
+    makeSureInstancesDown(instances, true);
+  }
+
+  protected void makeSureInstancesDown(String[] instances, boolean finalCheck) throws InterruptedException {
+    this.log.logDebug("Wait until the following instances are down: \n" + String.join("\n", instances));
+    ExecutorService executorService = Executors.newFixedThreadPool(instances.length);
+    final HashSet<String> remainingInstances = new HashSet<String>();
+    remainingInstances.addAll(Arrays.asList(instances));
+
+    for (String id : instances) {
+      executorService.submit(() -> {
+        while (true) {
+          try (Connection conn = createCrashConnection(id)) {
+            // Continue waiting until instance is down.
+          } catch (SQLException e) {
+            remainingInstances.remove(id);
+            break;
+          }
+          Thread.sleep(500);
+        }
+        return null;
+      });
+    }
+    executorService.shutdown();
+    executorService.awaitTermination(120, TimeUnit.SECONDS);
+
+    if (finalCheck) {
+      assertTrue(remainingInstances.isEmpty(), "The following instances are still up: \n"
+              + String.join("\n", remainingInstances));
+    }
+
+    this.log.logDebug("The following instances are down: \n" + String.join("\n", instances));
   }
 }
