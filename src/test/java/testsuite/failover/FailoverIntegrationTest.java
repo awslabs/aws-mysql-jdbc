@@ -189,7 +189,7 @@ public class FailoverIntegrationTest {
     testConnection = connectToWriterInstance(initalWriterId, props);
 
     // Crash all reader instances (2 - 5).
-    for (int i = 2; i < instanceIDs.length; i++) {
+    for (int i = 1; i < instanceIDs.length; i++) {
       UnreliableSocketFactory.downHost(String.format(DB_HOST_PATTERN, instanceIDs[i]));
     }
 
@@ -893,14 +893,6 @@ public class FailoverIntegrationTest {
   }
 
   protected Connection createConnectionWithProxyDisabled(String instanceID) throws SQLException {
-    DriverManager.setLoginTimeout(30);
-    return DriverManager.getConnection(
-        DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX + "?enableClusterAwareFailover=false",
-        TEST_USERNAME,
-        TEST_PASSWORD);
-  }
-
-  private Connection createCrashConnection(String instanceID) throws SQLException {
     final Properties props = new Properties();
     props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
     props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
@@ -994,7 +986,7 @@ public class FailoverIntegrationTest {
       crashInstancesExecutorService.submit(() -> {
         while (true) {
           if (instancesToCrash.contains(id)) {
-            try (Connection conn = createCrashConnection(id);
+            try (Connection conn = createConnectionWithProxyDisabled(id);
                  Statement myStmt = conn.createStatement()
             ) {
               myStmt.execute("ALTER SYSTEM CRASH INSTANCE");
@@ -1052,7 +1044,7 @@ public class FailoverIntegrationTest {
     for (String id : instances) {
       executorService.submit(() -> {
         while (true) {
-          try (Connection conn = createCrashConnection(id)) {
+          try (Connection conn = createConnectionWithProxyDisabled(id)) {
             conn.close();
             remainingInstances.remove(id);
             break;
@@ -1088,7 +1080,7 @@ public class FailoverIntegrationTest {
     for (String id : instances) {
       executorService.submit(() -> {
         while (true) {
-          try (Connection conn = createCrashConnection(id)) {
+          try (Connection conn = createConnectionWithProxyDisabled(id)) {
             // Continue waiting until instance is down.
           } catch (SQLException e) {
             remainingInstances.remove(id);
