@@ -1,5 +1,13 @@
 # Changelog
 
+Version 1.0.0 (General Availability)
+
+  - Added "setAwsProtocolOnly" static method.
+
+  - Merged upstream changes from MySQL 8.0.23 community driver.
+
+  - Added clarifications and improvements to README.md.
+
 Version 0.1.0 (Public Preview)
 
   - Based on the MySQL 8.0.21 community driver.
