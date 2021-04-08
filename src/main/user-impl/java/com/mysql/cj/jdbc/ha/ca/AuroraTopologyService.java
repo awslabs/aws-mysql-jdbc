@@ -321,6 +321,7 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
     } else {
       clusterTopologyInfo.hosts = latestTopologyInfo.hosts;
       clusterTopologyInfo.downHosts = latestTopologyInfo.downHosts;
+      clusterTopologyInfo.isMultiWriterCluster = latestTopologyInfo.isMultiWriterCluster;
     }
     clusterTopologyInfo.lastUpdated = Instant.now();
 

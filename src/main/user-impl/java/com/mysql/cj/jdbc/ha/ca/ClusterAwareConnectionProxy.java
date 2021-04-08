@@ -930,13 +930,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
     if(this.currentHostIndex != NO_CONNECTION_INDEX && !Util.isNullOrEmpty(this.hosts)) {
       HostInfo currentHost = this.hosts.get(this.currentHostIndex);
+      topologyService.setLastUsedReaderHost(currentHost);
       this.log.logDebug(
               Messages.getString(
                       "ClusterAwareConnectionProxy.15",
                       new Object[] {currentHost}));
-      if (currentHost != null) {
-        topologyService.setLastUsedReaderHost(currentHost);
-      }
     }
   }
 
