@@ -37,6 +37,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;
 import com.mysql.cj.util.ExpiringCache;
+import com.mysql.cj.util.Util;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -163,25 +164,23 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
    * @param forceUpdate If true, it forces a service to ignore cached copy of topology and to fetch
    *     a fresh one.
    * @return A list of hosts that describes cluster topology. A writer is always at position 0.
-   *     Returns null if topology isn't available.
+   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer).
    */
   @Override
   public List<HostInfo> getTopology(JdbcConnection conn, boolean forceUpdate) {
     ClusterTopologyInfo clusterTopologyInfo = topologyCache.get(this.clusterId);
 
     if (clusterTopologyInfo == null
-        || clusterTopologyInfo.hosts == null
+        || Util.isNullOrEmpty(clusterTopologyInfo.hosts)
         || forceUpdate
         || refreshNeeded(clusterTopologyInfo)) {
 
       ClusterTopologyInfo latestTopologyInfo = queryForTopology(conn);
 
-      if (latestTopologyInfo != null && latestTopologyInfo.hosts != null) {
-        synchronized (cacheLock) {
-          clusterTopologyInfo = updateCache(clusterTopologyInfo, latestTopologyInfo);
-        }
-      } else {
-        return (clusterTopologyInfo == null || forceUpdate) ? null : clusterTopologyInfo.hosts;
+      if (!Util.isNullOrEmpty(latestTopologyInfo.hosts)) {
+        clusterTopologyInfo = updateCache(clusterTopologyInfo, latestTopologyInfo);
+      } else if (clusterTopologyInfo == null || clusterTopologyInfo.hosts == null || forceUpdate) {
+        return new ArrayList<>();
       }
     }
 
@@ -202,52 +201,57 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   protected ClusterTopologyInfo queryForTopology(JdbcConnection conn) {
     long startTimeMs = this.gatherPerfMetrics ? System.currentTimeMillis() : 0;
 
-    ClusterTopologyInfo result = new ClusterTopologyInfo();
+    ClusterTopologyInfo topologyInfo = null;
     try (Statement stmt = conn.createStatement()) {
       try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
-        result.hosts = new ArrayList<>();
-        result.hosts.add(null); // reserve space for a writer node\
-        processQueryResults(result, resultSet);
+        topologyInfo = processQueryResults(resultSet);
       }
     } catch (SQLException e) {
-      // eat
+      // ignore
     }
 
     if (this.gatherPerfMetrics) {
       long currentTimeMs = System.currentTimeMillis();
       this.queryTopologyMetrics.registerQueryExecutionTime(currentTimeMs - startTimeMs);
     }
-    return result;
+
+    return topologyInfo != null ? topologyInfo : new ClusterTopologyInfo(new ArrayList<>(), new HashSet<>(), null, Instant.now(), false);
   }
 
   /**
    * Process the results of the topology query to the database. This method creates a {@link HostInfo} object for each
    * host in the topology, as well as storing some additional information about the cluster.
    *
-   * @param clusterInfo A connection to database to fetch the latest topology.
    * @param resultSet The {@link ResultSet} returned by the topology database query.
+   * @return The {@link ClusterTopologyInfo} representing the results of the query. The host list in this object will
+   *         be empty if the topology query returned an invalid topology (no writer instance).
    */
-  private void processQueryResults(ClusterTopologyInfo clusterInfo, ResultSet resultSet) throws SQLException {
-    int i = 1;
+  private ClusterTopologyInfo processQueryResults(ResultSet resultSet) throws SQLException {
     int writerCount = 0;
+
+    List<HostInfo> hosts = new ArrayList<>();
     while (resultSet.next()) {
       if (!WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
-        clusterInfo.hosts.add(i, createHost(resultSet));
-        i++;
+        hosts.add(createHost(resultSet));
         continue;
       }
 
       if (writerCount == 0) {
         // store the first writer to its expected position [0]
-        clusterInfo.hosts.set(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX, createHost(resultSet));
+        hosts.add(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX, createHost(resultSet));
       } else {
         // append other writers, if any, to the end of the host list
-        clusterInfo.hosts.add(i, createHost(resultSet));
-        i++;
+        hosts.add(createHost(resultSet));
       }
       writerCount++;
     }
-    clusterInfo.isMultiWriterCluster = (writerCount > 1);
+
+    if(writerCount == 0) {
+      this.log.logError(Messages.getString("AuroraTopologyService.3"));
+      hosts.clear();
+    }
+
+    return new ClusterTopologyInfo(hosts, new HashSet<>(), null, Instant.now(), writerCount > 1);
   }
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
@@ -303,23 +307,26 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
 
   /**
    * Store the information for the topology in the cache, creating the information object if it did not previously exist
-   * in the cache.
+   * in the cache
    *
-   * @param clusterTopologyInfo The cluster topology info that existed in the cache before the topology query. This
-   *          parameter will be null if no topology info for the cluster has been created in the cache yet.
+   * @param clusterTopologyInfo The cluster topology info that existed in the cache before the topology query. This parameter
+   *                            will be null if no topology info for the cluster has been created in the cache yet.
    * @param latestTopologyInfo The results of the current topology query
    * @return The {@link ClusterTopologyInfo} stored in the cache by this method, representing the most up-to-date
    *         information we have about the topology.
    */
   private ClusterTopologyInfo updateCache(ClusterTopologyInfo clusterTopologyInfo, ClusterTopologyInfo latestTopologyInfo) {
     if (clusterTopologyInfo == null) {
-      clusterTopologyInfo = new ClusterTopologyInfo();
+      clusterTopologyInfo = latestTopologyInfo;
+    } else {
+      clusterTopologyInfo.hosts = latestTopologyInfo.hosts;
+      clusterTopologyInfo.downHosts = latestTopologyInfo.downHosts;
     }
-    clusterTopologyInfo.hosts = latestTopologyInfo.hosts;
-    clusterTopologyInfo.isMultiWriterCluster = latestTopologyInfo.isMultiWriterCluster;
     clusterTopologyInfo.lastUpdated = Instant.now();
-    clusterTopologyInfo.downHosts = new HashSet<>();
-    topologyCache.put(this.clusterId, clusterTopologyInfo);
+
+    synchronized (cacheLock) {
+      topologyCache.put(this.clusterId, clusterTopologyInfo);
+    }
     return clusterTopologyInfo;
   }
 
@@ -430,10 +437,9 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
     synchronized (cacheLock) {
       ClusterTopologyInfo clusterTopologyInfo = topologyCache.get(this.clusterId);
       if (clusterTopologyInfo == null) {
-        clusterTopologyInfo = new ClusterTopologyInfo();
+        clusterTopologyInfo = new ClusterTopologyInfo(new ArrayList<>(), new HashSet<>(), null, Instant.now(), false);
         topologyCache.put(this.clusterId, clusterTopologyInfo);
-      }
-      if (clusterTopologyInfo.downHosts == null) {
+      } else if (clusterTopologyInfo.downHosts == null) {
         clusterTopologyInfo.downHosts = new HashSet<>();
       }
       clusterTopologyInfo.downHosts.add(downHost.getHostPortPair());
@@ -536,10 +542,19 @@ public class AuroraTopologyService implements TopologyService, CanCollectPerform
   }
 
   private static class ClusterTopologyInfo {
-    public boolean isMultiWriterCluster;
     public Instant lastUpdated;
     public Set<String> downHosts;
     public List<HostInfo> hosts;
     public HostInfo lastUsedReader;
+    public boolean isMultiWriterCluster;
+
+    ClusterTopologyInfo(List<HostInfo> hosts, Set<String> downHosts, HostInfo lastUsedReader,
+                        Instant lastUpdated, boolean isMultiWriterCluster) {
+      this.hosts = hosts;
+      this.downHosts = downHosts;
+      this.lastUsedReader = lastUsedReader;
+      this.lastUpdated = lastUpdated;
+      this.isMultiWriterCluster = isMultiWriterCluster;
+    }
   }
 }

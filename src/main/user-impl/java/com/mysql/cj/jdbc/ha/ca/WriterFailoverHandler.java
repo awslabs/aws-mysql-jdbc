@@ -45,8 +45,7 @@ public interface WriterFailoverHandler {
    * Called to start Writer Failover Process.
    *
    * @param currentTopology Cluster current topology
-   * @return {@link WriterFailoverResult} The results of this process. May return null, which is
-   *     considered an unsuccessful result.
+   * @return {@link WriterFailoverResult} The results of this process.
    */
   WriterFailoverResult failover(List<HostInfo> currentTopology) throws SQLException;
 }

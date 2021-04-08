@@ -74,7 +74,7 @@ public interface TopologyService {
    * @param forceUpdate If true, it forces a service to ignore cached copy of topology and to fetch
    *     a fresh one.
    * @return A list of hosts that describes cluster topology. A writer is always at position 0.
-   *     Returns null if topology isn't available.
+   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer).
    */
   List<HostInfo> getTopology(JdbcConnection conn, boolean forceUpdate);
 
