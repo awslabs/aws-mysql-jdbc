@@ -422,7 +422,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         msg.append("\n   [")
             .append(i)
             .append("]: ")
-            .append(hostInfo.getHost());
+            .append(hostInfo == null ? "<null>" : hostInfo.getHost());
       }
       log.logTrace(
           Messages.getString(

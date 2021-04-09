@@ -569,6 +569,10 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   private int getCandidateIndexForInitialConnection() {
+    if(Util.isNullOrEmpty(this.hosts)) {
+      return NO_CONNECTION_INDEX;
+    }
+
     if (isExplicitlyReadOnly()) {
       int candidateReaderIndex = getCandidateReaderForInitialConnection();
       if (candidateReaderIndex != NO_CONNECTION_INDEX) {
@@ -724,7 +728,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
                 new StringBuilder("Connection to ")
                         .append(isWriterHostIndex(hostIndex) ? "writer" : "reader")
                         .append(" host '")
-                        .append(host.getHostPortPair())
+                        .append(host == null ? "<null>" : host.getHostPortPair())
                         .append("' failed");
         try {
           this.log.logWarn(msg.toString(), e);
@@ -859,7 +863,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       this.failoverStartTimeMs = 0;
     }
 
-    if (!failoverResult.isConnected()) {
+    if (failoverResult == null || !failoverResult.isConnected()) {
       // "Unable to establish SQL connection to writer node"
       processFailoverFailure(Messages.getString("ClusterAwareConnectionProxy.2"));
       return;
@@ -908,7 +912,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       this.failoverStartTimeMs = 0;
     }
 
-    if (!result.isConnected()) {
+    if (result == null || !result.isConnected()) {
       // "Unable to establish SQL connection to reader node"
       processFailoverFailure(Messages.getString("ClusterAwareConnectionProxy.4"));
       return;
@@ -1320,7 +1324,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       msg.append("\n   [")
               .append(i)
               .append("]: ")
-              .append(hostInfo.getHost());
+              .append(hostInfo == null ? "<null>" : hostInfo.getHost());
     }
     this.log.logTrace(
         Messages.getString("ClusterAwareConnectionProxy.11", new Object[] {msg.toString()}));
