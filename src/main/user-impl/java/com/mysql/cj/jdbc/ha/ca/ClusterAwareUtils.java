@@ -17,9 +17,14 @@ public class ClusterAwareUtils {
      * @param additionalProps The map of properties to add to the new {@link HostInfo} copy
      *
      * @return A copy of the given {@link HostInfo} object where all details are the same except for the host properties,
-     *      will contain both the original properties and the properties passed into the function
+     *      will contain both the original properties and the properties passed into the function. Returns null if
+     *      baseHostInfo is null
      */
     public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, Map<String, String> additionalProps) {
+        if (baseHostInfo == null || additionalProps == null) {
+            return baseHostInfo;
+        }
+
         DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(baseHostInfo.getDatabaseUrl(), new Properties());
         Map<String, String> originalProps = baseHostInfo.getHostProperties();
         Map<String, String> mergedProps = new HashMap<>();
