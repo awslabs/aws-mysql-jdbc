@@ -41,6 +41,7 @@ public class WriterFailoverResult {
   private final boolean isNewHost;
   private final List<HostInfo> topology;
   private final JdbcConnection newConnection;
+  private final String taskName;
 
   /**
    * ResolvedHostInfo constructor.
@@ -49,11 +50,13 @@ public class WriterFailoverResult {
       boolean isConnected,
       boolean isNewHost,
       List<HostInfo> topology,
-      JdbcConnection newConnection) {
+      JdbcConnection newConnection,
+      String taskName) {
     this.isConnected = isConnected;
     this.isNewHost = isNewHost;
     this.topology = topology;
     this.newConnection = newConnection;
+    this.taskName = taskName;
   }
 
   /**
@@ -86,12 +89,21 @@ public class WriterFailoverResult {
   }
 
   /**
-   * Get connection to a host.
+   * Get the new connection established by the failover procedure if successful.
    *
-   * @return {@link JdbcConnection} New connection to a host. Returns null if no connection is
-   *     established.
+   * @return {@link JdbcConnection} New connection to a host. Returns null if the failover pocedure
+   *     was unsuccessful.
    */
   public JdbcConnection getNewConnection() {
     return this.newConnection;
+  }
+
+  /**
+   * Get the name of the writer failover task that created this result.
+   *
+   * @return The name of the writer failover task that created this result.
+   */
+  public String getTaskName() {
+    return this.taskName;
   }
 }

@@ -164,7 +164,7 @@ public class FailoverIntegrationTest {
     failoverClusterAndWaitUntilWriterChanged(initialWriterId);
 
     // Failure occurs on Statement invocation
-    assertFirstQueryThrows(stmt, "08S02");
+    assertFirstQueryThrows(stmt);
 
     // Assert that the driver is connected to the new writer after failover happens.
     final String currentConnectionId = queryInstanceId(testConnection);
@@ -949,12 +949,12 @@ public class FailoverIntegrationTest {
     assertEquals(expectedSQLErrorCode, exception.getSQLState());
   }
 
-  private void assertFirstQueryThrows(Statement stmt, String expectedSQLErrorCode) {
+  private void assertFirstQueryThrows(Statement stmt) {
     this.log.logDebug(
             "Assert that the first read query throws, "
                     + "this should kick off the driver failover process..");
     SQLException exception = assertThrows(SQLException.class, () -> executeInstanceIdQuery(stmt));
-    assertEquals(expectedSQLErrorCode, exception.getSQLState());
+    assertEquals("08S02", exception.getSQLState());
   }
 
   @BeforeEach
@@ -1006,10 +1006,6 @@ public class FailoverIntegrationTest {
 
   protected void startCrashingInstances(String... instances) {
     instancesToCrash.addAll(Arrays.asList(instances));
-  }
-
-  protected void stopCrashingInstances(String... instances) {
-    instancesToCrash.removeAll(Arrays.asList(instances));
   }
 
   protected void makeSureInstancesUp(String... instances) throws InterruptedException {

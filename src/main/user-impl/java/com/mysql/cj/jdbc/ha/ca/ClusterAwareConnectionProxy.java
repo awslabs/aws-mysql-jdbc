@@ -680,12 +680,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       return;
     }
 
-    if(Util.isNullOrEmpty(this.hosts)) {
-      this.log.logDebug("ClusterAwareConnectionProxy.21");
-      return;
-    }
-
-    if (isConnected()) {
+    if (isConnected() || Util.isNullOrEmpty(this.hosts)) {
       failover(this.currentHostIndex);
       return;
     }
@@ -902,7 +897,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     this.log.logDebug(Messages.getString("ClusterAwareConnectionProxy.17"));
 
     HostInfo failedHost = null;
-    if(failedHostIdx != NO_CONNECTION_INDEX && !Util.isNullOrEmpty(this.hosts)) {
+    if (failedHostIdx != NO_CONNECTION_INDEX && !Util.isNullOrEmpty(this.hosts)) {
       failedHost = this.hosts.get(failedHostIdx);
     }
     ReaderFailoverResult result = readerFailoverHandler.failover(this.hosts, failedHost);

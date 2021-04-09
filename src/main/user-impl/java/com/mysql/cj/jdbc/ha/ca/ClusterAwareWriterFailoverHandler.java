@@ -123,7 +123,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
   public WriterFailoverResult failover(List<HostInfo> currentTopology) throws SQLException {
     if(Util.isNullOrEmpty(currentTopology)) {
       this.log.logError(Messages.getString("ClusterAwareWriterFailoverHandler.7"));
-      return new WriterFailoverResult(false, false, null, null);
+      return new WriterFailoverResult(false, false, null, null, "None");
     }
 
     ExecutorService executorService = Executors.newFixedThreadPool(2);
@@ -132,13 +132,13 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
     submitTasks(currentTopology, executorService, completionService);
 
     try {
-      for(int numTasks = 2; numTasks > 0; numTasks--) {
-        WriterFailoverResult result = getNextResult(executorService, completionService);
-        if(result.isConnected()) return result;
-      }
+      WriterFailoverResult result = getNextResult(executorService, completionService);
+      if (result.isConnected()) return result;
+      result = getNextResult(executorService, completionService);
+      if (result.isConnected()) return result;
 
       this.log.logDebug(Messages.getString("ClusterAwareWriterFailoverHandler.3"));
-      return new WriterFailoverResult(false, false, null, null);
+      return new WriterFailoverResult(false, false, null, null, "None");
     } finally {
       if (!executorService.isTerminated()) {
         executorService.shutdownNow(); // terminate all remaining tasks
@@ -163,7 +163,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
               this.maxFailoverTimeoutMs, TimeUnit.MILLISECONDS);
       if(firstCompleted == null) {
         // The task was unsuccessful and we have timed out
-        return new WriterFailoverResult(false, false, new ArrayList<>(), null);
+        return new WriterFailoverResult(false, false, new ArrayList<>(), null, "None");
       }
       WriterFailoverResult result = firstCompleted.get();
       if(result.isConnected()) {
@@ -177,14 +177,14 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
     } catch (ExecutionException e) {
       // return failure below
     }
-    return new WriterFailoverResult(false, false, new ArrayList<>(), null);
+    return new WriterFailoverResult(false, false, new ArrayList<>(), null, "None");
   }
 
   private void logTaskSuccess(WriterFailoverResult result) {
     List<HostInfo> topology = result.getTopology();
     if(Util.isNullOrEmpty(topology)) {
-      String taskId = result.isNewHost() ? "TaskB" : "TaskA";
-      this.log.logError(Messages.getString("ClusterAwareWriterFailoverHandler.5", new Object[] { taskId }));
+      String taskName = result.getTaskName() == null ? "None" : result.getTaskName();
+      this.log.logError(Messages.getString("ClusterAwareWriterFailoverHandler.5", new Object[] { taskName }));
       return;
     }
 
@@ -222,7 +222,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
             List<HostInfo> latestTopology = topologyService.getTopology(conn, true);
             if (!Util.isNullOrEmpty(latestTopology) && isCurrentHostWriter(latestTopology)) {
               topologyService.removeFromDownHostList(this.originalWriterHost);
-              return new WriterFailoverResult(true, false, latestTopology, conn);
+              return new WriterFailoverResult(true, false, latestTopology, conn, "TaskA");
             }
           } catch (SQLException exception) {
             // ignore
@@ -232,7 +232,7 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
         }
       } catch (InterruptedException exception) {
         Thread.currentThread().interrupt();
-        return new WriterFailoverResult(false, false, null, null);
+        return new WriterFailoverResult(false, false, null, null, "TaskA");
       } catch (Exception ex) {
         log.logError(ex);
         throw ex;
@@ -284,10 +284,10 @@ public class ClusterAwareWriterFailoverHandler implements WriterFailoverHandler 
             closeReaderConnection();
           }
         }
-        return new WriterFailoverResult(true, true, this.currentTopology, this.currentConnection);
+        return new WriterFailoverResult(true, true, this.currentTopology, this.currentConnection, "TaskB");
       } catch (InterruptedException exception) {
         Thread.currentThread().interrupt();
-        return new WriterFailoverResult(false, false, null, null);
+        return new WriterFailoverResult(false, false, null, null, "TaskB");
       } catch (Exception ex) {
         log.logError(Messages.getString("ClusterAwareWriterFailoverHandler.15", new Object[] { ex.getMessage() }));
         throw ex;
