@@ -35,6 +35,7 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;
+import com.mysql.cj.util.Util;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -121,6 +122,11 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
   @Override
   public ReaderFailoverResult failover(List<HostInfo> hosts, HostInfo currentHost)
       throws SQLException {
+    if(Util.isNullOrEmpty(hosts)) {
+      this.log.logDebug(Messages.getString("ClusterAwareReaderFailover.6", new Object[] { "failover" }));
+      return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+    }
+
     ExecutorService executor = Executors.newSingleThreadExecutor();
     Future<ReaderFailoverResult> future = submitInternalFailoverTask(hosts, currentHost, executor);
     return getInternalFailoverResult(executor, future);
@@ -129,7 +135,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
   private Future<ReaderFailoverResult> submitInternalFailoverTask(List<HostInfo> hosts, HostInfo currentHost, ExecutorService executor) {
     Future<ReaderFailoverResult> future = executor.submit(() -> {
       ReaderFailoverResult result = null;
-      while(result == null || !result.isConnected()) {
+      while (result == null || !result.isConnected()) {
         result = failoverInternal(hosts, currentHost);
         TimeUnit.SECONDS.sleep(1);
       }
@@ -168,9 +174,6 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
   protected ReaderFailoverResult failoverInternal(List<HostInfo> hosts, HostInfo currentHost)
           throws SQLException {
     this.topologyService.addToDownHostList(currentHost);
-    if (hosts == null || hosts.isEmpty()) {
-      return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
-    }
     Set<String> downHosts = topologyService.getDownHosts();
     List<HostTuple> hostGroup = getHostTuplesByPriority(hosts, downHosts);
     return getConnectionFromHostGroup(hostGroup);
@@ -180,12 +183,10 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     List<HostTuple> hostGroup = new ArrayList<>();
     addActiveReaders(hostGroup, hosts, downHosts);
     HostInfo writerHost = hosts.get(ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX);
-    if (writerHost != null) {
-      hostGroup.add(
-          new HostTuple(
-              writerHost,
-              ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX));
-    }
+    hostGroup.add(
+            new HostTuple(
+                    writerHost,
+                    ClusterAwareConnectionProxy.WRITER_CONNECTION_INDEX));
     addDownHosts(hostGroup, hosts, downHosts);
     return hostGroup;
   }
@@ -206,7 +207,7 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
     List<HostTuple> downHostList = new ArrayList<>();
     for (int i = 0; i < hosts.size(); i++) {
       HostInfo host = hosts.get(i);
-      if (host != null && downHosts.contains(host.getHostPortPair())) {
+      if (downHosts.contains(host.getHostPortPair())) {
         downHostList.add(new HostTuple(host, i));
       }
     }
@@ -223,6 +224,11 @@ public class ClusterAwareReaderFailoverHandler implements ReaderFailoverHandler 
    */
   @Override
   public ReaderFailoverResult getReaderConnection(List<HostInfo> hostList) throws SQLException {
+    if(Util.isNullOrEmpty(hostList)) {
+      this.log.logDebug(Messages.getString("ClusterAwareReaderFailover.6", new Object[] { "getReaderConnection" }));
+      return new ReaderFailoverResult(null, ClusterAwareConnectionProxy.NO_CONNECTION_INDEX, false);
+    }
+
     Set<String> downHosts = topologyService.getDownHosts();
     List<HostTuple> tuples = getReaderTuplesByPriority(hostList, downHosts);
     return getConnectionFromHostGroup(tuples);

@@ -508,4 +508,8 @@ public class Util {
             throw ExceptionFactory.createException(Messages.getString("Util.5") + ex.getClass().getName(), exceptionInterceptor);
         }
     }
+
+    public static boolean isNullOrEmpty(List<?> list) {
+        return list == null || list.isEmpty();
+    }
 }

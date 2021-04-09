@@ -1008,10 +1008,6 @@ public class FailoverIntegrationTest {
     instancesToCrash.addAll(Arrays.asList(instances));
   }
 
-  protected void stopCrashingInstances(String... instances) {
-    instancesToCrash.removeAll(Arrays.asList(instances));
-  }
-
   protected void makeSureInstancesUp(String... instances) throws InterruptedException {
     makeSureInstancesUp(instances, true);
   }
