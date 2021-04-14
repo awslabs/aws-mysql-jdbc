@@ -383,7 +383,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     ConnectionUrlParser.Pair<String, Integer> pair = ConnectionUrlParser.parseHostPortPair(
             this.clusterInstanceHostPatternSetting);
     if (pair == null) {
-      // "Invalid value in 'clusterInstanceHostPattern' configuration property."
+      // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the value could not be parsed"
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
     }
 
@@ -393,20 +393,21 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   private synchronized void validateHostPatternSetting(String hostPattern) throws SQLException {
     if (!isDnsPatternValid(hostPattern)) {
-      // "Invalid value in 'clusterInstanceHostPattern' configuration property."
-      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.5"));
-      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
+      // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the host pattern must contain a '?'
+      // character as a placeholder for the DB instance identifiers of the instances in the cluster"
+      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.21"));
+      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.21"));
     }
 
     identifyRdsType(hostPattern);
     if(this.isRdsProxy) {
-      // "RDS Proxy url can't be used as an instance pattern."
+      // "An RDS Proxy url can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.7"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.7"));
     }
 
     if(isRdsCustomClusterDns(hostPattern)) {
-      // "RDS Custom Cluster endpoint can't be used as an instance pattern."
+      // "An RDS Custom Cluster endpoint can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.18"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.18"));
     }
