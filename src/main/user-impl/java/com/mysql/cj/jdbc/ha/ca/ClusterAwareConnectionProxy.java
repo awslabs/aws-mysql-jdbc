@@ -981,7 +981,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   /**
-   * Checks if the  is connected to an RDS-hosted cluster.
+   * Checks if the proxy is connected to an RDS-hosted cluster.
    *
    * @return true if the proxy is connected to an RDS-hosted cluster
    */
