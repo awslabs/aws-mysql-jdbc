@@ -383,7 +383,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     ConnectionUrlParser.Pair<String, Integer> pair = ConnectionUrlParser.parseHostPortPair(
             this.clusterInstanceHostPatternSetting);
     if (pair == null) {
-      // "Invalid value in 'clusterInstanceHostPattern' configuration property."
+      // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the value could not be parsed"
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
     }
 
@@ -393,20 +393,21 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
   private synchronized void validateHostPatternSetting(String hostPattern) throws SQLException {
     if (!isDnsPatternValid(hostPattern)) {
-      // "Invalid value in 'clusterInstanceHostPattern' configuration property."
-      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.5"));
-      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
+      // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the host pattern must contain a '?'
+      // character as a placeholder for the DB instance identifiers of the instances in the cluster"
+      this.log.logError(Messages.getString("ClusterAwareConnectionProxy.21"));
+      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.21"));
     }
 
     identifyRdsType(hostPattern);
     if(this.isRdsProxy) {
-      // "RDS Proxy url can't be used as an instance pattern."
+      // "An RDS Proxy url can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.7"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.7"));
     }
 
     if(isRdsCustomClusterDns(hostPattern)) {
-      // "RDS Custom Cluster endpoint can't be used as an instance pattern."
+      // "An RDS Custom Cluster endpoint can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.18"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.18"));
     }
@@ -434,7 +435,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     createConnectionAndInitializeTopology(connUrl);
 
     if (this.isClusterTopologyAvailable) {
-      // "The 'clusterInstanceHostPattern' configuration property is required when an IP address or custom domain is used to connect to the cluster."
+      // "The 'clusterInstanceHostPattern' configuration property is required when an IP address or custom domain is used
+      // to connect to a cluster that provides topology information. If you would instead like to connect without failover
+      // functionality, set the 'enableClusterAwareFailover' configuration property to false."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.6"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.6"));
     }
@@ -815,12 +818,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   /**
-   * Initiates a default failover procedure starting at the given host index. This process tries to
-   * connect, sequentially, to the next host in the list. The primary host may or may not be
-   * excluded from the connection attempts.
+   * Initiates the failover procedure. This process tries to establish a new connection to an instance in the topology.
    *
-   * @param failedHostIdx The host index where to start from. First connection attempt will be the
-   *     next one.
+   * @param failedHostIdx The index of the host that failed
    * @throws SQLException if an error occurs
    */
   protected synchronized void failover(int failedHostIdx) throws SQLException {
@@ -981,18 +981,18 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   /**
-   * Checks if proxy is connected to RDS-hosted cluster.
+   * Checks if the proxy is connected to an RDS-hosted cluster.
    *
-   * @return true if proxy is connected to RDS-hosted cluster
+   * @return true if the proxy is connected to an RDS-hosted cluster
    */
   public boolean isRds() {
     return this.isRds;
   }
 
   /**
-   * Checks if proxy is connected to cluster through RDS proxy.
+   * Checks if the proxy is connected to a cluster using RDS proxy.
    *
-   * @return true if proxy is connected to cluster through RDS proxy
+   * @return true if the proxy is connected to a cluster using RDS proxy
    */
   public synchronized boolean isRdsProxy() {
     return this.isRdsProxy;
