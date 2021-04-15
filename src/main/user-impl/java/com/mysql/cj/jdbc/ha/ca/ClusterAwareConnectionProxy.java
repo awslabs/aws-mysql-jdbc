@@ -435,7 +435,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     createConnectionAndInitializeTopology(connUrl);
 
     if (this.isClusterTopologyAvailable) {
-      // "The 'clusterInstanceHostPattern' configuration property is required when an IP address or custom domain is used to connect to the cluster."
+      // "The 'clusterInstanceHostPattern' configuration property is required when an IP address or custom domain is used
+      // to connect to a cluster that provides topology information. If you would instead like to connect without failover
+      // functionality, set the 'enableClusterAwareFailover' configuration property to false."
       this.log.logError(Messages.getString("ClusterAwareConnectionProxy.6"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.6"));
     }
@@ -816,12 +818,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   /**
-   * Initiates a default failover procedure starting at the given host index. This process tries to
-   * connect, sequentially, to the next host in the list. The primary host may or may not be
-   * excluded from the connection attempts.
+   * Initiates the failover procedure. This process tries to establish a new connection to an instance in the topology.
    *
-   * @param failedHostIdx The host index where to start from. First connection attempt will be the
-   *     next one.
+   * @param failedHostIdx The index of the host that failed
    * @throws SQLException if an error occurs
    */
   protected synchronized void failover(int failedHostIdx) throws SQLException {
@@ -982,18 +981,18 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   /**
-   * Checks if proxy is connected to RDS-hosted cluster.
+   * Checks if the  is connected to an RDS-hosted cluster.
    *
-   * @return true if proxy is connected to RDS-hosted cluster
+   * @return true if the proxy is connected to an RDS-hosted cluster
    */
   public boolean isRds() {
     return this.isRds;
   }
 
   /**
-   * Checks if proxy is connected to cluster through RDS proxy.
+   * Checks if the proxy is connected to a cluster using RDS proxy.
    *
-   * @return true if proxy is connected to cluster through RDS proxy
+   * @return true if the proxy is connected to a cluster using RDS proxy
    */
   public synchronized boolean isRdsProxy() {
     return this.isRdsProxy;
