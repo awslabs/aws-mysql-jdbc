@@ -70,25 +70,6 @@ dependencies {
 ### Using the AWS JDBC Driver for MySQL
 As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover.
 
-#### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
-
-1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in
-   a try-catch block, and dispose of the Connection object if an Exception was hit. If this practice is left unaltered, 
-   the application will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver 
-   internally establishes a ready-to-use connection inside the original Connection object before throwing an 
-   exception to the user. If this Connection object is disposed of, the newly established 
-   connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the 
-   Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code-1) and
-   [FailoverSampleApp2](#sample-code-2) demonstrate this practice. See the section below on 
-   [Failover Exception Codes](#failover-exception-codes) for more details.
-2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance 
-   endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. 
-   Although the AWS JDBC Driver for MySQL will correctly handle failover when connected using instance 
-   endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change 
-   reader/writer status whenever failover occurs. The driver will always connect directly to the instance specified 
-   if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses 
-   instance endpoints.
-
 #### Driver Name
 The driver name to use is: ```software.aws.rds.jdbc.mysql.Driver```. This will be needed when loading the driver explicitly to the driver manager.
 
@@ -304,6 +285,10 @@ public class FailoverSampleApp2 {
   }
 }
 ```
+>### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
+>1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception was hit. If this practice is left unaltered, the application will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code-1) and [FailoverSampleApp2](#sample-code-2) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
+>2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
+
 ## Development
 
 ### Setup
