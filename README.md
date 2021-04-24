@@ -72,6 +72,7 @@ As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to
 
 #### Driver Name
 The driver name to use is: ```software.aws.rds.jdbc.mysql.Driver```. This will be needed when loading the driver explicitly to the driver manager.
+
 #### Connection URL Descriptions
 
 There are many different types of URLs that can connect to an Aurora DB cluster. For some of these URL types, the AWS JDBC Driver requires the user to provide some information about the Aurora DB cluster to provide failover functionality. This section outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, if applicable.
@@ -114,7 +115,7 @@ In addition to [the parameters that can be configured for the MySQL Connector/J 
 When the driver throws a SQLException with code ```08001```, it means the original connection failed, and the driver tried to failover to a new instance, but was unable to. There are various reasons this may happen: no nodes were available, a network failure occurred, etc. In this scenario, please wait until the server is up or other problems are solved. (Exception will be thrown.)
 
 ##### 08S02 - Communication Link 
-When the driver throws a SQLException with code ```08S02```, it means the original connection failed when the autocommit is set to true, and the driver successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, the user should:
+When the driver throws a SQLException with code ```08S02```, it means the original connection failed while autocommit was set to true, and the driver successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, the user should:
 
 - Reuse and re-configure the original connection (e.g., Re-configure session state to be the same as the original connection).
 
@@ -199,7 +200,7 @@ public class FailoverSampleApp1 {
 ```
 
 ##### 08007 - Transaction Resolution Unknown
-When the driver throws a SQLException with code ```08007```, it means the original connection failed within a transaction (when the autocommit is set to false). In this scenario, the driver first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the driver recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, the user should:
+When the driver throws a SQLException with code ```08007```, it means the original connection failed within a transaction (while autocommit was set to false). In this scenario, the driver first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the driver recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, the user should:
 
 - Reuse and re-configure the original connection (e.g: re-configure session state to be the same as the original connection).
 
@@ -284,6 +285,10 @@ public class FailoverSampleApp2 {
   }
 }
 ```
+>### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
+>1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception was hit. If this practice is left unaltered, the application will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
+>2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
+
 ## Development
 
 ### Setup
