@@ -476,6 +476,9 @@ public class MysqlSQLXML implements SQLXML {
         return this.owningResultSet.getString(this.columnIndexOfXml);
     }
 
+    protected boolean getAllowXmlUnsafeExternalEntity() {
+        return this.allowXmlUnsafeExternalEntity;
+    }
     /*
      * The SimpleSaxToReader class is an adaptation of the SAX "Writer"
      * example from the Apache XercesJ-2 Project. The license for this

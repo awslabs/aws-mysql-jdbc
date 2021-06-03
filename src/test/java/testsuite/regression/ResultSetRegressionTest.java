@@ -5554,7 +5554,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         rs1.updateNCharacterStream(43, new StringReader("bbbbbb"), 3);
         rs1.updateNull(44);
 
-        SQLXML xml = new MysqlSQLXML(null);
+        SQLXML xml = new MysqlSQLXML(null, null);
         xml.setString("<doc/>");
         rs1.updateSQLXML(45, xml);
 
