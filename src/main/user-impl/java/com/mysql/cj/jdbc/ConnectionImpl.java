@@ -2573,7 +2573,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        return new MysqlSQLXML(getExceptionInterceptor());
+        return new MysqlSQLXML(getExceptionInterceptor(), getActiveMySQLConnection().getPropertySet());
     }
 
     @Override

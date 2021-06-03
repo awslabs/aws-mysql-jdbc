@@ -663,7 +663,7 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.acceptAwsProtocolOnly"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE),
 
                 new BooleanPropertyDefinition(PropertyKey.allowXmlUnsafeExternalEntity, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.allowXmlUnsafeExternalEntity"), "0.2.0", CATEGORY_HA, Integer.MAX_VALUE),
+                        Messages.getString("ConnectionProperties.allowXmlUnsafeExternalEntity"), "0.2.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
                 //
                 // CATEGORY_PERFORMANCE
