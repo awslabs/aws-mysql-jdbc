@@ -62,6 +62,7 @@ import javax.xml.transform.stax.StAXSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
+import com.mysql.cj.conf.PropertyKey;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -103,16 +104,21 @@ public class MysqlSQLXML implements SQLXML {
 
     private ExceptionInterceptor exceptionInterceptor;
 
-    public MysqlSQLXML(ResultSetInternalMethods owner, int index, ExceptionInterceptor exceptionInterceptor) {
+    private boolean allowXmlUnsafeExternalEntity;
+
+    public MysqlSQLXML(ResultSetInternalMethods owner, int index, ExceptionInterceptor exceptionInterceptor, JdbcPropertySet propsSet) {
         this.owningResultSet = owner;
         this.columnIndexOfXml = index;
         this.fromResultSet = true;
         this.exceptionInterceptor = exceptionInterceptor;
+        this.allowXmlUnsafeExternalEntity = propsSet.getBooleanProperty(PropertyKey.allowXmlUnsafeExternalEntity).getValue();
+
     }
 
-    public MysqlSQLXML(ExceptionInterceptor exceptionInterceptor) {
+    public MysqlSQLXML(ExceptionInterceptor exceptionInterceptor, JdbcPropertySet propsSet) {
         this.fromResultSet = false;
         this.exceptionInterceptor = exceptionInterceptor;
+        this.allowXmlUnsafeExternalEntity = propsSet.getBooleanProperty(PropertyKey.allowXmlUnsafeExternalEntity).getValue();
     }
 
     @Override
@@ -212,6 +218,16 @@ public class MysqlSQLXML implements SQLXML {
             try {
                 DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
                 builderFactory.setNamespaceAware(true);
+
+                if (!this.allowXmlUnsafeExternalEntity) {
+
+                    builderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+                    builderFactory.setXIncludeAware(false);
+                    builderFactory.setExpandEntityReferences(false);
+                    builderFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+                    builderFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+                }
+
                 DocumentBuilder builder = builderFactory.newDocumentBuilder();
 
                 InputSource inputSource = null;

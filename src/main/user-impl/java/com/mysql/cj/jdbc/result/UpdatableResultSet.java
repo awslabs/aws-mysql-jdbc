@@ -2099,7 +2099,7 @@ public class UpdatableResultSet extends ResultSetImpl {
 
     @Override
     public SQLXML getSQLXML(int columnIndex) throws SQLException {
-        return new MysqlSQLXML(this, columnIndex, getExceptionInterceptor());
+        return new MysqlSQLXML(this, columnIndex, getExceptionInterceptor(), connection.getPropertySet());
     }
 
     private String getStringForNClob(int columnIndex) throws SQLException {

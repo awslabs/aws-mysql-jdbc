@@ -2563,7 +2563,7 @@ public class ResultSetImpl extends NativeResultset implements ResultSetInternalM
     public SQLXML getSQLXML(int columnIndex) throws SQLException {
         checkColumnBounds(columnIndex);
 
-        return new MysqlSQLXML(this, columnIndex, getExceptionInterceptor());
+        return new MysqlSQLXML(this, columnIndex, getExceptionInterceptor(), connection.getPropertySet());
     }
 
     @Override

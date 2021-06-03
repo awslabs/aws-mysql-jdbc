@@ -279,7 +279,8 @@ public enum PropertyKey {
     failoverClusterTopologyRefreshRateMs("failoverClusterTopologyRefreshRateMs", true), //
     failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
     failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
-    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true);
+    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
+    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true);
 
     private String keyName;
     private String ccAlias = null;
