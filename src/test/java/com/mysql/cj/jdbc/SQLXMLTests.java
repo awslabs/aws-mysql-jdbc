@@ -20,35 +20,35 @@ public class SQLXMLTests {
     public void testAllowXmlUnsafeExternalEntityPropertyFalse() {
 
         final String url =
-          "jdbc:mysql:aws://somehost:1234/test";
-        final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-        JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
-        connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
-        assertFalse(connProps1.getBooleanProperty("allowXmlUnsafeExternalEntity").getValue());
+          "jdbc:mysql://somehost:1234/test";
+        final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
+        connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
+        assertFalse(connProperties.getBooleanProperty("allowXmlUnsafeExternalEntity").getValue());
     }
 
     @Test
     public void testAllowUnsafeExternalEntityPropertyTrue() {
-        final String url2 =
-          "jdbc:mysql:aws://somehost:1234/test?"
+        final String url =
+          "jdbc:mysql://somehost:1234/test?"
             + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
             + "=true";
-        final ConnectionUrl conStr2 = ConnectionUrl.getConnectionUrlInstance(url2, new Properties());
-        JdbcPropertySetImpl connProps2 = new JdbcPropertySetImpl();
-        connProps2.initializeProperties(conStr2.getMainHost().exposeAsProperties());
-        assertTrue(connProps2.getBooleanProperty("allowXmlUnsafeExternalEntity").getValue());
+        final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
+        connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
+        assertTrue(connProperties.getBooleanProperty("allowXmlUnsafeExternalEntity").getValue());
     }
 
     @Test
     public void testAllowXmlUnsafeExternalEntityFlagFalse(){
 
         final String url =
-          "jdbc:mysql:aws://somehost:1234/test";
-        final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-        JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
-        connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
+          "jdbc:mysql://somehost:1234/test";
+        final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
+        connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
 
-        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProps1);
+        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProperties);
 
         assertFalse(xmlTest.getAllowXmlUnsafeExternalEntity());
     }
@@ -57,14 +57,14 @@ public class SQLXMLTests {
     public void testAllowXmlUnsafeExternalEntityFlagTrue(){
 
         final String url =
-            "jdbc:mysql:aws://somehost:1234/test?"
+            "jdbc:mysql://somehost:1234/test?"
                 + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
                 + "=true";
-        final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-        JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
-        connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
+        final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
+        connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
 
-        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProps1);
+        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProperties);
 
         assertTrue(xmlTest.getAllowXmlUnsafeExternalEntity());
 
@@ -76,18 +76,51 @@ public class SQLXMLTests {
         final String xmlString = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n" +
             "<!DOCTYPE foo [\n" +
             "<!ELEMENT foo ANY >\n" +
-            "<!ENTITY xxe SYSTEM \"file:///dev/random\" >]><foo>&xxe;</foo>";
+            "<!ENTITY xxe SYSTEM \"file:///dev/nonExistantFile\" >]><foo>&xxe;</foo>";
         final String url =
-            "jdbc:mysql:aws://somehost:1234/test";
-        final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-        JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
-        connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
+            "jdbc:mysql://somehost:1234/test";
+        final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        final String expectedErrorMsg = "DOCTYPE is disallowed when the feature \"http://apache.org/xml/features/disallow-doctype-decl\" set to true.";
 
-        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProps1);
+        JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
+        connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
+
+        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProperties);
 
         xmlTest.setString(xmlString);
         SQLException exception = assertThrows( SQLException.class, () -> xmlTest.getSource(DOMSource.class));
-        assertSame(exception.getSQLState(), "S1009");
+
+        // Assert correct error code was produced
+        assertSame("S1009", exception.getSQLState());
+        // Assert that the reason for this exception was because of the security measurements put in place
+        assertTrue(expectedErrorMsg.equals(exception.getMessage()));
+    }
+
+    @Test
+    public void testXXEInjectionAllowance() throws SQLException {
+
+        final String xmlString = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n" +
+                "<!DOCTYPE foo [\n" +
+                "<!ELEMENT foo ANY >\n" +
+                "<!ENTITY xxe SYSTEM \"file:///dev/nonExistantFile\" >]><foo>&xxe;</foo>";
+        final String url =
+                "jdbc:mysql://somehost:1234/test?"
+                        + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
+                        + "=true";
+        final String expectedErrorMsg = "/dev/nonExistantFile (No such file or directory)";
+        final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
+        connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
+
+        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProperties);
+
+        xmlTest.setString(xmlString);
+        SQLException exception = assertThrows( SQLException.class, () -> xmlTest.getSource(DOMSource.class));
+
+        // Assert correct error code was produced
+        assertSame("S1009", exception.getSQLState());
+        // Assert that the reason for this exception is due because the file does not exist
+        assertTrue(expectedErrorMsg.equals(exception.getMessage()));
     }
 
 }
