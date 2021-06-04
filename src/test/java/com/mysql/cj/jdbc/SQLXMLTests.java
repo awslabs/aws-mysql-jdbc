@@ -3,10 +3,16 @@ package com.mysql.cj.jdbc;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.PropertyKey;
 import org.junit.jupiter.api.Test;
+
+import java.sql.SQLException;
 import java.util.Properties;
 
+import static org.junit.Assert.assertSame;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import javax.xml.transform.dom.DOMSource;
 
 public class SQLXMLTests {
 
@@ -14,7 +20,7 @@ public class SQLXMLTests {
     public void testAllowXmlUnsafeExternalEntityPropertyFalse() {
 
         final String url =
-                "jdbc:mysql:aws://somehost:1234/test";
+          "jdbc:mysql:aws://somehost:1234/test";
         final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
         connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
@@ -24,9 +30,9 @@ public class SQLXMLTests {
     @Test
     public void testAllowUnsafeExternalEntityPropertyTrue() {
         final String url2 =
-                "jdbc:mysql:aws://somehost:1234/test?"
-                        + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
-                        + "=true";
+          "jdbc:mysql:aws://somehost:1234/test?"
+            + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
+            + "=true";
         final ConnectionUrl conStr2 = ConnectionUrl.getConnectionUrlInstance(url2, new Properties());
         JdbcPropertySetImpl connProps2 = new JdbcPropertySetImpl();
         connProps2.initializeProperties(conStr2.getMainHost().exposeAsProperties());
@@ -37,7 +43,7 @@ public class SQLXMLTests {
     public void testAllowXmlUnsafeExternalEntityFlagFalse(){
 
         final String url =
-                "jdbc:mysql:aws://somehost:1234/test";
+          "jdbc:mysql:aws://somehost:1234/test";
         final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
         connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
@@ -45,16 +51,15 @@ public class SQLXMLTests {
         MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProps1);
 
         assertFalse(xmlTest.getAllowXmlUnsafeExternalEntity());
-
     }
 
     @Test
     public void testAllowXmlUnsafeExternalEntityFlagTrue(){
 
         final String url =
-                "jdbc:mysql:aws://somehost:1234/test?"
-                        + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
-                        + "=true";
+            "jdbc:mysql:aws://somehost:1234/test?"
+                + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
+                + "=true";
         final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
         connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
@@ -65,5 +70,24 @@ public class SQLXMLTests {
 
     }
 
+    @Test
+    public void testXXEInjectionPrevention() throws SQLException {
+
+        final String xmlString = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n" +
+            "<!DOCTYPE foo [\n" +
+            "<!ELEMENT foo ANY >\n" +
+            "<!ENTITY xxe SYSTEM \"file:///dev/random\" >]><foo>&xxe;</foo>";
+        final String url =
+            "jdbc:mysql:aws://somehost:1234/test";
+        final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+        JdbcPropertySetImpl connProps1 = new JdbcPropertySetImpl();
+        connProps1.initializeProperties(conStr.getMainHost().exposeAsProperties());
+
+        MysqlSQLXML xmlTest = new MysqlSQLXML(null, connProps1);
+
+        xmlTest.setString(xmlString);
+        SQLException exception = assertThrows( SQLException.class, () -> xmlTest.getSource(DOMSource.class));
+        assertSame(exception.getSQLState(), "S1009");
+    }
 
 }
