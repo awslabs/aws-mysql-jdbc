@@ -107,7 +107,7 @@ public class SQLXMLTests {
                 "jdbc:mysql://somehost:1234/test?"
                         + PropertyKey.allowXmlUnsafeExternalEntity.getKeyName()
                         + "=true";
-        final String expectedErrorMsg = "/dev/nonExistantFile (No such file or directory)";
+        final String expectedErrorMsg = "(No such file or directory)";
         final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         JdbcPropertySetImpl connProperties = new JdbcPropertySetImpl();
         connProperties.initializeProperties(connUrl.getMainHost().exposeAsProperties());
@@ -120,7 +120,7 @@ public class SQLXMLTests {
         // Assert correct error code was produced
         assertSame("S1009", exception.getSQLState());
         // Assert that the reason for this exception is because the file does not exist (and not because DTDs is disabled)
-        assertTrue(expectedErrorMsg.equals(exception.getMessage()));
+        assertTrue(exception.getMessage().contains(expectedErrorMsg));
     }
 
 }
