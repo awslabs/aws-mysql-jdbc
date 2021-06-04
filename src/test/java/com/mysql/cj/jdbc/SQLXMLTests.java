@@ -92,7 +92,7 @@ public class SQLXMLTests {
 
         // Assert correct error code was produced
         assertSame("S1009", exception.getSQLState());
-        // Assert that the reason for this exception was because of the security measurements put in place
+        // Assert that the reason for this exception was because of the security measurements put in place (DTDs disabled)
         assertTrue(expectedErrorMsg.equals(exception.getMessage()));
     }
 
@@ -119,7 +119,7 @@ public class SQLXMLTests {
 
         // Assert correct error code was produced
         assertSame("S1009", exception.getSQLState());
-        // Assert that the reason for this exception is due because the file does not exist
+        // Assert that the reason for this exception is because the file does not exist (and not because DTDs is disabled)
         assertTrue(expectedErrorMsg.equals(exception.getMessage()));
     }
 
