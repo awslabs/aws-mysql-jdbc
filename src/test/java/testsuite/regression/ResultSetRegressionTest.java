@@ -92,6 +92,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.rowset.CachedRowSet;
 
+import com.mysql.cj.jdbc.*;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.Messages;
@@ -104,10 +105,6 @@ import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.ExceptionInterceptor;
 import com.mysql.cj.exceptions.ExceptionInterceptorChain;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
-import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.jdbc.MysqlSQLXML;
-import com.mysql.cj.jdbc.ServerPreparedStatement;
-import com.mysql.cj.jdbc.StatementImpl;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.jdbc.exceptions.MysqlDataTruncation;
 import com.mysql.cj.jdbc.exceptions.NotUpdatable;
@@ -5554,7 +5551,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         rs1.updateNCharacterStream(43, new StringReader("bbbbbb"), 3);
         rs1.updateNull(44);
 
-        SQLXML xml = new MysqlSQLXML(null);
+        SQLXML xml = new MysqlSQLXML(null, new JdbcPropertySetImpl());
         xml.setString("<doc/>");
         rs1.updateSQLXML(45, xml);
 

@@ -112,6 +112,7 @@ In addition to [the parameters that can be configured for the MySQL Connector/J 
 |`failoverReaderConnectTimeoutMs` | Integer | No | Maximum allowed time in milliseconds to attempt to connect to a reader instance during a reader failover process. <br/><br/>**Default value:** `5000`
 |`acceptAwsProtocolOnly` | Boolean | If using simultaneously with another MySQL driver that supports the same protocols: Yes<br/>Otherwise: No | Set to true to only accept connections for URLs with the jdbc:mysql:aws:// protocol. This setting should be set to true when running an application that uses this driver simultaneously with another MySQL driver that supports the same protocols (eg the MySQL JDBC Driver), to ensure the driver protocols do not clash. This behavior can also be set at the driver level for every connection via the Driver.setAcceptAwsProtocolOnly method; however, this connection parameter will take priority when present.<br/><br/>**Default value:** `false`
 |`gatherPerfMetrics` | Boolean | No | Set to true if you would like the driver to record failover-associated metrics, which will then be logged upon closing the connection. This behavior can also be set at the driver level for every connection via the Driver.setAcceptAwsProtocolOnly method; however, this connection parameter will take priority when present.<br/><br/>**Default value:** `false` | 
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` | 
 #### Failover Exception Codes
 ##### 08001 - Unable to Establish SQL Connection
 When the driver throws a SQLException with code ```08001```, it means the original connection failed, and the driver tried to failover to a new instance, but was unable to. There are various reasons this may happen: no nodes were available, a network failure occurred, etc. In this scenario, please wait until the server is up or other problems are solved. (Exception will be thrown.)
@@ -290,6 +291,15 @@ public class FailoverSampleApp2 {
 >### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
 >1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception was hit. If this practice is left unaltered, the application will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
 >2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
+## Extra Additions
+
+### XML Entity Injection Fix
+
+The default XML parser contained a security risk which made the driver prone to XXE (XML Entity Injection) attacks. To solve this issue, we disabled DTDs (Document type definition) in the XML parser. If you require this restriction to be lifted in your application, you can set the `allowXmlUnsafeExternalEntity` parameter in the connection string to true. Please see table below for a definition of this parameter. 
+
+| Parameter       | Value           | Required      | Description  |
+| ------------- |:-------------:|:-------------:| ----- |
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` | 
 
 ## Development
 
