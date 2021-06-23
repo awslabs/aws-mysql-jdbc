@@ -33,11 +33,11 @@ package testsuite.failover;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
+import com.mysql.cj.log.StandardLogger;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import software.aws.rds.jdbc.mysql.log.StandardLogger;
 import testsuite.UnreliableSocketFactory;
 
 import java.sql.Connection;

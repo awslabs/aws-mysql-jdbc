@@ -30,6 +30,7 @@
 
 package testsuite.failover;
 
+import com.mysql.cj.log.StandardLogger;
 import testsuite.UnreliableSocketFactory;
 
 import com.amazonaws.services.rds.AmazonRDS;
@@ -50,7 +51,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import software.aws.rds.jdbc.mysql.Driver;
-import software.aws.rds.jdbc.mysql.log.StandardLogger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

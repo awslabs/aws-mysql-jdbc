@@ -40,9 +40,9 @@ import com.amazonaws.services.rds.model.DBCluster;
 import com.amazonaws.services.rds.model.FailoverDBClusterRequest;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
+import com.mysql.cj.log.StandardLogger;
 import org.junit.jupiter.api.*;
 import software.aws.rds.jdbc.mysql.Driver;
-import software.aws.rds.jdbc.mysql.log.StandardLogger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
