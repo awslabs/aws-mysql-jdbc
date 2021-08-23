@@ -223,7 +223,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-commons:1.6.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.6.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
-    testImplementation("org.mockito:mockito-inline:3.6.28")
+    testImplementation("org.mockito:mockito-inline:3.12.1")
     testImplementation("org.hamcrest:hamcrest:2.2")
 
     implementation("com.google.protobuf:protobuf-java:3.11.4")
