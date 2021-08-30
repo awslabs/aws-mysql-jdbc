@@ -1,6 +1,8 @@
 # Changelog
 
-Version 0.2.0 (General Availability)
+Version 0.2.0 (Public Preview)
+
+  - Potential Breaking Change: Loading of XML external entities are not loaded by default. Users must explictly allow it through using the new "allowXmlUnsafeExternalEntity" connection URL parameter. It is recommended that users verify external entities before loading them.
 
   - Added "setAwsProtocolOnly" static method.
 
