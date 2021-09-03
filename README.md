@@ -64,7 +64,7 @@ Alternatively, the driver can be obtained automatically via [Gradle's dependency
 **Example - Gradle**
 ```gradle
 dependencies {
-    compile group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.2.0'
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.2.0'
 }
 ```
 ### Using the AWS JDBC Driver for MySQL
