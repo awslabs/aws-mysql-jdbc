@@ -665,6 +665,16 @@ public class PropertyDefinitions {
                 new BooleanPropertyDefinition(PropertyKey.allowXmlUnsafeExternalEntity, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.allowXmlUnsafeExternalEntity"), "0.2.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
+                new BooleanPropertyDefinition(PropertyKey.disableProtocolPlugins, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.disableProtocolPlugins"), "0.3.0", CATEGORY_NETWORK, Integer.MAX_VALUE),
+
+                new StringPropertyDefinition(PropertyKey.protocolPluginsFactories, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.protocolPluginsFactories"), "0.3.0", CATEGORY_NETWORK, Integer.MIN_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.nodeMonitoringIntervalMs, 5_000, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.nodeMonitoringIntervalMs"), "0.3.0", CATEGORY_NETWORK, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
                 //
                 // CATEGORY_PERFORMANCE
                 //

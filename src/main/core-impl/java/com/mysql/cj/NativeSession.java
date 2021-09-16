@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -41,6 +41,7 @@ import com.mysql.cj.protocol.Resultset.Type;
 import com.mysql.cj.protocol.a.*;
 import com.mysql.cj.result.*;
 import com.mysql.cj.util.StringUtils;
+import software.aws.rds.jdbc.mysql.cj.protocol.a.plugins.EnhancedNativeProtocol;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -116,7 +117,12 @@ public class NativeSession extends CoreSession implements Serializable {
         // this configuration places no knowledge of protocol or session on physical connection.
         // physical connection is responsible *only* for I/O streams
         if (this.protocol == null) {
-            this.protocol = NativeProtocol.getInstance(this, socketConnection, this.propertySet, this.log, transactionManager);
+            boolean disableProtocolPlugins = this.propertySet.getBooleanProperty(PropertyKey.disableProtocolPlugins).getValue();
+            if(disableProtocolPlugins) {
+                this.protocol = NativeProtocol.getInstance(this, socketConnection, this.propertySet, this.log, transactionManager);
+            } else {
+                this.protocol = EnhancedNativeProtocol.getInstance(this, socketConnection, this.propertySet, this.log, transactionManager, this.hostInfo);
+            }
         } else {
             this.protocol.init(this, socketConnection, this.propertySet, transactionManager);
         }

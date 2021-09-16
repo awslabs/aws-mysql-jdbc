@@ -280,7 +280,10 @@ public enum PropertyKey {
     failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
     failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
     acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
-    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true);
+    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
+    disableProtocolPlugins("disableProtocolPlugins", true),
+    protocolPluginsFactories("protocolPluginsFactories", true),
+    nodeMonitoringIntervalMs("nodeMonitoringIntervalMs", true);
 
     private String keyName;
     private String ccAlias = null;

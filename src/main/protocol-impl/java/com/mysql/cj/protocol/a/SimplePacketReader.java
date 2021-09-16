@@ -30,6 +30,7 @@
 package com.mysql.cj.protocol.a;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.Optional;
 
 import com.mysql.cj.Messages;
@@ -68,6 +69,8 @@ public class SimplePacketReader implements MessageReader<NativePacketHeader, Nat
                 throw new CJPacketTooBigException(packetLength, this.maxAllowedPacket.getValue());
             }
 
+        } catch (SocketTimeoutException ste) {
+            handleReadHeaderSocketTimeout(ste);
         } catch (IOException | CJPacketTooBigException e) {
             try {
                 this.socketConnection.forceClose();
@@ -82,11 +85,20 @@ public class SimplePacketReader implements MessageReader<NativePacketHeader, Nat
         return hdr;
     }
 
+    protected void handleReadHeaderSocketTimeout(SocketTimeoutException e) throws IOException {
+        try {
+            this.socketConnection.forceClose();
+        } catch (Exception ex) {
+            // ignore
+        }
+        throw e;
+    }
+
     @Override
     public NativePacketPayload readMessage(Optional<NativePacketPayload> reuse, NativePacketHeader header) throws IOException {
+        NativePacketPayload buf = new NativePacketPayload(0);
         try {
             int packetLength = header.getMessageSize();
-            NativePacketPayload buf;
             if (reuse.isPresent()) {
                 buf = reuse.get();
                 // Set the Buffer to it's original state
@@ -111,6 +123,8 @@ public class SimplePacketReader implements MessageReader<NativePacketHeader, Nat
             }
             return buf;
 
+        } catch (SocketTimeoutException ste) {
+            handleReadMessageSocketTimeout(ste);
         } catch (IOException e) {
             try {
                 this.socketConnection.forceClose();
@@ -119,6 +133,16 @@ public class SimplePacketReader implements MessageReader<NativePacketHeader, Nat
             }
             throw e;
         }
+        return buf;
+    }
+
+    protected void handleReadMessageSocketTimeout(SocketTimeoutException e) throws IOException {
+        try {
+            this.socketConnection.forceClose();
+        } catch (Exception ex) {
+            // ignore
+        }
+        throw e;
     }
 
     @Override
