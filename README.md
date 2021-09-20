@@ -354,7 +354,7 @@ $ cd ../
 ## Known Issues
 ### SSLHandshakeException
 Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
-This is due OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`, for additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
+This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`, for additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
 To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection property when connecting to a database.
 
 ## Getting Help and Opening Issues
