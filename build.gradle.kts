@@ -231,6 +231,8 @@ dependencies {
     implementation("org.jboss.jbossas:jboss-as-connector:6.1.0.Final")
     implementation("org.slf4j:slf4j-api:1.7.30")
 
+    implementation("com.amazonaws:aws-java-sdk-rds:1.11.875")
+
     runtimeOnly("org.javassist:javassist:3.27.0-GA")
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.0")
 }

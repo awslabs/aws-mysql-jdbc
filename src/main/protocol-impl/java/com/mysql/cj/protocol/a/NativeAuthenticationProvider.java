@@ -35,7 +35,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import com.amazonaws.util.AwsHostNameUtils;
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.PropertyDefinitions.SslMode;
@@ -53,7 +56,9 @@ import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
+import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationPlugin;
 import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
+import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationClearPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlOldPasswordPlugin;
@@ -238,12 +243,40 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         List<AuthenticationPlugin<NativePacketPayload>> pluginsToInit = new LinkedList<>();
 
         // embedded plugins
-        pluginsToInit.add(new MysqlNativePasswordPlugin());
-        pluginsToInit.add(new MysqlClearPasswordPlugin());
         pluginsToInit.add(new Sha256PasswordPlugin());
         pluginsToInit.add(new CachingSha2PasswordPlugin());
         pluginsToInit.add(new MysqlOldPasswordPlugin());
         pluginsToInit.add(new AuthenticationLdapSaslClientPlugin());
+
+        final boolean useIam = Boolean.parseBoolean(this.propertySet.getStringProperty("useIAM").getValue());
+
+        if (useIam) {
+            // Check Hostname for Valid AWS
+            String host = this.protocol.getSocketConnection().getHost();
+            Pattern auroraDnsPattern =
+                Pattern.compile(
+                    "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?[a-zA-Z0-9]+\\.([a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com",
+                    Pattern.CASE_INSENSITIVE);
+            Matcher matcher = auroraDnsPattern.matcher(host);
+            if(!matcher.find()){
+                // Does not match Amazon's Hostname, throw exception
+                throw ExceptionFactory.createException(WrongArgumentException.class,
+                    Messages.getString("AuthenticationProvider.HostnameNotValidForAWSIAMAuth"));
+            }
+
+            int port = this.protocol.getSocketConnection().getPort();
+            String region = matcher.group(3);
+
+            pluginsToInit.add(new AwsIamAuthenticationPlugin(host, port, region));
+            pluginsToInit.add(new AwsIamAuthenticationClearPlugin(host, port, region));
+
+            if (this.clientDefaultAuthenticationPlugin.equals(MysqlNativePasswordPlugin.class.getName())) {
+                this.clientDefaultAuthenticationPlugin = AwsIamAuthenticationPlugin.class.getName();
+            }
+        } else {
+            pluginsToInit.add(new MysqlNativePasswordPlugin());
+            pluginsToInit.add(new MysqlClearPasswordPlugin());
+        }
 
         // plugins from authenticationPluginClasses connection parameter
         String authenticationPluginClasses = this.propertySet.getStringProperty(PropertyKey.authenticationPlugins).getValue();
