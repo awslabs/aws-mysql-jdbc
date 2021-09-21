@@ -29,13 +29,6 @@
 
 package com.mysql.cj.protocol.a;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.PropertyDefinitions.SslMode;
@@ -53,6 +46,9 @@ import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
+import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationPlugin;
+import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationTokenHelper;
+import com.mysql.cj.protocol.a.authentication.AwsIamClearAuthenticationPlugin;
 import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin;
@@ -60,6 +56,13 @@ import com.mysql.cj.protocol.a.authentication.MysqlOldPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.Sha256PasswordPlugin;
 import com.mysql.cj.protocol.a.result.OkPacket;
 import com.mysql.cj.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class NativeAuthenticationProvider implements AuthenticationProvider<NativePacketPayload> {
 
@@ -238,12 +241,42 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         List<AuthenticationPlugin<NativePacketPayload>> pluginsToInit = new LinkedList<>();
 
         // embedded plugins
-        pluginsToInit.add(new MysqlNativePasswordPlugin());
-        pluginsToInit.add(new MysqlClearPasswordPlugin());
         pluginsToInit.add(new Sha256PasswordPlugin());
         pluginsToInit.add(new CachingSha2PasswordPlugin());
         pluginsToInit.add(new MysqlOldPasswordPlugin());
         pluginsToInit.add(new AuthenticationLdapSaslClientPlugin());
+
+        final boolean useAwsIam = this.propertySet.getBooleanProperty(PropertyKey.useAwsIam).getValue();
+
+        if (useAwsIam) {
+            try {
+                Class.forName("com.amazonaws.auth.AWSCredentialsProvider");
+            } catch (ClassNotFoundException ex) {
+                throw ExceptionFactory.createException(Messages.getString(
+                    "AuthenticationAwsIamPlugin.MissingSDK"
+                ));
+            }
+
+            final String host = this.protocol.getSocketConnection().getHost();
+            final int port = this.protocol.getSocketConnection().getPort();
+
+            final AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
+
+            pluginsToInit.add(new AwsIamAuthenticationPlugin(tokenHelper));
+            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(tokenHelper));
+
+            final String defaultPluginClassName = this.propertySet
+                    .getStringProperty(PropertyKey.defaultAuthenticationPlugin)
+                    .getPropertyDefinition()
+                    .getDefaultValue();
+
+            if (this.clientDefaultAuthenticationPlugin.equals(defaultPluginClassName)) {
+                this.clientDefaultAuthenticationPlugin = AwsIamAuthenticationPlugin.class.getName();
+            }
+        } else {
+            pluginsToInit.add(new MysqlNativePasswordPlugin());
+            pluginsToInit.add(new MysqlClearPasswordPlugin());
+        }
 
         // plugins from authenticationPluginClasses connection parameter
         String authenticationPluginClasses = this.propertySet.getStringProperty(PropertyKey.authenticationPlugins).getValue();

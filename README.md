@@ -299,7 +299,74 @@ The default XML parser contained a security risk which made the driver prone to 
 
 | Parameter       | Value           | Required      | Description  |
 | ------------- |:-------------:|:-------------:| ----- |
-|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` | 
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` |
+
+### AWS IAM Database Authentication
+
+An optional authentication method is to use Amazon AWS Identity and Access Management (IAM). 
+When using AWS IAM database authentication, host URL must be a valid Amazon endpoint, and not a custom domain or an IP address.
+<br>ie. `database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com`
+
+
+IAM database authentication is limited to certain database engines.
+For more information on limitations and recommendations, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+
+#### Setup for IAM database Authentication for MySQL 
+1. Enable AWS IAM database authentication for existing database or create a new database on AWS RDS Console
+   1. Creating new database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html
+   2. Modifying existing database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html
+2. Create/Change and use AWS IAM policy for AWS IAM database authentication
+   1. https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html
+3. Create a database account using AWS IAM database authentication
+   1. Connect to MySQL database using master logins and create a new user with the following
+      1. `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
+   2. For more information, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html
+
+| Parameter       | Value           | Required      | Description  |
+| ------------- |:-------------:|:-------------:| ----- |
+|`useAwsIam` | Boolean | No | Set to true if you would like to use AWS IAM database authentication<br/><br/>**Default value:** `false` |
+
+###### Sample Code
+```java
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Properties;
+
+import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.conf.PropertyKey;
+import software.aws.rds.jdbc.mysql.Driver;
+
+public class AwsIamAuthenticationSample {
+
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
+   private static final String USER = "example_user_name";
+
+   public static void main(String[] args) throws SQLException {
+      /// Load AWS RDS driver
+      DriverManager.registerDriver(new Driver());
+
+      // Create properties and set-up for AWS IAM database authentication
+      final Properties properties = new Properties();
+      properties.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
+      properties.setProperty(PropertyKey.USER.getKeyName(), USER);
+
+      // Try and make a connection
+      try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties)) {
+         try (final Statement myQuery = conn.createStatement()) {
+            try (final ResultSet rs = myQuery.executeQuery("SELECT NOW();")) {
+               while (rs.next()) {
+                  System.out.println(rs.getString(1));
+               }
+            }
+         }
+      } catch (final SQLException throwable) {
+         throwable.printStackTrace();
+      }
+   }
+}
+```
 
 ## Development
 
@@ -350,6 +417,12 @@ $ cd aws-mysql-jdbc/docker
 $ docker-compose down && docker-compose rm
 $ cd ../
 ```
+
+## Known Issues
+### SSLHandshakeException
+Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
+This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`, for additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
+To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection property when connecting to a database.
 
 ## Getting Help and Opening Issues
 
