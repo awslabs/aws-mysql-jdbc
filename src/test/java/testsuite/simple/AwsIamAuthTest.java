@@ -7,6 +7,8 @@ import com.mysql.cj.protocol.a.authentication.AwsIamClearAuthenticationPlugin;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -17,171 +19,107 @@ public class AwsIamAuthTest {
     private static final String DB_CONN_STR = System.getenv("DB_CONN_STR");
     private static final String TEST_USERNAME = "jane_doe";
     private static final String TEST_PASSWORD = "password";
-    private static final int port = 3306;
+    private static final int PORT = 3306;
 
     @Nested
     class AwsIamPlugin {
-        @Test
-        void validAwsIamRdsHostAndRegion() {
-            Assertions.assertAll(
-                    // Using all Regions from
-                    // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/regions/Regions.html
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.af-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-northeast-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-northeast-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-northeast-3.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-southeast-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-southeast-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.ca-central-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.cn-north-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.cn-northwest-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-central-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-north-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-west-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-west-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-west-3.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.govcloud.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.me-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.sa-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-gov-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-iso-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-iso-west-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-isob-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-west-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-west-2.rds.amazonaws.com", port))
-            );
+        @ParameterizedTest
+        @ValueSource(strings = {"us-gov-west-1", "us-gov-east-1", "us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1", "eu-south-1", "ap-east-1", "ap-south-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2", "sa-east-1", "cn-north-1", "cn-northwest-1", "ca-central-1", "me-south-1", "af-south-1"})
+        void validAwsIamRdsHostAndRegion(String reg) {
+            Assertions.assertNotNull(new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName." + reg + ".rds.amazonaws.com", PORT));
         }
 
         @Test
         void invalidAwsIamNotRdsHost() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.notRDS.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rrr.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.dsr.amazonaws.com", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.notRDS.amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rrr.amazonaws.com", PORT))
             );
         }
 
         @Test
         void invalidAwsIamNotAmazonHost() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.notamazon.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.amazon.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.google.com", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.notamazon.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.amazon.com", PORT))
             );
         }
 
         @Test
         void invalidAwsIamUsingIP() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin(hostToIP("us-east-2.console.aws.amazon.com"), port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin(hostToIP(DB_CONN_STR.substring("jdbc:mysql://".length())), port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin(hostToIP("us-east-2.console.aws.amazon.com"), PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin(hostToIP(DB_CONN_STR.substring("jdbc:mysql://".length())), PORT))
             );
         }
 
         @Test
         void invalidAwsIamEmptyHost() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin(" ", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin(" ", PORT))
             );
         }
 
         @Test
         void invalidAwsIamInvalidRegion() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.usa-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.random.rds.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName..amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-est-2.rds.amazonaws.com", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.usa-east-1.rds.amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.random.rds.amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName..amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-est-2.rds.amazonaws.com", PORT))
             );
         }
     }
 
     @Nested
     class AwsIamClearPlugin {
-        @Test
-        void validAwsIamRdsHostAndRegion() {
-            Assertions.assertAll(
-                    // Using all Regions from
-                    // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/regions/Regions.html
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.af-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-northeast-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-northeast-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-northeast-3.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-southeast-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ap-southeast-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.ca-central-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.cn-north-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.cn-northwest-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-central-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-north-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-west-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-west-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.eu-west-3.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.govcloud.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.me-south-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.sa-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-gov-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-iso-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-iso-west-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-isob-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-west-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-west-2.rds.amazonaws.com", port))
-            );
+        @ParameterizedTest
+        @ValueSource(strings = {"us-gov-west-1", "us-gov-east-1", "us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1", "eu-south-1", "ap-east-1", "ap-south-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2", "sa-east-1", "cn-north-1", "cn-northwest-1", "ca-central-1", "me-south-1", "af-south-1"})
+        void validAwsIamRdsHostAndRegion(String reg) {
+            Assertions.assertNotNull(new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName." + reg + ".rds.amazonaws.com", PORT));
         }
 
         @Test
         void invalidAwsIamNotRdsHost() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.notRDS.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rrr.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.dsr.amazonaws.com", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.notRDS.amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rrr.amazonaws.com", PORT))
             );
         }
 
         @Test
         void invalidAwsIamNotAmazonHost() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.notamazon.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.amazon.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.google.com", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.notamazon.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-east-2.rds.amazon.com", PORT))
             );
         }
 
         @Test
         void invalidAwsIamUsingIP() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin(hostToIP("us-east-2.console.aws.amazon.com"), port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin(hostToIP(DB_CONN_STR.substring("jdbc:mysql://".length())), port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin(hostToIP("us-east-2.console.aws.amazon.com"), PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin(hostToIP(DB_CONN_STR.substring("jdbc:mysql://".length())), PORT))
             );
         }
 
         @Test
         void invalidAwsIamEmptyHost() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin(" ", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin(" ", PORT))
             );
         }
 
         @Test
         void invalidAwsIamInvalidRegion() {
             Assertions.assertAll(
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.usa-east-1.rds.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.random.rds.amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName..amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName. .amazonaws.com", port)),
-                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-est-2.rds.amazonaws.com", port))
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.usa-east-1.rds.amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.random.rds.amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName..amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName. .amazonaws.com", PORT)),
+                    () -> Assertions.assertThrows(WrongArgumentException.class, () -> new AwsIamClearAuthenticationPlugin("MyDBInstanceName.SomeServerName.us-est-2.rds.amazonaws.com", PORT))
             );
         }
     }

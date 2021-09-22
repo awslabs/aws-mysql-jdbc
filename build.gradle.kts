@@ -235,6 +235,10 @@ dependencies {
 
     runtimeOnly("org.javassist:javassist:3.27.0-GA")
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.0")
+
+    // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-params
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
+
 }
 
 sourceSets {
