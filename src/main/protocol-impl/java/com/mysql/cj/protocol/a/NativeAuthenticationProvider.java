@@ -38,7 +38,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.amazonaws.util.AwsHostNameUtils;
+import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.regions.Regions;
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.PropertyDefinitions.SslMode;
@@ -58,7 +59,7 @@ import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
 import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationPlugin;
 import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
-import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationClearPlugin;
+import com.mysql.cj.protocol.a.authentication.AwsIamClearAuthenticationPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlOldPasswordPlugin;
@@ -248,9 +249,9 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         pluginsToInit.add(new MysqlOldPasswordPlugin());
         pluginsToInit.add(new AuthenticationLdapSaslClientPlugin());
 
-        final boolean useIam = Boolean.parseBoolean(this.propertySet.getStringProperty("useIAM").getValue());
+        final boolean useAwsIam = Boolean.parseBoolean(this.propertySet.getStringProperty("useIAM").getValue());
 
-        if (useIam) {
+        if (useAwsIam) {
             // Check Hostname for Valid AWS
             String host = this.protocol.getSocketConnection().getHost();
             Pattern auroraDnsPattern =
@@ -261,14 +262,21 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
             if(!matcher.find()){
                 // Does not match Amazon's Hostname, throw exception
                 throw ExceptionFactory.createException(WrongArgumentException.class,
-                    Messages.getString("AuthenticationProvider.HostnameNotValidForAWSIAMAuth"));
+                    Messages.getString("AuthenticationProvider.HostnameNotValidForAwsIamAuth"));
             }
 
             int port = this.protocol.getSocketConnection().getPort();
             String region = matcher.group(3);
+            try{
+                Regions.fromName(region);
+            }
+            catch(IllegalArgumentException e){
+                throw ExceptionFactory.createException(WrongArgumentException.class,
+                    Messages.getString("AuthenticationProvider.InvalidRegionForAwsIamAuth, Parsed Region: " + region));
+            }
 
             pluginsToInit.add(new AwsIamAuthenticationPlugin(host, port, region));
-            pluginsToInit.add(new AwsIamAuthenticationClearPlugin(host, port, region));
+            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(host, port, region));
 
             if (this.clientDefaultAuthenticationPlugin.equals(MysqlNativePasswordPlugin.class.getName())) {
                 this.clientDefaultAuthenticationPlugin = AwsIamAuthenticationPlugin.class.getName();
