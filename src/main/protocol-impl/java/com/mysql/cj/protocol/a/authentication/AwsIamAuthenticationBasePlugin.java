@@ -27,11 +27,18 @@
 package com.mysql.cj.protocol.a.authentication;
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.rds.auth.GetIamAuthTokenRequest;
 import com.amazonaws.services.rds.auth.RdsIamAuthTokenGenerator;
+import com.mysql.cj.Messages;
+import com.mysql.cj.exceptions.ExceptionFactory;
+import com.mysql.cj.exceptions.WrongArgumentException;
 import com.mysql.cj.protocol.AuthenticationPlugin;
 import com.mysql.cj.protocol.Protocol;
 import com.mysql.cj.protocol.a.NativePacketPayload;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class AwsIamAuthenticationBasePlugin implements AuthenticationPlugin<NativePacketPayload> {
   protected Protocol<NativePacketPayload> protocol;
@@ -57,10 +64,10 @@ public abstract class AwsIamAuthenticationBasePlugin implements AuthenticationPl
     return true;
   }
 
-  public AwsIamAuthenticationBasePlugin(String hostname, int port, String region) {
+  public AwsIamAuthenticationBasePlugin(String hostname, int port) {
     this.hostname = hostname;
     this.port = port;
-    this.region = region;
+    this.region = getRdsRegion();
   }
 
   @Override
@@ -83,5 +90,30 @@ public abstract class AwsIamAuthenticationBasePlugin implements AuthenticationPl
         .port(this.port)
         .userName(user)
         .build());
+  }
+
+  private String getRdsRegion(){
+    // Check Hostname
+    Pattern auroraDnsPattern =
+            Pattern.compile(
+                    "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?[a-zA-Z0-9]+\\.([a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com",
+                    Pattern.CASE_INSENSITIVE);
+    Matcher matcher = auroraDnsPattern.matcher(hostname);
+    if(!matcher.find()){
+      // Does not match Amazon's Hostname, throw exception
+      throw ExceptionFactory.createException(WrongArgumentException.class,
+              Messages.getString("AuthenticationProvider.HostnameNotValidForAwsIamAuth"));
+    }
+
+    // Get and Check Region
+    String retReg = matcher.group(3);
+    try{
+      Regions.fromName(retReg);
+    }
+    catch(IllegalArgumentException e){
+      throw ExceptionFactory.createException(WrongArgumentException.class,
+              Messages.getString("AuthenticationProvider.InvalidRegionForAwsIamAuth, Parsed Region: " + retReg));
+    }
+    return retReg;
   }
 }

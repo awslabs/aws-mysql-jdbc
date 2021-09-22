@@ -252,31 +252,11 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         final boolean useAwsIam = Boolean.parseBoolean(this.propertySet.getStringProperty("useIAM").getValue());
 
         if (useAwsIam) {
-            // Check Hostname for Valid AWS
             String host = this.protocol.getSocketConnection().getHost();
-            Pattern auroraDnsPattern =
-                Pattern.compile(
-                    "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?[a-zA-Z0-9]+\\.([a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com",
-                    Pattern.CASE_INSENSITIVE);
-            Matcher matcher = auroraDnsPattern.matcher(host);
-            if(!matcher.find()){
-                // Does not match Amazon's Hostname, throw exception
-                throw ExceptionFactory.createException(WrongArgumentException.class,
-                    Messages.getString("AuthenticationProvider.HostnameNotValidForAwsIamAuth"));
-            }
-
             int port = this.protocol.getSocketConnection().getPort();
-            String region = matcher.group(3);
-            try{
-                Regions.fromName(region);
-            }
-            catch(IllegalArgumentException e){
-                throw ExceptionFactory.createException(WrongArgumentException.class,
-                    Messages.getString("AuthenticationProvider.InvalidRegionForAwsIamAuth, Parsed Region: " + region));
-            }
 
-            pluginsToInit.add(new AwsIamAuthenticationPlugin(host, port, region));
-            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(host, port, region));
+            pluginsToInit.add(new AwsIamAuthenticationPlugin(host, port));
+            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(host, port));
 
             if (this.clientDefaultAuthenticationPlugin.equals(MysqlNativePasswordPlugin.class.getName())) {
                 this.clientDefaultAuthenticationPlugin = AwsIamAuthenticationPlugin.class.getName();

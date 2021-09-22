@@ -32,10 +32,10 @@ import com.mysql.cj.util.StringUtils;
 
 import java.util.List;
 
-public class AwsIamAuthenticationClearPlugin extends AwsIamAuthenticationBasePlugin {
+public class AwsIamClearAuthenticationPlugin extends AwsIamAuthenticationBasePlugin {
 
-  public AwsIamAuthenticationClearPlugin(String hostname, int port, String region) {
-    super(hostname, port, region);
+  public AwsIamClearAuthenticationPlugin(String hostname, int port) {
+    super(hostname, port);
   }
 
   public String getProtocolPluginName() {
