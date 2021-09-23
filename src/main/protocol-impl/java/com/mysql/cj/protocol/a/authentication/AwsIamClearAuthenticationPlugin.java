@@ -26,34 +26,16 @@
 
 package com.mysql.cj.protocol.a.authentication;
 
-import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
-import com.mysql.cj.protocol.a.NativePacketPayload;
-import com.mysql.cj.util.StringUtils;
+public class AwsIamClearAuthenticationPlugin extends MysqlClearPasswordPlugin {
 
-import java.util.List;
+  private final AwsIamAuthenticationTokenHelper helper;
 
-public class AwsIamClearAuthenticationPlugin extends AwsIamAuthenticationBasePlugin {
-
-  public AwsIamClearAuthenticationPlugin(String hostname, int port) {
-    super(hostname, port);
-  }
-
-  public String getProtocolPluginName() {
-    return "mysql_clear_password";
+  public AwsIamClearAuthenticationPlugin(final AwsIamAuthenticationTokenHelper helper) {
+    this.helper = helper;
   }
 
   @Override
-  public boolean nextAuthenticationStep(NativePacketPayload fromServer, List<NativePacketPayload> toServer) {
-    toServer.clear();
-
-    String encoding = this.protocol.versionMeetsMinimum(5, 7, 6) ? this.protocol.getPasswordCharacterEncoding() : "UTF-8";
-    NativePacketPayload bresp = new NativePacketPayload(StringUtils.getBytes(this.authenticationToken != null ? this.authenticationToken : "", encoding));
-
-    bresp.setPosition(bresp.getPayloadLength());
-    bresp.writeInteger(IntegerDataType.INT1, 0);
-    bresp.setPosition(0);
-
-    toServer.add(bresp);
-    return true;
+  public void setAuthenticationParameters(String user, String password) {
+    super.setAuthenticationParameters(user, this.helper.getOrGenerateToken(user));
   }
 }

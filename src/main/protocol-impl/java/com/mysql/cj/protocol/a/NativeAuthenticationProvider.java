@@ -58,6 +58,7 @@ import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
 import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationPlugin;
+import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationTokenHelper;
 import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.AwsIamClearAuthenticationPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
@@ -249,16 +250,23 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         pluginsToInit.add(new MysqlOldPasswordPlugin());
         pluginsToInit.add(new AuthenticationLdapSaslClientPlugin());
 
-        final boolean useAwsIam = Boolean.parseBoolean(this.propertySet.getStringProperty("useIAM").getValue());
+        final boolean useAwsIam = this.propertySet.getBooleanProperty(PropertyKey.useAwsIam).getValue();
 
         if (useAwsIam) {
             String host = this.protocol.getSocketConnection().getHost();
             int port = this.protocol.getSocketConnection().getPort();
 
-            pluginsToInit.add(new AwsIamAuthenticationPlugin(host, port));
-            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(host, port));
+            final AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
 
-            if (this.clientDefaultAuthenticationPlugin.equals(MysqlNativePasswordPlugin.class.getName())) {
+            pluginsToInit.add(new AwsIamAuthenticationPlugin(tokenHelper));
+            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(tokenHelper));
+
+            final String defaultPluginClassName = this.propertySet
+                    .getStringProperty(PropertyKey.defaultAuthenticationPlugin)
+                    .getPropertyDefinition()
+                    .getDefaultValue();
+
+            if (this.clientDefaultAuthenticationPlugin.equals(defaultPluginClassName)) {
                 this.clientDefaultAuthenticationPlugin = AwsIamAuthenticationPlugin.class.getName();
             }
         } else {

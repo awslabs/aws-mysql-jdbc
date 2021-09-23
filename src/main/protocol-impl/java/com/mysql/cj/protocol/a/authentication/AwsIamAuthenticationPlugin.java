@@ -26,40 +26,16 @@
 
 package com.mysql.cj.protocol.a.authentication;
 
-import com.mysql.cj.protocol.Security;
-import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
-import com.mysql.cj.protocol.a.NativePacketPayload;
+public class AwsIamAuthenticationPlugin extends MysqlNativePasswordPlugin {
 
-import java.util.List;
+  private final AwsIamAuthenticationTokenHelper helper;
 
-public class AwsIamAuthenticationPlugin extends AwsIamAuthenticationBasePlugin {
-
-  public AwsIamAuthenticationPlugin(String hostname, int port) {
-    super(hostname, port);
-  }
-
-  public String getProtocolPluginName() {
-    return "aws_iam_authentication";
+  public AwsIamAuthenticationPlugin(final AwsIamAuthenticationTokenHelper helper) {
+    this.helper = helper;
   }
 
   @Override
-  public boolean nextAuthenticationStep(
-      NativePacketPayload fromServer, List<NativePacketPayload> toServer) {
-
-    toServer.clear();
-
-    NativePacketPayload bresp;
-
-    String pwd = this.authenticationToken;
-
-    if (fromServer == null || pwd == null || pwd.length() == 0) {
-      bresp = new NativePacketPayload(new byte[0]);
-    } else {
-      bresp = new NativePacketPayload(
-          Security.scramble411(pwd, fromServer.readBytes(StringSelfDataType.STRING_TERM), this.protocol.getPasswordCharacterEncoding()));
-    }
-    toServer.add(bresp);
-
-    return true;
+  public void setAuthenticationParameters(String user, String password) {
+    super.setAuthenticationParameters(user, this.helper.getOrGenerateToken(user));
   }
 }
