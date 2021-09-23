@@ -29,17 +29,6 @@
 
 package com.mysql.cj.protocol.a;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import com.amazonaws.regions.RegionUtils;
-import com.amazonaws.regions.Regions;
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.PropertyDefinitions.SslMode;
@@ -59,14 +48,22 @@ import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
 import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationPlugin;
 import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationTokenHelper;
-import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.AwsIamClearAuthenticationPlugin;
+import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlOldPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.Sha256PasswordPlugin;
 import com.mysql.cj.protocol.a.result.OkPacket;
 import com.mysql.cj.util.StringUtils;
+
+import javax.resource.NotSupportedException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class NativeAuthenticationProvider implements AuthenticationProvider<NativePacketPayload> {
 
@@ -256,7 +253,7 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
             String host = this.protocol.getSocketConnection().getHost();
             int port = this.protocol.getSocketConnection().getPort();
 
-            final AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
+            AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
 
             pluginsToInit.add(new AwsIamAuthenticationPlugin(tokenHelper));
             pluginsToInit.add(new AwsIamClearAuthenticationPlugin(tokenHelper));

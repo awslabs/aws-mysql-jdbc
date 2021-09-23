@@ -12,12 +12,13 @@ import java.util.regex.Pattern;
 
 public class AwsIamAuthenticationTokenHelper {
 
-  private String token;
-  private String region;
-  private String hostname;
-  private int port;
+  protected String token;
+  protected String region;
+  protected String hostname;
+  protected int port;
 
   public AwsIamAuthenticationTokenHelper(final String hostname, final int port) {
+    this.token = null;
     this.hostname = hostname;
     this.port = port;
     this.region = getRdsRegion();
@@ -31,7 +32,7 @@ public class AwsIamAuthenticationTokenHelper {
     return token;
   }
 
-  private String generateAuthenticationToken(String user) {
+  protected String generateAuthenticationToken(String user) {
     final RdsIamAuthTokenGenerator generator = RdsIamAuthTokenGenerator
         .builder()
         .region(this.region)
@@ -46,7 +47,7 @@ public class AwsIamAuthenticationTokenHelper {
         .build());
   }
 
-  private String getRdsRegion() {
+  protected String getRdsRegion() {
     // Check Hostname
     Pattern auroraDnsPattern =
         Pattern.compile(
@@ -57,17 +58,21 @@ public class AwsIamAuthenticationTokenHelper {
       // Does not match Amazon's Hostname, throw exception
       throw ExceptionFactory.createException(Messages.getString(
               "AuthenticationAwsIamPlugin.UnsupportedHostname",
-              new String[]{hostname}));
+              new String[]{hostname})
+      );
     }
 
     // Get and Check Region
     String retReg = matcher.group(3);
     try {
       Regions.fromName(retReg);
-    } catch (IllegalArgumentException e) {
-      throw ExceptionFactory.createException(Messages.getString(
-              "AuthenticationAwsIamPlugin.UnsupportedRegion",
-              new String[]{retReg}));
+    } catch (IllegalArgumentException exception) {
+
+      throw ExceptionFactory.createException(
+          Messages.getString(
+              "AuthenticationAwsIamPlugin.UnsupportedHostname",
+              new String[]{hostname})
+          );
     }
     return retReg;
   }
