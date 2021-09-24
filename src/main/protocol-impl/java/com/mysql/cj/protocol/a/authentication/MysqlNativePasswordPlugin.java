@@ -43,7 +43,7 @@ import com.mysql.cj.protocol.a.NativePacketPayload;
 public class MysqlNativePasswordPlugin implements AuthenticationPlugin<NativePacketPayload> {
 
     private Protocol<NativePacketPayload> protocol;
-    protected String password = null;
+    private String password = null;
 
     @Override
     public void init(Protocol<NativePacketPayload> prot) {

@@ -38,10 +38,10 @@ import java.util.regex.Pattern;
 
 public class AwsIamAuthenticationTokenHelper {
 
-  protected String token;
-  protected String region;
-  protected String hostname;
-  protected int port;
+  private String token;
+  private String region;
+  private String hostname;
+  private int port;
 
   public AwsIamAuthenticationTokenHelper(final String hostname, final int port) {
     this.hostname = hostname;
@@ -57,7 +57,7 @@ public class AwsIamAuthenticationTokenHelper {
     return token;
   }
 
-  protected String generateAuthenticationToken(String user) {
+  private String generateAuthenticationToken(String user) {
     final RdsIamAuthTokenGenerator generator = RdsIamAuthTokenGenerator
         .builder()
         .region(this.region)
@@ -72,7 +72,7 @@ public class AwsIamAuthenticationTokenHelper {
         .build());
   }
 
-  protected String getRdsRegion() {
+  private String getRdsRegion() {
     // Check Hostname
     Pattern auroraDnsPattern =
         Pattern.compile(
@@ -95,7 +95,7 @@ public class AwsIamAuthenticationTokenHelper {
 
       throw ExceptionFactory.createException(
           Messages.getString(
-              "AuthenticationAwsIamPlugin.UnsupportedHostname",
+              "AuthenticationAwsIamPlugin.UnsupportedRegion",
               new String[]{hostname})
           );
     }
