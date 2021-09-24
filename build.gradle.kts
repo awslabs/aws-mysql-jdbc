@@ -53,6 +53,8 @@ plugins {
 java {
     withJavadocJar()
     withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 checkstyle {
@@ -110,14 +112,6 @@ tasks.shadowJar {
 
     from("${buildDir}/META-INF/services/") {
         into("META-INF/services/")
-    }
-
-    doFirst {
-        mkdir("${buildDir}/META-INF/services/")
-        val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
-        if(driverFile.createNewFile()) {
-            driverFile.writeText("software.aws.rds.jdbc.mysql.Driver")
-        }
     }
 
     dependencies {
@@ -217,7 +211,7 @@ tasks.withType<Checkstyle>().configureEach {
 
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
-    testImplementation("com.amazonaws:aws-java-sdk-rds:1.11.875")
+    testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.73")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.2")
     testImplementation("org.junit.platform:junit-platform-commons:1.6.2")
