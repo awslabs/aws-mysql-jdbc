@@ -34,12 +34,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class AwsIamAuthenticationHelperTest {
+
     private static final int PORT = 3306;
 
     @Nested
     class ValidHostAndRegions{
         @ParameterizedTest
-        @ValueSource(strings = {"us-east-1", "us-east-2"})
+        @ValueSource(strings = {"us-east-1"})
         void validAwsIamRdsHostAndRegion(String reg) {
             Assertions.assertNotNull(new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName." + reg + ".rds.amazonaws.com", PORT));
         }
@@ -48,7 +49,7 @@ public class AwsIamAuthenticationHelperTest {
     @Nested
     class InvalidHost{
         @ParameterizedTest
-        @ValueSource(strings = {"notRDS", "rrr"})
+        @ValueSource(strings = {"notRDS"})
         void invalidAwsIamNotRdsHost(String host) {
             Assertions.assertThrows(
                 CJException.class,
@@ -56,7 +57,7 @@ public class AwsIamAuthenticationHelperTest {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"notamazon", "amazon"})
+        @ValueSource(strings = {"notamazon"})
         void invalidAwsIamNotAmazonHost(String host) {
             Assertions.assertThrows(
                 CJException.class,
@@ -86,7 +87,7 @@ public class AwsIamAuthenticationHelperTest {
     @Nested
     class InvalidRegion{
         @ParameterizedTest
-        @ValueSource(strings = {"usa-east-1", "random", "", " ", "us-est-2"})
+        @ValueSource(strings = {"fake-1", "", " "})
         void invalidAwsIamInvalidRegion(String reg) {
             Assertions.assertThrows(
                 CJException.class,
