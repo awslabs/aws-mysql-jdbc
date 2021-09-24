@@ -299,7 +299,77 @@ The default XML parser contained a security risk which made the driver prone to 
 
 | Parameter       | Value           | Required      | Description  |
 | ------------- |:-------------:|:-------------:| ----- |
-|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` | 
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` |
+
+### AWS IAM Authentication
+
+An optional authentication method is to use Amazon AWS Identity and Access Management (IAM). 
+When using AWS IAM Authentication, Connection URL must be an Amazon endpoints, and not a custom domain or IP Address. 
+
+IAM database authentication is available for the following database engines:
+- MySQL 8.0, minor version 8.0.16 or higher
+- MySQL 5.7, minor version 5.7.16 or higher
+- MySQL 5.6, minor version 5.6.34 or higher
+
+#### Setup for IAM database Authentication for MySQL 
+1. Enable IAM Authentication for existing database or; Create a new Database on AWS RDS Console
+   1. Creating new Database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html
+   2. Modifying existing Database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html
+2. Create/Change and Use IAM Policy for IAM Database Access
+   1. https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html
+3. Create a Database Account using IAM Authentication
+   1. Connect to MySQL Database using regular logins and create a new user with the following
+      1. `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
+   2. For more information, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html
+
+| Parameter       | Value           | Required      | Description  |
+| ------------- |:-------------:|:-------------:| ----- |
+|`useAwsIam` | Boolean | No | Set to true if you would like to use AWS IAM Authentication<br/><br/>**Default value:** `false` |
+
+###### Sample Code
+```java
+import com.mysql.cj.conf.PropertyKey;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Properties;
+
+import software.aws.rds.jdbc.mysql.Driver;
+
+public class AwsIamAuthenticationSample {
+
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
+   private static final String USER = "example_user_name";
+
+   public static void main(String[] args) throws SQLException {
+     
+      // Load AWS RDS Driver
+      DriverManager.registerDriver(new Driver());
+      
+      // Create Properties and Set-up for AWS IAM Authentication
+      final Properties properties = new Properties();
+      properties.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
+      properties.setProperty(PropertyKey.USER.getKeyName(), USER);
+
+      // Try and make a Connection
+      Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
+
+      // Test a Query
+      final Statement myQuery = conn.createStatement();
+      ResultSet rs = myQuery.executeQuery("SELECT 1;");
+      while (rs.next()) {
+         System.out.println(rs.getString(1));
+      }
+
+      // Close Connection
+      conn.close();
+   }
+}
+```
+
 
 ## Development
 
