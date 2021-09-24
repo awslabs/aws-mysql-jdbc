@@ -57,7 +57,6 @@ import com.mysql.cj.protocol.a.authentication.Sha256PasswordPlugin;
 import com.mysql.cj.protocol.a.result.OkPacket;
 import com.mysql.cj.util.StringUtils;
 
-import javax.resource.NotSupportedException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
