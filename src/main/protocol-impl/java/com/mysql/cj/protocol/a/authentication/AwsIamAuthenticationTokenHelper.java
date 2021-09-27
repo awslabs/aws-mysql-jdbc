@@ -39,9 +39,9 @@ import java.util.regex.Pattern;
 public class AwsIamAuthenticationTokenHelper {
 
   private String token;
-  private String region;
-  private String hostname;
-  private int port;
+  private final String region;
+  private final String hostname;
+  private final int port;
 
   public AwsIamAuthenticationTokenHelper(final String hostname, final int port) {
     this.hostname = hostname;

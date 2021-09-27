@@ -252,6 +252,14 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
             String host = this.protocol.getSocketConnection().getHost();
             int port = this.protocol.getSocketConnection().getPort();
 
+            try {
+                Class.forName("com.amazonaws.auth.AWSCredentialsProvider");
+            } catch (ClassNotFoundException ex) {
+                throw ExceptionFactory.createException(Messages.getString(
+                    "AuthenticationAwsIamPlugin.MissingSDK"
+                ));
+            }
+
             AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
 
             pluginsToInit.add(new AwsIamAuthenticationPlugin(tokenHelper));
