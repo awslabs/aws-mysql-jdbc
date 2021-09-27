@@ -53,6 +53,8 @@ plugins {
 java {
     withJavadocJar()
     withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 checkstyle {
@@ -110,14 +112,6 @@ tasks.shadowJar {
 
     from("${buildDir}/META-INF/services/") {
         into("META-INF/services/")
-    }
-
-    doFirst {
-        mkdir("${buildDir}/META-INF/services/")
-        val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
-        if(driverFile.createNewFile()) {
-            driverFile.writeText("software.aws.rds.jdbc.mysql.Driver")
-        }
     }
 
     dependencies {
