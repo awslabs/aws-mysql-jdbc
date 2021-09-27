@@ -249,9 +249,6 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         final boolean useAwsIam = this.propertySet.getBooleanProperty(PropertyKey.useAwsIam).getValue();
 
         if (useAwsIam) {
-            String host = this.protocol.getSocketConnection().getHost();
-            int port = this.protocol.getSocketConnection().getPort();
-
             try {
                 Class.forName("com.amazonaws.auth.AWSCredentialsProvider");
             } catch (ClassNotFoundException ex) {
@@ -259,6 +256,9 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
                     "AuthenticationAwsIamPlugin.MissingSDK"
                 ));
             }
+
+            String host = this.protocol.getSocketConnection().getHost();
+            int port = this.protocol.getSocketConnection().getPort();
 
             AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
 
