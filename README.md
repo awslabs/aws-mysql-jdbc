@@ -301,30 +301,30 @@ The default XML parser contained a security risk which made the driver prone to 
 | ------------- |:-------------:|:-------------:| ----- |
 |`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` |
 
-### AWS IAM Authentication
+### AWS IAM Database Authentication
 
 An optional authentication method is to use Amazon AWS Identity and Access Management (IAM). 
-When using AWS IAM Authentication, Connection URL must be an Amazon endpoints, and not a custom domain or IP Address. 
+When using AWS IAM database authentication, host URL must be a valid Amazon endpoint, and not a custom domain or an IP address.
+<br>ie. `database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com`
 
-IAM database authentication is available for the following database engines:
-- MySQL 8.0, minor version 8.0.16 or higher
-- MySQL 5.7, minor version 5.7.16 or higher
-- MySQL 5.6, minor version 5.6.34 or higher
+
+IAM database authentication is limited to certain database engines.
+For more information on limitations and recommendations, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
 
 #### Setup for IAM database Authentication for MySQL 
-1. Enable IAM Authentication for existing database or; Create a new Database on AWS RDS Console
-   1. Creating new Database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html
-   2. Modifying existing Database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html
-2. Create/Change and Use IAM Policy for IAM Database Access
+1. Enable AWS IAM database authentication for existing database or create a new database on AWS RDS Console
+   1. Creating new database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html
+   2. Modifying existing database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html
+2. Create/Change and use AWS IAM policy for AWS IAM database authentication
    1. https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html
-3. Create a Database Account using IAM Authentication
-   1. Connect to MySQL Database using regular logins and create a new user with the following
+3. Create a database account using AWS IAM database authentication
+   1. Connect to MySQL database using master logins and create a new user with the following
       1. `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
    2. For more information, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html
 
 | Parameter       | Value           | Required      | Description  |
 | ------------- |:-------------:|:-------------:| ----- |
-|`useAwsIam` | Boolean | No | Set to true if you would like to use AWS IAM Authentication<br/><br/>**Default value:** `false` |
+|`useAwsIam` | Boolean | No | Set to true if you would like to use AWS IAM database authentication<br/><br/>**Default value:** `false` |
 
 ###### Sample Code
 ```java
@@ -344,31 +344,29 @@ public class AwsIamAuthenticationSample {
    private static final String USER = "example_user_name";
 
    public static void main(String[] args) throws SQLException {
-     
-      // Load AWS RDS Driver
+      /// Load AWS RDS driver
       DriverManager.registerDriver(new Driver());
-      
-      // Create Properties and Set-up for AWS IAM Authentication
+
+      // Create properties and set-up for AWS IAM database authentication
       final Properties properties = new Properties();
       properties.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
       properties.setProperty(PropertyKey.USER.getKeyName(), USER);
 
-      // Try and make a Connection
-      Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
-
-      // Test a Query
-      final Statement myQuery = conn.createStatement();
-      ResultSet rs = myQuery.executeQuery("SELECT NOW();");
-      while (rs.next()) {
-         System.out.println(rs.getString(1));
+      // Try and make a connection
+      try(final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties)){
+         try(final Statement myQuery = conn.createStatement()) {
+            try (final ResultSet rs = myQuery.executeQuery("SELECT NOW();")) {
+               while (rs.next()) {
+                  System.out.println(rs.getString(1));
+               }
+            }
+         }
+      }catch (final SQLException throwable){
+         throwable.printStackTrace();
       }
-
-      // Close Connection
-      conn.close();
    }
 }
 ```
-
 
 ## Development
 
