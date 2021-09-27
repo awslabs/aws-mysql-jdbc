@@ -328,8 +328,6 @@ IAM database authentication is available for the following database engines:
 
 ###### Sample Code
 ```java
-import com.mysql.cj.conf.PropertyKey;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -337,6 +335,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
+import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.conf.PropertyKey;
 import software.aws.rds.jdbc.mysql.Driver;
 
 public class AwsIamAuthenticationSample {
@@ -359,7 +358,7 @@ public class AwsIamAuthenticationSample {
 
       // Test a Query
       final Statement myQuery = conn.createStatement();
-      ResultSet rs = myQuery.executeQuery("SELECT 1;");
+      ResultSet rs = myQuery.executeQuery("SELECT NOW();");
       while (rs.next()) {
          System.out.println(rs.getString(1));
       }
