@@ -42,6 +42,7 @@ public class AwsIamAuthenticationTokenHelper {
   private final String region;
   private final String hostname;
   private final int port;
+  private static final int REGION_MATCHER_GROUP = 3;
 
   public AwsIamAuthenticationTokenHelper(final String hostname, final int port) {
     this.hostname = hostname;
@@ -88,7 +89,7 @@ public class AwsIamAuthenticationTokenHelper {
     }
 
     // Get and Check Region
-    final String rdsRegion = matcher.group(3);
+    final String rdsRegion = matcher.group(REGION_MATCHER_GROUP);
     try {
       Regions.fromName(rdsRegion);
     } catch (final IllegalArgumentException exception) {
