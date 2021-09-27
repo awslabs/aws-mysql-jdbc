@@ -353,15 +353,15 @@ public class AwsIamAuthenticationSample {
       properties.setProperty(PropertyKey.USER.getKeyName(), USER);
 
       // Try and make a connection
-      try(final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties)){
-         try(final Statement myQuery = conn.createStatement()) {
+      try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties)) {
+         try (final Statement myQuery = conn.createStatement()) {
             try (final ResultSet rs = myQuery.executeQuery("SELECT NOW();")) {
                while (rs.next()) {
                   System.out.println(rs.getString(1));
                }
             }
          }
-      }catch (final SQLException throwable){
+      } catch (final SQLException throwable) {
          throwable.printStackTrace();
       }
    }
