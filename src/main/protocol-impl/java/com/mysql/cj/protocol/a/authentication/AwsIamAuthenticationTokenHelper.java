@@ -57,7 +57,7 @@ public class AwsIamAuthenticationTokenHelper {
     return token;
   }
 
-  private String generateAuthenticationToken(String user) {
+  private String generateAuthenticationToken(final String user) {
     final RdsIamAuthTokenGenerator generator = RdsIamAuthTokenGenerator
         .builder()
         .region(this.region)
@@ -74,11 +74,11 @@ public class AwsIamAuthenticationTokenHelper {
 
   private String getRdsRegion() {
     // Check Hostname
-    Pattern auroraDnsPattern =
+    final Pattern auroraDnsPattern =
         Pattern.compile(
             "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?[a-zA-Z0-9]+\\.([a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com",
             Pattern.CASE_INSENSITIVE);
-    Matcher matcher = auroraDnsPattern.matcher(hostname);
+    final Matcher matcher = auroraDnsPattern.matcher(hostname);
     if (!matcher.find()) {
       // Does not match Amazon's Hostname, throw exception
       throw ExceptionFactory.createException(Messages.getString(
@@ -88,17 +88,18 @@ public class AwsIamAuthenticationTokenHelper {
     }
 
     // Get and Check Region
-    String retReg = matcher.group(3);
+    final String rdsRegion = matcher.group(3);
     try {
-      Regions.fromName(retReg);
-    } catch (IllegalArgumentException exception) {
+      Regions.fromName(rdsRegion);
+    } catch (final IllegalArgumentException exception) {
 
       throw ExceptionFactory.createException(
           Messages.getString(
               "AuthenticationAwsIamPlugin.UnsupportedRegion",
-              new String[]{hostname})
+              new String[]{hostname}),
+          exception
           );
     }
-    return retReg;
+    return rdsRegion;
   }
 }

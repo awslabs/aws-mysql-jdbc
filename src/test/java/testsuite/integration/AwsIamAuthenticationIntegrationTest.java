@@ -46,7 +46,7 @@ import java.util.Properties;
 
 import software.aws.rds.jdbc.mysql.Driver;
 
-@Disabled
+//@Disabled
 @TestMethodOrder(Alphanumeric.class)
 public class AwsIamAuthenticationIntegrationTest {
 
@@ -74,48 +74,48 @@ public class AwsIamAuthenticationIntegrationTest {
 
     @Test
     void invalidConnectionAwsIamAuthenticationWrongUser() {
-        Properties props = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
+        final Properties props = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
 
         Assertions.assertThrows(
             SQLException.class,
             () -> {
-                Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
+                final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
             }
         );
     }
 
     @Test
     void invalidConnectionAwsIamAuthenticationNoUser() {
-        Properties props = initProp("", TEST_PASSWORD);
+        final Properties props = initProp("", TEST_PASSWORD);
 
         Assertions.assertThrows(
             SQLException.class,
             () -> {
-                Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
+                final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
             }
         );
     }
 
     @Test
     void invalidConnectionAwsIamAuthenticationIpHostname() {
-        Properties props = initProp(TEST_DB_USER, TEST_PASSWORD);
+        final Properties props = initProp(TEST_DB_USER, TEST_PASSWORD);
 
-        String hostname = DB_CONN_STR.substring(DB_CONN_STR_PREFIX.length());
+        final String hostname = DB_CONN_STR.substring(DB_CONN_STR_PREFIX.length());
         Assertions.assertThrows(
             SQLException.class,
-            () -> { Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + hostToIP(hostname), props);
+            () -> { final Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + hostToIP(hostname), props);
         });
     }
 
     @Test
     void validConnectionAwsIamAuthentication() throws SQLException {
-        Properties props = initProp(TEST_DB_USER, TEST_PASSWORD);
+        final Properties props = initProp(TEST_DB_USER, TEST_PASSWORD);
 
-        Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
+        final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
         Assertions.assertNotNull(conn);
 
         final Statement myQuery = conn.createStatement();
-        ResultSet rs = myQuery.executeQuery("SELECT 1;");
+        final ResultSet rs = myQuery.executeQuery("SELECT 1;");
         while (rs.next()) {
             Assertions.assertEquals("1", rs.getString(1));
         }
@@ -126,12 +126,12 @@ public class AwsIamAuthenticationIntegrationTest {
 
     @Test
     void validConnectionAwsIamAuthenticationNoPassword() throws SQLException {
-        Properties props = initProp(TEST_DB_USER, "");
-        Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
+        final Properties props = initProp(TEST_DB_USER, "");
+        final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
         Assertions.assertNotNull(conn);
 
         final Statement myQuery = conn.createStatement();
-        ResultSet rs = myQuery.executeQuery("SELECT 1;");
+        final ResultSet rs = myQuery.executeQuery("SELECT 1;");
         while (rs.next()) {
             Assertions.assertEquals("1", rs.getString(1));
         }
@@ -141,7 +141,7 @@ public class AwsIamAuthenticationIntegrationTest {
     }
 
     // Helper Functions
-    private Properties initProp(String user, String password) {
+    private Properties initProp(final String user, final String password) {
         final Properties properties = new Properties();
         properties.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
         properties.setProperty(PropertyKey.USER.getKeyName(), user);
@@ -150,11 +150,11 @@ public class AwsIamAuthenticationIntegrationTest {
         return properties;
     }
 
-    private String hostToIP(String hostname){
+    private String hostToIP(final String hostname){
         InetAddress inet = null;
         try {
             inet = InetAddress.getByName(hostname);
-        } catch (UnknownHostException e) {
+        } catch (final UnknownHostException e) {
             e.printStackTrace();
         }
         return inet.getHostAddress();

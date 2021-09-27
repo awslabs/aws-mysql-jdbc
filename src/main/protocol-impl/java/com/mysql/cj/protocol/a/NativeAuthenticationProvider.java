@@ -260,7 +260,7 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
             final String host = this.protocol.getSocketConnection().getHost();
             final int port = this.protocol.getSocketConnection().getPort();
 
-            AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
+            final AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(host, port);
 
             pluginsToInit.add(new AwsIamAuthenticationPlugin(tokenHelper));
             pluginsToInit.add(new AwsIamClearAuthenticationPlugin(tokenHelper));

@@ -41,7 +41,7 @@ public class AwsIamAuthenticationHelperTest {
     class ValidHostAndRegions{
         @ParameterizedTest
         @ValueSource(strings = {"us-east-1"})
-        void validAwsIamRdsHostAndRegion(String reg) {
+        void validAwsIamRdsHostAndRegion(final String reg) {
             Assertions.assertNotNull(new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName." + reg + ".rds.amazonaws.com", PORT));
         }
     }
@@ -50,7 +50,7 @@ public class AwsIamAuthenticationHelperTest {
     class InvalidHost{
         @ParameterizedTest
         @ValueSource(strings = {"notRDS"})
-        void invalidAwsIamNotRdsHost(String host) {
+        void invalidAwsIamNotRdsHost(final String host) {
             Assertions.assertThrows(
                 CJException.class,
                 () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName.us-east-2." + host + ".amazonaws.com", PORT));
@@ -58,7 +58,7 @@ public class AwsIamAuthenticationHelperTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"notamazon"})
-        void invalidAwsIamNotAmazonHost(String host) {
+        void invalidAwsIamNotAmazonHost(final String host) {
             Assertions.assertThrows(
                 CJException.class,
                 () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName.us-east-2.rds." + host + ".com", PORT));
@@ -66,7 +66,7 @@ public class AwsIamAuthenticationHelperTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"", " "})
-        void invalidAwsIamEmptyHost(String host) {
+        void invalidAwsIamEmptyHost(final String host) {
             Assertions.assertThrows(
                 CJException.class,
                 () -> new AwsIamAuthenticationTokenHelper(host, PORT));
@@ -76,7 +76,7 @@ public class AwsIamAuthenticationHelperTest {
         class UsingIP{
             @ParameterizedTest
             @ValueSource(strings = {"192.168.0.1", "localhost"})
-            void invalidAwsIamUsingIP(String host) {
+            void invalidAwsIamUsingIP(final String host) {
                 Assertions.assertThrows(
                     CJException.class,
                     () -> new AwsIamAuthenticationTokenHelper(host, PORT));
@@ -88,7 +88,7 @@ public class AwsIamAuthenticationHelperTest {
     class InvalidRegion{
         @ParameterizedTest
         @ValueSource(strings = {"fake-1", "", " "})
-        void invalidAwsIamInvalidRegion(String reg) {
+        void invalidAwsIamInvalidRegion(final String reg) {
             Assertions.assertThrows(
                 CJException.class,
                 () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName." + reg + ".rds.amazonaws.com", PORT));
