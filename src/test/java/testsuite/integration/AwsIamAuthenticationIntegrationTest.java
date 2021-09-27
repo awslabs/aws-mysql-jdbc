@@ -27,11 +27,9 @@
 package testsuite.integration;
 
 import com.mysql.cj.conf.PropertyKey;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.MethodOrderer.Alphanumeric;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
@@ -44,10 +42,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
-import software.aws.rds.jdbc.mysql.Driver;
-
-//@Disabled
-@TestMethodOrder(Alphanumeric.class)
+@Disabled
+@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class AwsIamAuthenticationIntegrationTest {
 
     private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
@@ -58,22 +54,12 @@ public class AwsIamAuthenticationIntegrationTest {
     private static final String TEST_PASSWORD = System.getenv("TEST_PASSWORD");
     private static final String TEST_DB_USER = System.getenv("TEST_DB_USER");
     private static final String DB_CONN_STR = DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX;
-    private static Driver testDriver;
 
-
-    @BeforeEach
-    public void initTest() throws SQLException {
-        testDriver = new Driver();
-        DriverManager.registerDriver(testDriver);
-    }
-
-    @AfterEach
-    public void endTest() throws SQLException {
-        DriverManager.deregisterDriver(testDriver);
-    }
-
+    /**
+     * Attempt to connect using the wrong database username
+     */
     @Test
-    void invalidConnectionAwsIamAuthenticationWrongUser() {
+    public void test_1_WrongDatabaseUsername() {
         final Properties props = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
 
         Assertions.assertThrows(
@@ -84,8 +70,11 @@ public class AwsIamAuthenticationIntegrationTest {
         );
     }
 
+    /**
+     * Attempt to connect without specifying a database username
+     */
     @Test
-    void invalidConnectionAwsIamAuthenticationNoUser() {
+    public void test_2_NoDatabaseUsername() {
         final Properties props = initProp("", TEST_PASSWORD);
 
         Assertions.assertThrows(
@@ -96,8 +85,11 @@ public class AwsIamAuthenticationIntegrationTest {
         );
     }
 
+    /**
+     * Attempt to connect using IP address instead of a hostname.
+     */
     @Test
-    void invalidConnectionAwsIamAuthenticationIpHostname() {
+    public void test_3_UsingIPAddress() {
         final Properties props = initProp(TEST_DB_USER, TEST_PASSWORD);
 
         final String hostname = DB_CONN_STR.substring(DB_CONN_STR_PREFIX.length());
@@ -107,8 +99,11 @@ public class AwsIamAuthenticationIntegrationTest {
         });
     }
 
+    /**
+     * Attempt to connect using valid database username/password & valid Amazon RDS hostname.
+     */
     @Test
-    void validConnectionAwsIamAuthentication() throws SQLException {
+    public void test_4_ValidConnectionProperties() throws SQLException {
         final Properties props = initProp(TEST_DB_USER, TEST_PASSWORD);
 
         final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
@@ -124,8 +119,11 @@ public class AwsIamAuthenticationIntegrationTest {
         Assertions.assertTrue(conn.isClosed());
     }
 
+    /**
+     * Attempt to connect using valid database username, valid Amazon RDS hostname, but no password.
+     */
     @Test
-    void validConnectionAwsIamAuthenticationNoPassword() throws SQLException {
+    public void test_5_ValidConnectionPropertiesNoPassword() throws SQLException {
         final Properties props = initProp(TEST_DB_USER, "");
         final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
         Assertions.assertNotNull(conn);
