@@ -165,7 +165,7 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
     protected byte packetSequence = 0;
     protected boolean useCompression = false;
 
-    private RuntimeProperty<Integer> maxAllowedPacket;
+    protected RuntimeProperty<Integer> maxAllowedPacket;
     private RuntimeProperty<Boolean> useServerPrepStmts;
 
     //private boolean needToGrabQueryFromPacket;
@@ -266,8 +266,8 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
         //this.sendPacket = new Buffer(INITIAL_PACKET_SIZE);
 
         try {
-            this.packetSender = new SimplePacketSender(this.socketConnection.getMysqlOutput());
-            this.packetReader = new SimplePacketReader(this.socketConnection, this.maxAllowedPacket);
+            this.packetSender = createPacketSender();
+            this.packetReader = createPacketReader();
         } catch (IOException ioEx) {
             throw ExceptionFactory.createCommunicationsException(this.propertySet, this.serverSession, this.getPacketSentTimeHolder(),
                     this.getPacketReceivedTimeHolder(), ioEx, getExceptionInterceptor());
@@ -293,6 +293,14 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
         protocolEntityClassToBinaryReader.put(Resultset.class, new BinaryResultsetReader(this));
         this.PROTOCOL_ENTITY_CLASS_TO_BINARY_READER = Collections.unmodifiableMap(protocolEntityClassToBinaryReader);
 
+    }
+
+    protected MessageSender<NativePacketPayload> createPacketSender() throws IOException {
+        return new SimplePacketSender(this.socketConnection.getMysqlOutput());
+    }
+
+    protected MessageReader<NativePacketHeader, NativePacketPayload> createPacketReader() {
+        return new SimplePacketReader(this.socketConnection, this.maxAllowedPacket);
     }
 
     @Override
@@ -333,8 +341,8 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
             this.socketConnection.performTlsHandshake(this.serverSession);
 
             // i/o streams were replaced, build new packet sender/reader
-            this.packetSender = new SimplePacketSender(this.socketConnection.getMysqlOutput());
-            this.packetReader = new SimplePacketReader(this.socketConnection, this.maxAllowedPacket);
+            this.packetSender = createPacketSender();
+            this.packetReader = createPacketReader();
 
         } catch (FeatureNotAvailableException nae) {
             throw new CJConnectionFeatureNotAvailableException(this.getPropertySet(), this.serverSession, this.getPacketSentTimeHolder(), nae);
@@ -537,8 +545,8 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
     @Override
     public final NativePacketPayload readMessage(NativePacketPayload reuse) {
         try {
-            NativePacketHeader header = this.packetReader.readHeader();
-            NativePacketPayload buf = this.packetReader.readMessage(Optional.ofNullable(reuse), header);
+            NativePacketHeader header = readMessageHeader(reuse);
+            NativePacketPayload buf = readMessageBody(reuse, header);
             this.packetSequence = header.getMessageSequence();
             return buf;
 
@@ -549,6 +557,14 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
             throw ExceptionFactory.createException(oom.getMessage(), MysqlErrorNumbers.SQL_STATE_MEMORY_ALLOCATION_ERROR, 0, false, oom,
                     this.exceptionInterceptor);
         }
+    }
+
+    protected NativePacketHeader readMessageHeader(NativePacketPayload reuse) throws IOException {
+        return this.packetReader.readHeader();
+    }
+
+    protected NativePacketPayload readMessageBody(NativePacketPayload reuse, NativePacketHeader header) throws IOException {
+        return this.packetReader.readMessage(Optional.ofNullable(reuse), header);
     }
 
     /**
@@ -596,14 +612,12 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
 
         int oldTimeout = 0;
 
-        if (timeoutMillis != 0) {
-            try {
-                oldTimeout = this.socketConnection.getMysqlSocket().getSoTimeout();
-                this.socketConnection.getMysqlSocket().setSoTimeout(timeoutMillis);
-            } catch (IOException e) {
-                throw ExceptionFactory.createCommunicationsException(this.propertySet, this.serverSession, this.getPacketSentTimeHolder(),
-                        this.getPacketReceivedTimeHolder(), e, getExceptionInterceptor());
-            }
+        try {
+            oldTimeout = this.socketConnection.getMysqlSocket().getSoTimeout();
+            beforeCommand(timeoutMillis);
+        } catch (IOException e) {
+            throw ExceptionFactory.createCommunicationsException(this.propertySet, this.serverSession, this.getPacketSentTimeHolder(),
+                    this.getPacketReceivedTimeHolder(), e, getExceptionInterceptor());
         }
 
         try {
@@ -663,15 +677,27 @@ public class NativeProtocol extends AbstractProtocol<NativePacketPayload> implem
             throw e;
 
         } finally {
-            if (timeoutMillis != 0) {
-                try {
-                    this.socketConnection.getMysqlSocket().setSoTimeout(oldTimeout);
-                } catch (IOException e) {
-                    throw ExceptionFactory.createCommunicationsException(this.propertySet, this.serverSession, this.getPacketSentTimeHolder(),
-                            this.getPacketReceivedTimeHolder(), e, getExceptionInterceptor());
+            try {
+                afterCommand();
+                Socket socket = this.socketConnection.getMysqlSocket();
+                if(socket != null) {
+                    socket.setSoTimeout(oldTimeout);
                 }
+            } catch (IOException e) {
+                throw ExceptionFactory.createCommunicationsException(this.propertySet, this.serverSession, this.getPacketSentTimeHolder(),
+                        this.getPacketReceivedTimeHolder(), e, getExceptionInterceptor());
             }
         }
+    }
+
+    protected void beforeCommand(int allowedTimeMillis) throws IOException {
+        if (allowedTimeMillis != 0) {
+            this.socketConnection.getMysqlSocket().setSoTimeout(allowedTimeMillis);
+        }
+    }
+
+    protected void afterCommand() throws IOException {
+        // do nothing
     }
 
     public void checkTransactionState() {
