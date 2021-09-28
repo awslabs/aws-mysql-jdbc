@@ -47,6 +47,7 @@ import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping;
 import com.mysql.cj.jdbc.ha.MultiHostConnectionProxy;
+import com.mysql.cj.jdbc.ha.ca.plugins.FailoverPluginManager;
 import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
 import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptorProvider;
 import com.mysql.cj.log.Log;
@@ -104,8 +105,6 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
 
-  protected static final int DEFAULT_SOCKET_TIMEOUT_MS = 10000;
-  protected static final int DEFAULT_CONNECT_TIMEOUT_MS = 30000;
   protected static final int NO_CONNECTION_INDEX = -1;
   protected static final int WRITER_CONNECTION_INDEX = 0; // writer host is always stored at index 0
 
@@ -123,6 +122,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   protected WriterFailoverHandler writerFailoverHandler;
   protected ReaderFailoverHandler readerFailoverHandler;
   protected ConnectionProvider connectionProvider;
+  protected FailoverPluginManager pluginManager = null;
 
   protected ClusterAwareMetrics metrics = new ClusterAwareMetrics();
   private long invokeStartTimeMs;
@@ -157,11 +157,12 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         return args[0].equals(this);
       }
 
-      synchronized (ClusterAwareConnectionProxy.this) {
+      // TODO: verify if synchronized is needed here
+      //synchronized (ClusterAwareConnectionProxy.this) {
         Object result = null;
 
         try {
-          result = method.invoke(this.invokeOn, args);
+          result = ClusterAwareConnectionProxy.this.pluginManager.execute(method.getName(), () -> method.invoke(this.invokeOn, args));
           result = proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
         } catch (InvocationTargetException e) {
           dealWithInvocationException(e);
@@ -170,7 +171,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         }
 
         return result;
-      }
+      //}
     }
 
   }
@@ -321,11 +322,8 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     this.clusterInstanceHostPatternSetting =
         connProps.getStringProperty(PropertyKey.clusterInstanceHostPattern).getValue();
 
-    RuntimeProperty<Integer> connectTimeout = connProps.getIntegerProperty(PropertyKey.connectTimeout);
-    this.failoverConnectTimeoutMs = connectTimeout.isExplicitlySet() ? connectTimeout.getValue() : DEFAULT_CONNECT_TIMEOUT_MS;
-
-    RuntimeProperty<Integer> socketTimeout = connProps.getIntegerProperty(PropertyKey.socketTimeout);
-    this.failoverSocketTimeoutMs = socketTimeout.isExplicitlySet() ? socketTimeout.getValue() : DEFAULT_SOCKET_TIMEOUT_MS;
+    this.failoverConnectTimeoutMs = connProps.getIntegerProperty(PropertyKey.connectTimeout).getValue();
+    this.failoverSocketTimeoutMs = connProps.getIntegerProperty(PropertyKey.socketTimeout).getValue();
   }
 
   protected synchronized void initLogger(ConnectionUrl connUrl) {
@@ -364,6 +362,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       } else {
         initFromConnectionString(connUrl, mainHost);
       }
+    }
+
+    if(this.pluginManager == null) {
+      this.pluginManager = new FailoverPluginManager(this.log);
+      this.pluginManager.init(this.currentConnection.getPropertySet(), this.hosts.get(this.currentHostIndex));
     }
   }
 
@@ -830,6 +833,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       failoverReader(failedHostIdx);
     }
 
+    if(this.pluginManager != null) {
+      this.pluginManager.releaseResources(); // TODO: do we need to release resources here?
+      this.pluginManager.init(this.currentConnection.getPropertySet(), this.hosts.get(this.currentHostIndex));
+    }
+
     if (this.inTransaction) {
       this.inTransaction = false;
 
@@ -1086,7 +1094,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
 
     Object result = null;
     try {
-      result = method.invoke(this.thisAsConnection, args);
+      result = this.pluginManager.execute(methodName, () -> method.invoke(this.thisAsConnection, args));
       result = proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (InvocationTargetException e) {
       dealWithInvocationException(e);
@@ -1204,6 +1212,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
         // eat
       }
     }
+
+    if(this.pluginManager != null) {
+      this.pluginManager.releaseResources();
+    }
+
     super.invalidateConnection(this.currentConnection);
   }
 
@@ -1249,6 +1262,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   @Override
   protected synchronized void doClose() throws SQLException {
     this.currentConnection.close();
+
+    if(this.pluginManager != null) {
+      this.pluginManager.releaseResources();
+      this.pluginManager = null;
+    }
   }
 
   /**
@@ -1259,6 +1277,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   @Override
   protected synchronized void doAbort(Executor executor) throws SQLException {
     this.currentConnection.abort(executor);
+
+    if(this.pluginManager != null) {
+      this.pluginManager.releaseResources();
+      this.pluginManager = null;
+    }
   }
 
   /**
