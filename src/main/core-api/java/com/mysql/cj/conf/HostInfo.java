@@ -52,7 +52,7 @@ public class HostInfo implements DatabaseUrlContainer {
     private final DatabaseUrlContainer originalUrl;
     private final String host;
     private final int port;
-    private final String user;
+    private String user;
     private final String password;
     private final boolean isPasswordless;
     private final Map<String, String> hostProperties = new HashMap<>();
@@ -254,6 +254,10 @@ public class HostInfo implements DatabaseUrlContainer {
      */
     public boolean equalHostPortPair(HostInfo hi) {
         return (getHost() != null && getHost().equals(hi.getHost()) || getHost() == null && hi.getHost() == null) && getPort() == hi.getPort();
+    }
+
+    public void setUser(final String user) {
+        this.user = user;
     }
 
     /**
