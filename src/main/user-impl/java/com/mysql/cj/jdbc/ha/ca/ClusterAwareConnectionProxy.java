@@ -561,14 +561,9 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
 
     this.hosts = cachedHosts;
-    try {
-      final String user = hostsList.get(0).getUser();
-      for(HostInfo hostInfo : this.hosts){
-        hostInfo.setUser(user);
-      }
-    }
-    catch(Exception e){
-      // Ignore, and use Cached information
+    final String user = connectionUrl.getDefaultUser();
+    for(HostInfo hostInfo : this.hosts) {
+      hostInfo.setUser(user);
     }
 
     if (this.gatherPerfMetricsSetting) {
