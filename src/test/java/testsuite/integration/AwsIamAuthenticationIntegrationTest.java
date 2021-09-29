@@ -38,7 +38,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-@Disabled
+//@Disabled
 public class AwsIamAuthenticationIntegrationTest {
 
     private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";

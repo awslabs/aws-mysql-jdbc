@@ -86,15 +86,12 @@ public class AwsIamAuthenticationTokenHelper {
     final Matcher matcher = auroraDnsPattern.matcher(hostname);
     if (!matcher.find()) {
       // Does not match Amazon's Hostname, throw exception
-      log.logTrace(Messages.getString(
+      final String exceptionMessage = Messages.getString(
           "AuthenticationAwsIamPlugin.UnsupportedHostname",
-          new String[]{hostname})
-      );
+          new String[]{hostname});
 
-      throw ExceptionFactory.createException(Messages.getString(
-              "AuthenticationAwsIamPlugin.UnsupportedHostname",
-              new String[]{hostname})
-      );
+      log.logTrace(exceptionMessage);
+      throw ExceptionFactory.createException(exceptionMessage);
     }
 
     // Get and Check Region
@@ -102,18 +99,19 @@ public class AwsIamAuthenticationTokenHelper {
     try {
       Regions.fromName(rdsRegion);
     } catch (final IllegalArgumentException exception) {
-      log.logTrace(Messages.getString(
-              "AuthenticationAwsIamPlugin.UnsupportedRegion",
-              new String[]{hostname}),
+      final String exceptionMessage = Messages.getString(
+          "AuthenticationAwsIamPlugin.UnsupportedRegion",
+          new String[]{hostname});
+
+      log.logTrace(
+          exceptionMessage,
           exception
       );
 
       throw ExceptionFactory.createException(
-          Messages.getString(
-              "AuthenticationAwsIamPlugin.UnsupportedRegion",
-              new String[]{hostname}),
+          exceptionMessage,
           exception
-          );
+      );
     }
     return rdsRegion;
   }
