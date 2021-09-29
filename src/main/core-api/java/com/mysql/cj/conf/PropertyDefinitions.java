@@ -668,8 +668,19 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.failoverPluginsFactories, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.failoverPluginsFactories"), "0.3.0", CATEGORY_HA, Integer.MIN_VALUE),
 
-                new IntegerPropertyDefinition(PropertyKey.nodeMonitoringIntervalMs, 5_000, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.nodeMonitoringIntervalMs"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                new BooleanPropertyDefinition(PropertyKey.nativeFailureDetectionEnabled, DEFAULT_VALUE_TRUE, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.nativeFailureDetectionEnabled"), "0.3.0", CATEGORY_HA, Integer.MIN_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failureDetectionTime, 30_000, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionTime"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failureDetectionInterval, 5_000, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionInterval"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failureDetectionCount, 3, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionCount"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
                 //

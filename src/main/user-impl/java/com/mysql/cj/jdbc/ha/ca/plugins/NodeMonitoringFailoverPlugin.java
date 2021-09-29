@@ -28,7 +28,6 @@ package com.mysql.cj.jdbc.ha.ca.plugins;
 
 import com.mysql.cj.conf.*;
 import com.mysql.cj.exceptions.CJCommunicationsException;
-import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.log.Log;
 import org.jboss.util.NullArgumentException;
@@ -41,7 +40,7 @@ import java.util.concurrent.*;
 
 public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
-  protected static int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 1000;
+  protected static int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
   protected static int CHECK_INTERVAL_MILLIS = 1000;
   protected static String METHODS_TO_MONITOR = "executeQuery,";
 
@@ -49,11 +48,12 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
   protected Log log;
   protected PropertySet propertySet;
   protected HostInfo hostInfo;
-  protected volatile boolean isNodeDead = false;
-  protected volatile int nodeCheckTimeMillis;
-  protected Connection monitoringConn = null;
+  protected boolean isEnabled = true;
+  protected int failureDetectionTimeMillis;
+  protected int failureDetectionIntervalMillis;
+  protected int failureDetectionCount;
   protected Thread monitoringThread = null;
-  protected volatile boolean isMonitoring = false;
+  protected Monitor monitor = null;
 
   public NodeMonitoringFailoverPlugin() {}
 
@@ -80,63 +80,34 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     this.log = log;
     this.next = next;
 
-    this.nodeCheckTimeMillis = this.propertySet.getIntegerProperty(PropertyKey.nodeMonitoringIntervalMs).getValue();
+    this.isEnabled = this.propertySet.getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled).getValue();
+    this.failureDetectionTimeMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionTime).getValue();
+    this.failureDetectionIntervalMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionInterval).getValue();
+    this.failureDetectionCount = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionCount).getValue();
 
-    try {
-      // open a new connection
-      Map<String, String> properties = new HashMap<String, String>();
-      properties.put(PropertyKey.socketTimeout.getKeyName(), "3000");
-      properties.put(PropertyKey.tcpKeepAlive.getKeyName(), this.propertySet.getBooleanProperty(PropertyKey.tcpKeepAlive).getStringValue());
-      //TODO: any other properties to pass? like socket factory
-      this.monitoringConn = new ConnectionImpl(copy(this.hostInfo, properties));
-
-      // start monitoring thread
-      this.isMonitoring = false;
-      this.isNodeDead = false;
-
-      this.monitoringThread = new Thread(() -> {
-        try {
-          boolean isValid = true;
-          while(true) {
-
-            if(this.isMonitoring) {
-              TimeUnit.MILLISECONDS.sleep(this.nodeCheckTimeMillis);
-
-              try {
-                isValid = this.monitoringConn.isValid(this.nodeCheckTimeMillis / 1000);
-                this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::thread] node '%s' is %s.", this.hostInfo.getHost(), isValid ? "*alive*" : "*dead*"));
-                this.isNodeDead = !isValid;
-              } catch (SQLException sqlEx) {
-                // problem with connection?
-                this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::thread] node '%s' is dead.", this.hostInfo.getHost()), sqlEx);
-                this.isNodeDead = true;
-              }
-
-            } else {
-              TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
-            }
-          }
-        }
-        catch(InterruptedException intEx) {
-          // do nothing; exit thread
-        }
-      });
-      this.monitoringThread.start();
+    if(!this.isEnabled) {
+      return;
     }
-    catch(SQLException sqlEx) {
-      //TODO: report exception properly
-      throw ExceptionFactory.createException(sqlEx.getMessage(), sqlEx);
-    }
+
+    this.monitor = new Monitor(this.hostInfo, this.propertySet, this.log);
+    this.monitoringThread = new Thread(this.monitor);
+    this.monitoringThread.start();
   }
 
   @Override
   public Object execute(String methodName, Callable executeSqlFunc) throws Exception {
     boolean needMonitoring = METHODS_TO_MONITOR.contains(methodName + ",");
 
-    if(!needMonitoring) {
+    if(!this.isEnabled || !needMonitoring || this.monitor == null || this.monitoringThread == null) {
       // do direct call
       return this.next.execute(methodName, executeSqlFunc);
     }
+
+    // update config settings since they may change
+    this.isEnabled = this.propertySet.getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled).getValue();
+    this.failureDetectionTimeMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionTime).getValue();
+    this.failureDetectionIntervalMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionInterval).getValue();
+    this.failureDetectionCount = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionCount).getValue();
 
     // use a separate thread to execute method
 
@@ -144,12 +115,8 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     ExecutorService executor = null;
     try {
 
-      if (this.monitoringThread != null) {
-        this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated", methodName));
-        this.isMonitoring = true;
-      } else {
-        log.logWarn("[NodeMonitoringFailoverPlugin.execute]: monitoring thread is NOT initialized!!!");
-      }
+      this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated", methodName));
+      this.monitor.startMonitoring(this.failureDetectionTimeMillis, this.failureDetectionIntervalMillis, this.failureDetectionCount);
 
       Future<Object> executeFuncFuture = null;
       executor = Executors.newSingleThreadExecutor();
@@ -157,18 +124,15 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       executor.shutdown(); // stop executor to accept new tasks
 
       boolean isDone = executeFuncFuture.isDone();
-      //log.logTrace("[NodeMonitoringFailoverPlugin.execute]: isDone=" + isDone);
       while(!isDone) {
         TimeUnit.MILLISECONDS.sleep(CHECK_INTERVAL_MILLIS);
         isDone = executeFuncFuture.isDone();
-        //log.logTrace("[NodeMonitoringFailoverPlugin.execute]: isDone=" + isDone);
 
-        if(this.isNodeDead) {
+        if(this.monitor.isNodeUnhealthy()) {
           //throw new SocketTimeoutException("Read time out");
           throw new CJCommunicationsException("Node is unavailable.");
         }
       }
-      //log.logTrace("[NodeMonitoringFailoverPlugin.execute]: isDone=" + isDone);
 
       result = executeFuncFuture.get();
     }
@@ -176,11 +140,11 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       throw ex;
     }
     finally {
+      this.monitor.stopMonitoring();
       if(executor != null) {
         executor.shutdownNow();
       }
       this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is deactivated", methodName));
-      this.isMonitoring = false;
     }
 
     return result;
@@ -188,19 +152,13 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
   @Override
   public void releaseResources() {
+    if (this.monitor != null) {
+      this.monitor.stopMonitoring();
+      this.monitor = null;
+    }
     if(this.monitoringThread != null && !this.monitoringThread.isInterrupted()) {
       this.monitoringThread.interrupt();
       this.monitoringThread = null;
-    }
-
-    try {
-      if (this.monitoringConn != null && !this.monitoringConn.isClosed()) {
-        this.monitoringConn.close();
-        this.monitoringConn = null;
-      }
-    }
-    catch(Exception ex) {
-      /* ignore */
     }
 
     this.next.releaseResources();
@@ -215,5 +173,123 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
             src.getPassword(),
             src.isPasswordless(),
             props);
+  }
+
+  private class Monitor implements Runnable {
+
+    protected Log log;
+    protected PropertySet propertySet;
+    protected HostInfo hostInfo;
+    protected boolean isMonitoring;
+    protected long monitoringStartTime;
+    protected boolean isNodeUnhealthy;
+    protected int failureDetectionTimeMillis;
+    protected int failureDetectionIntervalMillis;
+    protected int failureDetectionCount;
+    protected int failureCount;
+    protected Connection monitoringConn = null;
+
+    public Monitor(HostInfo hostInfo, PropertySet propertySet, Log log) {
+      this.hostInfo = hostInfo;
+      this.propertySet = propertySet;
+      this.log = log;
+
+      this.isMonitoring = false;
+      this.isNodeUnhealthy = false;
+      this.failureCount = 0;
+    }
+
+    public void startMonitoring(int failureDetectionTimeMillis, int failureDetectionIntervalMillis, int failureDetectionCount) {
+      this.failureDetectionTimeMillis = failureDetectionTimeMillis;
+      this.failureDetectionIntervalMillis = failureDetectionIntervalMillis;
+      this.failureDetectionCount = failureDetectionCount;
+
+      this.monitoringStartTime = System.currentTimeMillis();
+      this.isMonitoring = true;
+      this.failureCount = 0;
+    }
+
+    public void stopMonitoring() {
+      this.isMonitoring = false;
+    }
+
+    public boolean isNodeUnhealthy() {
+      return this.isNodeUnhealthy;
+    }
+
+    protected void updateFlags(boolean isValid) {
+      if(!isValid) {
+        this.failureCount++;
+        if(failureCount >= this.failureDetectionCount) {
+          this.isNodeUnhealthy = true;
+          this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.", this.hostInfo.getHost()));
+        }
+        else {
+          this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).", this.hostInfo.getHost(), this.failureCount));
+        }
+      }
+      else {
+        this.failureCount = 0;
+        this.isNodeUnhealthy = false;
+        this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.", this.hostInfo.getHost()));
+      }
+    }
+
+    protected boolean isConnectionHealthy() {
+      try {
+        if (this.monitoringConn == null || this.monitoringConn.isClosed()) {
+
+          // open a new connection
+          Map<String, String> properties = new HashMap<String, String>();
+          properties.put(PropertyKey.tcpKeepAlive.getKeyName(), this.propertySet.getBooleanProperty(PropertyKey.tcpKeepAlive).getStringValue());
+          properties.put(PropertyKey.connectTimeout.getKeyName(), this.propertySet.getBooleanProperty(PropertyKey.connectTimeout).getStringValue());
+          //TODO: any other properties to pass? like socket factory
+
+          this.monitoringConn = ConnectionImpl.getInstance(copy(this.hostInfo, properties)); //TODO: use connection provider?
+
+          return true;
+        }
+
+        return this.monitoringConn.isValid(this.failureDetectionIntervalMillis / 1000);
+      }
+      catch (SQLException sqlEx) {
+        this.log.logTrace("[NodeMonitoringFailoverPlugin::Monitor]", sqlEx);
+        return false;
+      }
+    }
+
+    @Override
+    public void run() {
+
+      try {
+
+        while(true) {
+
+          long elapsedTimeMillis = System.currentTimeMillis() - this.monitoringStartTime;
+
+          if (this.isMonitoring && elapsedTimeMillis > this.failureDetectionTimeMillis) {
+
+            updateFlags(isConnectionHealthy());
+            TimeUnit.MILLISECONDS.sleep(this.failureDetectionIntervalMillis);
+          }
+          else {
+            TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
+          }
+        }
+      }
+      catch(InterruptedException intEx) {
+        // do nothing; exit thread
+      }
+      finally {
+        if(this.monitoringConn != null) {
+          try {
+            this.monitoringConn.close();
+          }
+          catch (SQLException ex) {
+            //ignore
+          }
+        }
+      }
+    }
   }
 }
