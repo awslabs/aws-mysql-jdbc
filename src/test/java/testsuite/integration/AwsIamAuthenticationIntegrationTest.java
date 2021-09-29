@@ -29,21 +29,16 @@ package testsuite.integration;
 import com.mysql.cj.conf.PropertyKey;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Properties;
 
 @Disabled
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class AwsIamAuthenticationIntegrationTest {
 
     private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
@@ -56,7 +51,7 @@ public class AwsIamAuthenticationIntegrationTest {
     private static final String DB_CONN_STR = DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX;
 
     /**
-     * Attempt to connect using the wrong database username
+     * Attempt to connect using the wrong database username.
      */
     @Test
     public void test_1_WrongDatabaseUsername() {
@@ -64,14 +59,12 @@ public class AwsIamAuthenticationIntegrationTest {
 
         Assertions.assertThrows(
             SQLException.class,
-            () -> {
-                final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
-            }
+            () -> DriverManager.getConnection(DB_CONN_STR, props)
         );
     }
 
     /**
-     * Attempt to connect without specifying a database username
+     * Attempt to connect without specifying a database username.
      */
     @Test
     public void test_2_NoDatabaseUsername() {
@@ -79,9 +72,7 @@ public class AwsIamAuthenticationIntegrationTest {
 
         Assertions.assertThrows(
             SQLException.class,
-            () -> {
-                final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
-            }
+            () -> DriverManager.getConnection(DB_CONN_STR, props)
         );
     }
 
@@ -95,8 +86,8 @@ public class AwsIamAuthenticationIntegrationTest {
         final String hostname = DB_CONN_STR.substring(DB_CONN_STR_PREFIX.length());
         Assertions.assertThrows(
             SQLException.class,
-            () -> { final Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + hostToIP(hostname), props);
-        });
+            () -> DriverManager.getConnection(DB_CONN_STR_PREFIX + hostToIP(hostname), props)
+        );
     }
 
     /**
@@ -108,15 +99,6 @@ public class AwsIamAuthenticationIntegrationTest {
 
         final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
         Assertions.assertNotNull(conn);
-
-        final Statement myQuery = conn.createStatement();
-        final ResultSet rs = myQuery.executeQuery("SELECT 1;");
-        while (rs.next()) {
-            Assertions.assertEquals("1", rs.getString(1));
-        }
-
-        conn.close();
-        Assertions.assertTrue(conn.isClosed());
     }
 
     /**
@@ -127,15 +109,28 @@ public class AwsIamAuthenticationIntegrationTest {
         final Properties props = initProp(TEST_DB_USER, "");
         final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
         Assertions.assertNotNull(conn);
+    }
 
-        final Statement myQuery = conn.createStatement();
-        final ResultSet rs = myQuery.executeQuery("SELECT 1;");
-        while (rs.next()) {
-            Assertions.assertEquals("1", rs.getString(1));
-        }
-
+    /**
+     * Attempts a valid connection & caches the hosts, followed by invalid,
+     * then finally create another connection using the same properties as the first
+     */
+    @Test
+    void test_6_ValidInvalidValidConnections() throws SQLException {
+        final Properties validProp = initProp(TEST_DB_USER, TEST_PASSWORD);
+        final Connection conn = DriverManager.getConnection(DB_CONN_STR, validProp);
+        Assertions.assertNotNull(conn);
         conn.close();
-        Assertions.assertTrue(conn.isClosed());
+
+        final Properties invalidProp = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
+        Assertions.assertThrows(
+            SQLException.class,
+            () -> DriverManager.getConnection(DB_CONN_STR, invalidProp)
+        );
+
+        final Connection conn2 = DriverManager.getConnection(DB_CONN_STR, validProp);
+        Assertions.assertNotNull(conn2);
+        conn2.close();
     }
 
     // Helper Functions
@@ -148,13 +143,8 @@ public class AwsIamAuthenticationIntegrationTest {
         return properties;
     }
 
-    private String hostToIP(final String hostname){
-        InetAddress inet = null;
-        try {
-            inet = InetAddress.getByName(hostname);
-        } catch (final UnknownHostException e) {
-            e.printStackTrace();
-        }
+    private String hostToIP(final String hostname) throws UnknownHostException {
+        InetAddress inet = InetAddress.getByName(hostname);
         return inet.getHostAddress();
     }
 }

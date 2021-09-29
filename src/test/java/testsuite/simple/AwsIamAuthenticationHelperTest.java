@@ -27,83 +27,130 @@
 package testsuite.simple;
 
 import com.mysql.cj.exceptions.CJException;
+import com.mysql.cj.log.StandardLogger;
 import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationTokenHelper;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 public class AwsIamAuthenticationHelperTest {
 
     private static final int PORT = 3306;
 
     /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with valid host name and region
+     *  Attempt to create new {@link AwsIamAuthenticationTokenHelper} with valid host name and region.
      */
     @Test
     public void test_1_ValidHostAndRegion() {
-        Assertions.assertNotNull(new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName.us-east-2.rds.amazonaws.com", PORT));
+        Assertions.assertNotNull(new AwsIamAuthenticationTokenHelper(
+            "MyDBInstanceName.SomeServerName.us-east-1.rds.amazonaws.com",
+            PORT,
+            StandardLogger.class.getName()
+        ));
     }
 
+
     /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with invalid RDS format
+     *  Attempt to create new {@link AwsIamAuthenticationTokenHelper} with invalid RDS format.
      */
     @Test
     public void test_2_NotRdsHost() {
         Assertions.assertThrows(
             CJException.class,
             () -> new AwsIamAuthenticationTokenHelper(
-                "MyDBInstanceName.SomeServerName.us-east-2.notRDS.amazonaws.com", PORT));
+                "MyDBInstanceName.SomeServerName.us-east-2.notRDS.amazonaws.com",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
     }
 
+
     /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with invalid hostname
+     *  Attempt to create new {@link AwsIamAuthenticationTokenHelper} with invalid hostname.
      */
     @Test
     public void test_3_NotAmazonHost() {
         Assertions.assertThrows(
             CJException.class,
-            () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName.us-east-2.rds.notAmazon.com", PORT));
+            () -> new AwsIamAuthenticationTokenHelper(
+                "MyDBInstanceName.SomeServerName.us-east-2.rds.notamazon.com",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
     }
 
+
     /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with empty hostname
+     *  Attempt to create new {@link AwsIamAuthenticationTokenHelper} with empty hostname.
      */
     @Test
     public void test_4_EmptyHost() {
         Assertions.assertThrows(
             CJException.class,
-            () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName.us-east-2.rds. .com", PORT));
+            () -> new AwsIamAuthenticationTokenHelper(
+                "",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
+
+        Assertions.assertThrows(
+            CJException.class,
+            () -> new AwsIamAuthenticationTokenHelper(
+                " ",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
     }
 
+
     /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with IP Address as hostname
+     *  Attempt to create new {@link AwsIamAuthenticationTokenHelper} with invalid RDS format.
      */
     @Test
     public void test_5_InvalidHostUsingIP() {
         Assertions.assertThrows(
             CJException.class,
-            () -> new AwsIamAuthenticationTokenHelper("192.168.0.1", PORT));
+            () -> new AwsIamAuthenticationTokenHelper(
+                "192.168.0.1",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
+
+        Assertions.assertThrows(
+            CJException.class,
+            () -> new AwsIamAuthenticationTokenHelper(
+                "localhost",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
     }
 
     /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with invalid region
+     *  Attempt to create new {@link AwsIamAuthenticationTokenHelper} with invalid region.
      */
     @Test
     public void test_6_InvalidRegion() {
         Assertions.assertThrows(
             CJException.class,
-            () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName.fake-region.rds.amazonaws.com", PORT));
-    }
+            () -> new AwsIamAuthenticationTokenHelper(
+                "MyDBInstanceName.SomeServerName.fake-1.rds.amazonaws.com",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
 
-    /**
-     *  Attempt to create new AWSIAMAuthenticationHelper with empty region
-     */
-    @Test
-    public void test_7_EmptyRegion() {
         Assertions.assertThrows(
             CJException.class,
-            () -> new AwsIamAuthenticationTokenHelper("MyDBInstanceName.SomeServerName..rds.amazonaws.com", PORT));
+            () -> new AwsIamAuthenticationTokenHelper(
+                "MyDBInstanceName.SomeServerName. .rds.amazonaws.com",
+                PORT,
+                StandardLogger.class.getName()
+            )
+        );
     }
 }
