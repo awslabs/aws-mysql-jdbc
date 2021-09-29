@@ -32,6 +32,8 @@ import com.amazonaws.services.rds.auth.GetIamAuthTokenRequest;
 import com.amazonaws.services.rds.auth.RdsIamAuthTokenGenerator;
 import com.mysql.cj.Messages;
 import com.mysql.cj.exceptions.ExceptionFactory;
+import com.mysql.cj.log.Log;
+import com.mysql.cj.log.LogFactory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,9 +44,11 @@ public class AwsIamAuthenticationTokenHelper {
   private final String region;
   private final String hostname;
   private final int port;
+  private final Log log;
   private static final int REGION_MATCHER_GROUP = 3;
 
-  public AwsIamAuthenticationTokenHelper(final String hostname, final int port) {
+  public AwsIamAuthenticationTokenHelper(final String hostname, final int port, final String logger) {
+    this.log = LogFactory.getLogger(logger, Log.LOGGER_INSTANCE_NAME);
     this.hostname = hostname;
     this.port = port;
     this.region = getRdsRegion();
@@ -82,6 +86,11 @@ public class AwsIamAuthenticationTokenHelper {
     final Matcher matcher = auroraDnsPattern.matcher(hostname);
     if (!matcher.find()) {
       // Does not match Amazon's Hostname, throw exception
+      log.logTrace(Messages.getString(
+          "AuthenticationAwsIamPlugin.UnsupportedHostname",
+          new String[]{hostname})
+      );
+
       throw ExceptionFactory.createException(Messages.getString(
               "AuthenticationAwsIamPlugin.UnsupportedHostname",
               new String[]{hostname})
@@ -93,6 +102,11 @@ public class AwsIamAuthenticationTokenHelper {
     try {
       Regions.fromName(rdsRegion);
     } catch (final IllegalArgumentException exception) {
+      log.logTrace(Messages.getString(
+              "AuthenticationAwsIamPlugin.UnsupportedRegion",
+              new String[]{hostname}),
+          exception
+      );
 
       throw ExceptionFactory.createException(
           Messages.getString(
