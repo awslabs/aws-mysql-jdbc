@@ -309,18 +309,16 @@ When using AWS IAM database authentication, host URL must be a valid Amazon endp
 
 
 IAM database authentication is limited to certain database engines.
-For more information on limitations and recommendations, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+For more information on limitations and recommendations, please [read](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html).
 
 #### Setup for IAM database Authentication for MySQL 
 1. Enable AWS IAM database authentication for existing database or create a new database on AWS RDS Console
-   1. Creating new database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html
-   2. Modifying existing database: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html
-2. Create/Change and use AWS IAM policy for AWS IAM database authentication
-   1. https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html
-3. Create a database account using AWS IAM database authentication
-   1. Connect to MySQL database using master logins and create a new user with the following
-      1. `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
-   2. For more information, please read https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html
+   1. [Creating new database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html)
+   2. [Modifying existing database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html)
+2. Create/Change and [use AWS IAM policy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) for AWS IAM database authentication
+3. [Create a database account](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html) using AWS IAM database authentication
+   1. Connect to MySQL database using master logins and create a new user with the following<br>
+   `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
 
 | Parameter       | Value           | Required      | Description  |
 | ------------- |:-------------:|:-------------:| ----- |
@@ -362,7 +360,7 @@ public class AwsIamAuthenticationSample {
             }
          }
       } catch (final SQLException throwable) {
-         throwable.printStackTrace();
+         throw throwable;
       }
    }
 }
