@@ -62,4 +62,14 @@ public class ClusterAwareUtils {
         mergedProps.putAll(additionalProps);
         return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), mergedProps);
     }
+
+    public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
+        if (baseHostInfo == null) {
+            return connectionUrl.getMainHost();
+        }
+
+        return new HostInfo(connectionUrl, baseHostInfo.getHost(), baseHostInfo.getPort(),
+            connectionUrl.getMainHost().getUser(), connectionUrl.getMainHost().getPassword(),
+            connectionUrl.getMainHost().getHostProperties());
+    }
 }

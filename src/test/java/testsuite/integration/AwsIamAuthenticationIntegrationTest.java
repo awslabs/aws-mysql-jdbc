@@ -38,7 +38,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-//@Disabled
+@Disabled
 public class AwsIamAuthenticationIntegrationTest {
 
     private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
@@ -107,20 +107,21 @@ public class AwsIamAuthenticationIntegrationTest {
     @Test
     public void test_5_ValidConnectionPropertiesNoPassword() throws SQLException {
         final Properties props = initProp(TEST_DB_USER, "");
+
         final Connection conn = DriverManager.getConnection(DB_CONN_STR, props);
         Assertions.assertNotNull(conn);
     }
 
     /**
      * Attempts a valid connection & caches the hosts, followed by invalid,
-     * then finally create another connection using the same properties as the first
+     * then finally create another connection using the same properties as the first.
      */
     @Test
     void test_6_ValidInvalidValidConnections() throws SQLException {
         final Properties validProp = initProp(TEST_DB_USER, TEST_PASSWORD);
-        final Connection conn = DriverManager.getConnection(DB_CONN_STR, validProp);
-        Assertions.assertNotNull(conn);
-        conn.close();
+        final Connection validConn = DriverManager.getConnection(DB_CONN_STR, validProp);
+        Assertions.assertNotNull(validConn);
+        validConn.close();
 
         final Properties invalidProp = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
         Assertions.assertThrows(
@@ -128,9 +129,46 @@ public class AwsIamAuthenticationIntegrationTest {
             () -> DriverManager.getConnection(DB_CONN_STR, invalidProp)
         );
 
-        final Connection conn2 = DriverManager.getConnection(DB_CONN_STR, validProp);
-        Assertions.assertNotNull(conn2);
-        conn2.close();
+        final Connection validConn2 = DriverManager.getConnection(DB_CONN_STR, validProp);
+        Assertions.assertNotNull(validConn2);
+        validConn2.close();
+    }
+
+    /**
+     * Attempts a valid connection followed by invalid connection
+     * without the AWS protocol in Connection URL.
+     */
+    @Test
+    void test_7_NoAwsProtocolConnection() throws SQLException {
+        final String DB_CONN = "jdbc:mysql://" + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX;
+        final Properties validProp = initProp(TEST_DB_USER, TEST_PASSWORD);
+        final Properties invalidProp = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
+
+        final Connection conn = DriverManager.getConnection(DB_CONN, validProp);
+        Assertions.assertNotNull(conn);
+
+        Assertions.assertThrows(
+            SQLException.class,
+            () -> DriverManager.getConnection(DB_CONN, invalidProp)
+        );
+    }
+
+    /**
+     * Attempts a valid connection followed by an invalid connection
+     * with Username in Connection URL.
+     */
+    @Test
+    void test_8_UserInConnStr() throws SQLException {
+        final Properties awsIamProp = new Properties();
+        awsIamProp.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
+
+        final Connection validConn = DriverManager.getConnection(DB_CONN_STR + "?user=" + TEST_DB_USER, awsIamProp);
+        Assertions.assertNotNull(validConn);
+
+        Assertions.assertThrows(
+            SQLException.class,
+            () -> DriverManager.getConnection(DB_CONN_STR + "?user=WRONG_" + TEST_DB_USER + "_USER", awsIamProp)
+        );
     }
 
     // Helper Functions

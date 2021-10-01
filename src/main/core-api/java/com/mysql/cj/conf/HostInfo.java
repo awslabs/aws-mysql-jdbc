@@ -256,10 +256,6 @@ public class HostInfo implements DatabaseUrlContainer {
         return (getHost() != null && getHost().equals(hi.getHost()) || getHost() == null && hi.getHost() == null) && getPort() == hi.getPort();
     }
 
-    public void setUser(final String user) {
-        this.user = user;
-    }
-
     /**
      * Returns a string representation of this object.
      * 
