@@ -63,6 +63,15 @@ public class ClusterAwareUtils {
         return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), mergedProps);
     }
 
+    /**
+     * Create a copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
+     *
+     * @param baseHostInfo The {@link HostInfo} object to copy host and port from
+     * @param connectionUrl All other properties to add to the new {@link HostInfo}
+     *
+     * @return A copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
+     *      Returns connectionUrl's HostInfo if baseHostInfo is null
+     */
     public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
         final HostInfo mainHost = connectionUrl.getMainHost();
         if (baseHostInfo == null) {

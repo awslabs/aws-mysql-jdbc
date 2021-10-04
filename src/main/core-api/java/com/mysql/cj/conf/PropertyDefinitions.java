@@ -666,7 +666,7 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.allowXmlUnsafeExternalEntity"), "0.2.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
                 new BooleanPropertyDefinition(PropertyKey.useAwsIam, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.useAwsIam"), "0.2.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
+                        Messages.getString("ConnectionProperties.useAwsIam"), "0.2.2", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
                 //
                 // CATEGORY_PERFORMANCE
