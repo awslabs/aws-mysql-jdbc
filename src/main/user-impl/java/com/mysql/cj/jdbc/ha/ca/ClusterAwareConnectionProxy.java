@@ -104,7 +104,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
 
-  protected static final int DEFAULT_SOCKET_TIMEOUT_MS = 0;
+  protected static final int DEFAULT_SOCKET_TIMEOUT_MS = 10000;
   protected static final int DEFAULT_CONNECT_TIMEOUT_MS = 30000;
   protected static final int NO_CONNECTION_INDEX = -1;
   protected static final int WRITER_CONNECTION_INDEX = 0; // writer host is always stored at index 0

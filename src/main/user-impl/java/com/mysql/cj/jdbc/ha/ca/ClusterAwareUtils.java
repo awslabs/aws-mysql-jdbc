@@ -64,12 +64,13 @@ public class ClusterAwareUtils {
     }
 
     public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
+        HostInfo mainHost = connectionUrl.getMainHost();
         if (baseHostInfo == null) {
-            return connectionUrl.getMainHost();
+            return mainHost;
         }
 
         return new HostInfo(connectionUrl, baseHostInfo.getHost(), baseHostInfo.getPort(),
-            connectionUrl.getMainHost().getUser(), connectionUrl.getMainHost().getPassword(),
-            connectionUrl.getMainHost().getHostProperties());
+            mainHost.getUser(), mainHost.getPassword(),
+            mainHost.getHostProperties());
     }
 }

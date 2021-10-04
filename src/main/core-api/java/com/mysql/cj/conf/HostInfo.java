@@ -52,7 +52,7 @@ public class HostInfo implements DatabaseUrlContainer {
     private final DatabaseUrlContainer originalUrl;
     private final String host;
     private final int port;
-    private String user;
+    private final String user;
     private final String password;
     private final boolean isPasswordless;
     private final Map<String, String> hostProperties = new HashMap<>();
