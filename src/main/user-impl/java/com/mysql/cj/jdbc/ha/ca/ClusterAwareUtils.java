@@ -64,7 +64,7 @@ public class ClusterAwareUtils {
     }
 
     public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
-        HostInfo mainHost = connectionUrl.getMainHost();
+        final HostInfo mainHost = connectionUrl.getMainHost();
         if (baseHostInfo == null) {
             return mainHost;
         }
