@@ -149,6 +149,28 @@ public class AwsIamAuthenticationIntegrationTest {
         );
     }
 
+    /**
+     * Attempts a valid connection & caches the hosts, followed by invalid,
+     * then finally create another connection using the same properties as the first.
+     */
+    @Test
+    void test_8_ValidInvalidValidConnections() throws SQLException {
+        final Properties validProp = initProp(TEST_DB_USER, TEST_PASSWORD);
+        final Connection validConn = DriverManager.getConnection(DB_CONN_STR, validProp);
+        Assertions.assertNotNull(validConn);
+        validConn.close();
+
+        final Properties invalidProp = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
+        Assertions.assertThrows(
+            SQLException.class,
+            () -> DriverManager.getConnection(DB_CONN_STR, invalidProp)
+        );
+
+        final Connection validConn2 = DriverManager.getConnection(DB_CONN_STR, validProp);
+        Assertions.assertNotNull(validConn2);
+        validConn2.close();
+    }
+
     // Helper Functions
     private Properties initProp(final String user, final String password) {
         final Properties properties = new Properties();
