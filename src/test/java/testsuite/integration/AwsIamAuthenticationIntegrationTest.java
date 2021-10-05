@@ -113,33 +113,11 @@ public class AwsIamAuthenticationIntegrationTest {
     }
 
     /**
-     * Attempts a valid connection & caches the hosts, followed by invalid,
-     * then finally create another connection using the same properties as the first.
-     */
-    @Test
-    void test_6_ValidInvalidValidConnections() throws SQLException {
-        final Properties validProp = initProp(TEST_DB_USER, TEST_PASSWORD);
-        final Connection validConn = DriverManager.getConnection(DB_CONN_STR, validProp);
-        Assertions.assertNotNull(validConn);
-        validConn.close();
-
-        final Properties invalidProp = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
-        Assertions.assertThrows(
-            SQLException.class,
-            () -> DriverManager.getConnection(DB_CONN_STR, invalidProp)
-        );
-
-        final Connection validConn2 = DriverManager.getConnection(DB_CONN_STR, validProp);
-        Assertions.assertNotNull(validConn2);
-        validConn2.close();
-    }
-
-    /**
      * Attempts a valid connection followed by invalid connection
      * without the AWS protocol in Connection URL.
      */
     @Test
-    void test_7_NoAwsProtocolConnection() throws SQLException {
+    void test_6_NoAwsProtocolConnection() throws SQLException {
         final String DB_CONN = "jdbc:mysql://" + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX;
         final Properties validProp = initProp(TEST_DB_USER, TEST_PASSWORD);
         final Properties invalidProp = initProp("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
@@ -158,7 +136,7 @@ public class AwsIamAuthenticationIntegrationTest {
      * with Username in Connection URL.
      */
     @Test
-    void test_8_UserInConnStr() throws SQLException {
+    void test_7_UserInConnStr() throws SQLException {
         final Properties awsIamProp = new Properties();
         awsIamProp.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
 
