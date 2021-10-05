@@ -561,6 +561,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     }
 
     this.hosts = cachedHosts;
+
     if (this.gatherPerfMetricsSetting) {
       this.metrics.registerUseCachedTopology(true);
     }
