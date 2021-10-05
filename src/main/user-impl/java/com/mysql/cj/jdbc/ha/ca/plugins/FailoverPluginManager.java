@@ -34,7 +34,6 @@ import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 import org.jboss.util.NullArgumentException;
 
-import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 public class FailoverPluginManager {
@@ -42,7 +41,8 @@ public class FailoverPluginManager {
   /* THIS CLASS IS NOT MULTI-THREADING SAFE */
   /* IT'S EXPECTED TO HAVE ONE INSTANCE OF THIS MANAGER PER JDBC CONNECTION */
 
-  protected static final String DEFAULT_PLUGIN_FACTORIES = NodeMonitoringFailoverPluginFactory.class.getName();
+  protected static final String DEFAULT_PLUGIN_FACTORIES =
+      NodeMonitoringFailoverPluginFactory.class.getName();
 
   protected Log log;
   protected PropertySet propertySet = null;
@@ -50,7 +50,7 @@ public class FailoverPluginManager {
   protected IFailoverPlugin headPlugin = null;
 
   public FailoverPluginManager(Log log) {
-    if(log == null) {
+    if (log == null) {
       throw new NullArgumentException("log");
     }
 
@@ -61,23 +61,38 @@ public class FailoverPluginManager {
     this.propertySet = propertySet;
     this.hostInfo = hostInfo;
 
-    String factoryClazzNames = propertySet.getStringProperty(PropertyKey.failoverPluginsFactories).getValue();
+    String factoryClazzNames = propertySet
+        .getStringProperty(PropertyKey.failoverPluginsFactories)
+        .getValue();
 
-    if(StringUtils.isNullOrEmpty(factoryClazzNames)) {
+    if (StringUtils.isNullOrEmpty(factoryClazzNames)) {
       factoryClazzNames = DEFAULT_PLUGIN_FACTORIES;
     }
 
-    this.headPlugin = new DefaultFailoverPluginFactory().getInstance(this.propertySet, this.hostInfo, null, this.log);
+    this.headPlugin = new DefaultFailoverPluginFactory()
+        .getInstance(
+            this.propertySet,
+            this.hostInfo,
+            null,
+            this.log);
 
     if (!StringUtils.isNullOrEmpty(factoryClazzNames)) {
-      IFailoverPluginFactory[] factories = Util.<IFailoverPluginFactory>loadClasses(factoryClazzNames,
-              "MysqlIo.BadFailoverPluginFactory", null).toArray(new IFailoverPluginFactory[0]);
+      IFailoverPluginFactory[] factories =
+          Util.<IFailoverPluginFactory>loadClasses(
+                  factoryClazzNames,
+                  "MysqlIo.BadFailoverPluginFactory",
+                  null)
+              .toArray(new IFailoverPluginFactory[0]);
 
       // make a chain of analyzers with default one at the tail
 
       for (int i = factories.length - 1; i >= 0; i--) {
-        IFailoverPlugin nextAnalyzer = factories[i].getInstance(this.propertySet, this.hostInfo, this.headPlugin, this.log);
-        this.headPlugin = nextAnalyzer;
+        this.headPlugin = factories[i]
+            .getInstance(
+                this.propertySet,
+                this.hostInfo,
+                this.headPlugin,
+                this.log);
       }
     }
 

@@ -6,7 +6,12 @@ import com.mysql.cj.log.Log;
 
 public class NodeMonitoringFailoverPluginFactory implements IFailoverPluginFactory {
   @Override
-  public IFailoverPlugin getInstance(PropertySet propertySet, HostInfo hostInfo, IFailoverPlugin next, Log log) {
+  public IFailoverPlugin getInstance(
+      PropertySet propertySet,
+      HostInfo hostInfo,
+      IFailoverPlugin next,
+      Log log) {
+
     IFailoverPlugin plugin = new NodeMonitoringFailoverPlugin();
     plugin.init(propertySet, hostInfo, next, log);
     return plugin;

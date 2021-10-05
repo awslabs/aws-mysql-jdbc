@@ -26,7 +26,9 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
-import com.mysql.cj.conf.*;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.log.Log;
@@ -36,7 +38,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
@@ -59,19 +65,19 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
   @Override
   public void init(PropertySet propertySet, HostInfo hostInfo, IFailoverPlugin next, Log log) {
-    if(next == null) {
+    if (next == null) {
       throw new NullArgumentException("next");
     }
 
-    if(log == null) {
+    if (log == null) {
       throw new NullArgumentException("log");
     }
 
-    if(propertySet == null) {
+    if (propertySet == null) {
       throw new NullArgumentException("propertySet");
     }
 
-    if(hostInfo == null) {
+    if (hostInfo == null) {
       throw new NullArgumentException("hostInfo");
     }
 
@@ -80,12 +86,20 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     this.log = log;
     this.next = next;
 
-    this.isEnabled = this.propertySet.getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled).getValue();
-    this.failureDetectionTimeMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionTime).getValue();
-    this.failureDetectionIntervalMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionInterval).getValue();
-    this.failureDetectionCount = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionCount).getValue();
+    this.isEnabled = this.propertySet
+        .getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled)
+        .getValue();
+    this.failureDetectionTimeMillis = this.propertySet
+        .getIntegerProperty(PropertyKey.failureDetectionTime)
+        .getValue();
+    this.failureDetectionIntervalMillis = this.propertySet
+        .getIntegerProperty(PropertyKey.failureDetectionInterval)
+        .getValue();
+    this.failureDetectionCount = this.propertySet
+        .getIntegerProperty(PropertyKey.failureDetectionCount)
+        .getValue();
 
-    if(!this.isEnabled) {
+    if (!this.isEnabled) {
       return;
     }
 
@@ -98,16 +112,27 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
   public Object execute(String methodName, Callable executeSqlFunc) throws Exception {
     boolean needMonitoring = METHODS_TO_MONITOR.contains(methodName + ",");
 
-    if(!this.isEnabled || !needMonitoring || this.monitor == null || this.monitoringThread == null) {
+    if (!this.isEnabled
+        || !needMonitoring
+        || this.monitor == null
+        || this.monitoringThread == null) {
       // do direct call
       return this.next.execute(methodName, executeSqlFunc);
     }
 
     // update config settings since they may change
-    this.isEnabled = this.propertySet.getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled).getValue();
-    this.failureDetectionTimeMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionTime).getValue();
-    this.failureDetectionIntervalMillis = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionInterval).getValue();
-    this.failureDetectionCount = this.propertySet.getIntegerProperty(PropertyKey.failureDetectionCount).getValue();
+    this.isEnabled = this.propertySet
+        .getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled)
+        .getValue();
+    this.failureDetectionTimeMillis = this.propertySet
+        .getIntegerProperty(PropertyKey.failureDetectionTime)
+        .getValue();
+    this.failureDetectionIntervalMillis = this.propertySet
+        .getIntegerProperty(PropertyKey.failureDetectionInterval)
+        .getValue();
+    this.failureDetectionCount = this.propertySet
+        .getIntegerProperty(PropertyKey.failureDetectionCount)
+        .getValue();
 
     // use a separate thread to execute method
 
@@ -115,36 +140,41 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     ExecutorService executor = null;
     try {
 
-      this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated", methodName));
-      this.monitor.startMonitoring(this.failureDetectionTimeMillis, this.failureDetectionIntervalMillis, this.failureDetectionCount);
+      this.log.logTrace(String.format(
+          "[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated",
+          methodName));
+      this.monitor.startMonitoring(
+          this.failureDetectionTimeMillis,
+          this.failureDetectionIntervalMillis,
+          this.failureDetectionCount);
 
-      Future<Object> executeFuncFuture = null;
+      Future<Object> executeFuncFuture;
       executor = Executors.newSingleThreadExecutor();
       executeFuncFuture = executor.submit(() -> this.next.execute(methodName, executeSqlFunc));
       executor.shutdown(); // stop executor to accept new tasks
 
       boolean isDone = executeFuncFuture.isDone();
-      while(!isDone) {
+      while (!isDone) {
         TimeUnit.MILLISECONDS.sleep(CHECK_INTERVAL_MILLIS);
         isDone = executeFuncFuture.isDone();
 
-        if(this.monitor.isNodeUnhealthy()) {
+        if (this.monitor.isNodeUnhealthy()) {
           //throw new SocketTimeoutException("Read time out");
           throw new CJCommunicationsException("Node is unavailable.");
         }
       }
 
       result = executeFuncFuture.get();
-    }
-    catch(Exception ex) {
+    } catch (Exception ex) {
       throw ex;
-    }
-    finally {
+    } finally {
       this.monitor.stopMonitoring();
-      if(executor != null) {
+      if (executor != null) {
         executor.shutdownNow();
       }
-      this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is deactivated", methodName));
+      this.log.logTrace(String.format(
+          "[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is deactivated",
+          methodName));
     }
 
     return result;
@@ -156,7 +186,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       this.monitor.stopMonitoring();
       this.monitor = null;
     }
-    if(this.monitoringThread != null && !this.monitoringThread.isInterrupted()) {
+    if (this.monitoringThread != null && !this.monitoringThread.isInterrupted()) {
       this.monitoringThread.interrupt();
       this.monitoringThread = null;
     }
@@ -166,13 +196,13 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
   protected HostInfo copy(HostInfo src, Map<String, String> props) {
     return new HostInfo(
-            null,
-            src.getHost(),
-            src.getPort(),
-            src.getUser(),
-            src.getPassword(),
-            src.isPasswordless(),
-            props);
+        null,
+        src.getHost(),
+        src.getPort(),
+        src.getUser(),
+        src.getPassword(),
+        src.isPasswordless(),
+        props);
   }
 
   private class Monitor implements Runnable {
@@ -199,7 +229,11 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       this.failureCount = 0;
     }
 
-    public void startMonitoring(int failureDetectionTimeMillis, int failureDetectionIntervalMillis, int failureDetectionCount) {
+    public void startMonitoring(
+        int failureDetectionTimeMillis,
+        int failureDetectionIntervalMillis,
+        int failureDetectionCount) {
+
       this.failureDetectionTimeMillis = failureDetectionTimeMillis;
       this.failureDetectionIntervalMillis = failureDetectionIntervalMillis;
       this.failureDetectionCount = failureDetectionCount;
@@ -218,20 +252,24 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     }
 
     protected void updateFlags(boolean isValid) {
-      if(!isValid) {
+      if (!isValid) {
         this.failureCount++;
-        if(failureCount >= this.failureDetectionCount) {
+        if (failureCount >= this.failureDetectionCount) {
           this.isNodeUnhealthy = true;
-          this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.", this.hostInfo.getHost()));
+          this.log.logTrace(
+              String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.",
+                  this.hostInfo.getHost()));
+        } else {
+          this.log.logTrace(String.format(
+              "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).",
+              this.hostInfo.getHost(), this.failureCount));
         }
-        else {
-          this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).", this.hostInfo.getHost(), this.failureCount));
-        }
-      }
-      else {
+      } else {
         this.failureCount = 0;
         this.isNodeUnhealthy = false;
-        this.log.logTrace(String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.", this.hostInfo.getHost()));
+        this.log.logTrace(
+            String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.",
+                this.hostInfo.getHost()));
       }
     }
 
@@ -240,19 +278,23 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         if (this.monitoringConn == null || this.monitoringConn.isClosed()) {
 
           // open a new connection
-          Map<String, String> properties = new HashMap<String, String>();
-          properties.put(PropertyKey.tcpKeepAlive.getKeyName(), this.propertySet.getBooleanProperty(PropertyKey.tcpKeepAlive).getStringValue());
-          properties.put(PropertyKey.connectTimeout.getKeyName(), this.propertySet.getBooleanProperty(PropertyKey.connectTimeout).getStringValue());
+          Map<String, String> properties = new HashMap<>();
+          properties.put(
+              PropertyKey.tcpKeepAlive.getKeyName(),
+              this.propertySet.getBooleanProperty(PropertyKey.tcpKeepAlive).getStringValue());
+          properties.put(
+              PropertyKey.connectTimeout.getKeyName(),
+              this.propertySet.getBooleanProperty(PropertyKey.connectTimeout).getStringValue());
           //TODO: any other properties to pass? like socket factory
 
-          this.monitoringConn = ConnectionImpl.getInstance(copy(this.hostInfo, properties)); //TODO: use connection provider?
+          this.monitoringConn = ConnectionImpl.getInstance(
+              copy(this.hostInfo, properties)); //TODO: use connection provider?
 
           return true;
         }
 
         return this.monitoringConn.isValid(this.failureDetectionIntervalMillis / 1000);
-      }
-      catch (SQLException sqlEx) {
+      } catch (SQLException sqlEx) {
         this.log.logTrace("[NodeMonitoringFailoverPlugin::Monitor]", sqlEx);
         return false;
       }
@@ -263,29 +305,24 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
       try {
 
-        while(true) {
+        while (true) {
 
           long elapsedTimeMillis = System.currentTimeMillis() - this.monitoringStartTime;
 
           if (this.isMonitoring && elapsedTimeMillis > this.failureDetectionTimeMillis) {
-
             updateFlags(isConnectionHealthy());
             TimeUnit.MILLISECONDS.sleep(this.failureDetectionIntervalMillis);
-          }
-          else {
+          } else {
             TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
           }
         }
-      }
-      catch(InterruptedException intEx) {
+      } catch (InterruptedException intEx) {
         // do nothing; exit thread
-      }
-      finally {
-        if(this.monitoringConn != null) {
+      } finally {
+        if (this.monitoringConn != null) {
           try {
             this.monitoringConn.close();
-          }
-          catch (SQLException ex) {
+          } catch (SQLException ex) {
             //ignore
           }
         }

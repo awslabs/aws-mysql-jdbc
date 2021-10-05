@@ -30,7 +30,6 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.log.Log;
 
-import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 public interface IFailoverPlugin {

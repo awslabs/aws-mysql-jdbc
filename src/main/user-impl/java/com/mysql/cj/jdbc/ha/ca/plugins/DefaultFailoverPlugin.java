@@ -5,7 +5,6 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.log.Log;
 import org.jboss.util.NullArgumentException;
 
-import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 public class DefaultFailoverPlugin implements IFailoverPlugin {
@@ -16,7 +15,7 @@ public class DefaultFailoverPlugin implements IFailoverPlugin {
 
   @Override
   public void init(PropertySet propertySet, HostInfo hostInfo, IFailoverPlugin next, Log log) {
-    if(log == null) {
+    if (log == null) {
       throw new NullArgumentException("log");
     }
 
@@ -25,16 +24,17 @@ public class DefaultFailoverPlugin implements IFailoverPlugin {
 
   @Override
   public Object execute(String methodName, Callable executeSqlFunc) throws Exception {
-    this.log.logTrace(String.format("[DefaultFailoverPlugin.execute]: method=%s >>>>>", methodName));
+    this.log.logTrace(
+        String.format("[DefaultFailoverPlugin.execute]: method=%s >>>>>", methodName));
     try {
       return executeSqlFunc.call();
-    }
-    catch(Exception ex) {
-      this.log.logTrace(String.format("[DefaultFailoverPlugin.execute]: method=%s, exception: ", methodName), ex);
+    } catch (Exception ex) {
+      this.log.logTrace(
+          String.format("[DefaultFailoverPlugin.execute]: method=%s, exception: ", methodName), ex);
       throw ex;
-    }
-    finally {
-      this.log.logTrace(String.format("[DefaultFailoverPlugin.execute]: method=%s <<<<<", methodName));
+    } finally {
+      this.log.logTrace(
+          String.format("[DefaultFailoverPlugin.execute]: method=%s <<<<<", methodName));
     }
   }
 
