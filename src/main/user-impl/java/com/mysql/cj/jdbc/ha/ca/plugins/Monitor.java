@@ -34,90 +34,124 @@ import com.mysql.cj.log.Log;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class Monitor implements Runnable {
-  protected static int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
+public class Monitor implements IMonitor {
+  private static final int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
 
-  protected Log log;
-  protected PropertySet propertySet;
-  protected HostInfo hostInfo;
-  protected boolean isMonitoring;
-  protected long monitoringStartTime;
-  protected boolean isNodeUnhealthy;
-  protected int failureDetectionCount;
-  protected int failureCount;
-  protected Connection monitoringConn = null;
-  private final IMonitorService monitorService;
-  private final String node;
+  // TODO: lighter implementation
+  private final Queue<MonitorConfig> configQueue = new ConcurrentLinkedQueue<>();
 
-  public Monitor(IMonitorService monitorService, HostInfo hostInfo, PropertySet propertySet, Log log) {
-    this.monitorService = monitorService;
+  private final Log log;
+  private final PropertySet propertySet;
+  private final HostInfo hostInfo;
+  private final boolean isMonitoring;
+  private long monitoringStartTime;
+  private final int failureCount;
+  private Connection monitoringConn = null;
+  private int longestFailureDetectionIntervalMillis;
+  private final AtomicLong elapsedTime = new AtomicLong();
+
+  public Monitor(HostInfo hostInfo, PropertySet propertySet, Log log) {
     this.hostInfo = hostInfo;
     this.propertySet = propertySet;
     this.log = log;
 
-    this.node = hostInfo.getHost();
-
     this.isMonitoring = false;
-    this.isNodeUnhealthy = false;
     this.failureCount = 0;
   }
 
-  public void startMonitoring(
-      int failureDetectionTimeMillis,
-      int failureDetectionIntervalMillis,
-      int failureDetectionCount) {
-    // TODO: do we need locks here or do it earlier?
-
-    final MonitorConfig config =
-        new MonitorConfig(
-            failureDetectionTimeMillis,
-            failureDetectionIntervalMillis,
-            failureDetectionCount);
-
-    this.monitorService.addMonitorConfig(this.node, config);
+  @Override
+  public void startMonitoring(MonitorConfig config) {
+    this.longestFailureDetectionIntervalMillis = Math.min(
+        this.longestFailureDetectionIntervalMillis,
+        config.getFailureDetectionIntervalMillis());
 
     this.monitoringStartTime = System.currentTimeMillis();
-    // TODO: Use Atomics here?
-    this.isMonitoring = true;
-    this.failureCount = 0;
+    configQueue.add(config);
   }
 
-  public void stopMonitoring() {
-    this.isMonitoring = false;
+  @Override
+  public void stopMonitoring(MonitorConfig config) {
+    this.longestFailureDetectionIntervalMillis = findLongestIntervalMillis();
+    configQueue.remove(config);
   }
 
-  public boolean isNodeUnhealthy() {
-    return this.isNodeUnhealthy;
-  }
+  @Override
+  public boolean isNodeUnhealthy(MonitorConfig config) {
+    if (!config.isValid()) {
+      config.incrementFailureCount();
 
-  protected void updateFlags(boolean isValid, final int failureDetectionCount) {
-    if (!isValid) {
-      this.failureCount++;
-      if (failureCount >= failureDetectionCount) {
-        this.isNodeUnhealthy = true;
+      if (this.failureCount >= config.getFailureDetectionCount()) {
         this.log.logTrace(
-            String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.",
+            String.format(
+                "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.",
                 this.hostInfo.getHost()));
-      } else {
-        this.log.logTrace(String.format(
-            "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).",
-            this.hostInfo.getHost(), this.failureCount));
+        return true;
       }
+      this.log.logTrace(String.format(
+          "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).",
+          this.hostInfo.getHost(), this.failureCount));
     } else {
-      this.failureCount = 0;
-      this.isNodeUnhealthy = false;
-      this.log.logTrace(
-          String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.",
-              this.hostInfo.getHost()));
+      config.setFailureCount(0);
+    }
+
+    this.log.logTrace(
+        String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.",
+            this.hostInfo.getHost()));
+    return false;
+  }
+
+  @Override
+  public void run() {
+    try {
+      while (true) {
+        if (!configQueue.isEmpty()) {
+          if (!isConnectionHealthy()) {
+            this.log.logTrace(
+                String.format(
+                    "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead* for all connections.",
+                    this.hostInfo.getHost()));
+            continue;
+          }
+
+          for (MonitorConfig monitorConfig : configQueue) {
+            long elapsedTimeMillis = System.currentTimeMillis() - this.monitoringStartTime;
+
+            final int failureDetectionTimeMillis = monitorConfig.getFailureDetectionTimeMillis();
+
+            if (this.isMonitoring && elapsedTimeMillis > failureDetectionTimeMillis) {
+              final int intervalMillis = monitorConfig.getFailureDetectionIntervalMillis();
+              monitorConfig.setValid(intervalMillis >= this.elapsedTime.get());
+            }
+          }
+
+          TimeUnit.MILLISECONDS.sleep(this.longestFailureDetectionIntervalMillis);
+        } else {
+          TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
+        }
+      }
+    } catch (InterruptedException intEx) {
+      // do nothing; exit thread
+    } finally {
+      if (this.monitoringConn != null) {
+        try {
+          this.monitoringConn.close();
+        } catch (SQLException ex) {
+          //ignore
+        }
+      }
     }
   }
 
-  protected boolean isConnectionHealthy(final int failureDetectionIntervalMillis) {
+  private boolean isConnectionHealthy() {
     try {
       if (this.monitoringConn == null || this.monitoringConn.isClosed()) {
 
@@ -135,50 +169,21 @@ public class Monitor implements Runnable {
         return true;
       }
 
-      return this.monitoringConn.isValid(failureDetectionIntervalMillis / 1000);
+      final long start = System.currentTimeMillis();
+      final boolean isValid =
+          this.monitoringConn.isValid(this.longestFailureDetectionIntervalMillis / 1000);
+      this.elapsedTime.set(System.currentTimeMillis() - start);
+
+      // if false then node is considered dead for all monitor configs
+      return isValid;
+
     } catch (SQLException sqlEx) {
       this.log.logTrace("[NodeMonitoringFailoverPlugin::Monitor]", sqlEx);
       return false;
     }
   }
 
-  @Override
-  public void run() {
-    try {
-
-      while (true) {
-        final List<MonitorConfig> configList = this.monitorService.getMonitorConfigs(this.node);
-
-        for (MonitorConfig monitorConfig : configList) {
-          long elapsedTimeMillis = System.currentTimeMillis() - this.monitoringStartTime;
-
-          final int failureDetectionTimeMillis = monitorConfig.getFailureDetectionTimeMillis();
-
-          if (this.isMonitoring && elapsedTimeMillis > failureDetectionTimeMillis) {
-
-            final int failureDetectionIntervalMillis = monitorConfig.getFailureDetectionIntervalMillis();
-            updateFlags(isConnectionHealthy(failureDetectionIntervalMillis), failureDetectionCount);
-            TimeUnit.MILLISECONDS.sleep(failureDetectionIntervalMillis);
-          } else {
-            TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
-          }
-        }
-
-      }
-    } catch (InterruptedException intEx) {
-      // do nothing; exit thread
-    } finally {
-      if (this.monitoringConn != null) {
-        try {
-          this.monitoringConn.close();
-        } catch (SQLException ex) {
-          //ignore
-        }
-      }
-    }
-  }
-
-  protected HostInfo copy(HostInfo src, Map<String, String> props) {
+  private HostInfo copy(HostInfo src, Map<String, String> props) {
     return new HostInfo(
         null,
         src.getHost(),
@@ -187,5 +192,15 @@ public class Monitor implements Runnable {
         src.getPassword(),
         src.isPasswordless(),
         props);
+  }
+
+  private int findLongestIntervalMillis() {
+    final Optional<MonitorConfig> configWithMaxInterval = configQueue
+        .parallelStream()
+        .max(Comparator.comparing(MonitorConfig::getFailureDetectionIntervalMillis));
+
+    return configWithMaxInterval
+        .map(MonitorConfig::getFailureDetectionIntervalMillis)
+        .orElse(0);
   }
 }

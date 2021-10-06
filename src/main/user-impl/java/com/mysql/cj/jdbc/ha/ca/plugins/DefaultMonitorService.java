@@ -26,93 +26,70 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.log.Log;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultMonitorService implements IMonitorService {
-  private static final Map<String, Monitor> MONITOR_MAPPING = new ConcurrentHashMap<>();
+  private static final Map<String, IMonitor> MONITOR_MAPPING = new ConcurrentHashMap<>();
   private static final Map<String, Thread> THREAD_MAPPING = new ConcurrentHashMap<>();
-  private static final Map<String, List<MonitorConfig>> CONFIG_MAPPING = new ConcurrentHashMap<>();
 
-  @Override
-  public Monitor createMonitorIfAbsent(
+  public DefaultMonitorService(HostInfo hostInfo, PropertySet propertySet, Log log) {
+    this(
+        hostInfo.getHost(),
+        ((service) -> new Monitor(hostInfo, propertySet, log)),
+        Thread::new);
+  }
+
+  public DefaultMonitorService(
       String node,
-      MonitorInitializer initializer) {
-
-    return MONITOR_MAPPING.putIfAbsent(
+      MonitorInitializer monitorInitializer,
+      ThreadInitializer threadInitializer) {
+    // Initialize monitor and thread.
+    final IMonitor monitor = MONITOR_MAPPING.putIfAbsent(
         node,
-        initializer.createMonitor(this));
-  }
-
-  @Override
-  public Monitor getMonitor(String node) {
-    return MONITOR_MAPPING.get(node);
-  }
-
-  @Override
-  public boolean addMonitorConfig(String node, MonitorConfig config) {
-    final List<MonitorConfig> configs =
-        CONFIG_MAPPING.computeIfAbsent(node, arr -> new ArrayList<>());
-    return configs.add(config);
-  }
-
-  @Override
-  public Thread startNewThreadIfAbsent(String node, ThreadInitializer threadInitializer) {
-    final Monitor monitor = MONITOR_MAPPING.get(node);
-    if (monitor == null) {
-      // Not sure if this null check is necessary
-      // Throw an exception or not?
-      System.out.println("CREATE A MONITOR FIRST");
-    }
+        monitorInitializer.createMonitor(this));
 
     Thread thread = THREAD_MAPPING.putIfAbsent(node, threadInitializer.startThread(monitor));
     thread.start();
-    return thread;
   }
 
   @Override
-  public List<MonitorConfig> getMonitorConfigs(String node) {
-    return CONFIG_MAPPING.computeIfAbsent(node, arr -> new ArrayList<>());
+  public MonitorConfig startMonitoring(
+      String node,
+      int failureDetectionTimeMillis,
+      int failureDetectionIntervalMillis,
+      int failureDetectionCount) {
+
+    final MonitorConfig config = new MonitorConfig(
+        failureDetectionTimeMillis,
+        failureDetectionIntervalMillis,
+        failureDetectionCount);
+
+    MONITOR_MAPPING.get(node).startMonitoring(config);
+    return config;
   }
 
   @Override
-  public boolean isMonitoringNode(String node) {
-    return MONITOR_MAPPING.containsKey(node) & THREAD_MAPPING.containsKey(node);
-  }
+  public void stopMonitoring(String node, MonitorConfig config) {
+    final IMonitor monitor = MONITOR_MAPPING.get(node);
+    monitor.stopMonitoring(config);
+    // Do we need to remove monitor if all configs have been removed?
 
-  @Override
-  public void releaseMonitor(String node) {
-    Monitor monitor = MONITOR_MAPPING.get(node);
-    if (monitor == null) {
-      return;
-    }
-
-    monitor.stopMonitoring();
-    MONITOR_MAPPING.remove(node);
-    removeMonitorConfigs(node);
-  }
-
-  @Override
-  public void releaseThread(String node) {
-    Thread thread = THREAD_MAPPING.get(node);
+    final Thread thread = THREAD_MAPPING.get(node);
     if (thread == null || thread.isInterrupted()) {
       return;
     }
 
     thread.interrupt();
     THREAD_MAPPING.remove(node);
-    removeMonitorConfigs(node);
   }
 
-  private void removeMonitorConfigs(String node) {
-    List<MonitorConfig> configs = CONFIG_MAPPING.get(node);
-    if (configs == null || configs.isEmpty()) {
-      return;
-    }
-
-    CONFIG_MAPPING.remove(node);
+  @Override
+  public boolean isNodeUnhealthy(String node, MonitorConfig config) {
+    return MONITOR_MAPPING.get(node).isNodeUnhealthy(config);
   }
 }

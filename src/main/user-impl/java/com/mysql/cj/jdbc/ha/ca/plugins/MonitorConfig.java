@@ -28,11 +28,12 @@ package com.mysql.cj.jdbc.ha.ca.plugins;
 
 public class MonitorConfig {
 
+  private boolean isValid;
+  private int failureCount;
   private int failureDetectionTimeMillis;
   private int failureDetectionIntervalMillis;
   private int failureDetectionCount;
 
-  // Might be better to just use setters.
   public MonitorConfig(
       int failureDetectionTimeMillis,
       int failureDetectionIntervalMillis,
@@ -65,5 +66,25 @@ public class MonitorConfig {
 
   public void setFailureDetectionCount(int failureDetectionCount) {
     this.failureDetectionCount = failureDetectionCount;
+  }
+
+  public int getFailureCount() {
+    return failureCount;
+  }
+
+  public void setFailureCount(int failureCount) {
+    this.failureCount = failureCount;
+  }
+
+  public void incrementFailureCount() {
+    this.failureCount++;
+  }
+
+  public boolean isValid() {
+    return isValid;
+  }
+
+  public void setValid(boolean valid) {
+    isValid = valid;
   }
 }

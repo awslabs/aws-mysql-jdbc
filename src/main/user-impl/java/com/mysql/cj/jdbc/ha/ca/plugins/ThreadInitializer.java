@@ -26,6 +26,7 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
+@FunctionalInterface
 public interface ThreadInitializer {
-  Thread startThread(Monitor monitor);
+  Thread startThread(IMonitor monitor);
 }

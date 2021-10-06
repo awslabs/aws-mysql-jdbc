@@ -26,14 +26,8 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
-public interface IMonitorService {
-  MonitorConfig startMonitoring(
-      String node,
-      int failureDetectionTimeMillis,
-      int failureDetectionIntervalMillis,
-      int failureDetectionCount);
-
-  void stopMonitoring(String node, MonitorConfig config);
-
-  boolean isNodeUnhealthy(String node, MonitorConfig config);
+public interface IMonitor extends Runnable {
+  void startMonitoring(MonitorConfig config);
+  void stopMonitoring(MonitorConfig config);
+  boolean isNodeUnhealthy(MonitorConfig config);
 }

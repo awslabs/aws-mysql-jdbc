@@ -53,9 +53,11 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
   protected int failureDetectionIntervalMillis;
   protected int failureDetectionCount;
   private IMonitorService monitorService;
+  private MonitorConfig monitorConfig;
   private String node;
 
-  public NodeMonitoringFailoverPlugin() {}
+  public NodeMonitoringFailoverPlugin() {
+  }
 
   @Override
   public void init(
@@ -63,7 +65,12 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       HostInfo hostInfo,
       IFailoverPlugin next,
       Log log) {
-    this.init(propertySet, hostInfo, next, log, new DefaultMonitorService());
+    this.init(
+        propertySet,
+        hostInfo,
+        next,
+        log,
+        new DefaultMonitorService(hostInfo, propertySet, log));
   }
 
   public void init(
@@ -72,7 +79,21 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       IFailoverPlugin next,
       Log log,
       IMonitorService monitorService) {
-    this.nullChecks(propertySet, hostInfo, next, log);
+    if (next == null) {
+      throw new NullArgumentException("next");
+    }
+
+    if (log == null) {
+      throw new NullArgumentException("log");
+    }
+
+    if (propertySet == null) {
+      throw new NullArgumentException("propertySet");
+    }
+
+    if (hostInfo == null) {
+      throw new NullArgumentException("hostInfo");
+    }
 
     this.hostInfo = hostInfo;
     this.node = hostInfo.getHost();
@@ -97,11 +118,6 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     if (!this.isEnabled) {
       return;
     }
-
-    this.monitorService.createMonitorIfAbsent(
-        this.node,
-        (service -> new Monitor(service, this.hostInfo, this.propertySet, this.log)));
-    this.monitorService.startNewThreadIfAbsent(this.node, Thread::new);
   }
 
   @Override
@@ -110,7 +126,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
     if (!this.isEnabled
         || !needMonitoring
-        || !this.monitorService.isMonitoringNode(this.node)) {
+        || this.monitorService == null) {
       // do direct call
       return this.next.execute(methodName, executeSqlFunc);
     }
@@ -137,8 +153,8 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       this.log.logTrace(String.format(
           "[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated",
           methodName));
-      // TODO: Do we need locks for the monitor read/write
-      this.monitorService.getMonitor(node).startMonitoring(
+
+      this.monitorConfig = this.monitorService.startMonitoring(node,
           this.failureDetectionTimeMillis,
           this.failureDetectionIntervalMillis,
           this.failureDetectionCount);
@@ -153,7 +169,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         TimeUnit.MILLISECONDS.sleep(CHECK_INTERVAL_MILLIS);
         isDone = executeFuncFuture.isDone();
 
-        if (this.monitorService.getMonitor(node).isNodeUnhealthy()) {
+        if (this.monitorService.isNodeUnhealthy(node, this.monitorConfig)) {
           //throw new SocketTimeoutException("Read time out");
           throw new CJCommunicationsException("Node is unavailable.");
         }
@@ -164,7 +180,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       throw ex;
     } finally {
       // TODO: double check this
-      this.monitorService.getMonitor(node).stopMonitoring();
+      this.monitorService.stopMonitoring(node, this.monitorConfig);
       if (executor != null) {
         executor.shutdownNow();
       }
@@ -178,17 +194,6 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
   @Override
   public void releaseResources() {
-    this.monitorService.releaseMonitor(node);
-    this.monitorService.releaseThread(node);
-
     this.next.releaseResources();
-  }
-
-  private void nullChecks(Object... param) {
-    for (Object o : param) {
-      if (o == null) {
-        throw new NullArgumentException(o.getClass().getName());
-      }
-    }
   }
 }
