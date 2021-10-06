@@ -74,7 +74,7 @@ public class ClusterAwareUtils {
      *      Returns connectionUrl's HostInfo if baseHostInfo is null
      */
     public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
-        if (connectionUrl == null){
+        if (connectionUrl == null) {
             return baseHostInfo;
         }
 
