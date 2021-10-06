@@ -27,7 +27,6 @@
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
 public interface IMonitor extends Runnable {
-  void startMonitoring(MonitorConfig config);
-  void stopMonitoring(MonitorConfig config);
-  boolean isNodeUnhealthy(MonitorConfig config);
+  void startMonitoring(MonitorConnectionContext context);
+  void stopMonitoring(MonitorConnectionContext context);
 }

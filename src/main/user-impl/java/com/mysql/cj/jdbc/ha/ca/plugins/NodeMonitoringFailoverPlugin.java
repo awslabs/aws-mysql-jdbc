@@ -53,7 +53,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
   protected int failureDetectionIntervalMillis;
   protected int failureDetectionCount;
   private IMonitorService monitorService;
-  private MonitorConfig monitorConfig;
+  private MonitorConnectionContext monitorContext;
   private String node;
 
   public NodeMonitoringFailoverPlugin() {
@@ -154,7 +154,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
           "[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated",
           methodName));
 
-      this.monitorConfig = this.monitorService.startMonitoring(node,
+      this.monitorContext = this.monitorService.startMonitoring(node,
           this.failureDetectionTimeMillis,
           this.failureDetectionIntervalMillis,
           this.failureDetectionCount);
@@ -169,7 +169,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         TimeUnit.MILLISECONDS.sleep(CHECK_INTERVAL_MILLIS);
         isDone = executeFuncFuture.isDone();
 
-        if (this.monitorService.isNodeUnhealthy(node, this.monitorConfig)) {
+        if (this.monitorContext.isNodeUnhealthy()) {
           //throw new SocketTimeoutException("Read time out");
           throw new CJCommunicationsException("Node is unavailable.");
         }
@@ -180,7 +180,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       throw ex;
     } finally {
       // TODO: double check this
-      this.monitorService.stopMonitoring(node, this.monitorConfig);
+      this.monitorService.stopMonitoring(node, this.monitorContext);
       if (executor != null) {
         executor.shutdownNow();
       }

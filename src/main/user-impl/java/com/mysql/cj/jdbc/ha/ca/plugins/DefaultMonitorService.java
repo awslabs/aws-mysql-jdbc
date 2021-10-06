@@ -36,18 +36,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DefaultMonitorService implements IMonitorService {
   private static final Map<String, IMonitor> MONITOR_MAPPING = new ConcurrentHashMap<>();
   private static final Map<String, Thread> THREAD_MAPPING = new ConcurrentHashMap<>();
+  private final Log log;
 
   public DefaultMonitorService(HostInfo hostInfo, PropertySet propertySet, Log log) {
     this(
         hostInfo.getHost(),
         ((service) -> new Monitor(hostInfo, propertySet, log)),
-        Thread::new);
+        Thread::new,
+        log
+    );
   }
 
   public DefaultMonitorService(
       String node,
       MonitorInitializer monitorInitializer,
-      ThreadInitializer threadInitializer) {
+      ThreadInitializer threadInitializer,
+      Log log) {
     // Initialize monitor and thread.
     final IMonitor monitor = MONITOR_MAPPING.putIfAbsent(
         node,
@@ -55,28 +59,31 @@ public class DefaultMonitorService implements IMonitorService {
 
     Thread thread = THREAD_MAPPING.putIfAbsent(node, threadInitializer.startThread(monitor));
     thread.start();
+    this.log = log;
   }
 
   @Override
-  public MonitorConfig startMonitoring(
+  public MonitorConnectionContext startMonitoring(
       String node,
       int failureDetectionTimeMillis,
       int failureDetectionIntervalMillis,
       int failureDetectionCount) {
 
-    final MonitorConfig config = new MonitorConfig(
+    final MonitorConnectionContext context = new MonitorConnectionContext(
+        node,
+        log,
         failureDetectionTimeMillis,
         failureDetectionIntervalMillis,
         failureDetectionCount);
 
-    MONITOR_MAPPING.get(node).startMonitoring(config);
-    return config;
+    MONITOR_MAPPING.get(node).startMonitoring(context);
+    return context;
   }
 
   @Override
-  public void stopMonitoring(String node, MonitorConfig config) {
+  public void stopMonitoring(String node, MonitorConnectionContext context) {
     final IMonitor monitor = MONITOR_MAPPING.get(node);
-    monitor.stopMonitoring(config);
+    monitor.stopMonitoring(context);
     // Do we need to remove monitor if all configs have been removed?
 
     final Thread thread = THREAD_MAPPING.get(node);
@@ -86,10 +93,5 @@ public class DefaultMonitorService implements IMonitorService {
 
     thread.interrupt();
     THREAD_MAPPING.remove(node);
-  }
-
-  @Override
-  public boolean isNodeUnhealthy(String node, MonitorConfig config) {
-    return MONITOR_MAPPING.get(node).isNodeUnhealthy(config);
   }
 }

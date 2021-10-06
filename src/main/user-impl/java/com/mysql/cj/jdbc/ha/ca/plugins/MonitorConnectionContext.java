@@ -26,19 +26,26 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
-public class MonitorConfig {
+import com.mysql.cj.log.Log;
 
-  private boolean isValid;
+public class MonitorConnectionContext {
+
+  private boolean isConnectionValid;
   private int failureCount;
   private int failureDetectionTimeMillis;
   private int failureDetectionIntervalMillis;
   private int failureDetectionCount;
+  private final String node;
+  private final Log log;
 
-  public MonitorConfig(
+  public MonitorConnectionContext(
+      String node,
+      Log log,
       int failureDetectionTimeMillis,
       int failureDetectionIntervalMillis,
       int failureDetectionCount) {
-
+    this.node = node;
+    this.log = log;
     this.failureDetectionTimeMillis = failureDetectionTimeMillis;
     this.failureDetectionIntervalMillis = failureDetectionIntervalMillis;
     this.failureDetectionCount = failureDetectionCount;
@@ -80,11 +87,36 @@ public class MonitorConfig {
     this.failureCount++;
   }
 
-  public boolean isValid() {
-    return isValid;
+  public boolean isConnectionValid() {
+    return isConnectionValid;
   }
 
-  public void setValid(boolean valid) {
-    isValid = valid;
+  public void setConnectionValid(boolean connectionValid) {
+    isConnectionValid = connectionValid;
+  }
+
+  public boolean isNodeUnhealthy() {
+    if (!this.isConnectionValid()) {
+      this.incrementFailureCount();
+
+      if (this.getFailureCount() >= this.getFailureDetectionCount()) {
+        this.log.logTrace(
+            String.format(
+                "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.",
+                node));
+        return true;
+      }
+      this.log.logTrace(String.format(
+          "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).",
+          node,
+          this.getFailureCount()));
+    } else {
+      this.setFailureCount(0);
+    }
+
+    this.log.logTrace(
+        String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.",
+            node));
+    return false;
   }
 }
