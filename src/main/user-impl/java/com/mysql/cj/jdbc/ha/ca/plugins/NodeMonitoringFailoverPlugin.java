@@ -56,6 +56,11 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
   private MonitorConnectionContext monitorContext;
   private String node;
 
+  @FunctionalInterface
+  interface MonitorServiceInitializer {
+    IMonitorService start(HostInfo hostInfo, PropertySet propertySet, Log log);
+  }
+
   public NodeMonitoringFailoverPlugin() {
   }
 
@@ -70,7 +75,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         hostInfo,
         next,
         log,
-        new DefaultMonitorService(hostInfo, propertySet, log));
+        DefaultMonitorService::new);
   }
 
   public void init(
@@ -78,7 +83,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       HostInfo hostInfo,
       IFailoverPlugin next,
       Log log,
-      IMonitorService monitorService) {
+      MonitorServiceInitializer monitorServiceInitializer) {
     if (next == null) {
       throw new NullArgumentException("next");
     }
@@ -100,7 +105,6 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     this.propertySet = propertySet;
     this.log = log;
     this.next = next;
-    this.monitorService = monitorService;
 
     this.isEnabled = this.propertySet
         .getBooleanProperty(PropertyKey.nativeFailureDetectionEnabled)
@@ -115,8 +119,11 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         .getIntegerProperty(PropertyKey.failureDetectionCount)
         .getValue();
 
-    if (!this.isEnabled) {
-      return;
+    if (this.isEnabled) {
+      this.monitorService = monitorServiceInitializer.start(
+          this.hostInfo,
+          this.propertySet,
+          this.log);
     }
   }
 

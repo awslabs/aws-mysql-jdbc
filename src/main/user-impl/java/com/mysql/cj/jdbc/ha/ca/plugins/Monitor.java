@@ -46,7 +46,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Monitor implements IMonitor {
   private static final int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
 
-  // TODO: lighter implementation
   private final Queue<MonitorConnectionContext> contexts = new ConcurrentLinkedQueue<>();
 
   private final Log log;

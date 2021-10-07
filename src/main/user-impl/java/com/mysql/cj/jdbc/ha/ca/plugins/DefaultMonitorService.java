@@ -52,13 +52,13 @@ public class DefaultMonitorService implements IMonitorService {
       MonitorInitializer monitorInitializer,
       ThreadInitializer threadInitializer,
       Log log) {
-    // Initialize monitor and thread.
-    final IMonitor monitor = MONITOR_MAPPING.putIfAbsent(
+    final IMonitor monitor = MONITOR_MAPPING.computeIfAbsent(
         node,
-        monitorInitializer.createMonitor(this));
+        k -> monitorInitializer.createMonitor(this));
 
-    Thread thread = THREAD_MAPPING.putIfAbsent(node, threadInitializer.startThread(monitor));
-    thread.start();
+   THREAD_MAPPING.putIfAbsent(
+        node,
+        threadInitializer.createThread(monitor));
     this.log = log;
   }
 
@@ -77,6 +77,11 @@ public class DefaultMonitorService implements IMonitorService {
         failureDetectionCount);
 
     MONITOR_MAPPING.get(node).startMonitoring(context);
+    final Thread thread = THREAD_MAPPING.get(node);
+    if (Thread.State.NEW.equals(thread.getState())) {
+      thread.start();
+    }
+
     return context;
   }
 
