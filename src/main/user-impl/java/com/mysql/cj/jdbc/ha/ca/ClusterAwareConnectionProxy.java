@@ -365,9 +365,11 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       }
     }
 
-    if(isFailoverEnabled() && this.pluginManager == null) {
+    if(this.pluginManager == null) {
       this.pluginManager = new FailoverPluginManager(this.log);
-      this.pluginManager.init(this.currentConnection.getPropertySet(), this.hosts.get(this.currentHostIndex));
+      this.pluginManager.init(this.currentConnection.getPropertySet(),
+          this.currentHostIndex != NO_CONNECTION_INDEX ? this.hosts.get(this.currentHostIndex) : connUrl.getMainHost()
+      );
     }
   }
 
