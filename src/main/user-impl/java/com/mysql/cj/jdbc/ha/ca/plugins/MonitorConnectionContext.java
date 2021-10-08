@@ -55,7 +55,7 @@ public class MonitorConnectionContext {
     return failureDetectionTimeMillis;
   }
 
-  public void setFailureDetectionTimeMillis(int failureDetectionTimeMillis) {
+  protected void setFailureDetectionTimeMillis(int failureDetectionTimeMillis) {
     this.failureDetectionTimeMillis = failureDetectionTimeMillis;
   }
 
@@ -63,7 +63,7 @@ public class MonitorConnectionContext {
     return failureDetectionIntervalMillis;
   }
 
-  public void setFailureDetectionIntervalMillis(int failureDetectionIntervalMillis) {
+  protected void setFailureDetectionIntervalMillis(int failureDetectionIntervalMillis) {
     this.failureDetectionIntervalMillis = failureDetectionIntervalMillis;
   }
 
@@ -79,11 +79,11 @@ public class MonitorConnectionContext {
     return failureCount;
   }
 
-  public void setFailureCount(int failureCount) {
+  protected void setFailureCount(int failureCount) {
     this.failureCount = failureCount;
   }
 
-  public void incrementFailureCount() {
+  protected void incrementFailureCount() {
     this.failureCount++;
   }
 
@@ -91,7 +91,7 @@ public class MonitorConnectionContext {
     return isConnectionValid;
   }
 
-  public void setConnectionValid(boolean connectionValid) {
+  protected void setConnectionValid(boolean connectionValid) {
     isConnectionValid = connectionValid;
   }
 

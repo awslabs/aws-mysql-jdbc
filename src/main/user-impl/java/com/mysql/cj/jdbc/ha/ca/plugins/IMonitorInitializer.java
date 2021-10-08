@@ -27,6 +27,6 @@
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
 @FunctionalInterface
-public interface MonitorInitializer {
+public interface IMonitorInitializer {
   IMonitor createMonitor(IMonitorService monitorService);
 }

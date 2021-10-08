@@ -30,9 +30,7 @@ import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -44,8 +42,8 @@ class DefaultMonitorServiceTest {
   private final static int FAILURE_DETECTION_INTERVAL_MILLIS = 100;
   private final static int FAILURE_DETECTION_COUNT = 3;
 
-  @Mock private MonitorInitializer monitorInitializer;
-  @Mock private ThreadInitializer threadInitializer;
+  @Mock private IMonitorInitializer monitorInitializer;
+  @Mock private IThreadInitializer threadInitializer;
   @Mock private Log logger;
   @Mock private IMonitor monitor;
   @Mock private Thread thread;

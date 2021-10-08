@@ -49,8 +49,8 @@ public class DefaultMonitorService implements IMonitorService {
 
   DefaultMonitorService(
       String node,
-      MonitorInitializer monitorInitializer,
-      ThreadInitializer threadInitializer,
+      IMonitorInitializer monitorInitializer,
+      IThreadInitializer threadInitializer,
       Log log) {
     final IMonitor monitor = MONITOR_MAPPING.computeIfAbsent(
         node,
