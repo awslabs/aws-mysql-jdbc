@@ -359,8 +359,6 @@ public class AwsIamAuthenticationSample {
                }
             }
          }
-      } catch (final SQLException throwable) {
-         throw throwable;
       }
    }
 }

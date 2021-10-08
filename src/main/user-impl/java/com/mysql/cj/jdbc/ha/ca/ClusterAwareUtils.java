@@ -62,4 +62,35 @@ public class ClusterAwareUtils {
         mergedProps.putAll(additionalProps);
         return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), mergedProps);
     }
+
+    /**
+     * Create a copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
+     *
+     * @param baseHostInfo The {@link HostInfo} object to copy host and port from
+     * @param connectionUrl All other properties to add to the new {@link HostInfo}
+     *
+     * @return A copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
+     *      Returns baseHostInfo if connectionUrl is null
+     *      Returns connectionUrl's HostInfo if baseHostInfo is null
+     */
+    public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
+        if (connectionUrl == null) {
+            return baseHostInfo;
+        }
+
+        final HostInfo mainHost = connectionUrl.getMainHost();
+        if (baseHostInfo == null) {
+            return mainHost;
+        }
+
+        DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(baseHostInfo.getDatabaseUrl(), new Properties());
+        Map<String, String> originalProps = baseHostInfo.getHostProperties();
+        Map<String, String> mergedProps = new HashMap<>();
+        mergedProps.putAll(originalProps);
+        mergedProps.putAll(mainHost.getHostProperties());
+
+        return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(),
+            mainHost.getUser(), mainHost.getPassword(),
+            mergedProps);
+    }
 }
