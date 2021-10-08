@@ -34,8 +34,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultMonitorService implements IMonitorService {
-  private static final Map<String, IMonitor> MONITOR_MAPPING = new ConcurrentHashMap<>();
-  private static final Map<String, Thread> THREAD_MAPPING = new ConcurrentHashMap<>();
+  protected static final Map<String, IMonitor> MONITOR_MAPPING = new ConcurrentHashMap<>();
+  protected static final Map<String, Thread> THREAD_MAPPING = new ConcurrentHashMap<>();
   private final Log log;
 
   public DefaultMonitorService(HostInfo hostInfo, PropertySet propertySet, Log log) {
@@ -47,7 +47,7 @@ public class DefaultMonitorService implements IMonitorService {
     );
   }
 
-  public DefaultMonitorService(
+  DefaultMonitorService(
       String node,
       MonitorInitializer monitorInitializer,
       ThreadInitializer threadInitializer,
@@ -89,7 +89,6 @@ public class DefaultMonitorService implements IMonitorService {
   public void stopMonitoring(String node, MonitorConnectionContext context) {
     final IMonitor monitor = MONITOR_MAPPING.get(node);
     monitor.stopMonitoring(context);
-    // Do we need to remove monitor if all configs have been removed?
 
     final Thread thread = THREAD_MAPPING.get(node);
     if (thread == null || thread.isInterrupted()) {
