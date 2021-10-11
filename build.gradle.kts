@@ -211,7 +211,7 @@ tasks.withType<Checkstyle>().configureEach {
 
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
-    testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.70")
+    testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.84")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.6.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
@@ -221,7 +221,7 @@ dependencies {
     testImplementation("org.mockito:mockito-inline:3.6.28")
     testImplementation("org.hamcrest:hamcrest:2.2")
 
-    implementation("com.amazonaws:aws-java-sdk-rds:1.11.875")
+    implementation("com.amazonaws:aws-java-sdk-rds:1.12.84")
     implementation("com.google.protobuf:protobuf-java:3.11.4")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.jboss.jbossas:jboss-as-connector:6.1.0.Final")
