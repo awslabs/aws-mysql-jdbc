@@ -51,17 +51,15 @@ public class Monitor implements IMonitor {
   private final Log log;
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
-  private boolean isMonitoring;
   private long monitoringStartTime;
   private Connection monitoringConn = null;
   private int longestFailureDetectionIntervalMillis;
-  private final AtomicLong elapsedTime = new AtomicLong();
+  private final AtomicLong connectionValidationElapsedTime = new AtomicLong();
 
   public Monitor(HostInfo hostInfo, PropertySet propertySet, Log log) {
     this.hostInfo = hostInfo;
     this.propertySet = propertySet;
     this.log = log;
-    this.isMonitoring = false;
   }
 
   @Override
@@ -78,7 +76,6 @@ public class Monitor implements IMonitor {
   public void stopMonitoring(MonitorConnectionContext context) {
     this.longestFailureDetectionIntervalMillis = findLongestIntervalMillis();
     contexts.remove(context);
-    this.isMonitoring = false;
   }
 
   @Override
@@ -90,9 +87,9 @@ public class Monitor implements IMonitor {
             final long elapsedTimeMillis = System.currentTimeMillis() - this.monitoringStartTime;
             final int failureDetectionTimeMillis = monitorContext.getFailureDetectionTimeMillis();
 
-            if (this.isMonitoring && (elapsedTimeMillis > failureDetectionTimeMillis)) {
+            if (elapsedTimeMillis > failureDetectionTimeMillis) {
               final int intervalMillis = monitorContext.getFailureDetectionIntervalMillis();
-              monitorContext.setConnectionValid(intervalMillis >= this.elapsedTime.get());
+              monitorContext.setConnectionValid(intervalMillis >= this.connectionValidationElapsedTime.get());
             }
           }
 
@@ -139,7 +136,7 @@ public class Monitor implements IMonitor {
       final long start = System.currentTimeMillis();
       final boolean isValid =
           this.monitoringConn.isValid(this.longestFailureDetectionIntervalMillis / 1000);
-      this.elapsedTime.set(System.currentTimeMillis() - start);
+      this.connectionValidationElapsedTime.set(System.currentTimeMillis() - start);
       return isValid;
 
     } catch (SQLException sqlEx) {

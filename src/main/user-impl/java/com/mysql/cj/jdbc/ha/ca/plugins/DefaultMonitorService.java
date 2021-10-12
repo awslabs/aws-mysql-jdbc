@@ -88,6 +88,10 @@ public class DefaultMonitorService implements IMonitorService {
   @Override
   public void stopMonitoring(String node, MonitorConnectionContext context) {
     final IMonitor monitor = MONITOR_MAPPING.get(node);
+    if (monitor == null) {
+      return;
+    }
+
     monitor.stopMonitoring(context);
 
     final Thread thread = THREAD_MAPPING.get(node);
