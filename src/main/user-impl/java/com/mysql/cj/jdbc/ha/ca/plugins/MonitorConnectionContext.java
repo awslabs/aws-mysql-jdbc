@@ -56,6 +56,10 @@ public class MonitorConnectionContext {
     this.startMonitorTime = startMonitorTime;
   }
 
+  String getNode() {
+    return this.node;
+  }
+
   public int getFailureDetectionTimeMillis() {
     return failureDetectionTimeMillis;
   }

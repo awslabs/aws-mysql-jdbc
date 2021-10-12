@@ -57,8 +57,8 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
   private String node;
 
   @FunctionalInterface
-  interface MonitorServiceInitializer {
-    IMonitorService start(HostInfo hostInfo, PropertySet propertySet, Log log);
+  interface IMonitorServiceInitializer {
+    IMonitorService create(HostInfo hostInfo, PropertySet propertySet, Log log);
   }
 
   public NodeMonitoringFailoverPlugin() {
@@ -83,7 +83,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       HostInfo hostInfo,
       IFailoverPlugin next,
       Log log,
-      MonitorServiceInitializer monitorServiceInitializer) {
+      IMonitorServiceInitializer monitorServiceInitializer) {
     if (next == null) {
       throw new NullArgumentException("next");
     }
@@ -120,7 +120,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         .getValue();
 
     if (this.isEnabled) {
-      this.monitorService = monitorServiceInitializer.start(
+      this.monitorService = monitorServiceInitializer.create(
           this.hostInfo,
           this.propertySet,
           this.log);
@@ -132,8 +132,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
     boolean needMonitoring = METHODS_TO_MONITOR.contains(methodName + ",");
 
     if (!this.isEnabled
-        || !needMonitoring
-        || this.monitorService == null) {
+        || !needMonitoring) {
       // do direct call
       return this.next.execute(methodName, executeSqlFunc);
     }
@@ -187,7 +186,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
       throw ex;
     } finally {
       // TODO: double check this
-      this.monitorService.stopMonitoring(node, this.monitorContext);
+      this.monitorService.stopMonitoring(this.monitorContext);
       if (executor != null) {
         executor.shutdownNow();
       }

@@ -33,5 +33,5 @@ public interface IMonitorService {
       int failureDetectionIntervalMillis,
       int failureDetectionCount);
 
-  void stopMonitoring(String node, MonitorConnectionContext context);
+  void stopMonitoring(MonitorConnectionContext context);
 }

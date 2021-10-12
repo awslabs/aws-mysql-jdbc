@@ -41,7 +41,7 @@ public class DefaultMonitorService implements IMonitorService {
   public DefaultMonitorService(HostInfo hostInfo, PropertySet propertySet, Log log) {
     this(
         hostInfo.getHost(),
-        ((service) -> new Monitor(hostInfo, propertySet, log)),
+        () -> new Monitor(hostInfo, propertySet, log),
         Thread::new,
         log
     );
@@ -54,7 +54,7 @@ public class DefaultMonitorService implements IMonitorService {
       Log log) {
     final IMonitor monitor = MONITOR_MAPPING.computeIfAbsent(
         node,
-        k -> monitorInitializer.createMonitor(this));
+        k -> monitorInitializer.createMonitor());
 
    THREAD_MAPPING.putIfAbsent(
         node,
@@ -86,17 +86,8 @@ public class DefaultMonitorService implements IMonitorService {
   }
 
   @Override
-  public void stopMonitoring(String node, MonitorConnectionContext context) {
-    final IMonitor monitor = MONITOR_MAPPING.get(node);
-
+  public void stopMonitoring(MonitorConnectionContext context) {
+    final IMonitor monitor = MONITOR_MAPPING.get(context.getNode());
     monitor.stopMonitoring(context);
-
-    final Thread thread = THREAD_MAPPING.get(node);
-    if (thread == null || thread.isInterrupted()) {
-      return;
-    }
-
-    thread.interrupt();
-    THREAD_MAPPING.remove(node);
   }
 }

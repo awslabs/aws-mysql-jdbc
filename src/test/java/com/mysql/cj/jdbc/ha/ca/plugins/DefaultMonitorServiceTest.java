@@ -51,19 +51,17 @@ class DefaultMonitorServiceTest {
   private AutoCloseable closeable;
   private DefaultMonitorService monitorService;
   private ArgumentCaptor<MonitorConnectionContext> contextCaptor;
-  private ArgumentCaptor<DefaultMonitorService> serviceCaptor;
   private ArgumentCaptor<IMonitor> monitorCaptor;
 
   @BeforeEach
   void init() {
     closeable = MockitoAnnotations.openMocks(this);
 
-    serviceCaptor = ArgumentCaptor.forClass(DefaultMonitorService.class);
     monitorCaptor = ArgumentCaptor.forClass(IMonitor.class);
     contextCaptor = ArgumentCaptor.forClass(MonitorConnectionContext.class);
 
     Mockito
-        .when(monitorInitializer.createMonitor(serviceCaptor.capture()))
+        .when(monitorInitializer.createMonitor())
         .thenReturn(monitor);
     Mockito
         .when(threadInitializer.createThread(monitorCaptor.capture()))
@@ -85,7 +83,6 @@ class DefaultMonitorServiceTest {
 
   @Test
   void test_1_successfulInitialization() {
-    Assertions.assertEquals(monitorService, serviceCaptor.getValue());
     Assertions.assertEquals(monitor, monitorCaptor.getValue());
   }
 
@@ -120,8 +117,7 @@ class DefaultMonitorServiceTest {
   }
 
   @Test
-  void test_4_stopMonitoringWithRunningThread() {
-    Mockito.when(thread.isInterrupted()).thenReturn(false);
+  void test_4_stopMonitoringWithInterruptedThread() {
     Mockito.doNothing().when(monitor).stopMonitoring(contextCaptor.capture());
 
     final MonitorConnectionContext context = monitorService.startMonitoring(
@@ -130,17 +126,14 @@ class DefaultMonitorServiceTest {
         FAILURE_DETECTION_INTERVAL_MILLIS,
         FAILURE_DETECTION_COUNT);
 
-    monitorService.stopMonitoring(NODE, context);
+    monitorService.stopMonitoring(context);
 
     Assertions.assertEquals(context, contextCaptor.getValue());
     Mockito.verify(monitor).stopMonitoring(Mockito.any());
-    Mockito.verify(thread).isInterrupted();
-    Mockito.verify(thread).interrupt();
   }
 
   @Test
-  void test_5_stopMonitoringWithInterruptedThread() {
-    Mockito.when(thread.isInterrupted()).thenReturn(true);
+  void test_5_stopMonitoringCalledTwice() {
     Mockito.doNothing().when(monitor).stopMonitoring(contextCaptor.capture());
 
     final MonitorConnectionContext context = monitorService.startMonitoring(
@@ -149,33 +142,11 @@ class DefaultMonitorServiceTest {
         FAILURE_DETECTION_INTERVAL_MILLIS,
         FAILURE_DETECTION_COUNT);
 
-    monitorService.stopMonitoring(NODE, context);
-
-    Assertions.assertEquals(context, contextCaptor.getValue());
-    Mockito.verify(monitor).stopMonitoring(Mockito.any());
-    Mockito.verify(thread).isInterrupted();
-    Mockito.verify(thread, Mockito.never()).interrupt();
-  }
-
-  @Test
-  void test_6_stopMonitoringCalledTwice() {
-    Mockito.when(thread.isInterrupted()).thenReturn(false);
-    Mockito.doNothing().when(monitor).stopMonitoring(contextCaptor.capture());
-
-    final MonitorConnectionContext context = monitorService.startMonitoring(
-        NODE,
-        FAILURE_DETECTION_TIME_MILLIS,
-        FAILURE_DETECTION_INTERVAL_MILLIS,
-        FAILURE_DETECTION_COUNT);
-
-    monitorService.stopMonitoring(NODE, context);
+    monitorService.stopMonitoring(context);
 
     Assertions.assertEquals(context, contextCaptor.getValue());
 
     Mockito.verify(monitor).stopMonitoring(Mockito.any());
-    monitorService.stopMonitoring(NODE, context);
-
-    Mockito.verify(thread).interrupt();
-    Mockito.verify(thread).isInterrupted();
+    monitorService.stopMonitoring(context);
   }
 }
