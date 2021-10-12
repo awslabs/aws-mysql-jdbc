@@ -51,7 +51,6 @@ public class Monitor implements IMonitor {
   private final Log log;
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
-  private long monitoringStartTime;
   private Connection monitoringConn = null;
   private int longestFailureDetectionIntervalMillis;
   private final AtomicLong connectionValidationElapsedTime = new AtomicLong();
@@ -68,7 +67,7 @@ public class Monitor implements IMonitor {
         this.longestFailureDetectionIntervalMillis,
         context.getFailureDetectionIntervalMillis());
 
-    this.monitoringStartTime = System.currentTimeMillis();
+    context.setStartMonitorTime(System.currentTimeMillis());
     contexts.add(context);
   }
 
@@ -84,13 +83,9 @@ public class Monitor implements IMonitor {
       while (true) {
         if (!contexts.isEmpty() || !isConnectionHealthy()) {
           for (MonitorConnectionContext monitorContext : contexts) {
-            final long elapsedTimeMillis = System.currentTimeMillis() - this.monitoringStartTime;
-            final int failureDetectionTimeMillis = monitorContext.getFailureDetectionTimeMillis();
-
-            if (elapsedTimeMillis > failureDetectionTimeMillis) {
-              final int intervalMillis = monitorContext.getFailureDetectionIntervalMillis();
-              monitorContext.setConnectionValid(intervalMillis >= this.connectionValidationElapsedTime.get());
-            }
+            monitorContext.updatedConnectionStatus(
+                System.currentTimeMillis(),
+                this.connectionValidationElapsedTime.get());
           }
 
           TimeUnit.MILLISECONDS.sleep(this.longestFailureDetectionIntervalMillis);

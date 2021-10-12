@@ -29,14 +29,15 @@ package com.mysql.cj.jdbc.ha.ca.plugins;
 import com.mysql.cj.log.Log;
 
 public class MonitorConnectionContext {
-
-  private boolean isConnectionValid;
-  private int failureCount;
-  private int failureDetectionTimeMillis;
-  private int failureDetectionIntervalMillis;
-  private int failureDetectionCount;
+  private final int failureDetectionIntervalMillis;
   private final String node;
   private final Log log;
+
+  private long startMonitorTime;
+  private int failureCount;
+  private final int failureDetectionTimeMillis;
+  private final int failureDetectionCount;
+  private boolean isNodeUnhealthy;
 
   public MonitorConnectionContext(
       String node,
@@ -51,60 +52,53 @@ public class MonitorConnectionContext {
     this.failureDetectionCount = failureDetectionCount;
   }
 
-  public int getFailureDetectionTimeMillis() {
-    return failureDetectionTimeMillis;
+  void setStartMonitorTime(long startMonitorTime) {
+    this.startMonitorTime = startMonitorTime;
   }
 
-  protected void setFailureDetectionTimeMillis(int failureDetectionTimeMillis) {
-    this.failureDetectionTimeMillis = failureDetectionTimeMillis;
+  public int getFailureDetectionTimeMillis() {
+    return failureDetectionTimeMillis;
   }
 
   public int getFailureDetectionIntervalMillis() {
     return failureDetectionIntervalMillis;
   }
 
-  protected void setFailureDetectionIntervalMillis(int failureDetectionIntervalMillis) {
-    this.failureDetectionIntervalMillis = failureDetectionIntervalMillis;
-  }
-
   public int getFailureDetectionCount() {
     return failureDetectionCount;
   }
 
-  protected void setFailureDetectionCount(int failureDetectionCount) {
-    this.failureDetectionCount = failureDetectionCount;
-  }
-
   public int getFailureCount() {
-    return failureCount;
+    return this.failureCount;
   }
 
-  protected void setFailureCount(int failureCount) {
+  void setFailureCount(int failureCount) {
     this.failureCount = failureCount;
   }
 
-  protected void incrementFailureCount() {
-    this.failureCount++;
-  }
-
-  public boolean isConnectionValid() {
-    return isConnectionValid;
-  }
-
-  protected void setConnectionValid(boolean connectionValid) {
-    isConnectionValid = connectionValid;
-  }
-
   public boolean isNodeUnhealthy() {
-    if (!this.isConnectionValid()) {
-      this.incrementFailureCount();
+    return this.isNodeUnhealthy;
+  }
+
+  void updatedConnectionStatus(long currentTime, long connectionValidationElapsedTime) {
+    final long totalElapsedTimeMillis = currentTime - this.startMonitorTime;
+
+    if (totalElapsedTimeMillis > this.failureDetectionTimeMillis) {
+      this.setConnectionValid(this.failureDetectionIntervalMillis >= connectionValidationElapsedTime);
+    }
+  }
+
+  void setConnectionValid(boolean connectionValid) {
+    if (!connectionValid) {
+      this.failureCount++;
 
       if (this.getFailureCount() >= this.getFailureDetectionCount()) {
         this.log.logTrace(
             String.format(
                 "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.",
                 node));
-        return true;
+        isNodeUnhealthy = true;
+        return;
       }
       this.log.logTrace(String.format(
           "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).",
@@ -117,6 +111,6 @@ public class MonitorConnectionContext {
     this.log.logTrace(
         String.format("[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *alive*.",
             node));
-    return false;
+    isNodeUnhealthy = false;
   }
 }

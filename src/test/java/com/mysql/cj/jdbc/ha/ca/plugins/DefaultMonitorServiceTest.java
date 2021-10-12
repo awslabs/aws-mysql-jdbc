@@ -37,10 +37,10 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 class DefaultMonitorServiceTest {
-  private final static String NODE = "node.domain";
-  private final static int FAILURE_DETECTION_TIME_MILLIS = 10;
-  private final static int FAILURE_DETECTION_INTERVAL_MILLIS = 100;
-  private final static int FAILURE_DETECTION_COUNT = 3;
+  private static final String NODE = "node.domain";
+  private static final int FAILURE_DETECTION_TIME_MILLIS = 10;
+  private static final int FAILURE_DETECTION_INTERVAL_MILLIS = 100;
+  private static final int FAILURE_DETECTION_COUNT = 3;
 
   @Mock private IMonitorInitializer monitorInitializer;
   @Mock private IThreadInitializer threadInitializer;
