@@ -32,17 +32,22 @@ import com.mysql.cj.log.Log;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class DefaultMonitorService implements IMonitorService {
-  protected static final Map<String, IMonitor> MONITOR_MAPPING = new ConcurrentHashMap<>();
-  protected static final Map<String, Thread> THREAD_MAPPING = new ConcurrentHashMap<>();
+  protected static final Map<String, IMonitor> MONITOR_MAP = new ConcurrentHashMap<>();
+  protected static final Map<String, ScheduledExecutorService> EXECUTOR_SERVICE_MAP = new ConcurrentHashMap<>();
+  protected static final Map<IMonitor, ScheduledFuture<?>> TASKS_MAP = new ConcurrentHashMap<>();
   private final Log log;
 
   public DefaultMonitorService(HostInfo hostInfo, PropertySet propertySet, Log log) {
     this(
         hostInfo.getHost(),
         () -> new Monitor(hostInfo, propertySet, log),
-        Thread::new,
+        Executors::newSingleThreadScheduledExecutor,
         log
     );
   }
@@ -50,15 +55,16 @@ public class DefaultMonitorService implements IMonitorService {
   DefaultMonitorService(
       String node,
       IMonitorInitializer monitorInitializer,
-      IThreadInitializer threadInitializer,
+      IExecutorServiceInitializer threadInitializer,
       Log log) {
-    final IMonitor monitor = MONITOR_MAPPING.computeIfAbsent(
-        node,
-        k -> monitorInitializer.createMonitor());
 
-   THREAD_MAPPING.putIfAbsent(
+    MONITOR_MAP.putIfAbsent(
         node,
-        threadInitializer.createThread(monitor));
+        monitorInitializer.createMonitor());
+
+   EXECUTOR_SERVICE_MAP.putIfAbsent(
+        node,
+        threadInitializer.createExecutorService());
     this.log = log;
   }
 
@@ -76,10 +82,16 @@ public class DefaultMonitorService implements IMonitorService {
         failureDetectionIntervalMillis,
         failureDetectionCount);
 
-    MONITOR_MAPPING.get(node).startMonitoring(context);
-    final Thread thread = THREAD_MAPPING.get(node);
-    if (Thread.State.NEW.equals(thread.getState())) {
-      thread.start();
+    final IMonitor monitor = MONITOR_MAP.get(node);
+    final ScheduledExecutorService executor = EXECUTOR_SERVICE_MAP.get(node);
+
+    monitor.startMonitoring(context);
+
+    final ScheduledFuture<?> executorService = TASKS_MAP.get(monitor);
+    if (executorService == null) {
+      TASKS_MAP.put(
+          monitor,
+          executor.schedule(monitor, failureDetectionIntervalMillis, TimeUnit.MILLISECONDS));
     }
 
     return context;
@@ -87,7 +99,7 @@ public class DefaultMonitorService implements IMonitorService {
 
   @Override
   public void stopMonitoring(MonitorConnectionContext context) {
-    final IMonitor monitor = MONITOR_MAPPING.get(context.getNode());
+    final IMonitor monitor = MONITOR_MAP.get(context.getNode());
     monitor.stopMonitoring(context);
   }
 }

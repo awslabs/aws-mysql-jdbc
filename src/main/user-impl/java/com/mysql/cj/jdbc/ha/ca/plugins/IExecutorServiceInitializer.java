@@ -26,7 +26,9 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
+import java.util.concurrent.ScheduledExecutorService;
+
 @FunctionalInterface
-public interface IThreadInitializer {
-  Thread createThread(IMonitor monitor);
+public interface IExecutorServiceInitializer {
+  ScheduledExecutorService createExecutorService();
 }

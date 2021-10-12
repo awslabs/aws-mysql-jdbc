@@ -36,17 +36,28 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 class DefaultMonitorServiceTest {
   private static final String NODE = "node.domain";
   private static final int FAILURE_DETECTION_TIME_MILLIS = 10;
   private static final int FAILURE_DETECTION_INTERVAL_MILLIS = 100;
   private static final int FAILURE_DETECTION_COUNT = 3;
 
-  @Mock private IMonitorInitializer monitorInitializer;
-  @Mock private IThreadInitializer threadInitializer;
-  @Mock private Log logger;
-  @Mock private IMonitor monitor;
-  @Mock private Thread thread;
+  @Mock
+  private IMonitorInitializer monitorInitializer;
+  @Mock
+  private IExecutorServiceInitializer executorServiceInitializer;
+  @Mock
+  private Log logger;
+  @Mock
+  private IMonitor monitor;
+  @Mock
+  private ScheduledExecutorService executorService;
+  @Mock
+  private ScheduledFuture<?> task;
 
   private AutoCloseable closeable;
   private DefaultMonitorService monitorService;
@@ -64,60 +75,80 @@ class DefaultMonitorServiceTest {
         .when(monitorInitializer.createMonitor())
         .thenReturn(monitor);
     Mockito
-        .when(threadInitializer.createThread(monitorCaptor.capture()))
-        .thenReturn(thread);
+        .when(executorServiceInitializer.createExecutorService())
+        .thenReturn(executorService);
+
+    Mockito
+        .doReturn(task)
+        .when(executorService)
+        .schedule(
+            Mockito.any(IMonitor.class),
+            Mockito.anyLong(),
+            Mockito.any(TimeUnit.class));
 
     monitorService = new DefaultMonitorService(
         NODE,
         monitorInitializer,
-        threadInitializer,
+        executorServiceInitializer,
         logger);
   }
 
   @AfterEach
   void cleanUp() throws Exception {
-    DefaultMonitorService.MONITOR_MAPPING.clear();
-    DefaultMonitorService.THREAD_MAPPING.clear();
+    DefaultMonitorService.MONITOR_MAP.clear();
+    DefaultMonitorService.EXECUTOR_SERVICE_MAP.clear();
+    DefaultMonitorService.TASKS_MAP.clear();
     closeable.close();
   }
 
   @Test
-  void test_1_successfulInitialization() {
+  void test_1_startMonitoringWithNoExecutor() {
+    Mockito.doNothing().when(monitor).startMonitoring(contextCaptor.capture());
+
+    monitorService.startMonitoring(
+        NODE,
+        FAILURE_DETECTION_TIME_MILLIS,
+        FAILURE_DETECTION_INTERVAL_MILLIS,
+        FAILURE_DETECTION_COUNT);
+
+    Assertions.assertNotNull(contextCaptor.getValue());
+    Mockito
+        .verify(executorService)
+        .schedule(
+            monitorCaptor.capture(),
+            Mockito.eq((long) FAILURE_DETECTION_INTERVAL_MILLIS),
+            Mockito.eq(TimeUnit.MILLISECONDS));
     Assertions.assertEquals(monitor, monitorCaptor.getValue());
   }
 
   @Test
-  void test_2_startMonitoringWithNoThread() {
+  void test_2_startMonitoringCalledMultipleTimes() {
     Mockito.doNothing().when(monitor).startMonitoring(contextCaptor.capture());
-    Mockito.when(thread.getState()).thenReturn(Thread.State.NEW);
 
-    monitorService.startMonitoring(
-        NODE,
-        FAILURE_DETECTION_TIME_MILLIS,
-        FAILURE_DETECTION_INTERVAL_MILLIS,
-        FAILURE_DETECTION_COUNT);
+    final int runs = 5;
+
+    for (int i = 0; i < runs; i++) {
+      monitorService.startMonitoring(
+          NODE,
+          FAILURE_DETECTION_TIME_MILLIS,
+          FAILURE_DETECTION_INTERVAL_MILLIS,
+          FAILURE_DETECTION_COUNT);
+    }
 
     Assertions.assertNotNull(contextCaptor.getValue());
-    Mockito.verify(thread).start();
+
+    // executorService should only be called once.
+    Mockito
+        .verify(executorService)
+        .schedule(
+            monitorCaptor.capture(),
+            Mockito.eq((long) FAILURE_DETECTION_INTERVAL_MILLIS),
+            Mockito.eq(TimeUnit.MILLISECONDS));
+    Assertions.assertEquals(monitor, monitorCaptor.getValue());
   }
 
   @Test
-  void test_3_startMonitoringWithThread() {
-    Mockito.doNothing().when(monitor).startMonitoring(contextCaptor.capture());
-    Mockito.when(thread.getState()).thenReturn(Thread.State.RUNNABLE);
-
-    monitorService.startMonitoring(
-        NODE,
-        FAILURE_DETECTION_TIME_MILLIS,
-        FAILURE_DETECTION_INTERVAL_MILLIS,
-        FAILURE_DETECTION_COUNT);
-
-    Assertions.assertNotNull(contextCaptor.getValue());
-    Mockito.verify(thread, Mockito.times(0)).start();
-  }
-
-  @Test
-  void test_4_stopMonitoringWithInterruptedThread() {
+  void test_3_stopMonitoringWithInterruptedThread() {
     Mockito.doNothing().when(monitor).stopMonitoring(contextCaptor.capture());
 
     final MonitorConnectionContext context = monitorService.startMonitoring(
@@ -133,7 +164,7 @@ class DefaultMonitorServiceTest {
   }
 
   @Test
-  void test_5_stopMonitoringCalledTwice() {
+  void test_4_stopMonitoringCalledTwice() {
     Mockito.doNothing().when(monitor).stopMonitoring(contextCaptor.capture());
 
     final MonitorConnectionContext context = monitorService.startMonitoring(

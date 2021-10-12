@@ -78,7 +78,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         DefaultMonitorService::new);
   }
 
-  public void init(
+  void init(
       PropertySet propertySet,
       HostInfo hostInfo,
       IFailoverPlugin next,
