@@ -71,7 +71,7 @@ public class MonitorConnectionContext {
     return failureDetectionCount;
   }
 
-  public void setFailureDetectionCount(int failureDetectionCount) {
+  protected void setFailureDetectionCount(int failureDetectionCount) {
     this.failureDetectionCount = failureDetectionCount;
   }
 
