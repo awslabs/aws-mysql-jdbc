@@ -58,7 +58,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
   @FunctionalInterface
   interface IMonitorServiceInitializer {
-    IMonitorService create(HostInfo hostInfo, PropertySet propertySet, Log log);
+    IMonitorService create(Log log);
   }
 
   public NodeMonitoringFailoverPlugin() {
@@ -120,10 +120,7 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
         .getValue();
 
     if (this.isEnabled) {
-      this.monitorService = monitorServiceInitializer.create(
-          this.hostInfo,
-          this.propertySet,
-          this.log);
+      this.monitorService = monitorServiceInitializer.create(this.log);
     }
   }
 
@@ -160,7 +157,10 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
           "[NodeMonitoringFailoverPlugin.execute]: method=%s, monitoring is activated",
           methodName));
 
-      this.monitorContext = this.monitorService.startMonitoring(node,
+      this.monitorContext = this.monitorService.startMonitoring(
+          node,
+          this.hostInfo,
+          this.propertySet,
           this.failureDetectionTimeMillis,
           this.failureDetectionIntervalMillis,
           this.failureDetectionCount);

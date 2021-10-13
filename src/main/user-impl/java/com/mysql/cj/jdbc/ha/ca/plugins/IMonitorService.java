@@ -26,9 +26,14 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertySet;
+
 public interface IMonitorService {
   MonitorConnectionContext startMonitoring(
       String node,
+      HostInfo hostInfo,
+      PropertySet propertySet,
       int failureDetectionTimeMillis,
       int failureDetectionIntervalMillis,
       int failureDetectionCount);

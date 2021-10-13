@@ -28,52 +28,65 @@ package com.mysql.cj.jdbc.ha.ca.plugins;
 
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.jdbc.ha.ca.BasicConnectionProvider;
 import com.mysql.cj.log.Log;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Future;
 
 public class DefaultMonitorService implements IMonitorService {
-  protected static final Map<String, IMonitor> MONITOR_MAP = new ConcurrentHashMap<>();
-  protected static final Map<String, ScheduledExecutorService> EXECUTOR_SERVICE_MAP = new ConcurrentHashMap<>();
-  protected static final Map<IMonitor, ScheduledFuture<?>> TASKS_MAP = new ConcurrentHashMap<>();
-  private final Log log;
+  static final Map<String, IMonitor> MONITOR_MAP = new ConcurrentHashMap<>();
+  static final Map<IMonitor, Future<?>> TASKS_MAP = new ConcurrentHashMap<>();
+  static ExecutorService threadPool; // Effectively final.
 
-  public DefaultMonitorService(HostInfo hostInfo, PropertySet propertySet, Log log) {
+  private final Log log;
+  final IMonitorInitializer monitorInitializer;
+  final IExecutorServiceInitializer executorServiceInitializer;
+
+  public DefaultMonitorService(Log log) {
     this(
-        hostInfo.getHost(),
-        () -> new Monitor(hostInfo, propertySet, log),
-        Executors::newSingleThreadScheduledExecutor,
+        (hostInfo, propertySet) -> new Monitor(
+            new BasicConnectionProvider(),
+            hostInfo,
+            propertySet,
+            log),
+        Executors::newCachedThreadPool,
         log
     );
   }
 
   DefaultMonitorService(
-      String node,
       IMonitorInitializer monitorInitializer,
-      IExecutorServiceInitializer threadInitializer,
+      IExecutorServiceInitializer executorServiceInitializer,
       Log log) {
 
-    MONITOR_MAP.putIfAbsent(
-        node,
-        monitorInitializer.createMonitor());
-
-   EXECUTOR_SERVICE_MAP.putIfAbsent(
-        node,
-        threadInitializer.createExecutorService());
+    this.monitorInitializer = monitorInitializer;
+    this.executorServiceInitializer = executorServiceInitializer;
     this.log = log;
   }
 
   @Override
   public MonitorConnectionContext startMonitoring(
       String node,
+      HostInfo hostInfo,
+      PropertySet propertySet,
       int failureDetectionTimeMillis,
       int failureDetectionIntervalMillis,
       int failureDetectionCount) {
+
+    IMonitor monitor = MONITOR_MAP.get(node);
+
+    if (monitor == null) {
+      monitor = monitorInitializer.createMonitor(hostInfo, propertySet);
+      MONITOR_MAP.put(node, monitor);
+    }
+
+    if (threadPool == null) {
+      threadPool = executorServiceInitializer.createExecutorService();
+    }
 
     final MonitorConnectionContext context = new MonitorConnectionContext(
         node,
@@ -82,16 +95,13 @@ public class DefaultMonitorService implements IMonitorService {
         failureDetectionIntervalMillis,
         failureDetectionCount);
 
-    final IMonitor monitor = MONITOR_MAP.get(node);
-    final ScheduledExecutorService executor = EXECUTOR_SERVICE_MAP.get(node);
-
     monitor.startMonitoring(context);
 
-    final ScheduledFuture<?> executorService = TASKS_MAP.get(monitor);
+    final Future<?> executorService = TASKS_MAP.get(monitor);
     if (executorService == null) {
       TASKS_MAP.put(
           monitor,
-          executor.schedule(monitor, failureDetectionIntervalMillis, TimeUnit.MILLISECONDS));
+          threadPool.submit(monitor));
     }
 
     return context;

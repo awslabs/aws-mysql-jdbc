@@ -26,9 +26,9 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ExecutorService;
 
 @FunctionalInterface
 public interface IExecutorServiceInitializer {
-  ScheduledExecutorService createExecutorService();
+  ExecutorService createExecutorService();
 }

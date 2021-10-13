@@ -29,7 +29,7 @@ package com.mysql.cj.jdbc.ha.ca.plugins;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ConnectionImpl;
+import com.mysql.cj.jdbc.ha.ca.ConnectionProvider;
 import com.mysql.cj.log.Log;
 
 import java.sql.Connection;
@@ -41,21 +41,30 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class Monitor implements IMonitor {
+  private static class ConnectionStatus {
+    boolean isValid;
+    long elapsedTime;
+
+    ConnectionStatus(boolean isValid, long elapsedTime) {
+      this.isValid = isValid;
+      this.elapsedTime = elapsedTime;
+    }
+  }
+
   private static final int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
 
   private final Queue<MonitorConnectionContext> contexts = new ConcurrentLinkedQueue<>();
-
+  private final ConnectionProvider connectionProvider;
   private final Log log;
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
   private Connection monitoringConn = null;
   private int longestFailureDetectionIntervalMillis;
-  private final AtomicLong connectionValidationElapsedTime = new AtomicLong();
 
-  public Monitor(HostInfo hostInfo, PropertySet propertySet, Log log) {
+  public Monitor(ConnectionProvider connectionProvider, HostInfo hostInfo, PropertySet propertySet, Log log) {
+    this.connectionProvider = connectionProvider;
     this.hostInfo = hostInfo;
     this.propertySet = propertySet;
     this.log = log;
@@ -73,19 +82,23 @@ public class Monitor implements IMonitor {
 
   @Override
   public void stopMonitoring(MonitorConnectionContext context) {
-    this.longestFailureDetectionIntervalMillis = findLongestIntervalMillis();
     contexts.remove(context);
+    this.longestFailureDetectionIntervalMillis = findLongestIntervalMillis();
   }
 
   @Override
   public void run() {
     try {
       while (true) {
-        if (!contexts.isEmpty() || !isConnectionHealthy()) {
+        if (!contexts.isEmpty()) {
+          final ConnectionStatus status = isConnectionHealthy();
+          final long currentTime = System.currentTimeMillis();
+
           for (MonitorConnectionContext monitorContext : contexts) {
-            monitorContext.updatedConnectionStatus(
-                System.currentTimeMillis(),
-                this.connectionValidationElapsedTime.get());
+            monitorContext.updateConnectionStatus(
+                currentTime,
+                status.isValid,
+                status.elapsedTime);
           }
 
           TimeUnit.MILLISECONDS.sleep(this.longestFailureDetectionIntervalMillis);
@@ -101,16 +114,12 @@ public class Monitor implements IMonitor {
           this.monitoringConn.close();
         } catch (SQLException ex) {
           // ignore
-          this.log.logTrace(
-              String.format(
-                  "[NodeMonitoringFailoverPlugin::Monitor] error occurred while closing monitoring connection '%s'",
-                  ex.getMessage()));
         }
       }
     }
   }
 
-  private boolean isConnectionHealthy() {
+  private ConnectionStatus isConnectionHealthy() {
     try {
       if (this.monitoringConn == null || this.monitoringConn.isClosed()) {
 
@@ -122,21 +131,17 @@ public class Monitor implements IMonitor {
             this.propertySet.getBooleanProperty(PropertyKey.connectTimeout).getStringValue());
         //TODO: any other properties to pass? like socket factory
 
-        this.monitoringConn = ConnectionImpl.getInstance(
-            copy(this.hostInfo, properties)); //TODO: use connection provider?
-
-        return true;
+        this.monitoringConn = this.connectionProvider.connect(copy(this.hostInfo, properties));
+        return new ConnectionStatus(true, 0);
       }
 
       final long start = System.currentTimeMillis();
-      final boolean isValid =
-          this.monitoringConn.isValid(this.longestFailureDetectionIntervalMillis / 1000);
-      this.connectionValidationElapsedTime.set(System.currentTimeMillis() - start);
-      return isValid;
-
+      return new ConnectionStatus(
+          this.monitoringConn.isValid(this.longestFailureDetectionIntervalMillis / 1000),
+          System.currentTimeMillis() - start);
     } catch (SQLException sqlEx) {
       this.log.logTrace("[NodeMonitoringFailoverPlugin::Monitor]", sqlEx);
-      return false;
+      return new ConnectionStatus(true, 0);
     }
   }
 

@@ -26,6 +26,8 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -36,9 +38,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 class DefaultMonitorServiceTest {
   private static final String NODE = "node.domain";
@@ -55,25 +56,29 @@ class DefaultMonitorServiceTest {
   @Mock
   private IMonitor monitor;
   @Mock
-  private ScheduledExecutorService executorService;
+  private ExecutorService executorService;
   @Mock
-  private ScheduledFuture<?> task;
+  private Future<?> task;
+  @Mock
+  private HostInfo info;
+  @Mock
+  private PropertySet set;
 
   private AutoCloseable closeable;
   private DefaultMonitorService monitorService;
   private ArgumentCaptor<MonitorConnectionContext> contextCaptor;
-  private ArgumentCaptor<IMonitor> monitorCaptor;
 
   @BeforeEach
   void init() {
     closeable = MockitoAnnotations.openMocks(this);
-
-    monitorCaptor = ArgumentCaptor.forClass(IMonitor.class);
     contextCaptor = ArgumentCaptor.forClass(MonitorConnectionContext.class);
 
     Mockito
-        .when(monitorInitializer.createMonitor())
+        .when(monitorInitializer.createMonitor(
+            Mockito.any(HostInfo.class),
+            Mockito.any(PropertySet.class)))
         .thenReturn(monitor);
+
     Mockito
         .when(executorServiceInitializer.createExecutorService())
         .thenReturn(executorService);
@@ -81,13 +86,9 @@ class DefaultMonitorServiceTest {
     Mockito
         .doReturn(task)
         .when(executorService)
-        .schedule(
-            Mockito.any(IMonitor.class),
-            Mockito.anyLong(),
-            Mockito.any(TimeUnit.class));
+        .submit(Mockito.any(IMonitor.class));
 
     monitorService = new DefaultMonitorService(
-        NODE,
         monitorInitializer,
         executorServiceInitializer,
         logger);
@@ -96,8 +97,8 @@ class DefaultMonitorServiceTest {
   @AfterEach
   void cleanUp() throws Exception {
     DefaultMonitorService.MONITOR_MAP.clear();
-    DefaultMonitorService.EXECUTOR_SERVICE_MAP.clear();
     DefaultMonitorService.TASKS_MAP.clear();
+    DefaultMonitorService.threadPool = null;
     closeable.close();
   }
 
@@ -107,6 +108,8 @@ class DefaultMonitorServiceTest {
 
     monitorService.startMonitoring(
         NODE,
+        info,
+        set,
         FAILURE_DETECTION_TIME_MILLIS,
         FAILURE_DETECTION_INTERVAL_MILLIS,
         FAILURE_DETECTION_COUNT);
@@ -114,11 +117,7 @@ class DefaultMonitorServiceTest {
     Assertions.assertNotNull(contextCaptor.getValue());
     Mockito
         .verify(executorService)
-        .schedule(
-            monitorCaptor.capture(),
-            Mockito.eq((long) FAILURE_DETECTION_INTERVAL_MILLIS),
-            Mockito.eq(TimeUnit.MILLISECONDS));
-    Assertions.assertEquals(monitor, monitorCaptor.getValue());
+        .submit(Mockito.eq(monitor));
   }
 
   @Test
@@ -130,6 +129,8 @@ class DefaultMonitorServiceTest {
     for (int i = 0; i < runs; i++) {
       monitorService.startMonitoring(
           NODE,
+          info,
+          set,
           FAILURE_DETECTION_TIME_MILLIS,
           FAILURE_DETECTION_INTERVAL_MILLIS,
           FAILURE_DETECTION_COUNT);
@@ -140,11 +141,7 @@ class DefaultMonitorServiceTest {
     // executorService should only be called once.
     Mockito
         .verify(executorService)
-        .schedule(
-            monitorCaptor.capture(),
-            Mockito.eq((long) FAILURE_DETECTION_INTERVAL_MILLIS),
-            Mockito.eq(TimeUnit.MILLISECONDS));
-    Assertions.assertEquals(monitor, monitorCaptor.getValue());
+        .submit(Mockito.eq(monitor));
   }
 
   @Test
@@ -153,6 +150,8 @@ class DefaultMonitorServiceTest {
 
     final MonitorConnectionContext context = monitorService.startMonitoring(
         NODE,
+        info,
+        set,
         FAILURE_DETECTION_TIME_MILLIS,
         FAILURE_DETECTION_INTERVAL_MILLIS,
         FAILURE_DETECTION_COUNT);
@@ -169,6 +168,8 @@ class DefaultMonitorServiceTest {
 
     final MonitorConnectionContext context = monitorService.startMonitoring(
         NODE,
+        info,
+        set,
         FAILURE_DETECTION_TIME_MILLIS,
         FAILURE_DETECTION_INTERVAL_MILLIS,
         FAILURE_DETECTION_COUNT);

@@ -26,7 +26,10 @@
 
 package com.mysql.cj.jdbc.ha.ca.plugins;
 
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertySet;
+
 @FunctionalInterface
 public interface IMonitorInitializer {
-  IMonitor createMonitor();
+  IMonitor createMonitor(HostInfo hostInfo, PropertySet propertySet);
 }

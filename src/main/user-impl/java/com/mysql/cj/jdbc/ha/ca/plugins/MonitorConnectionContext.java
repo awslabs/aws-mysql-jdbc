@@ -84,11 +84,11 @@ public class MonitorConnectionContext {
     return this.isNodeUnhealthy;
   }
 
-  void updatedConnectionStatus(long currentTime, long connectionValidationElapsedTime) {
+  void updateConnectionStatus(long currentTime, boolean isValid, long connectionValidationElapsedTime) {
     final long totalElapsedTimeMillis = currentTime - this.startMonitorTime;
 
     if (totalElapsedTimeMillis > this.failureDetectionTimeMillis) {
-      this.setConnectionValid(this.failureDetectionIntervalMillis >= connectionValidationElapsedTime);
+      this.setConnectionValid(isValid && this.failureDetectionIntervalMillis >= connectionValidationElapsedTime);
     }
   }
 
