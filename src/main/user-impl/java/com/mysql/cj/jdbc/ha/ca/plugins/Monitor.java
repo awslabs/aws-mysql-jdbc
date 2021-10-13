@@ -41,7 +41,6 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Monitor implements IMonitor {
   private static class ConnectionStatus {
@@ -62,7 +61,7 @@ public class Monitor implements IMonitor {
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
   private Connection monitoringConn = null;
-  private final AtomicInteger longestFailureDetectionIntervalMillis = new AtomicInteger();
+  private int longestFailureDetectionIntervalMillis;
 
   public Monitor(ConnectionProvider connectionProvider, HostInfo hostInfo, PropertySet propertySet, Log log) {
     this.connectionProvider = connectionProvider;
@@ -73,9 +72,9 @@ public class Monitor implements IMonitor {
 
   @Override
   public void startMonitoring(MonitorConnectionContext context) {
-    this.longestFailureDetectionIntervalMillis.set(Math.min(
-        this.longestFailureDetectionIntervalMillis.get(),
-        context.getFailureDetectionIntervalMillis()));
+    this.longestFailureDetectionIntervalMillis = Math.min(
+        this.longestFailureDetectionIntervalMillis,
+        context.getFailureDetectionIntervalMillis());
 
     context.setStartMonitorTime(System.currentTimeMillis());
     contexts.add(context);
@@ -84,7 +83,7 @@ public class Monitor implements IMonitor {
   @Override
   public void stopMonitoring(MonitorConnectionContext context) {
     contexts.remove(context);
-    this.longestFailureDetectionIntervalMillis.set(findLongestIntervalMillis());
+    this.longestFailureDetectionIntervalMillis = findLongestIntervalMillis();
   }
 
   @Override
@@ -102,7 +101,7 @@ public class Monitor implements IMonitor {
                 status.elapsedTime);
           }
 
-          TimeUnit.MILLISECONDS.sleep(this.longestFailureDetectionIntervalMillis.get());
+          TimeUnit.MILLISECONDS.sleep(this.longestFailureDetectionIntervalMillis);
         } else {
           TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
         }
@@ -138,7 +137,7 @@ public class Monitor implements IMonitor {
 
       final long start = System.currentTimeMillis();
       return new ConnectionStatus(
-          this.monitoringConn.isValid(this.longestFailureDetectionIntervalMillis.get() / 1000),
+          this.monitoringConn.isValid(this.longestFailureDetectionIntervalMillis / 1000),
           System.currentTimeMillis() - start);
     } catch (SQLException sqlEx) {
       this.log.logTrace("[NodeMonitoringFailoverPlugin::Monitor]", sqlEx);
