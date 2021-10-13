@@ -77,12 +77,9 @@ public class DefaultMonitorService implements IMonitorService {
       int failureDetectionIntervalMillis,
       int failureDetectionCount) {
 
-    IMonitor monitor = MONITOR_MAP.get(node);
-
-    if (monitor == null) {
-      monitor = monitorInitializer.createMonitor(hostInfo, propertySet);
-      MONITOR_MAP.put(node, monitor);
-    }
+    final IMonitor monitor = MONITOR_MAP.computeIfAbsent(
+        node,
+        k -> monitorInitializer.createMonitor(hostInfo, propertySet));
 
     if (threadPool == null) {
       threadPool = executorServiceInitializer.createExecutorService();
@@ -96,13 +93,7 @@ public class DefaultMonitorService implements IMonitorService {
         failureDetectionCount);
 
     monitor.startMonitoring(context);
-
-    final Future<?> executorService = TASKS_MAP.get(monitor);
-    if (executorService == null) {
-      TASKS_MAP.put(
-          monitor,
-          threadPool.submit(monitor));
-    }
+    TASKS_MAP.computeIfAbsent(monitor, k -> threadPool.submit(monitor));
 
     return context;
   }
