@@ -30,13 +30,14 @@ import com.mysql.cj.log.Log;
 
 public class MonitorConnectionContext {
   private final int failureDetectionIntervalMillis;
+  private final int failureDetectionTimeMillis;
+  private final int failureDetectionCount;
+
   private final String node;
   private final Log log;
 
   private long startMonitorTime;
   private int failureCount;
-  private final int failureDetectionTimeMillis;
-  private final int failureDetectionCount;
   private boolean isNodeUnhealthy;
 
   public MonitorConnectionContext(
@@ -88,7 +89,7 @@ public class MonitorConnectionContext {
     final long totalElapsedTimeMillis = currentTime - this.startMonitorTime;
 
     if (totalElapsedTimeMillis > this.failureDetectionTimeMillis) {
-      this.setConnectionValid(isValid && this.failureDetectionIntervalMillis >= connectionValidationElapsedTime);
+      this.setConnectionValid(isValid && (this.failureDetectionIntervalMillis >= connectionValidationElapsedTime));
     }
   }
 
