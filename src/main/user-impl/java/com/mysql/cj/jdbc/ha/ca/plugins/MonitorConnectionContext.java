@@ -100,13 +100,13 @@ public class MonitorConnectionContext {
       if (this.getFailureCount() >= this.getFailureDetectionCount()) {
         this.log.logTrace(
             String.format(
-                "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is *dead*.",
+                "[MonitorConnectionContext] node '%s' is *dead*.",
                 node));
         isNodeUnhealthy = true;
         return;
       }
       this.log.logTrace(String.format(
-          "[NodeMonitoringFailoverPlugin::Monitor] node '%s' is not *responding* (%d).",
+          "[MonitorConnectionContext] node '%s' is not *responding* (%d).",
           node,
           this.getFailureCount()));
     } else {
