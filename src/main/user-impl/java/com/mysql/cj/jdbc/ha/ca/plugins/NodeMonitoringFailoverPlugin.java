@@ -183,7 +183,11 @@ public class NodeMonitoringFailoverPlugin implements IFailoverPlugin {
 
       result = executeFuncFuture.get();
     } catch (Exception ex) {
-      throw ex;
+      final Throwable throwable = ex.getCause();
+      if (throwable instanceof Error) {
+        throw (Error) throwable;
+      }
+      throw (Exception) throwable;
     } finally {
       // TODO: double check this
       this.monitorService.stopMonitoring(this.monitorContext);
