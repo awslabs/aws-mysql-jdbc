@@ -37,7 +37,6 @@ import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -77,7 +76,7 @@ public class Monitor implements IMonitor {
         this.shortestFailureDetectionIntervalMillis,
         context.getFailureDetectionIntervalMillis());
 
-    context.setStartMonitorTime(System.currentTimeMillis());
+    context.setStartMonitorTime(this.getCurrentTimeMillis());
     contexts.add(context);
   }
 
@@ -92,17 +91,17 @@ public class Monitor implements IMonitor {
     try {
       while (true) {
         if (!contexts.isEmpty()) {
-          final ConnectionStatus status = isConnectionHealthy(this.shortestFailureDetectionIntervalMillis);
-          final long currentTime = System.currentTimeMillis();
+          final ConnectionStatus status = getConnectionHealthStatus(this.shortestFailureDetectionIntervalMillis);
+          final long currentTime = this.getCurrentTimeMillis();
 
           for (MonitorConnectionContext monitorContext : contexts) {
             monitorContext.updateConnectionStatus(
                 currentTime,
                 status.isValid,
-                status.elapsedTime);
+                this.shortestFailureDetectionIntervalMillis);
           }
 
-          TimeUnit.MILLISECONDS.sleep(this.shortestFailureDetectionIntervalMillis);
+          TimeUnit.MILLISECONDS.sleep(Math.max(0, this.shortestFailureDetectionIntervalMillis - status.elapsedTime));
         } else {
           TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_WHEN_INACTIVE_MILLIS);
         }
@@ -120,7 +119,7 @@ public class Monitor implements IMonitor {
     }
   }
 
-  ConnectionStatus isConnectionHealthy(final int shortestFailureDetectionIntervalMillis) {
+  ConnectionStatus getConnectionHealthStatus(final int shortestFailureDetectionIntervalMillis) {
     try {
       if (this.monitoringConn == null || this.monitoringConn.isClosed()) {
 
@@ -136,14 +135,19 @@ public class Monitor implements IMonitor {
         return new ConnectionStatus(true, 0);
       }
 
-      final long start = System.currentTimeMillis();
+      final long start = this.getCurrentTimeMillis();
       return new ConnectionStatus(
           this.monitoringConn.isValid(shortestFailureDetectionIntervalMillis / 1000),
-          System.currentTimeMillis() - start);
+              this.getCurrentTimeMillis() - start);
     } catch (SQLException sqlEx) {
       this.log.logTrace("[Monitor]", sqlEx);
       return new ConnectionStatus(false, 0);
     }
+  }
+
+  // This method helps to organize unit tests.
+  long getCurrentTimeMillis() {
+    return System.currentTimeMillis();
   }
 
   int getShortestFailureDetectionIntervalMillis() {
@@ -162,11 +166,8 @@ public class Monitor implements IMonitor {
   }
 
   private int findShortestIntervalMillis() {
-    final Optional<MonitorConnectionContext> contextWithMaxInterval = contexts
-        .stream()
-        .min(Comparator.comparing(MonitorConnectionContext::getFailureDetectionIntervalMillis));
-
-    return contextWithMaxInterval
+    return contexts.stream()
+        .min(Comparator.comparing(MonitorConnectionContext::getFailureDetectionIntervalMillis))
         .map(MonitorConnectionContext::getFailureDetectionIntervalMillis)
         .orElse(0);
   }

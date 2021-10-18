@@ -36,6 +36,7 @@ import org.jboss.util.NullArgumentException;
 
 import java.util.concurrent.Callable;
 
+//TODO: rename class name to more generic one. This plugin manager has nothing to do with failover so the current class name is confusing and misleading.
 public class FailoverPluginManager {
 
   /* THIS CLASS IS NOT MULTI-THREADING SAFE */
@@ -98,6 +99,13 @@ public class FailoverPluginManager {
 
   }
 
+  //TODO: Should methodName contain not just method name but also an interface name? Like:
+  // "execute" -> "JdbcConnection.execute"
+  // For example method close() exists for Connection, Statement, ResultSet and Closeable interfaces. Thus it might be challenging for a plugin to identify what
+  // exact method is actually been called.
+
+  //TODO: Should method target to be passed along with method name? Like:
+  // Object execute(Object methodTarget, String methodName, Callable executeSqlFunc)
   public Object execute(String methodName, Callable executeSqlFunc) throws Exception {
     return this.headPlugin.execute(methodName, executeSqlFunc);
   }

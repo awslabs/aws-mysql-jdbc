@@ -150,7 +150,7 @@ class MonitorTest {
 
   @Test
   void test_5_isConnectionHealthyWithNoExistingConnection() throws SQLException {
-    final Monitor.ConnectionStatus status = monitor.isConnectionHealthy(SHORT_INTERVAL_MILLIS);
+    final Monitor.ConnectionStatus status = monitor.getConnectionHealthStatus(SHORT_INTERVAL_MILLIS);
 
     Mockito.verify(connectionProvider).connect(Mockito.any(HostInfo.class));
     Assertions.assertTrue(status.isValid);
@@ -167,12 +167,12 @@ class MonitorTest {
         .thenReturn(Boolean.FALSE);
 
     // Start up a monitoring connection.
-    monitor.isConnectionHealthy(SHORT_INTERVAL_MILLIS);
+    monitor.getConnectionHealthStatus(SHORT_INTERVAL_MILLIS);
 
-    final Monitor.ConnectionStatus status1 = monitor.isConnectionHealthy(SHORT_INTERVAL_MILLIS);
+    final Monitor.ConnectionStatus status1 = monitor.getConnectionHealthStatus(SHORT_INTERVAL_MILLIS);
     Assertions.assertTrue(status1.isValid);
 
-    final Monitor.ConnectionStatus status2 = monitor.isConnectionHealthy(SHORT_INTERVAL_MILLIS);
+    final Monitor.ConnectionStatus status2 = monitor.getConnectionHealthStatus(SHORT_INTERVAL_MILLIS);
     Assertions.assertFalse(status2.isValid);
 
     Mockito.verify(connection, Mockito.times(2)).isValid(Mockito.anyInt());
@@ -188,10 +188,10 @@ class MonitorTest {
         .thenReturn(Boolean.FALSE);
 
     // Start up a monitoring connection.
-    monitor.isConnectionHealthy(SHORT_INTERVAL_MILLIS);
+    monitor.getConnectionHealthStatus(SHORT_INTERVAL_MILLIS);
 
     Assertions.assertDoesNotThrow(() -> {
-      final Monitor.ConnectionStatus status = monitor.isConnectionHealthy(SHORT_INTERVAL_MILLIS);
+      final Monitor.ConnectionStatus status = monitor.getConnectionHealthStatus(SHORT_INTERVAL_MILLIS);
       Assertions.assertFalse(status.isValid);
       Assertions.assertEquals(0, status.elapsedTime);
     });

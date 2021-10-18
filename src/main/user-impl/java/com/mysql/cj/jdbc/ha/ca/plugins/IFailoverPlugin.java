@@ -32,6 +32,8 @@ import com.mysql.cj.log.Log;
 
 import java.util.concurrent.Callable;
 
+//TODO: rename interface name to more generic one. The plugin has nothing to do with failover so the current
+// interface name is confusing and misleading. Rename interface implementations either.
 public interface IFailoverPlugin {
   void init(PropertySet propertySet, HostInfo hostInfo, IFailoverPlugin next, Log log);
   Object execute(String methodName, Callable executeSqlFunc) throws Exception;
