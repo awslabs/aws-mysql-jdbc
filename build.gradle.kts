@@ -222,7 +222,7 @@ dependencies {
     testImplementation("org.hamcrest:hamcrest:2.2")
 
     implementation("com.amazonaws:aws-java-sdk-rds:1.11.875")
-    implementation("com.google.protobuf:protobuf-java:3.11.4")
+    implementation("com.google.protobuf:protobuf-java:3.19.0")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.jboss.jbossas:jboss-as-connector:6.1.0.Final")
     implementation("org.slf4j:slf4j-api:1.7.30")
