@@ -373,7 +373,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
     int instanceHostPort = pair.right != HostInfo.NO_PORT ? pair.right : mainHost.getPort();
 
     // Instance host info is similar to original main host except host and port which come from the configuration property
-    setClusterId(instanceHostPattern, instanceHostPort, mainHost.getUser());
+    setClusterId(instanceHostPattern, instanceHostPort);
     this.topologyService.setClusterInstanceTemplate(
             createClusterInstanceTemplate(mainHost, instanceHostPattern, instanceHostPort));
     createConnectionAndInitializeTopology(connUrl);
@@ -429,7 +429,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   }
 
   private void initExpectingNoTopology(ConnectionUrl connUrl, HostInfo mainHost) throws SQLException {
-    setClusterId(mainHost.getHost(), mainHost.getPort(), mainHost.getUser());
+    setClusterId(mainHost.getHost(), mainHost.getPort());
     this.topologyService.setClusterInstanceTemplate(
             createClusterInstanceTemplate(mainHost, mainHost.getHost(), mainHost.getPort()));
     createConnectionAndInitializeTopology(connUrl);
@@ -450,23 +450,23 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.20"));
     }
 
-    setClusterId(mainHost.getHost(), mainHost.getPort(), mainHost.getUser());
+    setClusterId(mainHost.getHost(), mainHost.getPort());
     this.topologyService.setClusterInstanceTemplate(
             createClusterInstanceTemplate(mainHost, rdsInstanceHostPattern, mainHost.getPort()));
     createConnectionAndInitializeTopology(connUrl);
   }
 
-  private void setClusterId(String host, int port, String user) {
+  private void setClusterId(String host, int port) {
     if (!StringUtils.isNullOrEmpty(this.clusterIdSetting)) {
       this.topologyService.setClusterId(this.clusterIdSetting);
     } else if (this.isRdsProxy) {
       // Each proxy is associated with a single cluster so it's safe to use RDS Proxy Url as cluster identification
-      this.topologyService.setClusterId(host + ":" + port + "?" + user);
+      this.topologyService.setClusterId(host + ":" + port);
     } else if (this.isRds) {
       // If it's a cluster endpoint, or a reader cluster endpoint, then let's use it as the cluster ID
       String clusterRdsHostUrl = getRdsClusterHostUrl(host);
       if (!StringUtils.isNullOrEmpty(clusterRdsHostUrl)) {
-        this.topologyService.setClusterId(clusterRdsHostUrl + ":" + port + "?" + user);
+        this.topologyService.setClusterId(clusterRdsHostUrl + ":" + port);
       }
     }
   }
