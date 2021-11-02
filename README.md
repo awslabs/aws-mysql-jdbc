@@ -70,10 +70,10 @@ dependencies {
 ### Using the AWS JDBC Driver for MySQL
 Usage of the AWS JDBC Driver for MySQL is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover:
 
-#### Driver Name
+#### Driver name
 The driver name to use is: ```software.aws.rds.jdbc.Driver```. If you are building the driver directly from ```main```, use the driver name: ```software.aws.rds.jdbc.mysql.Driver```. You will need this name when loading the driver explicitly to the driver manager.
 
-#### Connection URL Descriptions
+#### Connection URL descriptions
 
 Many different types of URLs that can connect to an Aurora DB cluster. For some URL types, the AWS JDBC Driver requires the user to provide information about the Aurora DB cluster to support failover functionality. The section that follows outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, where applicable.
 
