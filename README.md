@@ -297,7 +297,7 @@ The default XML parser contained a security risk which made the driver prone to 
 
 | Parameter       | Value           | Required      | Description  |
 | ------------- |:-------------:|:-------------:| ----- |
-|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe; your system may to be prone to XXE attacks.<br/><br/>**Default value:** `false` |
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to `true` is unsafe; your system may to be prone to XXE attacks.<br/><br/>**Default value:** `false` |
 
 ### AWS IAM Database Authentication
 
@@ -320,7 +320,7 @@ For more information about limitations and recommendations, please [read](https:
 
 | Parameter       | Value           | Required      | Description  |
 | ------------- |:-------------:|:-------------:| ----- |
-|`useAwsIam` | Boolean | No | Set to true if you would like to use AWS IAM database authentication<br/><br/>**Default value:** `false` |
+|`useAwsIam` | Boolean | No | Set to `true` if you would like to use AWS IAM database authentication<br/><br/>**Default value:** `false` |
 
 ###### Sample Code
 ```java
@@ -420,9 +420,9 @@ To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection prop
 
 ## Getting Help and Opening Issues
 
-If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear about it. Please search the [existing issues](https://github.com/awslabs/aws-mysql-jdbc/issues) and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we will need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please also include reproduction case for the issue when appropriate.
+If you encounter a bug with the AWS JDBC Driver for MySQL, we'd like to hear about it. Please search the [existing issues](https://github.com/awslabs/aws-mysql-jdbc/issues) and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we'll need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please include detailed information about reproducing the issue when appropriate.
 
-The GitHub issues are intended for bug reports and feature requests. Keeping the list of open issues lean will help us respond in a timely manner.
+GitHub issues are intended for bug reports and feature requests. Keeping the list of open issues lean will help us respond in a timely manner.
 
 ## Documentation
 
