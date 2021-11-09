@@ -81,8 +81,10 @@ import java.lang.reflect.*;
 import java.net.*;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.sql.*;
+import java.sql.Driver;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.*;
@@ -101,6 +103,24 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * Regression tests for Connections
  */
 public class ConnectionRegressionTest extends BaseTestCase {
+    private int oldLoginTimeout;
+
+    @BeforeEach
+    void beforeEach() throws SQLException {
+        oldLoginTimeout = DriverManager.getLoginTimeout();
+
+        // Deregister Driver
+        Driver registeredDriver = DriverManager.getDriver("jdbc:mysql://localhost");
+        if (registeredDriver instanceof software.aws.rds.jdbc.mysql.Driver) {
+            DriverManager.deregisterDriver(registeredDriver);
+        }
+    }
+
+    @AfterEach
+    void afterEach() {
+        DriverManager.setLoginTimeout(oldLoginTimeout);
+    }
+
     @Test
     public void testBug1914() throws Exception {
         System.out.println(this.conn.nativeSQL("{fn convert(foo(a,b,c), BIGINT)}"));
@@ -5922,7 +5942,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
         }
         final String testURL = "jdbc:mysql://localhost:" + serverPort;
         Connection testConn = null;
-        final int oldLoginTimeout = DriverManager.getLoginTimeout();
         final int loginTimeout = 3;
         final int testTimeout = loginTimeout * 2;
         long timestamp = System.currentTimeMillis();
@@ -5962,7 +5981,6 @@ public class ConnectionRegressionTest extends BaseTestCase {
             fail("Time expired for connection attempt.");
 
         } finally {
-            DriverManager.setLoginTimeout(oldLoginTimeout);
             mockServer.releaseResources();
             executor.shutdownNow();
         }
@@ -6591,7 +6609,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
         @Override
         public InputStream getInputStream() throws IOException {
-            return new ConnectionRegressionTest.TestBug73053InputStreamWrapper(this.underlyingSocket.getInputStream());
+            return new TestBug73053InputStreamWrapper(this.underlyingSocket.getInputStream());
         }
 
         @Override
@@ -6756,11 +6774,17 @@ public class ConnectionRegressionTest extends BaseTestCase {
     }
 
     private static class TestBug73053InputStreamWrapper extends InputStream {
+        boolean tlsv13Enabled = false;
         final InputStream underlyingInputStream;
         int loopCount = 0;
 
         public TestBug73053InputStreamWrapper(InputStream underlyingInputStream) {
             this.underlyingInputStream = underlyingInputStream;
+            try {
+                this.tlsv13Enabled = Arrays.asList(SSLContext.getDefault().createSSLEngine().getEnabledProtocols()).contains("TLSv1.3");
+            } catch (NoSuchAlgorithmException e) {
+                fail("SSLContext used by the environment cannot be retrieved.");
+            }
         }
 
         @Override
@@ -6800,6 +6824,10 @@ public class ConnectionRegressionTest extends BaseTestCase {
             // In some older Linux kernels the underlying system call may return 1 when actually no bytes are available in a CLOSE_WAIT state socket, even if EOF
             // has been reached.
             int available = this.underlyingInputStream.available();
+
+            if (tlsv13Enabled) {
+                return available;
+            }
             return available == 0 ? 1 : available;
         }
 

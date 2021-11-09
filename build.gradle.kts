@@ -114,6 +114,14 @@ tasks.shadowJar {
         into("META-INF/services/")
     }
 
+    doFirst {
+        mkdir("${buildDir}/META-INF/services/")
+        val driverFile = File("${buildDir}/META-INF/services/java.sql.Driver")
+        if (driverFile.createNewFile()) {
+            driverFile.writeText("software.aws.rds.jdbc.mysql.Driver")
+        }
+    }
+
     dependencies {
         exclude(dependency(":"))
     }
