@@ -5,18 +5,18 @@
 [![Javadoc](https://javadoc.io/badge2/software.aws.rds/aws-mysql-jdbc/javadoc.svg)](https://javadoc.io/doc/software.aws.rds/aws-mysql-jdbc)
 [![License: GPLv2 with FOSS exception](https://img.shields.io/badge/license-GPLv2_with_FOSS_exception-c30014.svg)](LICENSE)
 
-**The Amazon Web Services (AWS) JDBC Driver for MySQL** is a driver that enables applications to take full advantage of the features of clustered MySQL databases. It is based on and can be used as a drop-in compatible for the [MySQL Connector/J driver](https://github.com/mysql/mysql-connector-j) and is compatible with all MySQL deployments.
+**The Amazon Web Services (AWS) JDBC Driver for MySQL** is a driver that allows an application to take advantage of the features of clustered MySQL databases. It is based on and can be used as a drop-in compatible for the [MySQL Connector/J driver](https://github.com/mysql/mysql-connector-j), and is compatible with all MySQL deployments.
 
-The AWS JDBC Driver for MySQL currently enables fast failover for Amazon Aurora with MySQL compatibility. Support for additional features of clustered databases, including features of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
+The AWS JDBC Driver for MySQL supports fast failover for Amazon Aurora with MySQL compatibility. Support for additional features of clustered databases, including features of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
 
-> **IMPORTANT** Because this project is in preview, you may see breaking changes throughout. We encourage you to experiment with MySQL driver but DO NOT adopt it for production use. Use of MySQL driver in preview is subject to the terms and conditions contained in the [AWS Service Terms](https://aws.amazon.com/service-terms), particularly the Beta Service Participation Service Terms, and apply to any drivers not marked as 'Generally Available'.
+> **IMPORTANT** Because this project is in preview, we encourage you to experiment with MySQL driver but DO NOT recommend adopting it for production use. Use of the MySQL driver in preview is subject to the terms and conditions in the [AWS Service Terms](https://aws.amazon.com/service-terms), (particularly the Beta Service Participation Service Terms). This applies to any drivers not marked as 'Generally Available'.
 ## What is Failover?
 
-In an Amazon Aurora DB cluster, failover is a mechanism by which Aurora automatically repairs the DB cluster status when a primary DB instance becomes unavailable. It achieves this goal by electing an Aurora Replica to become the new primary DB instance, so that the DB cluster can provide maximum availability to a primary read-write DB instance. The AWS JDBC Driver for MySQL is designed to coordinate with this behavior in order to provide minimal downtime in the event of a DB instance failure.
+In an Amazon Aurora DB cluster, failover is a mechanism by which Aurora automatically repairs the DB cluster status when a primary DB instance becomes unavailable. During failover, Aurora promotes a replica to become the new primary DB instance, so that the DB cluster can provide maximum availability to a primary read-write DB instance. The AWS JDBC Driver for MySQL is designed to coordinate with this behavior in order to provide minimal downtime in the event of a DB instance failure.
 
 ## Benefits of the AWS JDBC Driver for MySQL
 
-Although Aurora is able to provide maximum availability through the use of failover, existing client drivers do not currently take full advantage of this functionality. This is partially due to the time required for the DNS of the new primary DB instance to be fully resolved in order to properly direct the connection. The AWS JDBC Driver for MySQL fully utilizes failover behavior by maintaining a cache of the Aurora cluster topology and each DB instance's role (Aurora Replica or primary DB instance). This topology is provided via a direct query to the Aurora database, essentially providing a shortcut to bypass the delays caused by DNS resolution. With this knowledge, the AWS JDBC Driver can more closely monitor the Aurora DB cluster status so that a connection to the new primary DB instance can be established as fast as possible. Additionally, as noted above, the AWS JDBC Driver is designed to be a drop-in compatible for other MySQL JDBC drivers and can be used to interact with regular RDS and MySQL databases as well as Aurora MySQL.
+Although Aurora is able to provide maximum availability through the use of failover, existing client drivers do not currently take full advantage of this functionality. This is partially due to the time required for the DNS of the new primary DB instance to be fully resolved in order to properly direct the connection. The AWS JDBC Driver for MySQL fully utilizes failover behavior by maintaining a cache of the Aurora cluster topology and each DB instance's role (Aurora Replica or primary DB instance). This topology is provided via a direct query to the Aurora database, essentially providing a shortcut to bypass the delays caused by DNS resolution. With this knowledge, the AWS JDBC Driver can more closely monitor the Aurora DB cluster status so that a connection to the new primary DB instance can be established as fast as possible. Additionally, as noted above, the AWS JDBC Driver is designed to be a drop-in compatible for other MySQL JDBC drivers and can be used to interact with RDS and MySQL databases as well as Aurora MySQL.
 
 ## The AWS JDBC Driver Failover Process
 
@@ -27,12 +27,12 @@ The figure above provides a simplified overview of how the AWS JDBC Driver handl
 ## Getting Started
 
 ### Minimum Requirements
-To use the AWS JDBC Driver for MySQL, it requires Amazon Corretto 8+ or Java 8+.
+You need to install Amazon Corretto 8+ or Java 8+ before using the AWS JDBC Driver for MySQL.
 
 ### Obtaining the AWS JDBC Driver for MySQL
 
 #### Direct Download
-The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that can be downloaded directly from [GitHub Releases](https://github.com/awslabs/aws-mysql-jdbc/releases) or [Maven Central](https://search.maven.org/search?q=g:software.aws.rds). Installing the driver requires obtaining the corresponding JAR file and including it in the application's CLASSPATH.
+The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that can be downloaded directly from [GitHub Releases](https://github.com/awslabs/aws-mysql-jdbc/releases) or [Maven Central](https://search.maven.org/search?q=g:software.aws.rds). To install the driver, you need to obtain the corresponding JAR file and include it in the application's CLASSPATH.
 
 **Example - Direct Download via wget**
 ```bash
@@ -45,7 +45,7 @@ export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.2.0.jar
 ```
 
 #### As a Maven Dependency
-Alternatively, the driver can be obtained automatically via [Maven's dependency management](https://search.maven.org/search?q=g:software.aws.rds) by adding the following configuration in the application's Project Object Model (POM) file:
+You can obtain the driver with [Maven's dependency management](https://search.maven.org/search?q=g:software.aws.rds) by adding the following configuration to the application's Project Object Model (POM) file:
 
 **Example - Maven**
 ```xml
@@ -59,7 +59,7 @@ Alternatively, the driver can be obtained automatically via [Maven's dependency 
 ```
 
 #### As a Gradle Dependency
-Alternatively, the driver can be obtained automatically via [Gradle's dependency management](https://search.maven.org/search?q=g:software.aws.rds) by adding the following configuration in the application's ```build.gradle``` file:
+You can obtain the driver can be automatically with [Gradle's dependency management](https://search.maven.org/search?q=g:software.aws.rds) by adding the following configuration to the application's ```build.gradle``` file:
 
 **Example - Gradle**
 ```gradle
@@ -68,16 +68,16 @@ dependencies {
 }
 ```
 ### Using the AWS JDBC Driver for MySQL
-As a drop-in compatible, usage of the AWS JDBC Driver for MySQL, is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover.
+The AWS JDBC Driver for MySQLA is drop-in compatible, so usage is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight usage specific to failover.
 
 #### Driver Name
-The driver name to use is: ```software.aws.rds.jdbc.Driver```. For developers who are building the driver directly from main, the driver name to use is: ```software.aws.rds.jdbc.mysql.Driver```.
+Use the driver name: ```software.aws.rds.jdbc.Driver```. If you are building the driver directly from main, use the driver name: ```software.aws.rds.jdbc.mysql.Driver```.
 
 This will be needed when loading the driver explicitly to the driver manager.
 
 #### Connection URL Descriptions
 
-There are many different types of URLs that can connect to an Aurora DB cluster. For some of these URL types, the AWS JDBC Driver requires the user to provide some information about the Aurora DB cluster to provide failover functionality. This section outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, if applicable.
+There are many different types of URLs that can connect to an Aurora DB cluster. For some URL types, the AWS JDBC Driver requires the user to provide some information about the Aurora DB cluster to provide failover functionality. This section outlines the various URL types. For each type, information is provided on how the driver will behave and what information the driver requires about the DB cluster, if applicable.
 
 Note: The connection string follows standard URL parameters. In order to add parameters to the connection string, simply add `?` and then do `parameter_name=value` at the end of the connection string. You may add multiple parameters by separating the parameter name and value set (`parameter_name=value`) with the `&` symbol. For example, to add 2 parameters simply add `?param_name=value&param_2=value2` at the end of the connection string.
  
@@ -92,7 +92,7 @@ Note: The connection string follows standard URL parameters. In order to add par
 | Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    None | A regular JDBC connection will be returned - no failover functionality |
 
-(Information about the `clusterInstanceHostPattern` is mentioned in the section below.)
+Information about the `clusterInstanceHostPattern` is mentioned in the section below.
 
 For more information about parameters that can be configured with the AWS JDBC Driver, see the section below about failover parameters.
 
@@ -115,14 +115,14 @@ In addition to [the parameters that can be configured for the MySQL Connector/J 
 |`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` | 
 #### Failover Exception Codes
 ##### 08001 - Unable to Establish SQL Connection
-When the driver throws a SQLException with code ```08001```, it means the original connection failed, and the driver tried to failover to a new instance, but was unable to. There are various reasons this may happen: no nodes were available, a network failure occurred, etc. In this scenario, please wait until the server is up or other problems are solved. (Exception will be thrown.)
+When the driver throws a SQLException with code ```08001```, it means the original connection failed, and the driver tried to failover to a new instance, but was not able to. There are various reasons this may happen: no nodes were available, a network failure occurred, and so on. In this scenario, please wait until the server is up or other problems are solved. (Exception will be thrown.)
 
 ##### 08S02 - Communication Link 
-When the driver throws a SQLException with code ```08S02```, it means the original connection failed while autocommit was set to true, and the driver successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, the user should:
+When the driver throws a SQLException with code ```08S02```, it means the original connection failed while autocommit was set to true, and the driver successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, you should:
 
 - Reuse and re-configure the original connection (e.g., Re-configure session state to be the same as the original connection).
 
-- Repeat that query which was executed when the connection failed and continue work as desired.
+- Repeat that query that was executed when the connection failed and continue work as desired.
 
 ###### Sample Code
 ```java
@@ -209,7 +209,7 @@ When the driver throws a SQLException with code ```08007```, it means the origin
 
 - Re-start the transaction and repeat all queries which were executed during the transaction before the connection failed.
 
-- Repeat that query which was executed when the connection failed and continue work as desired.
+- Repeat that query that was executed when the connection failed and continue work as desired.
 
 ###### Sample Code
 ```java
@@ -289,7 +289,7 @@ public class FailoverSampleApp2 {
 }
 ```
 >### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
->1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception was hit. If this practice is left unaltered, the application will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
+>1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception is hit. If your application takes this approach, it will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
 >2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
 ## Extra Additions
 
@@ -304,7 +304,7 @@ The default XML parser contained a security risk which made the driver prone to 
 ### AWS IAM Database Authentication
 
 An optional authentication method is to use Amazon AWS Identity and Access Management (IAM). 
-When using AWS IAM database authentication, host URL must be a valid Amazon endpoint, and not a custom domain or an IP address.
+When using AWS IAM database authentication, the host URL must be a valid Amazon endpoint, and not a custom domain or an IP address.
 <br>ie. `database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com`
 
 
@@ -312,12 +312,12 @@ IAM database authentication is limited to certain database engines.
 For more information on limitations and recommendations, please [read](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html).
 
 #### Setup for IAM database Authentication for MySQL 
-1. Enable AWS IAM database authentication for existing database or create a new database on AWS RDS Console
-   1. [Creating new database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html)
-   2. [Modifying existing database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html)
-2. Create/Change and [use AWS IAM policy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) for AWS IAM database authentication
-3. [Create a database account](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html) using AWS IAM database authentication
-   1. Connect to MySQL database using master logins and create a new user with the following<br>
+1. Turn on AWS IAM database authentication for the existing database or create a new database on the AWS RDS Console:
+   1. [Creating a new database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html)
+   2. [Modifying an existing database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html)
+2. Create/Change and [use an AWS IAM policy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) for AWS IAM database authentication.
+3. [Create a database account](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html) using AWS IAM database authentication:
+   1. Connect to your MySQL database using master logins, and use the following command to create a new user:<br>
    `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
 
 | Parameter       | Value           | Required      | Description  |
@@ -368,14 +368,15 @@ public class AwsIamAuthenticationSample {
 
 ### Setup
 
-After you have installed Amazon Corretto or Java according to the requirements section, use the below command to clone the driver repository.
+After installing Amazon Corretto or Java as directed in the requirements section, use the following command to clone the driver repository:
 
 ```bash
 $ git clone https://github.com/awslabs/aws-mysql-jdbc.git
 $ cd aws-mysql-jdbc
 ```
 
-Changes can now be made in the repository.
+You can now make changes in the repository.
+
 ### Building the AWS JDBC Driver for MySQL
 
 To build the AWS JDBC Driver without running the tests, navigate into the aws-mysql-jdbc directory and run the following command:
@@ -384,15 +385,7 @@ To build the AWS JDBC Driver without running the tests, navigate into the aws-my
 gradlew build -x test
 ```
 
-To build the driver and run the tests, Docker must be installed. Refer to the section below and then run the following command
-
-```bash
-gradlew build
-```
-
-### Running the Tests
-
-To run the tests for the AWS JDBC Driver, [Docker](https://docs.docker.com/get-docker/) must be installed. After installing Docker, execute the following commands to create the Docker servers that the tests will run against:
+To build the driver and run the tests, you must first install [Docker](https://docs.docker.com/get-docker/).  After installing Docker, execute the following commands to create the Docker servers that the tests will run against:
 
 ```bash
 $ cd aws-mysql-jdbc/docker
@@ -400,13 +393,21 @@ $ docker-compose up -d
 $ cd ../
 ```
 
-You can now run the tests in the ```aws-mysql-jdbc``` directory using the following command:
+Then, to build the driver, run the following command:
+
+```bash
+gradlew build
+```
+
+### Running the Tests
+
+After building the driver, and installing and configuring Docker, you can run the tests in the ```aws-mysql-jdbc``` directory with the following command:
 
 ```bash
 gradlew test
 ```
 
-To shut down the Docker servers after finishing testing:
+To shut down the Docker servers when you have finished testing:
 
 ```bash
 $ cd aws-mysql-jdbc/docker
@@ -417,18 +418,18 @@ $ cd ../
 ## Known Issues
 ### SSLHandshakeException
 Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
-This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`, for additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
+This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`. For additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
 To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection property when connecting to a database.
 
 ## Getting Help and Opening Issues
 
-If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear about it. Please search the [existing issues](https://github.com/awslabs/aws-mysql-jdbc/issues) and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we will need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please also include reproduction case for the issue when appropriate.
+If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear about it. Please search the [existing issues](https://github.com/awslabs/aws-mysql-jdbc/issues) and see if others are also experiencing the issue before opening a new issue. When opening a new issue, we will need the version of AWS JDBC Driver for MySQL, Java language version, OS you’re using, and the MySQL database version you're running against. Please include a reproduction case for the issue when appropriate.
 
 The GitHub issues are intended for bug reports and feature requests. Keeping the list of open issues lean will help us respond in a timely manner.
 
 ## Documentation
 
-For additional documentation on the AWS JDBC Driver, [please refer to the documentation for the open-source mysql-connector-j driver that the AWS JDBC Driver was based on](https://dev.mysql.com/doc/connector-j/8.0/en/).
+For additional documentation on the AWS JDBC Driver, [please refer to the documentation for the open-source mysql-connector-j driver that the AWS JDBC Driver is based on](https://dev.mysql.com/doc/connector-j/8.0/en/).
 
 ## License
 
