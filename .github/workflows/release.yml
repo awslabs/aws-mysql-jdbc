@@ -39,13 +39,16 @@ jobs:
           touch RELEASE_DETAILS.md
           echo "$RELEASE_DETAILS" > RELEASE_DETAILS.md
       - name: 'Install GPG Secret Key'
-        id: install-secret-key
-        run: |
-          cat <(echo -e "${{ secrets.GPG_SECRET_KEY }}") | gpg --batch --import
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v4
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
       - name: 'Sign Jars'
         run: |
           export GPG_TTY=$(tty)
           for jar in build/libs/*.jar; do gpg --detach-sign --armor $jar; done
+          for signed in build/libs/*.asc; do gpg --verify $signed; done
       - name: 'Upload to Release'
         uses: ncipollo/release-action@v1
         with:
