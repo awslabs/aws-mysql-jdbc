@@ -36,12 +36,12 @@ The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that c
 
 **Example - Direct Download via wget**
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.2.0/aws-mysql-jdbc-0.2.0.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.3.0/aws-mysql-jdbc-0.3.0.jar
 ```
 
 **Example - Adding the Driver to the CLASSPATH**
 ```bash
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.2.0.jar
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.3.0.jar
 ```
 
 #### As a Maven Dependency
@@ -53,7 +53,7 @@ You can use [Maven's dependency management](https://search.maven.org/search?q=g:
   <dependency>
     <groupId>software.aws.rds</groupId>
     <artifactId>aws-mysql-jdbc</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
   </dependency>
 </dependencies>
 ```
@@ -64,7 +64,7 @@ You can use [Gradle's dependency management](https://search.maven.org/search?q=g
 **Example - Gradle**
 ```gradle
 dependencies {
-    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.2.0'
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.3.0'
 }
 ```
 ### Using the AWS JDBC Driver for MySQL
