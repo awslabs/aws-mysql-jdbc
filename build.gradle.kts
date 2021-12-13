@@ -236,7 +236,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:1.7.30")
 
     runtimeOnly("org.javassist:javassist:3.27.0-GA")
-    compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.0")
+    compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }
 
 sourceSets {
