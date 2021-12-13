@@ -222,8 +222,8 @@ dependencies {
     testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.6.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
-    testImplementation("org.junit.platform:junit-platform-commons:1.6.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testImplementation("org.junit.platform:junit-platform-commons:1.8.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
@@ -235,7 +235,7 @@ dependencies {
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:1.7.30")
 
-    compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.0")
+    compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }
 
 sourceSets {
