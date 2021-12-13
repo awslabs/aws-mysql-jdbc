@@ -235,7 +235,6 @@ dependencies {
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:1.7.30")
 
-    runtimeOnly("org.javassist:javassist:3.28.0-GA")
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.0")
 }
 
