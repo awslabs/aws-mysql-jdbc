@@ -42,6 +42,7 @@ public interface IMonitor extends Runnable {
 
   /**
    * Whether this {@link IMonitor} has stopped monitoring a particular server.
+   *
    * @return true if the monitoring has stopped; false otherwise.
    */
   boolean isStopped();

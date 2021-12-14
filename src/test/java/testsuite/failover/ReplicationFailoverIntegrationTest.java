@@ -103,8 +103,8 @@ public class ReplicationFailoverIntegrationTest {
   /**
    * ReplicationFailoverIntegrationTest constructor.
    */
-  public ReplicationFailoverIntegrationTest() throws SQLException {
-    DriverManager.registerDriver(new Driver());
+  public ReplicationFailoverIntegrationTest() throws ClassNotFoundException {
+    Class.forName("software.aws.rds.jdbc.mysql.Driver");
     this.log =
         LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 

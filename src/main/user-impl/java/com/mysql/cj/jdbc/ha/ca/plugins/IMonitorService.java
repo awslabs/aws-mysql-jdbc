@@ -65,6 +65,7 @@ public interface IMonitorService {
 
   /**
    * Handle unused {@link IMonitor}.
+   *
    * @param monitor The {@link IMonitor} in idle.
    */
   void notifyUnused(IMonitor monitor);

@@ -28,6 +28,8 @@ package testsuite.integration;
 
 import com.mysql.cj.conf.PropertyKey;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +51,10 @@ public class AwsIamAuthenticationIntegrationTest {
     private static final String TEST_PASSWORD = System.getenv("TEST_PASSWORD");
     private static final String TEST_DB_USER = System.getenv("TEST_DB_USER");
     private static final String DB_CONN_STR = DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + DB_READONLY_CONN_STR_SUFFIX;
+
+    public AwsIamAuthenticationIntegrationTest() throws ClassNotFoundException {
+        Class.forName("software.aws.rds.jdbc.mysql.Driver");
+    }
 
     /**
      * Attempt to connect using the wrong database username.

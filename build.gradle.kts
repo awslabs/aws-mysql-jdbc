@@ -206,7 +206,7 @@ tasks.named<Checkstyle>("checkstyleTest") {
 
 tasks.withType<Checkstyle>().configureEach {
     reports {
-        html.isEnabled = true
+        html.required
     }
 }
 

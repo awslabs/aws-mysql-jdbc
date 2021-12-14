@@ -74,7 +74,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
 @Disabled
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
+@TestMethodOrder(MethodOrderer.MethodName.class)
 public class FailoverIntegrationTest {
 
   private static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
@@ -115,8 +115,8 @@ public class FailoverIntegrationTest {
   /**
    * FailoverIntegrationTest constructor.
    * */
-  public FailoverIntegrationTest() throws SQLException {
-    DriverManager.registerDriver(new Driver());
+  public FailoverIntegrationTest() throws ClassNotFoundException {
+    Class.forName("software.aws.rds.jdbc.mysql.Driver");
     this.log = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
 
     initiateInstanceNames();

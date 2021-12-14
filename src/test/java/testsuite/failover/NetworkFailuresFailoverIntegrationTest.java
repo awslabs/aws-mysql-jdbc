@@ -65,7 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 
 @Disabled
-@TestMethodOrder(MethodOrderer.Alphanumeric.class)
+@TestMethodOrder(MethodOrderer.MethodName.class)
 public class NetworkFailuresFailoverIntegrationTest {
 
   private final Log log;
@@ -94,8 +94,8 @@ public class NetworkFailuresFailoverIntegrationTest {
   private static final String DB_USER = System.getenv("TEST_USERNAME");
   private static final String DB_PASS = System.getenv("TEST_PASSWORD");
 
-  public NetworkFailuresFailoverIntegrationTest() throws SQLException {
-    DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+  public NetworkFailuresFailoverIntegrationTest() throws ClassNotFoundException {
+    Class.forName("software.aws.rds.jdbc.mysql.Driver");
     this.log = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
   }
 
@@ -125,9 +125,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     UnreliableSocketFactory.downHost(DB_HOST_CLUSTER);
     UnreliableSocketFactory.downHost(String.format(DB_HOST_INSTANCE_PATTERN, currentWriter));
 
-    SQLException exception = assertThrows(SQLException.class, () -> {
-      selectSingleRow(testConnection, "SELECT '1'");
-    });
+    SQLException exception = assertThrows(SQLException.class, () -> selectSingleRow(testConnection, "SELECT '1'"));
     assertEquals("08001", exception.getSQLState());
 
     testConnection.close();
@@ -156,9 +154,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     UnreliableSocketFactory.downHost(DB_HOST_CLUSTER_RO);
     UnreliableSocketFactory.downHost(String.format(DB_HOST_INSTANCE_PATTERN, currentReader));
 
-    SQLException exception = assertThrows(SQLException.class, () -> {
-      selectSingleRow(testConnection, "SELECT '1'");
-    });
+    SQLException exception = assertThrows(SQLException.class, () -> selectSingleRow(testConnection, "SELECT '1'"));
     assertEquals("08S02", exception.getSQLState());
 
     String newReader = selectSingleRow(testConnection, "SELECT @@aurora_server_id");
@@ -204,9 +200,7 @@ public class NetworkFailuresFailoverIntegrationTest {
       }
     }
 
-    SQLException exception = assertThrows(SQLException.class, () -> {
-      selectSingleRow(testConnection, "SELECT '1'");
-    });
+    SQLException exception = assertThrows(SQLException.class, () -> selectSingleRow(testConnection, "SELECT '1'"));
     assertEquals("08S02", exception.getSQLState());
 
     String newReader = selectSingleRow(testConnection, "SELECT @@aurora_server_id");
@@ -233,7 +227,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     this.log.logInfo("Current writer: " + currentWriter);
     checkWriterConnection.close();
 
-    ArrayList<String> readers = new ArrayList<String>(Arrays.asList(this.allInstances));
+    ArrayList<String> readers = new ArrayList<>(Arrays.asList(this.allInstances));
     readers.remove(currentWriter);
     Collections.shuffle(readers);
     String anyReader = readers.get(0);
@@ -255,9 +249,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     // put down current reader
     UnreliableSocketFactory.downHost(String.format(DB_HOST_INSTANCE_PATTERN, currentReader));
 
-    SQLException exception = assertThrows(SQLException.class, () -> {
-      selectSingleRow(testConnection, "SELECT '1'");
-    });
+    SQLException exception = assertThrows(SQLException.class, () -> selectSingleRow(testConnection, "SELECT '1'"));
     assertEquals("08S02", exception.getSQLState());
 
     String newInstance = selectSingleRow(testConnection, "SELECT @@aurora_server_id");
@@ -284,7 +276,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     this.log.logInfo("Current writer: " + currentWriter);
     checkWriterConnection.close();
 
-    ArrayList<String> readers = new ArrayList<String>(Arrays.asList(this.allInstances));
+    ArrayList<String> readers = new ArrayList<>(Arrays.asList(this.allInstances));
     readers.remove(currentWriter);
     Collections.shuffle(readers);
     String anyReader = readers.get(0);
@@ -308,9 +300,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     // put down current reader
     UnreliableSocketFactory.downHost(String.format(DB_HOST_INSTANCE_PATTERN, currentReader));
 
-    SQLException exception = assertThrows(SQLException.class, () -> {
-      selectSingleRow(testConnection, "SELECT '1'");
-    });
+    SQLException exception = assertThrows(SQLException.class, () -> selectSingleRow(testConnection, "SELECT '1'"));
     assertEquals("08S02", exception.getSQLState());
 
     String newInstance = selectSingleRow(testConnection, "SELECT @@aurora_server_id");
@@ -321,22 +311,12 @@ public class NetworkFailuresFailoverIntegrationTest {
   }
 
   private String selectSingleRow(Connection connection, String sql) throws SQLException {
-    Statement myStmt = null;
-    ResultSet result = null;
-    try {
-      myStmt = connection.createStatement();
-      result = myStmt.executeQuery(sql);
+    try (Statement myStmt = connection.createStatement();
+         ResultSet result = myStmt.executeQuery(sql)) {
       if (result.next()) {
         return result.getString(1);
       }
       return null;
-    } finally {
-      if (result != null) {
-        result.close();
-      }
-      if (myStmt != null) {
-        myStmt.close();
-      }
     }
   }
 

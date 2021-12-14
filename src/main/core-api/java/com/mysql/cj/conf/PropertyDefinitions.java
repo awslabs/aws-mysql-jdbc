@@ -666,29 +666,29 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.allowXmlUnsafeExternalEntity"), "0.2.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
                 new StringPropertyDefinition(PropertyKey.connectionPluginFactories, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.connectionPluginFactories"), "0.3.0", CATEGORY_HA, Integer.MIN_VALUE),
+                        Messages.getString("ConnectionProperties.connectionPluginFactories"), "0.4.0", CATEGORY_HA, Integer.MIN_VALUE),
 
                 new BooleanPropertyDefinition(PropertyKey.failureDetectionEnabled, DEFAULT_VALUE_TRUE, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.failureDetectionEnabled"), "0.3.0", CATEGORY_HA, Integer.MIN_VALUE),
+                        Messages.getString("ConnectionProperties.failureDetectionEnabled"), "0.4.0", CATEGORY_HA, Integer.MIN_VALUE),
 
                 new IntegerPropertyDefinition(PropertyKey.failureDetectionTime, 30_000, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.failureDetectionTime"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Messages.getString("ConnectionProperties.failureDetectionTime"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
                 new IntegerPropertyDefinition(PropertyKey.failureDetectionInterval, 5_000, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.failureDetectionInterval"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Messages.getString("ConnectionProperties.failureDetectionInterval"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
                 new IntegerPropertyDefinition(PropertyKey.failureDetectionCount, 3, RUNTIME_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.failureDetectionCount"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Messages.getString("ConnectionProperties.failureDetectionCount"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
                 new IntegerPropertyDefinition(PropertyKey.monitorDisposalTime, 60_000, RUNTIME_MODIFIABLE,
-                    Messages.getString("ConnectionProperties.monitorDisposalTime"), "0.3.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                    Messages.getString("ConnectionProperties.monitorDisposalTime"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                     Integer.MAX_VALUE),
 
                 new BooleanPropertyDefinition(PropertyKey.useAwsIam, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
-                        Messages.getString("ConnectionProperties.useAwsIam"), "0.2.2", CATEGORY_SECURITY, Integer.MAX_VALUE),
+                        Messages.getString("ConnectionProperties.useAwsIam"), "0.3.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
                 //
                 // CATEGORY_PERFORMANCE
