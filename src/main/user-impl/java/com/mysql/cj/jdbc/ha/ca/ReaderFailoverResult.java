@@ -40,7 +40,7 @@ public class ReaderFailoverResult {
 
   /**
    * ConnectionAttemptResult constructor.
-   * */
+   */
   public ReaderFailoverResult(
       JdbcConnection newConnection, int newConnectionIndex, boolean isConnected) {
     this.newConnection = newConnection;

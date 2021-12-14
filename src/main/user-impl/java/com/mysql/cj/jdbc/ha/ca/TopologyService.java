@@ -40,7 +40,7 @@ import java.util.Set;
  * It's a generic interface for all topology services. It's expected that every implementation of
  * topology service covers different cluster types or cluster deployment.
  *
- * <p>It's expected that each instance of ClusterAwareConnectionProxy uses it's own instance of
+ * <p>It's expected that each instance of ClusterAwareConnectionProxy uses its own instance of
  * topology service.
  */
 public interface TopologyService {

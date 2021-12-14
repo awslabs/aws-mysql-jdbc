@@ -71,9 +71,10 @@ public class NetworkFailuresFailoverIntegrationTest {
   private final Log log;
 
   // Examples below refers to standard Aurora RDS endpoint: "XXX.cluster-YYY.ZZZ.rds.amazonaws.com"
-  private static final String DB_CONN_HOST_BASE = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.clusterEndpointBase"); // "YYY.ZZZ.rds.amazonaws.com"
-  private static final String DB_CLUSTER_NAME = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.clusterName"); // "XXX"
-  private static final String DB_DATABASE = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.database");
+  private static final String DB_CONN_STR_SUFFIX = System.getenv("DB_CONN_STR_SUFFIX"); // "YYY.ZZZ.rds.amazonaws.com"
+  private static final String DB_CONN_HOST_BASE = DB_CONN_STR_SUFFIX.startsWith(".") ? DB_CONN_STR_SUFFIX.substring(1) : DB_CONN_STR_SUFFIX; // "YYY.ZZZ.rds.amazonaws.com"
+  private static final String DB_CLUSTER_NAME = System.getenv("TEST_DB_CLUSTER_IDENTIFIER"); // "XXX"
+  private static final String DB_DATABASE = "test";
 
   private static final String DB_INSTANCE_1 = "mysql-instance-1";
   private static final String DB_INSTANCE_2 = "mysql-instance-2";
@@ -90,8 +91,8 @@ public class NetworkFailuresFailoverIntegrationTest {
   private static final String DB_CONN_CLUSTER_RO = "jdbc:mysql:aws://" + DB_HOST_CLUSTER_RO + "/" + DB_DATABASE;
   private static final String DB_CONN_INSTANCE_PATTERN = "jdbc:mysql:aws://" + DB_HOST_INSTANCE_PATTERN + "/" + DB_DATABASE;
 
-  private static final String DB_USER = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.user");
-  private static final String DB_PASS = System.getProperty("com.mysql.cj.testsuite.failover.networkFailures.password");
+  private static final String DB_USER = System.getenv("TEST_USERNAME");
+  private static final String DB_PASS = System.getenv("TEST_PASSWORD");
 
   public NetworkFailuresFailoverIntegrationTest() throws SQLException {
     DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
@@ -112,6 +113,7 @@ public class NetworkFailuresFailoverIntegrationTest {
     props.setProperty(PropertyKey.socketFactory.getKeyName(), testsuite.UnreliableSocketFactory.class.getName());
     props.setProperty(PropertyKey.socketTimeout.getKeyName(), "1000");
     props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10000");
     final Connection testConnection = DriverManager.getConnection(DB_CONN_CLUSTER, props);
 
     String currentWriter = selectSingleRow(testConnection, "SELECT @@aurora_server_id");

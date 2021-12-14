@@ -36,12 +36,12 @@ The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that c
 
 **Example - Direct Download via wget**
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.3.0/aws-mysql-jdbc-0.3.0.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
 ```
 
 **Example - Adding the Driver to the CLASSPATH**
 ```bash
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.3.0.jar
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
 ```
 
 #### As a Maven Dependency
@@ -53,7 +53,7 @@ You can use [Maven's dependency management](https://search.maven.org/search?q=g:
   <dependency>
     <groupId>software.aws.rds</groupId>
     <artifactId>aws-mysql-jdbc</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
   </dependency>
 </dependencies>
 ```
@@ -64,7 +64,7 @@ You can use [Gradle's dependency management](https://search.maven.org/search?q=g
 **Example - Gradle**
 ```gradle
 dependencies {
-    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.3.0'
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.4.0'
 }
 ```
 ### Using the AWS JDBC Driver for MySQL
@@ -82,12 +82,12 @@ There are many different types of URLs that can connect to an Aurora DB cluster;
 Note: The connection string follows standard URL parameters. In order to add parameters to the connection string, simply add `?` and then the `parameter_name=value` pair at the end of the connection string. You may add multiple parameters by separating the parameter name and value set (`parameter_name=value`) with the `&` symbol. For example, to add 2 parameters simply add `?param_name=value&param_2=value2` at the end of the connection string.
  
 
-| URL Type      | Example         | Required Parameters | Driver Behavior |
-| :------------ | :-------------: | :-----------------: | :-------------- |
+| URL Type        | Example           | Required Parameters  | Driver Behavior |
+| --------------- |-------------------| :-------------------:| --------------- |
 | Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306` | None | *Initial connection:* primary DB instance<br/>*Failover behavior:* connect to the new primary DB instance |
 | Read-Only Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306`      |   None |  *Initial connection:* any Aurora Replica<br/>*Failover behavior:* prioritize connecting to any active Aurora Replica but might connect to the primary DB instance if it provides a faster connection|
 | Instance Endpoint | `jdbc:mysql:aws://instance-1.XYZ.us-east-2.rds.amazonaws.com:3306`      |    None | *Initial connection:* the instance specified (DB instance 1)<br/>*Failover behavior:* connect to the primary DB instance|
-| RDS Custom Cluster | `jdbc:mysql:aws://db-identifier.cluster-custom-XYZ.us-east-2l.rds.amazonaws.com:3306`      |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
+| RDS Custom Cluster | `jdbc:mysql:aws://db-identifier.cluster-custom-XYZ.us-east-2.rds.amazonaws.com:3306`      |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
 | IP Address | `jdbc:mysql:aws://10.10.10.10:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    None | A regular JDBC connection will be returned - no failover functionality |
@@ -100,19 +100,20 @@ For more information about parameters that can be configured with the AWS JDBC D
 
 In addition to [the parameters that you can configure for the MySQL Connector/J driver](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-configuration-properties.html), you can pass the following parameters to the AWS JDBC Driver through the connection URL to specify additional driver behavior.
 
-| Parameter    | Value    | Required      | Description |
-| :----------: | :------: |:-------------:| :---------: |
-|`enableClusterAwareFailover` | Boolean | No | Set to true to enable the fast failover behavior offerred by the AWS JDBC Driver. Set to false for simple JDBC connections that do not require fast failover functionality.<br/><br/>**Default value:** `true` |
-|`clusterInstanceHostPattern` | String | If connecting using an IP address or custom domain URL: Yes<br/>Otherwise: No | This parameter is not required unless connecting to an AWS RDS cluster via an IP address or custom domain URL. In those cases, this parameter specifies the cluster instance DNS pattern that will be used to build a complete instance endpoint. A "?" character in this pattern should be used as a placeholder for the DB instance identifiers of the instances in the cluster. <br/><br/>Example: `?.my-domain.com`, `any-subdomain.?.my-domain.com:9999`<br/><br/>Usecase Example: If your cluster instance endpoints followed this pattern:`instanceIdentifier1.customHost`, `instanceIdentifier2.customHost`, etc. and you wanted your initial connection to be to `customHost:1234`, then your connection string should look something like this: `jdbc:mysql:aws://customHost:1234/test?clusterInstanceHostPattern=?.customHost`<br/><br/>**Default value:** if unspecified, and the provided connection string is not an IP address or custom domain, the driver will automatically acquire the cluster instance host pattern from the customer-provided connection string. |
-|`clusterId` | String | No | A unique identifier for the cluster. Connections with the same cluster id share a cluster topology cache. This connection parameter is not required and thus should only be set if desired. <br/><br/>**Default value:** If unspecified, the driver will automatically acquire a cluster id for AWS RDS clusters. |
-|`clusterTopologyRefreshRateMs` | Integer | No | Cluster topology refresh rate in milliseconds. The cached topology for the cluster will be invalidated after the specified time, after which it will be updated during the next interaction with the connection.<br/><br/>**Default value:** `30000` |
-|`failoverTimeoutMs` | Integer | No | Maximum allowed time in millipseconds to attempt reconnecting to a new writer or reader instance after a cluster failover is initiated.<br/><br/>**Default value:** `60000` |
-|`failoverClusterTopologyRefreshRateMs` | Integer | No | Cluster topology refresh rate in milliseconds during a writer failover process. During the writer failover process, cluster topology may be refreshed at a faster pace than normal to speed up discovery of the newly promoted writer.<br/><br/>**Default value:** `5000` |
-|`failoverWriterReconnectIntervalMs` | Integer | No | Interval of time in milliseconds to wait between attempts to reconnect to a failed writer during a writer failover process.<br/><br/>**Default value:** `5000` |
-|`failoverReaderConnectTimeoutMs` | Integer | No | Maximum allowed time in milliseconds to attempt to connect to a reader instance during a reader failover process. <br/><br/>**Default value:** `5000`
-|`acceptAwsProtocolOnly` | Boolean | If using simultaneously with another MySQL driver that supports the same protocols: Yes<br/>Otherwise: No | Set to true to only accept connections for URLs with the jdbc:mysql:aws:// protocol. This setting should be set to true when running an application that uses this driver simultaneously with another MySQL driver that supports the same protocols (eg the MySQL JDBC Driver), to ensure the driver protocols do not clash. This behavior can also be set at the driver level for every connection via the Driver.setAcceptAwsProtocolOnly method; however, this connection parameter will take priority when present.<br/><br/>**Default value:** `false`
-|`gatherPerfMetrics` | Boolean | No | Set to true if you would like the driver to record failover-associated metrics, which will then be logged upon closing the connection. This behavior can also be set at the driver level for every connection via the Driver.setAcceptAwsProtocolOnly method; however, this connection parameter will take priority when present.<br/><br/>**Default value:** `false` | 
-|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` | 
+| Parameter       | Value           | Required      | Description  | Default Value |
+| --------------- |:---------------:|:-------------:|:------------ | ------------- |
+|`enableClusterAwareFailover` | Boolean | No | Set to true to enable the fast failover behavior offered by the AWS JDBC Driver. Set to false for simple JDBC connections that do not require fast failover functionality. | `true` |
+|`clusterInstanceHostPattern` | String | If connecting using an IP address or custom domain URL: Yes<br/>Otherwise: No | This parameter is not required unless connecting to an AWS RDS cluster via an IP address or custom domain URL. In those cases, this parameter specifies the cluster instance DNS pattern that will be used to build a complete instance endpoint. A "?" character in this pattern should be used as a placeholder for the DB instance identifiers of the instances in the cluster. <br/><br/>Example: `?.my-domain.com`, `any-subdomain.?.my-domain.com:9999`<br/><br/>Usecase Example: If your cluster instance endpoints followed this pattern:`instanceIdentifier1.customHost`, `instanceIdentifier2.customHost`, etc. and you wanted your initial connection to be to `customHost:1234`, then your connection string should look something like this: `jdbc:mysql:aws://customHost:1234/test?clusterInstanceHostPattern=?.customHost` | If the provided connection string is not an IP address or custom domain, the driver will automatically acquire the cluster instance host pattern from the customer-provided connection string. |
+|`clusterId` | String | No | A unique identifier for the cluster. Connections with the same cluster ID share a cluster topology cache. This connection parameter is not required and thus should only be set if desired. | The driver will automatically acquire a cluster id for AWS RDS clusters. |
+|`clusterTopologyRefreshRateMs` | Integer | No | Cluster topology refresh rate in milliseconds. The cached topology for the cluster will be invalidated after the specified time, after which it will be updated during the next interaction with the connection. | `30000` |
+|`failoverTimeoutMs` | Integer | No | Maximum allowed time in milliseconds to attempt reconnecting to a new writer or reader instance after a cluster failover is initiated. | `60000` |
+|`failoverClusterTopologyRefreshRateMs` | Integer | No | Cluster topology refresh rate in milliseconds during a writer failover process. During the writer failover process, cluster topology may be refreshed at a faster pace than normal to speed up discovery of the newly promoted writer. | `5000` |
+|`failoverWriterReconnectIntervalMs` | Integer | No | Interval of time in milliseconds to wait between attempts to reconnect to a failed writer during a writer failover process. | `5000` |
+|`failoverReaderConnectTimeoutMs` | Integer | No | Maximum allowed time in milliseconds to attempt to connect to a reader instance during a reader failover process. | `5000` |
+|`acceptAwsProtocolOnly` | Boolean | If using simultaneously with another MySQL driver that supports the same protocols: Yes<br/>Otherwise: No | Set to true to only accept connections for URLs with the jdbc:mysql:aws:// protocol. This setting should be set to true when running an application that uses this driver simultaneously with another MySQL driver that supports the same protocols (e.g. the MySQL JDBC Driver), to ensure the driver protocols do not clash. This behavior can also be set at the driver level for every connection via the Driver.setAcceptAwsProtocolOnly method; however, this connection parameter will take priority when present. | `false` |
+|`gatherPerfMetrics` | Boolean | No | Set to true if you would like the driver to record failover-associated metrics, which will then be logged upon closing the connection. | `false` | 
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks. | `false` |
+
 #### Failover Exception Codes
 ##### 08001 - Unable to Establish SQL Connection
 When the driver throws a SQLException with code ```08001```, the original connection failed, and the driver tried to failover to a new instance, but was not able to. There are various reasons this may happen: no nodes were available, a network failure occurred, and so on. In this scenario, please wait until the server is up or other problems are solved (an exception will be thrown.)
@@ -132,73 +133,64 @@ import java.sql.*;
  * Scenario 1: Failover happens when autocommit is set to true - Catch SQLException with code 08S02.
  */
 public class FailoverSampleApp1 {
-  private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/myDb";
-  private static final String USERNAME = "username";
-  private static final String PASSWORD = "password";
-  private static final int MAX_RETRIES = 5;
 
-  public static void main(String[] args) throws SQLException {
-    // Create a connection.
-    try(Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
-      // Configure the connection.
-      setInitialSessionState(conn);
-   
-      // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
-      String select_sql = "SELECT * FROM employees";
-      try(ResultSet rs = betterExecuteQuery(conn, select_sql)) {
-        while (rs.next()) {
-          System.out.println(rs.getString("name"));
-        }
-      }
-    }
-  }
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String USERNAME = "username";
+   private static final String PASSWORD = "password";
+   private static final int MAX_RETRIES = 5;
 
-  private static void setInitialSessionState(Connection conn) throws SQLException {
-    // Your code here for the initial connection setup.
-    try(Statement stmt1 = conn.createStatement()) {
-      stmt1.executeUpdate("SET time_zone = \"+00:00\"");
-    }
-  }
-  
-  // A better executing query method when autocommit is set as the default value - True.
-  private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
-    // Create a boolean flag.
-    boolean isSuccess = false;
-    // Record the times of re-try.
-    int retries = 0;
-    
-    ResultSet rs = null;
-    while (!isSuccess) {
-      try {
-        Statement stmt = conn.createStatement();
-        rs = stmt.executeQuery(query);
-        isSuccess = true;
-    
-      } catch (SQLException e) {
-    
-        // If the attempt to connect has failed MAX_RETRIES times,
-        // throw the exception to inform users of the failed connection.
-        if (retries > MAX_RETRIES) {
-          throw e;
-        }
-    
-        // Failover has occurred and the driver has failed over to another instance successfully.
-        if (e.getSQLState().equalsIgnoreCase("08S02")) {
-          // Reconfigure the connection.
-          setInitialSessionState(conn);
-          // Re-execute that query again.
-          retries++;
-  
-        } else {
-          // If some other exception occurs, throw the exception.
-          throw e;
-        }
+   public static void main(String[] args) throws SQLException {
+      try (Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
+         // Configure the connection.
+         setInitialSessionState(conn);
+
+         // Do something with method "betterExecuteQuery" using the Cluster-Aware Driver.
+         String select_sql = "SELECT * FROM employees";
+         try (ResultSet rs = betterExecuteQuery(conn, select_sql)) {
+            while (rs.next()) {
+               System.out.println(rs.getString("first_name"));
+            }
+         }
       }
-    }
-    
-    // return the ResultSet successfully.
-    return rs;
-  }
+   }
+
+   private static void setInitialSessionState(Connection conn) throws SQLException {
+      // Your code here for the initial connection setup.
+      try (Statement stmt1 = conn.createStatement()) {
+         stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+      }
+   }
+
+   // A better executing query method when autocommit is set as the default value - true.
+   private static ResultSet betterExecuteQuery(Connection conn, String query) throws SQLException {
+      // Record the times of retry.
+      int retries = 0;
+
+      while (true) {
+         try {
+            Statement stmt = conn.createStatement();
+            return stmt.executeQuery(query);
+         } catch (SQLException e) {
+            // If the attempt to connect has failed MAX_RETRIES times,            
+            // throw the exception to inform users of the failed connection.
+            if (retries > MAX_RETRIES) {
+               throw e;
+            }
+
+            // Failover has occurred and the driver has failed over to another instance successfully.
+            if ("08S02".equalsIgnoreCase(e.getSQLState())) {
+               // Reconfigure the connection.
+               setInitialSessionState(conn);
+               // Re-execute that query again.
+               retries++;
+
+            } else {
+               // If some other exception occurs, throw the exception.
+               throw e;
+            }
+         }
+      }
+   }
 }
 ```
 
@@ -219,87 +211,138 @@ import java.sql.*;
  * Scenario 2: Failover happens when autocommit is set to false - Catch SQLException with code 08007.
  */
 public class FailoverSampleApp2 {
-  private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/myDb";
-  private static final String USERNAME = "username";
-  private static final String PASSWORD = "password";
-  private static final int MAX_RETRIES = 5;
 
-  public static void main(String[] args) throws SQLException {
-    // Create a connection
-    try(Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
-      // Configure the connection - set autocommit to false.
-      setInitialSessionState(conn);
-  
-      // Do something with method "betterExecuteUpdate_setAutoCommitFalse" using the Cluster-Aware Driver.
-      String[] update_sql = new String[3];
-      // Add all queries that you want to execute inside a transaction.
-      update_sql[0] = "INSERT INTO employees(name, position, salary) VALUES('john', 'developer', 2000)";
-      update_sql[1] = "INSERT INTO employees(name, position, salary) VALUES('mary', 'manager', 2005)";
-      update_sql[2] = "INSERT INTO employees(name, position, salary) VALUES('Tom', 'accountant', 2019)";
-      betterExecuteUpdate_setAutoCommitFalse(conn, update_sql);
-    }
-  }
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String USERNAME = "username";
+   private static final String PASSWORD = "password";
+   private static final int MAX_RETRIES = 5;
 
-  private static void setInitialSessionState(Connection conn) throws SQLException {
-    // Your code here for the initial connection setup.
-    try(Statement stmt1 = conn.createStatement()) {
-      stmt1.executeUpdate("SET time_zone = \"+00:00\"");
-    }
-    conn.setAutoCommit(false);
-  }
+   public static void main(String[] args) throws SQLException {
+      String[] update_sql = {
+              "INSERT INTO employees(emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (5000000, '1958-05-01', 'John', 'Doe', 'M', '1997-11-30')",
+              "INSERT INTO employees(emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (5000001, '1958-05-01', 'Mary', 'Malcolm', 'F', '1997-11-30')",
+              "INSERT INTO employees(emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (5000002, '1958-05-01', 'Tom', 'Jerry', 'M', '1997-11-30')"
+      };
 
-  // A better executing query method when autocommit is set to False.
-  private static void betterExecuteUpdate_setAutoCommitFalse(Connection conn, String[] queriesInTransaction) throws SQLException {
-    // Create a boolean flag.
-    boolean isSuccess = false;
-    // Record the times of re-try.
-    int retries = 0;
+      try (Connection conn = DriverManager.getConnection(CONNECTION_STRING, USERNAME, PASSWORD)) {
+         // Configure the connection - set autocommit to false.
+         setInitialSessionState(conn);
 
-    while (!isSuccess) {
-      try(Statement stmt = conn.createStatement()) {
-        for(String sql: queriesInTransaction){
-          stmt.executeUpdate(sql);
-        }
-        conn.commit();
-        isSuccess = true;
-      } catch (SQLException e) {
+         // Do something with method "betterExecuteUpdate_setAutoCommitFalse" using the Cluster-Aware Driver.           
+         betterExecuteUpdate_setAutoCommitFalse(conn, update_sql);
+      }
+   }
 
-        // If the attempt to connect has failed MAX_RETRIES times,
-        // rollback the transaction and throw the exception to inform users of the failed connection.
-        if (retries > MAX_RETRIES) {
-          conn.rollback();
-          throw e;
-        }
+   private static void setInitialSessionState(Connection conn) throws SQLException {
+      // Your code here for the initial connection setup.
+      try (Statement stmt1 = conn.createStatement()) {
+         stmt1.executeUpdate("SET time_zone = \"+00:00\"");
+      }
+      conn.setAutoCommit(false);
+   }
 
-        // Failure happens within the transaction and the driver failed over to another instance successfully.
-        if (e.getSQLState().equalsIgnoreCase("08007")) {
-          // Reconfigure the connection, re-start the transaction.
-          setInitialSessionState(conn);
-          // Reexecute all queries that were inside the transaction.
-          retries++;
+   // A better executing query method when autocommit is set to false.
+   private static void betterExecuteUpdate_setAutoCommitFalse(Connection conn, String[] queriesInTransaction) throws SQLException {
+      // Create a boolean flag.
+      boolean isSuccess = false;
+      // Record the times of retry.
+      int retries = 0;
 
-        } else {
-          // If some other exception occurs, rollback the transaction and throw the exception.
-          conn.rollback();
-          throw e;
-        }
-      } 
-    }
-  }
+      while (!isSuccess) {
+         try (Statement stmt = conn.createStatement()) {
+            for (String sql : queriesInTransaction) {
+               stmt.executeUpdate(sql);
+            }
+            conn.commit();
+            isSuccess = true;
+         } catch (SQLException e) {
+
+            // If the attempt to connect has failed MAX_RETRIES times,
+            // rollback the transaction and throw the exception to inform users of the failed connection.
+            if (retries > MAX_RETRIES) {
+               conn.rollback();
+               throw e;
+            }
+
+            // Failure happens within the transaction and the driver failed over to another instance successfully.
+            if ("08007".equalsIgnoreCase(e.getSQLState())) {
+               // Reconfigure the connection, restart the transaction.
+               setInitialSessionState(conn);
+               // Re-execute every queries that were inside the transaction.
+               retries++;
+
+            } else {
+               // If some other exception occurs, rollback the transaction and throw the exception.
+               conn.rollback();
+               throw e;
+            }
+         }
+      }
+   }
 }
 ```
+
 >### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
 >1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception is hit. If your application takes this approach, it will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
 >2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
+
+### Connection Plugin Manager
+Connection plugin manager initializes, triggers, and cleans up a chain of connection plugins. Connection plugins are widgets attached to each `Connection` objects to help execute additional or supplementary logic related to that `Connection`. [Enhanced Failure Monitoring](https://github.com/awslabs/aws-mysql-jdbc#enhanced-failure-monitoring) is one example of a connection plugin. 
+<div style="text-align:center"><img src="./docs/files/images/connection_plugin_manager_diagram.png" /></div>
+
+The figure above shows a simplified workflow of the connection plugin manager.  
+Starting at the top, when a JDBC method is executed by the driver, it is passed to the connection plugin manager. From the connection plugin manager, the JDBC method is passed in order of plugins loaded like a chain. In this figure, `Custom Plugin A` to `Custom Plugin B` and finally to `Default Plugin` which executes the JDBC method and returns the result back up the chain.
+
+By default, Enhanced Failure Monitoring is loaded. Additional custom plugins can be implemented and used alongside existing ones. Plugins can be chained together in a desired order. Loading custom plugins will not include Enhanced Failure Monitoring unless explicitly stated through the `connectionPluginFactories` parameter.
+
+The AWS JDBC Driver for MySQL attaches the `DefaultConnectionPlugin` to the tail of the connection plugin chain 
+and actually executes the given JDBC method.
+
+Since all the connection plugins are chained together, the prior connection plugin affects the
+latter plugins. If the connection plugin at the head of the connection plugin chain measures the
+execution time, this measurement would encompass the time spent in all the connection plugins down
+the chain.
+
+To learn how to write custom plugins, refer to examples located inside [Custom Plugins Demo](https://github.com/awslabs/aws-mysql-jdbc/tree/main/src/demo/java/customplugins).
+
+#### Connection Plugin Manager Parameters
+| Parameter       | Value           | Required      | Description  | Default Value |
+| --------------- |:---------------:|:-------------:|:------------ | ------------- |
+|`connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` | `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` |
+
+>### :warning: Warnings About Resource Usage in Connection Plugin Manager
+>If the application is unable to close, it may be due to connection plugin manager not being able to release resources properly. User can manually release resources by calling `software.aws.rds.jdbc.mysql.Driver.releasePluginManagers()`.
+
+### Enhanced Failure Monitoring
+<div style="text-align:center"><img src="./docs/files/images/enhanced_failure_monitoring_diagram.png" /></div>
+The figure above shows a simplified workflow of Enhanced Failure Monitoring. Enhanced Failure Monitoring, is a connection plugin implemented by using a monitor thread. The monitor will periodically check the connected database node's health. In the case of the database node showing up as unhealthy, the query will be retried with a new database node and the monitor is restarted. 
+
+Enhanced Failure Monitoring is loaded in by default and can be disabled by setting parameter `failureDetectionEnabled` to `false`. 
+
+If custom connection plugins are loaded, Enhanced Failure Monitoring will NOT be loaded unless explicitly included by adding `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` to `connectionPluginFactories`. 
+
+#### Enhanced Failure Monitoring Parameters
+`failureDetectionTime`, `failureDetectionInterval`, and `failureDetectionCount` are similar to TCP Keep Alive parameters.
+
+Additional monitoring configurations can be included by adding the prefix `monitoring-` to the configuration key.
+
+| Parameter       | Value           | Required      | Description  | Default Value |
+| --------------- |:---------------:|:-------------:|:------------ | ------------- |
+|`failureDetectionEnabled` | Boolean | No | Set to false to disable Enhanced Failure Monitoring. | `true` |
+|`failureDetectionTime` | Integer | No | Interval in milliseconds between sending a SQL query to the server and the first probe to the database node. | `30000` |
+|`failureDetectionInterval` | Integer | No | Interval in milliseconds between probes to database node. | `5000` |
+|`failureDetectionCount` | Integer | No | Number of failed connection checks before considering database node as unhealthy. | `3` |
+|`monitorDisposalTime` | Integer | No | Interval in milliseconds for a monitor to be considered inactive and to be disposed. | `60000` |
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
 
 The default XML parser contained a security risk which made the driver prone to XML Entity Injection (XXE) attacks. To solve this issue, we disabled Document Type Definitions (DTDs) in the XML parser. If you require this restriction to be lifted in your application, you can set the `allowXmlUnsafeExternalEntity` parameter in the connection string to true. Please see the table below for a definition of this parameter. 
 
-| Parameter       | Value           | Required      | Description  |
-| ------------- |:-------------:|:-------------:| ----- |
-|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks.<br/><br/>**Default value:** `false` |
+| Parameter       | Value           | Required      | Description  | Default Value |
+| --------------- |:---------------:|:-------------:|:------------ | ------------- |
+|`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks. | `false` |
 
 ### AWS IAM Database Authentication
 
@@ -321,43 +364,32 @@ For more information on limitations and recommendations, please [read](https://d
    1. Connect to your MySQL database using master logins, and use the following command to create a new user:<br>
    `CREATE USER example_user_name IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';`
 
-| Parameter       | Value           | Required      | Description  |
-| ------------- |:-------------:|:-------------:| ----- |
-|`useAwsIam` | Boolean | No | Set to true if you would like to use AWS IAM database authentication<br/><br/>**Default value:** `false` |
+| Parameter       | Value           | Required      | Description  | Default Value |
+| --------------- |:---------------:|:-------------:|:------------ | ------------- |
+|`useAwsIam` | Boolean | No | Set to true to enable AWS IAM database authentication | `false` |
 
 ###### Sample Code
 ```java
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Properties;
-
-import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.conf.PropertyKey;
-import software.aws.rds.jdbc.mysql.Driver;
 
 public class AwsIamAuthenticationSample {
 
-   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
-   private static final String USER = "example_user_name";
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String USER = "username";
 
    public static void main(String[] args) throws SQLException {
-      /// Load AWS RDS driver
-      DriverManager.registerDriver(new Driver());
-
-      // Create properties and set-up for AWS IAM database authentication
       final Properties properties = new Properties();
-      properties.setProperty(PropertyKey.useAwsIam.getKeyName(), Boolean.TRUE.toString());
-      properties.setProperty(PropertyKey.USER.getKeyName(), USER);
+      // Enable AWS IAM database authentication
+      properties.setProperty("useAwsIam", "true");
+      properties.setProperty("user", USER);
 
       // Try and make a connection
-      try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties)) {
-         try (final Statement myQuery = conn.createStatement()) {
-            try (final ResultSet rs = myQuery.executeQuery("SELECT NOW();")) {
-               while (rs.next()) {
-                  System.out.println(rs.getString(1));
-               }
+      try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
+              final Statement myQuery = conn.createStatement()) {
+         try (final ResultSet rs = myQuery.executeQuery("SELECT * FROM employees")) {
+            while (rs.next()) {
+               System.out.println(rs.getString(1));
             }
          }
       }
