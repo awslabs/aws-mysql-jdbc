@@ -39,7 +39,7 @@ with the built-in plugins. The final connection plugin chain will look like the 
 ![](./diagrams/connection_plugin_chain.png)
 
 Below is an example of the execution process of a JDBC method:
-![](https://github.com/awslabs/aws-mysql-jdbc/tree/main/docs/files/images/plugin_manager_diagram.png)
+![](../../../../docs/files/images/connection_plugin_manager_diagram.png)
 
 ### Creating a Top Level Connection Plugin
 

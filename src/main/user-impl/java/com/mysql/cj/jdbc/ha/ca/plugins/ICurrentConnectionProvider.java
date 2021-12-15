@@ -29,8 +29,6 @@ package com.mysql.cj.jdbc.ha.ca.plugins;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 
-import java.sql.Connection;
-
 /**
  * Interface for retrieving the current active {@link JdbcConnection} and its {@link HostInfo}.
  */

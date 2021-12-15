@@ -30,9 +30,6 @@
 
 package testsuite.failover;
 
-import com.mysql.cj.log.StandardLogger;
-import testsuite.UnreliableSocketFactory;
-
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
 import com.amazonaws.services.rds.model.DBCluster;
@@ -43,6 +40,7 @@ import com.amazonaws.services.rds.model.FailoverDBClusterRequest;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
+import com.mysql.cj.log.StandardLogger;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +48,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import software.aws.rds.jdbc.mysql.Driver;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -67,6 +64,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import testsuite.UnreliableSocketFactory;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
