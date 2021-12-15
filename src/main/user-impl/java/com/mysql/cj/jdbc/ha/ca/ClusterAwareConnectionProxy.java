@@ -107,8 +107,7 @@ public class ClusterAwareConnectionProxy extends MultiHostConnectionProxy
   protected transient Log log = NULL_LOGGER;
 
   protected static final int NO_CONNECTION_INDEX = -1;
-  protected static final int WRITER_CONNECTION_INDEX = 0;
-  // writer host is always stored at index 0
+  protected static final int WRITER_CONNECTION_INDEX = 0; // writer host is always stored at index 0
 
   protected int currentHostIndex = NO_CONNECTION_INDEX;
   protected Map<String, String> initialConnectionProps;
