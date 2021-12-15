@@ -38,59 +38,76 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+/**
+ * Utility class for copying {@link HostInfo} objects.
+ */
 public class ClusterAwareUtils {
-    /**
-     * Create a copy of the given {@link HostInfo} object where all details are the same except for the host properties,
-     * which will contain both the original properties and the properties passed into the function
-     *
-     * @param baseHostInfo The {@link HostInfo} object to copy
-     * @param additionalProps The map of properties to add to the new {@link HostInfo} copy
-     *
-     * @return A copy of the given {@link HostInfo} object where all details are the same except for the host properties,
-     *      will contain both the original properties and the properties passed into the function. Returns null if
-     *      baseHostInfo is null
-     */
-    public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, Map<String, String> additionalProps) {
-        if (baseHostInfo == null || additionalProps == null) {
-            return baseHostInfo;
-        }
-
-        DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(baseHostInfo.getDatabaseUrl(), new Properties());
-        Map<String, String> originalProps = baseHostInfo.getHostProperties();
-        Map<String, String> mergedProps = new HashMap<>();
-        mergedProps.putAll(originalProps);
-        mergedProps.putAll(additionalProps);
-        return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), mergedProps);
+  /**
+   * Create a copy of the given {@link HostInfo} object where all details are the same except for the host properties,
+   * which will contain both the original properties and the properties passed into the function.
+   *
+   * @param baseHostInfo The {@link HostInfo} object to copy
+   * @param additionalProps The map of properties to add to the new {@link HostInfo} copy
+   *
+   * @return A copy of the given {@link HostInfo} object where all details are the same except for the host properties,
+   *      will contain both the original properties and the properties passed into the function. Returns null if
+   *      baseHostInfo is null
+   */
+  public static HostInfo copyWithAdditionalProps(
+      HostInfo baseHostInfo,
+      Map<String, String> additionalProps) {
+    if (baseHostInfo == null || additionalProps == null) {
+      return baseHostInfo;
     }
 
-    /**
-     * Create a copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
-     *
-     * @param baseHostInfo The {@link HostInfo} object to copy host and port from
-     * @param connectionUrl All other properties to add to the new {@link HostInfo}
-     *
-     * @return A copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
-     *      Returns baseHostInfo if connectionUrl is null
-     *      Returns connectionUrl's HostInfo if baseHostInfo is null
-     */
-    public static HostInfo copyWithAdditionalProps(HostInfo baseHostInfo, ConnectionUrl connectionUrl) {
-        if (connectionUrl == null) {
-            return baseHostInfo;
-        }
+    DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
+        baseHostInfo.getDatabaseUrl(),
+        new Properties());
+    Map<String, String> originalProps = baseHostInfo.getHostProperties();
+    Map<String, String> mergedProps = new HashMap<>();
+    mergedProps.putAll(originalProps);
+    mergedProps.putAll(additionalProps);
+    return new HostInfo(
+        urlContainer,
+        baseHostInfo.getHost(),
+        baseHostInfo.getPort(),
+        baseHostInfo.getUser(),
+        baseHostInfo.getPassword(),
+        mergedProps);
+  }
 
-        final HostInfo mainHost = connectionUrl.getMainHost();
-        if (baseHostInfo == null) {
-            return mainHost;
-        }
-
-        DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(baseHostInfo.getDatabaseUrl(), new Properties());
-        Map<String, String> originalProps = baseHostInfo.getHostProperties();
-        Map<String, String> mergedProps = new HashMap<>();
-        mergedProps.putAll(originalProps);
-        mergedProps.putAll(mainHost.getHostProperties());
-
-        return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(),
-            mainHost.getUser(), mainHost.getPassword(),
-            mergedProps);
+  /**
+   * Create a copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object.
+   *
+   * @param baseHostInfo The {@link HostInfo} object to copy host and port from
+   * @param connectionUrl All other properties to add to the new {@link HostInfo}
+   *
+   * @return A copy of {@link HostInfo} object where host and port are the same while all others are from {@link ConnectionUrl} object
+   *      Returns baseHostInfo if connectionUrl is null
+   *      Returns connectionUrl's HostInfo if baseHostInfo is null
+   */
+  public static HostInfo copyWithAdditionalProps(
+      HostInfo baseHostInfo,
+      ConnectionUrl connectionUrl) {
+    if (connectionUrl == null) {
+      return baseHostInfo;
     }
+
+    final HostInfo mainHost = connectionUrl.getMainHost();
+    if (baseHostInfo == null) {
+      return mainHost;
+    }
+
+    DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
+        baseHostInfo.getDatabaseUrl(),
+        new Properties());
+    Map<String, String> originalProps = baseHostInfo.getHostProperties();
+    Map<String, String> mergedProps = new HashMap<>();
+    mergedProps.putAll(originalProps);
+    mergedProps.putAll(mainHost.getHostProperties());
+
+    return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(),
+        mainHost.getUser(), mainHost.getPassword(),
+        mergedProps);
+  }
 }

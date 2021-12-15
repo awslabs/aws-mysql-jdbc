@@ -314,7 +314,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected synchronized void invalidateCurrentConnection() throws SQLException {
+    protected void invalidateCurrentConnection() throws SQLException {
         invalidateConnection(this.currentConnection);
     }
 
@@ -335,6 +335,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
             // swallow this exception, current connection should be useless anyway.
         }
     }
+
 
     /**
      * Picks the "best" connection to use from now on. Each subclass needs to implement its connection switch strategy on it.

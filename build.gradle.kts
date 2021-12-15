@@ -70,26 +70,25 @@ repositories {
     maven {
         url = uri("https://repository.jboss.org/")
     }
-    jcenter()
 }
 
 tasks.register<JavaExec>("commonChecks") {
     classpath = sourceSets["main"].runtimeClasspath
-    main = "instrumentation.CommonChecks"
+    mainClass.set("instrumentation.CommonChecks")
     args = listOf("${buildDir}/classes/java/main", "false")
     dependsOn("classes")
 }
 
 tasks.register<JavaExec>("translateExceptions") {
     classpath = sourceSets["main"].runtimeClasspath
-    main = "instrumentation.TranslateExceptions"
+    mainClass.set("instrumentation.TranslateExceptions")
     args = listOf("${buildDir}/classes/java/main", "false")
     dependsOn("commonChecks")
 }
 
 tasks.register<JavaExec>("addMethods") {
     classpath = sourceSets["main"].runtimeClasspath
-    main = "instrumentation.AddMethods"
+    mainClass.set("instrumentation.AddMethods")
     args = listOf("${buildDir}/classes/java/main", "false")
     dependsOn("translateExceptions")
 }
@@ -192,12 +191,6 @@ tasks.named<Test>("test") {
 
     passProperty("com.mysql.cj.testsuite.url")
     passProperty("com.mysql.cj.testsuite.url.openssl")
-
-    passProperty("com.mysql.cj.testsuite.failover.networkFailures.clusterEndpointBase")
-    passProperty("com.mysql.cj.testsuite.failover.networkFailures.clusterName")
-    passProperty("com.mysql.cj.testsuite.failover.networkFailures.database")
-    passProperty("com.mysql.cj.testsuite.failover.networkFailures.user")
-    passProperty("com.mysql.cj.testsuite.failover.networkFailures.password")
 }
 
 tasks.named<Checkstyle>("checkstyleMain") {
@@ -213,7 +206,7 @@ tasks.named<Checkstyle>("checkstyleTest") {
 
 tasks.withType<Checkstyle>().configureEach {
     reports {
-        html.isEnabled = true
+        html.required
     }
 }
 

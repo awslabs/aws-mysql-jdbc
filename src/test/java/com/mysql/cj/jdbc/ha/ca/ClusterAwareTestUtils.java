@@ -38,19 +38,28 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+/**
+ * Class containing helper methods for {@link ClusterAwareConnectionProxyTest},
+ * {@link ClusterAwareReaderFailoverHandlerTest} and {@link ClusterAwareWriterFailoverHandlerTest}.
+ */
 public class ClusterAwareTestUtils {
-    protected static HostInfo createBasicHostInfo(String instanceName, String db) {
-        return createBasicHostInfo(instanceName, db, null, null);
-    }
+  protected static HostInfo createBasicHostInfo(String instanceName, String db) {
+    return createBasicHostInfo(instanceName, db, null, null);
+  }
 
-    protected static HostInfo createBasicHostInfo(String instanceName, String db, String user, String password) {
-        final Map<String, String> properties = new HashMap<>();
-        properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
-        String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
-        db = db == null ? "" : db;
-        properties.put(PropertyKey.DBNAME.getKeyName(), db);
-        url += db;
-        final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-        return new HostInfo(conStr, instanceName, 1234, user, password, properties);
-    }
+  protected static HostInfo createBasicHostInfo(
+      String instanceName,
+      String db,
+      String user,
+      String password) {
+    final Map<String, String> properties = new HashMap<>();
+    properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
+    String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
+    db = (db == null) ? "" : db;
+    properties.put(PropertyKey.DBNAME.getKeyName(), db);
+    url += db;
+    final ConnectionUrl conStr =
+        ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    return new HostInfo(conStr, instanceName, 1234, user, password, properties);
+  }
 }
