@@ -310,9 +310,6 @@ To learn how to write custom plugins, refer to examples located inside [Custom P
 | --------------- |:---------------:|:-------------:|:------------ | ------------- |
 |`connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` | `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` |
 
->### :warning: Warnings About Resource Usage in Connection Plugin Manager
->If the application is unable to close, it may be due to connection plugin manager not being able to release resources properly. User can manually release resources by calling `software.aws.rds.jdbc.mysql.Driver.releasePluginManagers()`.
-
 ### Enhanced Failure Monitoring
 <div style="text-align:center"><img src="./docs/files/images/enhanced_failure_monitoring_diagram.png" /></div>
 The figure above shows a simplified workflow of Enhanced Failure Monitoring. Enhanced Failure Monitoring, is a connection plugin implemented by using a monitor thread. The monitor will periodically check the connected database node's health. In the case of the database node showing up as unhealthy, the query will be retried with a new database node and the monitor is restarted. 

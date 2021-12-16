@@ -35,7 +35,9 @@ import com.mysql.cj.jdbc.ha.ca.BasicConnectionProvider;
 import com.mysql.cj.log.Log;
 
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * This class handles the creation and clean up of monitoring threads to servers with one
@@ -56,7 +58,11 @@ public class DefaultMonitorService implements IMonitorService {
             propertySet.getIntegerProperty(PropertyKey.monitorDisposalTime).getValue(),
             monitorService,
             logger),
-        Executors::newCachedThreadPool,
+        () -> Executors.newCachedThreadPool(r -> {
+          final Thread monitoringThread = new Thread(r);
+          monitoringThread.setDaemon(true);
+          return monitoringThread;
+        }),
         logger
     );
   }

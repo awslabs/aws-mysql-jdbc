@@ -33,9 +33,7 @@ import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
-import java.util.Queue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * This class creates and handles a chain of {@link IConnectionPlugin} for each connection.
@@ -47,16 +45,11 @@ public class ConnectionPluginManager {
 
   protected static final String DEFAULT_PLUGIN_FACTORIES =
       NodeMonitoringConnectionPluginFactory.class.getName();
-  protected static final Queue<ConnectionPluginManager> instances = new ConcurrentLinkedQueue<>();
 
   protected Log logger;
   protected PropertySet propertySet = null;
   protected IConnectionPlugin headPlugin = null;
   ClusterAwareConnectionProxy proxy;
-
-  static {
-    Runtime.getRuntime().addShutdownHook(new Thread(ConnectionPluginManager::releaseAllResources));
-  }
 
   public ConnectionPluginManager(Log logger) {
     if (logger == null) {
@@ -79,7 +72,6 @@ public class ConnectionPluginManager {
    * @param propertySet The configuration of the connection.
    */
   public void init(ClusterAwareConnectionProxy proxy, PropertySet propertySet) {
-    instances.add(this);
     this.proxy = proxy;
     this.propertySet = propertySet;
 
@@ -141,15 +133,7 @@ public class ConnectionPluginManager {
    * a single connection.
    */
   public void releaseResources() {
-    instances.remove(this);
     this.logger.logTrace("[ConnectionPluginManager.releaseResources]");
     this.headPlugin.releaseResources();
-  }
-
-  /**
-   * Release all dangling resources for all connection plugin managers.
-   */
-  public static void releaseAllResources() {
-    instances.forEach(ConnectionPluginManager::releaseResources);
   }
 }
