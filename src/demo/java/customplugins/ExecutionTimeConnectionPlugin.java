@@ -34,11 +34,11 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * This connection plugin tracks the execution time of all the given JDBC method throughout
+ * This connection plugin tracks the execution time of all the given JDBC methods throughout
  * the lifespan of the current connection.
  *
  * <p>During the cleanup phase when {@link ExecutionTimeConnectionPlugin#releaseResources()}
- * is called, this plugin logs all the methods executed and time spent on each execution
+ * is called, the plugin logs all the methods executed and time spent on each execution
  * in milliseconds.
  */
 public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
