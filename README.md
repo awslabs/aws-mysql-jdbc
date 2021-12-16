@@ -22,7 +22,7 @@ Although Aurora is able to provide maximum availability through the use of failo
 
 <div style="text-align:center"><img src="./docs/files/images/failover_diagram.png" /></div>
 
-The figure above provides a simplified overview of how the AWS JDBC Driver handles an Aurora failover encounter. Starting at the top of the diagram, an application with the AWS JDBC Driver on its class path uses the driver to get a logical connection to an Aurora database. In this example, the application requests a connection using the Aurora DB cluster endpoint and is returned a logical connection that is physically connected to the primary DB instance in the DB cluster, DB instance C. Due to how the application operates against the logical connection, the physical connection details about which specific DB instance it is connected to have been abstracted away. Over the course of the application's lifetime, it executes various statements against the logical connection. If DB instance C is stable and active, these statements succeed and the application continues as normal. If DB instance C later experiences a failure, Aurora will initiate failover to promote a new primary DB instance. At the same time, the AWS JDBC Driver will intercept the related communication exception and kick off its own internal failover process. In this case, in which the primary DB instance has failed, the driver will use its internal topology cache to temporarily connect to an active Aurora Replica. This Aurora Replica will be periodically queried for the DB cluster topology until the new primary DB instance is identified (DB instance A or B in this case). At this point, the driver will connect to the new primary DB instance and return control to the application by raising a SQLException with SQLState 08S02 so that they can reconfigure their session state as required. Although the DNS endpoint for the DB cluster might not yet resolve to the new primary DB instance, the driver has already discovered this new DB instance during its failover process and will be directly connected to it when the application continues executing statements. In this way the driver provides a faster way to reconnect to a newly promoted DB instance, thus increasing the availability of the DB cluster.
+The figure above provides a simplified overview of how the AWS JDBC Driver handles an Aurora failover encounter. Starting at the top of the diagram, an application with the AWS JDBC Driver on its class path uses the driver to get a logical connection to an Aurora database. In this example, the application requests a connection using the Aurora DB cluster endpoint and is returned a logical connection that is physically connected to the primary DB instance in the DB cluster, DB instance C. Due to how the application operates against the logical connection, the physical connection details about which specific DB instance it is connected to have been abstracted away. Over the course of the application's lifetime, it executes various statements against the logical connection. If DB instance C is stable and active, these statements succeed and the application continues as normal. If DB instance C later experiences a failure, Aurora will initiate failover to promote a new primary DB instance. At the same time, the AWS JDBC Driver will intercept the related communication exception and kick off its own internal failover process. In this case, in which the primary DB instance has failed, the driver will use its internal topology cache to temporarily connect to an active Aurora Replica. This Aurora Replica will be periodically queried for the DB cluster topology until the new primary DB instance is identified (DB instance A or B in this case). At this point, the driver will connect to the new primary DB instance and return control to the application by raising a SQLException with SQLState 08S02 so the session state can be reconfigured. Although the DNS endpoint for the DB cluster might not yet resolve to the new primary DB instance, the driver has already discovered this new DB instance during its failover process and will be directly connected to it when the application continues executing statements. In this way the driver provides a faster way to reconnect to a newly promoted DB instance, thus increasing the availability of the DB cluster.
 
 ## Getting Started
 
@@ -71,9 +71,7 @@ dependencies {
 The AWS JDBC Driver for MySQL is drop-in compatible, so usage is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight driver usage specific to failover.
 
 #### Driver Name
-Use the driver name: ```software.aws.rds.jdbc.Driver```. If you are building the driver directly from main, use the driver name: ```software.aws.rds.jdbc.mysql.Driver```.
-
-This will be needed when loading the driver explicitly to the driver manager.
+Use the driver name: ```software.aws.rds.jdbc.Driver```. If you are building the driver directly from main, use the driver name: ```software.aws.rds.jdbc.mysql.Driver```. You'll need the driver name when loading the driver explicitly to the driver manager.
 
 #### Connection URL Descriptions
 
@@ -121,7 +119,7 @@ When the driver throws a SQLException with code ```08001```, the original connec
 ##### 08S02 - Communication Link 
 When the driver throws a SQLException with code ```08S02```, the original connection failed while autocommit was set to true, and the driver successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, you should:
 
-- Reuse and reconfigure the original connection (e.g., reconfigure session state to be the same as the original connection).
+- Reconfigure and reuse the original connection (the reconfigured session state will be the same as the original connection).
 
 - Repeat the query that was executed when the connection failed and continue work as desired.
 
@@ -195,13 +193,13 @@ public class FailoverSampleApp1 {
 ```
 
 ##### 08007 - Transaction Resolution Unknown
-When the driver throws a SQLException with code ```08007```, the original connection failed within a transaction (while autocommit was set to false). In this scenario, the driver first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the driver recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, the user should:
+When the driver throws a SQLException with code ```08007```, the original connection failed within a transaction (while autocommit was set to false). In this scenario, the driver first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the driver recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, you should:
 
-- Reuse and reconfigure the original connection (e.g: reconfigure session state to be the same as the original connection).
+- Reconfigure and reuse the original connection (the reconfigured session state will be the same as the original connection).
 
 - Re-start the transaction and repeat all queries which were executed during the transaction before the connection failed.
 
-- Repeat that query that was executed when the connection failed and continue work as desired.
+- Repeat the query that was executed when the connection failed and continue work as desired.
 
 ###### Sample Code
 ```java
@@ -284,47 +282,48 @@ public class FailoverSampleApp2 {
 
 >### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
 >1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception is hit. If your application takes this approach, it will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
->2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, usage of these endpoints are discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
+>2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, use of these endpoints is discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
 
 ### Connection Plugin Manager
-Connection plugin manager initializes, triggers, and cleans up a chain of connection plugins. Connection plugins are widgets attached to each `Connection` objects to help execute additional or supplementary logic related to that `Connection`. [Enhanced Failure Monitoring](https://github.com/awslabs/aws-mysql-jdbc#enhanced-failure-monitoring) is one example of a connection plugin. 
+The connection plugin manager initializes, triggers, and cleans up a chain of connection plugins. Connection plugins are widgets attached to each `Connection` object to help execute additional or supplementary logic related to that `Connection`. [Enhanced Failure Monitoring](https://github.com/awslabs/aws-mysql-jdbc#enhanced-failure-monitoring) is one example of a connection plugin. 
 <div style="text-align:center"><img src="./docs/files/images/connection_plugin_manager_diagram.png" /></div>
 
 The figure above shows a simplified workflow of the connection plugin manager.  
-Starting at the top, when a JDBC method is executed by the driver, it is passed to the connection plugin manager. From the connection plugin manager, the JDBC method is passed in order of plugins loaded like a chain. In this figure, `Custom Plugin A` to `Custom Plugin B` and finally to `Default Plugin` which executes the JDBC method and returns the result back up the chain.
 
-By default, Enhanced Failure Monitoring is loaded. Additional custom plugins can be implemented and used alongside existing ones. Plugins can be chained together in a desired order. Loading custom plugins will not include Enhanced Failure Monitoring unless explicitly stated through the `connectionPluginFactories` parameter.
+Starting at the top, when a JDBC method is executed by the driver, it is passed to the connection plugin manager. From the connection plugin manager, the JDBC method is passed in order to each plugin, and loaded like a chain. In this example, the method is passed first to `Custom Plugin A`, then to `Custom Plugin B`, and finally to `Default Plugin` which executes the JDBC method and returns the result back through the chain.
+
+By default, Enhanced Failure Monitoring is loaded. Additional custom plugins can be implemented and used alongside existing ones. You can chain plugins together in a specified order. Loaded custom plugins will not include Enhanced Failure Monitoring unless explicitly stated with the `connectionPluginFactories` parameter.
 
 The AWS JDBC Driver for MySQL attaches the `DefaultConnectionPlugin` to the tail of the connection plugin chain 
 and actually executes the given JDBC method.
 
-Since all the connection plugins are chained together, the prior connection plugin affects the
+Since all the connection plugins are chained together, the earlier connection plugins affect the
 latter plugins. If the connection plugin at the head of the connection plugin chain measures the
 execution time, this measurement would encompass the time spent in all the connection plugins down
 the chain.
 
-To learn how to write custom plugins, refer to examples located inside [Custom Plugins Demo](https://github.com/awslabs/aws-mysql-jdbc/tree/main/src/demo/java/customplugins).
+To learn how to write custom plugins, refer to the examples in the [Custom Plugins Demo](https://github.com/awslabs/aws-mysql-jdbc/tree/main/src/demo/java/customplugins).
 
 #### Connection Plugin Manager Parameters
 | Parameter       | Value           | Required      | Description  | Default Value |
 | --------------- |:---------------:|:-------------:|:------------ | ------------- |
 |`connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` | `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` |
 
->### :warning: Warnings About Resource Usage in Connection Plugin Manager
->If the application is unable to close, it may be due to connection plugin manager not being able to release resources properly. User can manually release resources by calling `software.aws.rds.jdbc.mysql.Driver.releasePluginManagers()`.
+>### :warning: Warnings About Resource Usage in the Connection Plugin Manager
+>If the application is unable to close, it may be due to the connection plugin manager not being able to release resources properly. You can manually release resources by calling `software.aws.rds.jdbc.mysql.Driver.releasePluginManagers()`.
 
 ### Enhanced Failure Monitoring
 <div style="text-align:center"><img src="./docs/files/images/enhanced_failure_monitoring_diagram.png" /></div>
-The figure above shows a simplified workflow of Enhanced Failure Monitoring. Enhanced Failure Monitoring, is a connection plugin implemented by using a monitor thread. The monitor will periodically check the connected database node's health. In the case of the database node showing up as unhealthy, the query will be retried with a new database node and the monitor is restarted. 
+The figure above shows a simplified workflow of Enhanced Failure Monitoring. Enhanced Failure Monitoring is a connection plugin implemented by a monitor thread. The monitor will periodically check the connected database node's health. If a database node is determined to be unhealthy, the query will be retried with a new database node and the monitor restarted. 
 
-Enhanced Failure Monitoring is loaded in by default and can be disabled by setting parameter `failureDetectionEnabled` to `false`. 
+Enhanced Failure Monitoring is loaded by default, and can be disabled by setting parameter `failureDetectionEnabled` to `false`. 
 
 If custom connection plugins are loaded, Enhanced Failure Monitoring will NOT be loaded unless explicitly included by adding `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` to `connectionPluginFactories`. 
 
 #### Enhanced Failure Monitoring Parameters
 `failureDetectionTime`, `failureDetectionInterval`, and `failureDetectionCount` are similar to TCP Keep Alive parameters.
 
-Additional monitoring configurations can be included by adding the prefix `monitoring-` to the configuration key.
+You can include additional monitoring configurations by adding the prefix `monitoring-` to the configuration key.
 
 | Parameter       | Value           | Required      | Description  | Default Value |
 | --------------- |:---------------:|:-------------:|:------------ | ------------- |
@@ -352,13 +351,12 @@ The driver supports Amazon AWS Identity and Access Management (IAM) authenticati
 <br>ie. `database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com`
 
 
-IAM database authentication is limited to certain database engines.
-For more information on limitations and recommendations, please [read](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html).
+IAM database authentication use is limited to certain database engines. For more information on limitations and recommendations, please [review the IAM documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html).
 
 #### Setup for IAM database Authentication for MySQL 
 1. Turn on AWS IAM database authentication for the existing database or create a new database on the AWS RDS Console:
-   1. [Creating a new database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html).
-   2. [Modifying an existing database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html).
+   1. If needed, review the documentation about [creating a new database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateDBInstance.html).
+   2. If needed, review the documentation about [modifying an existing database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.Modifying.html).
 2. Create/Change and [use an AWS IAM policy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html) for AWS IAM database authentication.
 3. [Create a database account](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html) using AWS IAM database authentication:
    1. Connect to your MySQL database using master logins, and use the following command to create a new user:<br>
