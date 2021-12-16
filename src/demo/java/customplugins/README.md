@@ -1,24 +1,21 @@
 # AWS JDBC Driver for MySQL Custom Connection Plugin Sample Application
 
-This README walks through the steps to create 2 additional custom connection plugins for the AWS
-JDBC Driver for MySQL and use them in a simple JDBC application. All the code used in this README
-are available within this directory.
+This README walks through the steps to create two additional custom connection plugins for the AWS
+JDBC Driver for MySQL and use them in a simple JDBC application. All of the code used in this README
+is available within this directory.
 
-### Minimum Requirements
+### Prerequisites
 
-To following along this tutorial or to run this sample program directly, the following are required:
+To follow along this tutorial or to run this sample program directly, you need to have:
 
 1. Amazon Corretto 8+ or Java 8+
 2. A MySQL database
-3. The AWS JDBC Driver for MySQL must be added to the classpath. To obtain the AWS JDBC Driver for
-   MySQL
-   see [here](https://github.com/awslabs/aws-mysql-jdbc#obtaining-the-aws-jdbc-driver-for-mysql).
+3. The [AWS JDBC Driver for MySQL](https://github.com/awslabs/aws-mysql-jdbc#obtaining-the-aws-jdbc-driver-for-mysql) in your classpath.
 
 ## Connection Plugins
 
-Connection plugins are widgets attached to each `Connection` objects to help execute additional or
-supplementary logic related to that `Connection`. All the connection plugins are chained together,
-where the prior connection plugin calls the next plugin. The AWS JDBC Driver for MySQL attaches the
+Connection plugins are widgets attached to each `Connection` object to help execute additional or
+supplementary logic related to that `Connection`. All of your connection plugins are chained together; the prior connection plugin calls the next plugin. The AWS JDBC Driver for MySQL attaches the
 `DefaultConnectionPlugin` to the tail of the connection plugin chain and actually executes the given
 JDBC method.
 
@@ -35,10 +32,10 @@ This tutorial will walk through the steps to create two connection plugins. The 
 plugin is called `MethodCountConnectionPlugin`, it tracks the number of method calls throughout the
 lifespan of the connection. The second connection plugin `ExecutionTimeConnectionPlugin` tracks the
 total execution time of each type of the method calls. We will use the two custom plugins together
-with the built-in plugins. The final connection plugin chain will look like the following:
+with the built-in plugins. The final connection plugin chain will look like this:
 ![](./diagrams/connection_plugin_chain.png)
 
-Below is an example of the execution process of a JDBC method:
+The following is an example of the execution process of a JDBC method:
 ![](../../../../docs/files/images/connection_plugin_manager_diagram.png)
 
 ### Creating a Top Level Connection Plugin
@@ -141,11 +138,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
- * This connection plugin tracks the execution time of all the given JDBC method throughout
+ * This connection plugin tracks the execution time of all the given JDBC methods throughout
  * the lifespan of the current connection.
  * 
  * <p>During the cleanup phase when {@link ExecutionTimeConnectionPlugin#releaseResources()}
- * is called, this plugin logs all the methods executed and time spent on each execution
+ * is called, the plugin logs all the methods executed and time spent on each execution
  * in milliseconds.
  */
 public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
@@ -223,7 +220,7 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
 ### Creating the Connection Plugin Factories
 
 Before we can register the connection plugins in the `ConnectionPluginManager`, we need to create
-factory classes that implements `IConnectionPluginFactory` interface.
+factory classes that implement the `IConnectionPluginFactory` interface.
 Each `IConnectionPluginFactory`
 implementation instantiates a specific connection plugin.
 
@@ -280,7 +277,7 @@ public class ExecutionTimeConnectionPluginFactory implements
 
 ## Using the Custom Connection Plugins
 
-This main application is a simple JDBC application. It uses creates a connection to a MySQL database
+This main application is a simple JDBC application. It creates a connection to a MySQL database
 instance and executes a query with the several layers of connection plugins.
 
 ```java
@@ -342,6 +339,6 @@ public class SampleApplication {
   Java class calling this method instead of the actual object?
     - The `execute` method accepts the invocation class and the method call, such as
       `execute(ResultSet.class, "getString", () -> rs.getString(1))` because the Java class and the
-      method name already provides enough details about the invoked method. Not passing the actual
-      object prevents modification on the object,and avoids side effects when executing SQL
+      method name already provides enough information about the invoked method. Not passing the actual
+      object prevents modification of the object,and avoids side effects when executing SQL
       functions in connection plugins.
