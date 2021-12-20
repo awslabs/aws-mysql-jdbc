@@ -218,7 +218,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
     testImplementation("org.junit.platform:junit-platform-commons:1.8.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
-    testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
+    testImplementation("org.junit.platform:junit-platform-launcher:1.8.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
 
