@@ -24,26 +24,49 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.jdbc.JdbcConnection;
+
+import java.util.Set;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Interface for monitor services. This class implements ways to start and stop monitoring
+ * servers when connections are created.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
+public interface IMonitorService {
+  MonitorConnectionContext startMonitoring(
+      JdbcConnection connectionToAbort,
+      Set<String> nodeKeys,
+      HostInfo hostInfo,
       PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+      int failureDetectionTimeMillis,
+      int failureDetectionIntervalMillis,
+      int failureDetectionCount);
+
+  /**
+   * Stop monitoring for a connection represented by the given
+   * {@link MonitorConnectionContext}. Removes the context from the {@link Monitor}.
+   *
+   * @param context The {@link MonitorConnectionContext} representing a connection.
+   */
+  void stopMonitoring(MonitorConnectionContext context);
+
+  /**
+   * Stop monitoring the node for all connections represented by the given set of node keys.
+   *
+   * @param nodeKeys All known references to a server.
+   */
+  void stopMonitoringForAllConnections(Set<String> nodeKeys);
+
+  void releaseResources();
+
+  /**
+   * Handle unused {@link IMonitor}.
+   *
+   * @param monitor The {@link IMonitor} in idle.
+   */
+  void notifyUnused(IMonitor monitor);
 }

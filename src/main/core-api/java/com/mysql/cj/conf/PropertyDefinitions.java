@@ -636,6 +636,9 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.clusterInstanceHostPattern, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.clusterInstanceHostPattern"), "0.1.0", CATEGORY_HA, Integer.MIN_VALUE),
 
+                new BooleanPropertyDefinition(PropertyKey.useConnectionPlugins, DEFAULT_VALUE_TRUE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.useConnectionPlugins"), "0.4.1", CATEGORY_HA, Integer.MAX_VALUE),
+
                 new BooleanPropertyDefinition(PropertyKey.enableClusterAwareFailover, DEFAULT_VALUE_TRUE, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.enableClusterAwareFailover"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE),
 

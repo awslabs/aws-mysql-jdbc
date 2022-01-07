@@ -24,26 +24,52 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.jdbc.JdbcConnection;
 
-/**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
- */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
+/** This class holds results of Reader Failover Process. */
+public class ReaderFailoverResult {
+  private final JdbcConnection newConnection;
+  private final int newConnectionIndex;
+  private final boolean isConnected;
+
+  /**
+   * ConnectionAttemptResult constructor.
+   */
+  public ReaderFailoverResult(
+      JdbcConnection newConnection, int newConnectionIndex, boolean isConnected) {
+    this.newConnection = newConnection;
+    this.newConnectionIndex = newConnectionIndex;
+    this.isConnected = isConnected;
+  }
+
+  /**
+   * Get new connection to a host.
+   *
+   * @return {@link JdbcConnection} New connection to a host. Returns null if no connection is
+   *     established.
+   */
+  public JdbcConnection getConnection() {
+    return newConnection;
+  }
+
+  /**
+   * Get index of newly connected host.
+   *
+   * @return Index of connected host in topology Returns -1 (NO_CONNECTION_INDEX) if no connection
+   *     is established.
+   */
+  public int getConnectionIndex() {
+    return newConnectionIndex;
+  }
+
+  /**
+   * Checks if process result is successful and new connection to host is established.
+   *
+   * @return True, if process successfully connected to a host.
+   */
+  public boolean isConnected() {
+    return isConnected;
   }
 }

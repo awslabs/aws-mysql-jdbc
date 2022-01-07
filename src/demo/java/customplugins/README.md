@@ -49,7 +49,7 @@ All connection plugins have to implement the `IConnectionPlugin` interface.
 /**
  * This connection plugin counts the total number of executed JDBC methods throughout the
  * lifespan of the current connection.
- * 
+ *
  * <p>All connection plugins must implement the {@link IConnectionPlugin} interface. Since
  * all the connection plugins are chained together, the prior connection plugin needs to
  * invoke the next plugin.
@@ -84,6 +84,16 @@ public class MethodCountConnectionPlugin implements IConnectionPlugin {
     // Traverse the connection plugin chain by invoking the `execute` method in the
     // next plugin.
     return this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod);
+  }
+
+  @Override
+  public void transactionBegun() {
+    this.nextPlugin.transactionBegun();
+  }
+
+  @Override
+  public void transactionCompleted() {
+    this.nextPlugin.transactionCompleted();
   }
 
   /**
@@ -132,18 +142,10 @@ The next custom plugin is the `ExecutionTimeConnectionPlugin`, which tracks the 
 the given method in the remaining plugins.
 
 ```java
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPlugin;
-import com.mysql.cj.log.Log;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
 /**
  * This connection plugin tracks the execution time of all the given JDBC method throughout
  * the lifespan of the current connection.
- * 
+ *
  * <p>During the cleanup phase when {@link ExecutionTimeConnectionPlugin#releaseResources()}
  * is called, this plugin logs all the methods executed and time spent on each execution
  * in milliseconds.
@@ -152,7 +154,7 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
   final long initializeTime;
   final IConnectionPlugin nextPlugin;
   private final Log logger;
-  private final Map<String, Long> results = new HashMap<>();
+  private final Map<String, Long> methodExecutionTimes = new HashMap<>();
 
   public ExecutionTimeConnectionPlugin(
       IConnectionPlugin nextPlugin,
@@ -172,15 +174,25 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
     // This `execute` measures the time it takes for the remaining connection plugins to
     // execute the given method call.
     final long startTime = System.nanoTime();
-    final Object result =
+    final Object executeResult =
         this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod);
     final long elapsedTime = System.nanoTime() - startTime;
-    results.merge(
+    methodExecutionTimes.merge(
         methodName,
         elapsedTime / 1000000,
         Long::sum);
 
-    return result;
+    return executeResult;
+  }
+
+  @Override
+  public void transactionBegun() {
+    this.nextPlugin.transactionBegun();
+  }
+
+  @Override
+  public void transactionCompleted() {
+    this.nextPlugin.transactionCompleted();
   }
 
   @Override
@@ -203,14 +215,14 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
         .append("| Method Executed     | Total Time |\n")
         .append("+---------------------+------------+\n");
 
-    results.forEach((key, val) -> logMessage.append(String.format(
+    methodExecutionTimes.forEach((key, val) -> logMessage.append(String.format(
         leftAlignFormat,
         key,
         val + "ms")));
     logMessage.append("+---------------------+------------+\n");
     logger.logInfo(logMessage);
 
-    results.clear();
+    methodExecutionTimes.clear();
 
     // Traverse the connection plugin chain by calling the next plugin. This step allows
     // all connection plugins a chance to clean up any dangling resources or perform any
@@ -231,9 +243,9 @@ First is the `MethodCountConnectionPluginFactory`.
 
 ```java
 import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.ca.plugins.ICurrentConnectionProvider;
+import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
+import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.log.Log;
 
 /**
@@ -246,7 +258,8 @@ public class MethodCountConnectionPluginFactory implements IConnectionPluginFact
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
-    logger.logInfo("[MethodCountConnectionPluginFactory] ::: Creating a method count connection plugin");
+    logger.logInfo(
+        "[MethodCountConnectionPluginFactory] ::: Creating a method count connection plugin");
     return new MethodCountConnectionPlugin(nextPlugin, logger);
   }
 }
@@ -256,9 +269,9 @@ Next is the `ExecutionTimeConnectionPluginFactory`.
 
 ```java
 import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.ca.plugins.ICurrentConnectionProvider;
+import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
+import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.log.Log;
 
 /**
@@ -272,7 +285,8 @@ public class ExecutionTimeConnectionPluginFactory implements
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
+    logger.logInfo(
+        "[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
     return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
   }
 }

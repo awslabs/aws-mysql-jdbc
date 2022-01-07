@@ -26,10 +26,12 @@
 
 package customplugins;
 
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPlugin;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.log.Log;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -66,12 +68,27 @@ public class MethodCountConnectionPlugin implements IConnectionPlugin {
   public Object execute(
       Class<?> methodInvokeOn,
       String methodName,
-      Callable<?> executeJdbcMethod) throws Exception {
+      Callable<?> executeJdbcMethod, Object[] args) throws Exception {
     // Increment the number of calls to this method.
     methodCount.merge(methodName, 1, Integer::sum);
     // Traverse the connection plugin chain by invoking the `execute` method in the
     // next plugin.
-    return this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod);
+    return this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod, args);
+  }
+
+  @Override
+  public void transactionBegun() {
+    this.nextPlugin.transactionBegun();
+  }
+
+  @Override
+  public void transactionCompleted() {
+    this.nextPlugin.transactionCompleted();
+  }
+
+  @Override
+  public void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException {
+    this.nextPlugin.openInitialConnection(connectionUrl);
   }
 
   /**

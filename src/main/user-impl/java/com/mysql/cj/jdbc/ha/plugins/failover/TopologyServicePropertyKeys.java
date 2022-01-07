@@ -24,26 +24,17 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.conf.HostInfo;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Property keys that topology service has to use to store additional properties to {@link
+ * HostInfo}.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+public class TopologyServicePropertyKeys {
+  public static final String SESSION_ID = "TOPOLOGY_SERVICE_SESSION_ID";
+  public static final String LAST_UPDATED = "TOPOLOGY_SERVICE_LAST_UPDATE_TIMESTAMP";
+  public static final String REPLICA_LAG = "TOPOLOGY_SERVICE_REPLICA_LAG_IN_MILLISECONDS";
+  public static final String INSTANCE_NAME = "TOPOLOGY_SERVICE_SERVER_ID";
 }

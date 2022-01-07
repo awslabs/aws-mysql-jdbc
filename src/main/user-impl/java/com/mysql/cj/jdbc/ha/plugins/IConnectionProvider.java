@@ -24,26 +24,20 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.jdbc.ConnectionImpl;
 
-/**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
- */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+import java.sql.SQLException;
+
+/** Implement this interface in order to handle physical connection creation process. */
+public interface IConnectionProvider {
+  /**
+   * Called once per connection that needs to be created.
+   *
+   * @param host Host information for the host of the desired connection.
+   * @return {@link ConnectionImpl}
+   */
+  ConnectionImpl connect(HostInfo host) throws SQLException;
 }

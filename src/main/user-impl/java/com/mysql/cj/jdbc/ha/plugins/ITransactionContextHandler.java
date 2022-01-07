@@ -24,26 +24,18 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+public interface ITransactionContextHandler {
+  /**
+   * Called when the driver has been told by the server that a transaction is now in progress (when
+   * one has not been currently in progress).
+   */
+  void transactionBegun();
 
-/**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
- */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+  /**
+   * Called when the driver has been told by the server that a transaction has completed, and no
+   * transaction is currently in progress.
+   */
+  void transactionCompleted();
 }

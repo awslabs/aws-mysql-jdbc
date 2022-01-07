@@ -24,26 +24,27 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.log.Log;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * This is a generic interface for performance metrics. It can be implemented by any class that
+ * requires collecting internal metrics.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+public interface ICanCollectPerformanceMetrics {
+
+  /**
+   * Enables or disables collecting of internal performance metrics.
+   *
+   * @param isEnabled True to enable internal metrics
+   */
+  void setPerformanceMetricsEnabled(boolean isEnabled);
+
+  /**
+   * Reports (prints out) collected metrics to provided logger.
+   *
+   * @param log Logger instance to report collected metrics to.
+   */
+  void reportMetrics(Log log);
 }

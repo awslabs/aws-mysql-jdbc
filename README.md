@@ -102,7 +102,7 @@ In addition to [the parameters that you can configure for the MySQL Connector/J 
 
 | Parameter       | Value           | Required      | Description  | Default Value |
 | --------------- |:---------------:|:-------------:|:------------ | ------------- |
-|`enableClusterAwareFailover` | Boolean | No | Set to true to enable the fast failover behavior offered by the AWS JDBC Driver. Set to false for simple JDBC connections that do not require fast failover functionality. | `true` |
+|`enableClusterAwareFailover` | Boolean | No | Set to true to enable the fast failover behavior offered by the AWS JDBC Driver. Set to false for simple JDBC connections that do not require fast failover functionality. **NOTE:** In addition to this parameter, since the failover functionality is implemented with [connection plugins](#Connection-Plugin-Manager), disabling [`useConnectionPlugins`](#Connection-Plugin-Manager-Parameters) will also disable the failover functionality. | `true` |
 |`clusterInstanceHostPattern` | String | If connecting using an IP address or custom domain URL: Yes<br/>Otherwise: No | This parameter is not required unless connecting to an AWS RDS cluster via an IP address or custom domain URL. In those cases, this parameter specifies the cluster instance DNS pattern that will be used to build a complete instance endpoint. A "?" character in this pattern should be used as a placeholder for the DB instance identifiers of the instances in the cluster. <br/><br/>Example: `?.my-domain.com`, `any-subdomain.?.my-domain.com:9999`<br/><br/>Usecase Example: If your cluster instance endpoints followed this pattern:`instanceIdentifier1.customHost`, `instanceIdentifier2.customHost`, etc. and you wanted your initial connection to be to `customHost:1234`, then your connection string should look something like this: `jdbc:mysql:aws://customHost:1234/test?clusterInstanceHostPattern=?.customHost` | If the provided connection string is not an IP address or custom domain, the driver will automatically acquire the cluster instance host pattern from the customer-provided connection string. |
 |`clusterId` | String | No | A unique identifier for the cluster. Connections with the same cluster ID share a cluster topology cache. This connection parameter is not required and thus should only be set if desired. | The driver will automatically acquire a cluster id for AWS RDS clusters. |
 |`clusterTopologyRefreshRateMs` | Integer | No | Cluster topology refresh rate in milliseconds. The cached topology for the cluster will be invalidated after the specified time, after which it will be updated during the next interaction with the connection. | `30000` |
@@ -293,7 +293,9 @@ Connection plugin manager initializes, triggers, and cleans up a chain of connec
 The figure above shows a simplified workflow of the connection plugin manager.  
 Starting at the top, when a JDBC method is executed by the driver, it is passed to the connection plugin manager. From the connection plugin manager, the JDBC method is passed in order of plugins loaded like a chain. In this figure, `Custom Plugin A` to `Custom Plugin B` and finally to `Default Plugin` which executes the JDBC method and returns the result back up the chain.
 
-By default, Enhanced Failure Monitoring is loaded. Additional custom plugins can be implemented and used alongside existing ones. Plugins can be chained together in a desired order. Loading custom plugins will not include Enhanced Failure Monitoring unless explicitly stated through the `connectionPluginFactories` parameter.
+[Enhanced Failure Monitoring](#Enhanced-Failure-Monitoring) and the failover functionality are implemented with connection plugins, these two plugins are loaded by default.
+Additional custom plugins can be implemented and used alongside existing ones. Plugins can be chained together in a desired order.
+> **NOTE:** Loading custom plugins will not include Enhanced Failure Monitoring and the Failover Connection Plugin unless explicitly stated through the `connectionPluginFactories` parameter.
 
 The AWS JDBC Driver for MySQL attaches the `DefaultConnectionPlugin` to the tail of the connection plugin chain 
 and actually executes the given JDBC method.
@@ -308,7 +310,8 @@ To learn how to write custom plugins, refer to examples located inside [Custom P
 #### Connection Plugin Manager Parameters
 | Parameter       | Value           | Required      | Description  | Default Value |
 | --------------- |:---------------:|:-------------:|:------------ | ------------- |
-|`connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` | `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` |
+| `useConnectionPlugins` | Boolean | No | Disable connection plugins and execute JDBC methods directly. **NOTE:** Since the failover functionality and Enhanced Failure Monitoring are implemented with plugins, disabling connection plugins will also disable such functionality. | `True` |
+| `connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` | `com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` |
 
 ### Enhanced Failure Monitoring
 <div style="text-align:center"><img src="./docs/files/images/enhanced_failure_monitoring_diagram.png" /></div>
@@ -316,7 +319,8 @@ The figure above shows a simplified workflow of Enhanced Failure Monitoring. Enh
 
 Enhanced Failure Monitoring is loaded in by default and can be disabled by setting parameter `failureDetectionEnabled` to `false`. 
 
-If custom connection plugins are loaded, Enhanced Failure Monitoring will NOT be loaded unless explicitly included by adding `com.mysql.cj.jdbc.ha.ca.plugins.NodeMonitoringConnectionPluginFactory` to `connectionPluginFactories`. 
+If custom connection plugins are loaded, Enhanced Failure Monitoring and Failover Connection Plugin 
+will NOT be loaded unless explicitly included by adding `com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory,com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` when setting `connectionPluginFactories`. 
 
 #### Enhanced Failure Monitoring Parameters
 `failureDetectionTime`, `failureDetectionInterval`, and `failureDetectionCount` are similar to TCP Keep Alive parameters.

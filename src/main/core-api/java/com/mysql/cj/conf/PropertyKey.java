@@ -270,7 +270,7 @@ public enum PropertyKey {
     yearIsDateType("yearIsDateType", true), //
     zeroDateTimeBehavior("zeroDateTimeBehavior", true), //
 
-    //Cluster-aware failover
+    useConnectionPlugins("useConnectionPlugins", true),
     enableClusterAwareFailover("enableClusterAwareFailover", true), //
     clusterInstanceHostPattern("clusterInstanceHostPattern", true), // "?.my-domain.com", "any-subdomain.?.my-domain.com:9999"; "?" will be replaced with node name
     clusterId("clusterId", true), //

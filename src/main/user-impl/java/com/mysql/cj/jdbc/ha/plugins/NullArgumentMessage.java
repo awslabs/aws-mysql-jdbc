@@ -24,26 +24,23 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.Messages;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Utility class constructing messages for null arguments.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
+public class NullArgumentMessage {
+  private static final String ERROR_MESSAGE_KEY = "IllegalArgumentException.NullParameter";
+
+  /**
+   * Return a message indicating the given {@code param} is null.
+   *
+   * @param param The name of the parameter that is null.
+   * @return a message the parameter passed to the caller method is null.
+   */
+  public static String getMessage(String param) {
+    return Messages.getString(ERROR_MESSAGE_KEY, new String[] { param });
   }
 }

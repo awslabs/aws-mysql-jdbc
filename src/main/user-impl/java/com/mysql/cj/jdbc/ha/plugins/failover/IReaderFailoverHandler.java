@@ -24,26 +24,36 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.conf.HostInfo;
+
+import java.sql.SQLException;
+import java.util.List;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Interface for Reader Failover Process handler. This handler implements all necessary logic to try
+ * to reconnect to another reader host.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+public interface IReaderFailoverHandler {
+
+  /**
+   * Called to start Reader Failover Process. This process tries to connect to any reader. If no
+   * reader is available then driver may also try to connect to a writer host, down hosts, and the
+   * current reader host.
+   *
+   * @param hosts Cluster current topology.
+   * @param currentHost The currently connected host that has failed.
+   * @return {@link ReaderFailoverResult} The results of this process.
+   */
+  ReaderFailoverResult failover(List<HostInfo> hosts, HostInfo currentHost) throws SQLException;
+
+  /**
+   * Called to get any available reader connection. If no reader is available then result of process
+   * is unsuccessful. This process will not attempt to connect to the writer host.
+   *
+   * @param hostList Cluster current topology.
+   * @return {@link ReaderFailoverResult} The results of this process.
+   */
+  ReaderFailoverResult getReaderConnection(List<HostInfo> hostList) throws SQLException;
 }

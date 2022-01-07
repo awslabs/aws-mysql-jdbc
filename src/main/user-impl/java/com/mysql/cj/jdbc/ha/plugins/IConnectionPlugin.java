@@ -24,26 +24,26 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.conf.ConnectionUrl;
+
+import java.sql.SQLException;
+import java.util.concurrent.Callable;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Interface for connection plugins. This class implements ways to execute a JDBC method
+ * and to clean up resources used before closing the plugin.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+public interface IConnectionPlugin extends ITransactionContextHandler {
+  Object execute(
+      Class<?> methodInvokeOn,
+      String methodName,
+      Callable<?> executeSqlFunc,
+      Object[] args)
+      throws Exception;
+
+  void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException;
+
+  void releaseResources();
 }

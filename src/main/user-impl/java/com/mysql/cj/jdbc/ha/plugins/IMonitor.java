@@ -24,26 +24,26 @@
  *
  */
 
-package customplugins;
-
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+package com.mysql.cj.jdbc.ha.plugins;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Interface for monitors. This class uses background threads to monitor servers with one
+ * or more connections for more efficient failure detection during method execution.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+public interface IMonitor extends Runnable {
+  void startMonitoring(MonitorConnectionContext context);
+
+  void stopMonitoring(MonitorConnectionContext context);
+
+  /**
+   * Clear all {@link MonitorConnectionContext} associated with this {@link IMonitor} instance.
+   */
+  void clearContexts();
+
+  /**
+   * Whether this {@link IMonitor} has stopped monitoring a particular server.
+   *
+   * @return true if the monitoring has stopped; false otherwise.
+   */
+  boolean isStopped();
 }

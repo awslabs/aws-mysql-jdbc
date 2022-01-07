@@ -26,9 +26,11 @@
 
 package customplugins;
 
-import com.mysql.cj.jdbc.ha.ca.plugins.IConnectionPlugin;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.log.Log;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -60,13 +62,13 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
   public Object execute(
       Class<?> methodInvokeOn,
       String methodName,
-      Callable<?> executeJdbcMethod)
+      Callable<?> executeJdbcMethod, Object[] args)
       throws Exception {
     // This `execute` measures the time it takes for the remaining connection plugins to
     // execute the given method call.
     final long startTime = System.nanoTime();
     final Object executeResult =
-        this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod);
+        this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod, args);
     final long elapsedTime = System.nanoTime() - startTime;
     methodExecutionTimes.merge(
         methodName,
@@ -74,6 +76,21 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
         Long::sum);
 
     return executeResult;
+  }
+
+  @Override
+  public void transactionBegun() {
+    this.nextPlugin.transactionBegun();
+  }
+
+  @Override
+  public void transactionCompleted() {
+    this.nextPlugin.transactionCompleted();
+  }
+
+  @Override
+  public void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException {
+    this.nextPlugin.openInitialConnection(connectionUrl);
   }
 
   @Override

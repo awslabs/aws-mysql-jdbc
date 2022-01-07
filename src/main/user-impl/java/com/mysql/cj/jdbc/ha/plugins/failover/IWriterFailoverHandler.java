@@ -24,26 +24,24 @@
  *
  */
 
-package customplugins;
+package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import com.mysql.cj.conf.PropertySet;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
-import com.mysql.cj.jdbc.ha.plugins.IConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.log.Log;
+import com.mysql.cj.conf.HostInfo;
+
+import java.sql.SQLException;
+import java.util.List;
 
 /**
- * This class initializes {@link ExecutionTimeConnectionPlugin}.
+ * Interface for Writer Failover Process handler. This handler implements all necessary logic to try
+ * to reconnect to a current writer host or to a newly elected writer.
  */
-public class ExecutionTimeConnectionPluginFactory implements
-    IConnectionPluginFactory {
-  @Override
-  public IConnectionPlugin getInstance(
-      ICurrentConnectionProvider currentConnectionProvider,
-      PropertySet propertySet,
-      IConnectionPlugin nextPlugin,
-      Log logger) {
-    logger.logInfo("[ExecutionTimeConnectionPluginFactory] ::: Creating an execution time connection plugin");
-    return new ExecutionTimeConnectionPlugin(nextPlugin, logger);
-  }
+public interface IWriterFailoverHandler {
+
+  /**
+   * Called to start Writer Failover Process.
+   *
+   * @param currentTopology Cluster current topology
+   * @return {@link WriterFailoverResult} The results of this process.
+   */
+  WriterFailoverResult failover(List<HostInfo> currentTopology) throws SQLException;
 }

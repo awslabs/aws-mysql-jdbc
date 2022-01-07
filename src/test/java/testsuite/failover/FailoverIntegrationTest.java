@@ -30,6 +30,11 @@
 
 package testsuite.failover;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
 import com.amazonaws.services.rds.model.DBCluster;
@@ -48,6 +53,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import testsuite.UnreliableSocketFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -63,12 +69,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import testsuite.UnreliableSocketFactory;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
 @Disabled
@@ -951,6 +951,7 @@ public class FailoverIntegrationTest {
     this.log.logDebug(
             "Assert that the first read query throws, "
                     + "this should kick off the driver failover process..");
+
     SQLException exception = assertThrows(SQLException.class, () -> executeInstanceIdQuery(stmt));
     assertEquals(expectedSQLErrorCode, exception.getSQLState());
   }

@@ -29,34 +29,6 @@
 
 package com.mysql.cj.jdbc;
 
-import java.io.Serializable;
-import java.lang.ref.WeakReference;
-import java.lang.reflect.InvocationHandler;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.sql.NClob;
-import java.sql.ResultSet;
-import java.sql.SQLClientInfoException;
-import java.sql.SQLException;
-import java.sql.SQLPermission;
-import java.sql.SQLWarning;
-import java.sql.SQLXML;
-import java.sql.Savepoint;
-import java.sql.Struct;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
-import java.util.Stack;
-import java.util.ArrayList;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executor;
-import java.util.stream.Collectors;
-
 import com.mysql.cj.CacheAdapter;
 import com.mysql.cj.CacheAdapterFactory;
 import com.mysql.cj.LicenseConfiguration;
@@ -83,7 +55,6 @@ import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping;
 import com.mysql.cj.jdbc.ha.MultiHostMySQLConnection;
 import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
-import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptorProvider;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaData;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaDataImpl;
 import com.mysql.cj.jdbc.result.ResultSetFactory;
@@ -95,6 +66,34 @@ import com.mysql.cj.protocol.SocksProxySocketFactory;
 import com.mysql.cj.util.LRUCache;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
+
+import java.io.Serializable;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationHandler;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.NClob;
+import java.sql.ResultSet;
+import java.sql.SQLClientInfoException;
+import java.sql.SQLException;
+import java.sql.SQLPermission;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
+import java.sql.Savepoint;
+import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.Stack;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 /**
  * A Connection represents a session with a specific database. Within the context of a Connection, SQL statements are executed and results are returned.
@@ -1353,11 +1352,9 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     private void addProxyInterceptor() {
-        if(this.realProxy != null) {
+        if (this.realProxy != null) {
             ConnectionLifecycleInterceptor proxyInterceptor = null;
-            if(this.realProxy instanceof ConnectionLifecycleInterceptorProvider) {
-                proxyInterceptor = ((ConnectionLifecycleInterceptorProvider)this.realProxy).getConnectionLifecycleInterceptor();
-            } else if (this.realProxy instanceof ConnectionLifecycleInterceptor) {
+            if (this.realProxy instanceof ConnectionLifecycleInterceptor) {
                 proxyInterceptor = (ConnectionLifecycleInterceptor)this.realProxy;
             }
 
@@ -1368,6 +1365,18 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 if(!this.connectionLifecycleInterceptors.contains(proxyInterceptor)) {
                     this.connectionLifecycleInterceptors.add(proxyInterceptor);
                 }
+            }
+        }
+    }
+
+    @Override
+    public void setConnectionLifecycleInterceptor(ConnectionLifecycleInterceptor interceptor) {
+        if (interceptor != null) {
+            if (this.connectionLifecycleInterceptors == null) {
+                this.connectionLifecycleInterceptors = new ArrayList<>();
+            }
+            if (!this.connectionLifecycleInterceptors.contains(interceptor)) {
+                this.connectionLifecycleInterceptors.add(interceptor);
             }
         }
     }
