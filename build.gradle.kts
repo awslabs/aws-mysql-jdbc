@@ -43,10 +43,10 @@ plugins {
     `maven-publish`
     signing
     // Release
-    id("com.github.vlsi.crlf")
-    id("com.github.vlsi.gradle-extensions")
-    id("com.github.vlsi.license-gather") apply false
-    id("com.github.vlsi.stage-vote-release")
+    id("com.github.vlsi.crlf") version "1.77"
+    id("com.github.vlsi.gradle-extensions") version "1.77"
+    id("com.github.vlsi.license-gather") version "1.77" apply false
+    id("com.github.vlsi.stage-vote-release") version "1.77"
     id("com.github.johnrengelman.shadow") version "7.1.0"
 }
 
@@ -181,6 +181,7 @@ tasks.assemble {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+    filter.excludeTestsMatching("testsuite.integration.*")
 
     // Pass the property to tests
     fun passProperty(name: String, default: String? = null) {
@@ -218,9 +219,13 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
     testImplementation("org.junit.platform:junit-platform-commons:1.8.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
-    testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
+    testImplementation("org.junit.platform:junit-platform-launcher:1.8.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
+    testImplementation("org.testcontainers:testcontainers:1.16.2")
+    testImplementation("org.testcontainers:junit-jupiter:1.16.2")
+    testImplementation("org.testcontainers:toxiproxy:1.16.2")
+    testImplementation("org.apache.poi:poi-ooxml:5.1.0")
 
     implementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
@@ -335,4 +340,45 @@ signing {
             && project.property("signing.secretKeyRingFile") != "") {
         sign(publishing.publications["maven"])
     }
+}
+
+// Run integrations tests for test host
+// Environment is being configured and started
+tasks.register<Test>("test-integration-host") {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.*")
+}
+
+// Run integration tests in container
+// Environment (like supplementary containers) should be up and running!
+tasks.register<Test>("test-integration-container-aurora") {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.container.AuroraMySqlIntegrationTest")
+}
+
+// Run all tests excluding integration tests
+tasks.register<Test>("test-non-integration") {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
+    group = "verification"
+    filter.excludeTestsMatching("testsuite.integration.*")
+
+    // Pass the property to tests
+    fun passProperty(name: String, default: String? = null) {
+        val value = System.getProperty(name) ?: default
+        value?.let { systemProperty(name, it) }
+    }
+    passProperty("user.timezone")
+    passProperty("com.mysql.cj.testsuite.url")
+    passProperty("com.mysql.cj.testsuite.url.openssl")
 }

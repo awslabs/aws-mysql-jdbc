@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**/README.md'
+      - '**/*.md'
 
 jobs:
   ubuntu-latest-aurora-build-and-run-tests:
@@ -39,4 +39,108 @@ jobs:
         with:
           name: junit-report
           path: build/reports/tests/
+  integration-tests-on-ubuntu-latest:
+    concurrency: IntegrationTests
+    name: 'Run Integration Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Clone Repository'
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 50
+      - name: 'Set up JDK 8'
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: 'Configure AWS Credentials'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      - name: 'Get Github Action IP'
+        id: ip
+        uses: haythem/public-ip@v1.2
+      - name: 'Add Github Actions IP to Security group'
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-name ${{ secrets.AWS_SG_NAME }} \
+            --protocol all \
+            --port all \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
+          2>&1 > /dev/null;
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      - name: 'Create Test Clusters'
+        run: |
+          aws rds create-db-cluster \
+           --db-cluster-identifier ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }} \
+           --master-username ${{ secrets.TEST_USERNAME }} \
+           --master-user-password ${{ secrets.TEST_PASSWORD }} \
+           --source-region ${{ secrets.AWS_DEFAULT_REGION }} \
+           --enable-iam-database-authentication \
+           --engine aurora-mysql \
+           --storage-encrypted \
+          2>&1 > /dev/null;
+      - name: 'Add 5 Test Instances'
+        run: |
+          for i in {1..5}; \
+            do \
+              aws rds create-db-instance \
+                --db-cluster-identifier ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }} \
+                --db-instance-identifier ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}-i-$i \
+                --db-instance-class db.r5.large \
+                --engine aurora-mysql \
+                --publicly-accessible \
+            2>&1 > /dev/null; \
+          done;
+      - name: 'Wait for clusters to be up'
+        run: sleep 1200s
+      - name: 'Run Integration Tests'
+        run: |
+          ./gradlew --no-parallel --no-daemon test-integration-host
+        env:
+          DB_CONN_STR_SUFFIX: ${{ secrets.DB_CONN_STR_SUFFIX }}
+          TEST_DB_CLUSTER_IDENTIFIER: ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      - name: 'Delete Instances'
+        if: always()
+        run: |
+          for i in {1..5}; \
+            do \
+            aws rds delete-db-instance \
+              --db-instance-identifier ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}-i-$i \
+              --skip-final-snapshot \
+            2>&1 > /dev/null; \
+          done;
+      - name: 'Delete Cluster'
+        if: always()
+        run: |
+          aws rds delete-db-cluster \
+            --db-cluster-identifier ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }} \
+            --skip-final-snapshot \
+          2>&1 > /dev/null;
+      - name: 'Remove Github Action IP'
+        if: always()
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-name ${{ secrets.AWS_SG_NAME }} \
+            --protocol all \
+            --port all \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
+          2>&1 > /dev/null;
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      - name: 'Archive junit results'
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'junit-report'
+          path: build/reports/tests/
+          retention-days: 5
 
