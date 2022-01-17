@@ -29,7 +29,20 @@
 
 package testsuite.simple;
 
-import com.mysql.cj.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+
+import com.mysql.cj.CharsetMapping;
+import com.mysql.cj.MysqlConnection;
+import com.mysql.cj.NativeSession;
+import com.mysql.cj.PreparedQuery;
+import com.mysql.cj.Query;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
@@ -38,12 +51,27 @@ import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.InvalidConnectionAttributeException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
-import com.mysql.cj.jdbc.*;
+import com.mysql.cj.jdbc.ClientPreparedStatement;
+import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.jdbc.JdbcPropertySet;
+import com.mysql.cj.jdbc.MysqlConnectionPoolDataSource;
+import com.mysql.cj.jdbc.NonRegisteringDriver;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.protocol.MessageReader;
 import com.mysql.cj.protocol.MessageSender;
 import com.mysql.cj.protocol.Resultset;
-import com.mysql.cj.protocol.a.*;
+import com.mysql.cj.protocol.a.DebugBufferingPacketReader;
+import com.mysql.cj.protocol.a.DebugBufferingPacketSender;
+import com.mysql.cj.protocol.a.MultiPacketReader;
+import com.mysql.cj.protocol.a.NativePacketHeader;
+import com.mysql.cj.protocol.a.NativePacketPayload;
+import com.mysql.cj.protocol.a.NativeProtocol;
+import com.mysql.cj.protocol.a.SimplePacketReader;
+import com.mysql.cj.protocol.a.SimplePacketSender;
+import com.mysql.cj.protocol.a.TimeTrackingPacketReader;
+import com.mysql.cj.protocol.a.TimeTrackingPacketSender;
+import com.mysql.cj.protocol.a.TracingPacketReader;
+import com.mysql.cj.protocol.a.TracingPacketSender;
 import com.mysql.cj.util.TimeUtil;
 import com.mysql.cj.util.Util;
 import com.mysql.jdbc.Driver;
@@ -56,7 +84,15 @@ import testsuite.BaseTestCase;
 import testsuite.BufferingLogger;
 import testsuite.TestUtils;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.Inet6Address;
@@ -66,16 +102,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.CallableStatement;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.*;
+import java.sql.DriverManager;
+import java.sql.ParameterMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
+import java.sql.Savepoint;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests java.sql.Connection functionality
@@ -1148,16 +1197,15 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests if useCompress works.
-     * 
+     *
      * @throws Exception
      */
     @Test
     public void testUseCompress() throws Exception {
         this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'max_allowed_packet'");
         this.rs.next();
-        if (this.rs.getInt(2) < 4 + 1024 * 1024 * 16 - 1) {
-            fail("You need to increase max_allowed_packet to at least " + (4 + 1024 * 1024 * 16 - 1) + " before running this test!");
-        }
+        long defaultMaxAllowedPacket = this.rs.getInt(2);
+        boolean changeMaxAllowedPacket = defaultMaxAllowedPacket < 4 + 1024 * 1024 * 32 - 1;
 
         if (versionMeetsMinimum(5, 6, 20) && !versionMeetsMinimum(5, 7)) {
             /*
@@ -1169,25 +1217,34 @@ public class ConnectionTest extends BaseTestCase {
              */
             this.rs = this.stmt.executeQuery("SHOW VARIABLES LIKE 'innodb_log_file_size'");
             this.rs.next();
-            if (this.rs.getInt(2) < 1024 * 1024 * 32 * 10) {
-                fail("You need to increase innodb_log_file_size to at least " + (1024 * 1024 * 32 * 10) + " before running this test!");
-            }
+            assumeFalse(this.rs.getInt(2) < 1024 * 1024 * 32 * 10,
+                "You need to increase innodb_log_file_size to at least " + (1024 * 1024 * 32 * 10) + " before running this test!");
         }
 
-        testCompressionWith("false", 1024 * 1024 * 16 - 2); // no split
-        testCompressionWith("false", 1024 * 1024 * 16 - 1); // split with additional empty packet
-        testCompressionWith("false", 1024 * 1024 * 32);   // big payload
+        try {
+            if (changeMaxAllowedPacket) {
+                this.stmt.executeUpdate("SET GLOBAL max_allowed_packet=" + 1024 * 1024 * 33);
+            }
 
-        testCompressionWith("true", 1024 * 1024 * 16 - 2 - 3); // no split, one compressed packet
-        testCompressionWith("true", 1024 * 1024 * 16 - 2 - 2); // no split, two compressed packets
-        testCompressionWith("true", 1024 * 1024 * 16 - 1);   // split with additional empty packet, two compressed packets
-        testCompressionWith("true", 1024 * 1024 * 32);     // big payload
+            testCompressionWith("false", 1024 * 1024 * 16 - 2); // no split
+            testCompressionWith("false", 1024 * 1024 * 16 - 1); // split with additional empty packet
+            testCompressionWith("false", 1024 * 1024 * 32);   // big payload
+
+            testCompressionWith("true", 1024 * 1024 * 16 - 2 - 3); // no split, one compressed packet
+            testCompressionWith("true", 1024 * 1024 * 16 - 2 - 2); // no split, two compressed packets
+            testCompressionWith("true", 1024 * 1024 * 16 - 1);   // split with additional empty packet, two compressed packets
+            testCompressionWith("true", 1024 * 1024 * 32);     // big payload
+        } finally {
+            if (changeMaxAllowedPacket) {
+                this.stmt.executeUpdate("SET GLOBAL max_allowed_packet=" + defaultMaxAllowedPacket);
+            }
+        }
     }
 
     /**
      * @param useCompression
      * @param maxPayloadSize
-     * 
+     *
      * @throws Exception
      */
     private void testCompressionWith(String useCompression, int maxPayloadSize) throws Exception {
@@ -1197,7 +1254,7 @@ public class ConnectionTest extends BaseTestCase {
         File testBlobFile = File.createTempFile("cmj-testblob", ".dat");
         testBlobFile.deleteOnExit();
 
-        // TODO: following cleanup doesn't work correctly during concurrent execution of testsuite 
+        // TODO: following cleanup doesn't work correctly during concurrent execution of testsuite
         // cleanupTempFiles(testBlobFile, "cmj-testblob");
 
         BufferedOutputStream bOut = new BufferedOutputStream(new FileOutputStream(testBlobFile));
@@ -1212,6 +1269,8 @@ public class ConnectionTest extends BaseTestCase {
         bOut.close();
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useCompression.getKeyName(), useCompression);
         Connection conn1 = getConnectionWithProps(props);
         Statement stmt1 = conn1.createStatement();
@@ -1235,9 +1294,7 @@ public class ConnectionTest extends BaseTestCase {
         int count = 0;
         while ((blobbyte = is.read()) > -1) {
             int filebyte = bIn.read();
-            if (filebyte < 0 || filebyte != blobbyte) {
-                fail("Blob is not identical to initial data.");
-            }
+            assertFalse(filebyte < 0 || filebyte != blobbyte, "Blob is not identical to initial data.");
             count++;
         }
         assertEquals(requiredSize, count);
@@ -1246,13 +1303,14 @@ public class ConnectionTest extends BaseTestCase {
         if (bIn != null) {
             bIn.close();
         }
+        conn1.close();
     }
 
     /**
      * Tests feature of "localSocketAddress", by enumerating local IF's and trying each one in turn. This test might take a long time to run, since we can't set
      * timeouts if we're using localSocketAddress. We try and keep the time down on the testcase by spawning the checking of each interface off into separate
      * threads.
-     * 
+     *
      * @throws Exception
      *             if the test can't use at least one of the local machine's interfaces to make an outgoing connection to the server.
      */
@@ -1293,47 +1351,15 @@ public class ConnectionTest extends BaseTestCase {
         }
 
         boolean didOneWork = false;
-        boolean didOneFail = false;
-
         for (LocalSocketAddressCheckThread t : allChecks) {
             if (t.atLeastOneWorked) {
                 didOneWork = true;
 
                 break;
             }
-            if (!didOneFail) {
-                didOneFail = true;
-            }
         }
 
         assertTrue(didOneWork, "At least one connection was made with the localSocketAddress set");
-
-        String hostname = getHostFromTestsuiteUrl();
-
-        if (!hostname.startsWith(":") && !hostname.startsWith("localhost")) {
-
-            int indexOfColon = hostname.indexOf(":");
-
-            if (indexOfColon != -1) {
-                hostname = hostname.substring(0, indexOfColon);
-            }
-
-            boolean isLocalIf = false;
-
-            isLocalIf = (null != NetworkInterface.getByName(hostname));
-
-            if (!isLocalIf) {
-                try {
-                    isLocalIf = (null != NetworkInterface.getByInetAddress(InetAddress.getByName(hostname)));
-                } catch (Throwable t) {
-                    isLocalIf = false;
-                }
-            }
-
-            if (!isLocalIf) {
-                assertTrue(didOneFail, "At least one connection didn't fail with localSocketAddress set");
-            }
-        }
     }
 
     class SpawnedWorkerCounter {
@@ -1367,6 +1393,8 @@ public class ConnectionTest extends BaseTestCase {
 
                 try {
                     Properties props = new Properties();
+                    props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+                    props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
                     props.setProperty(PropertyKey.localSocketAddress.getKeyName(), addr.getHostAddress());
                     props.setProperty(PropertyKey.connectTimeout.getKeyName(), "2000");
                     getConnectionWithProps(props).close();

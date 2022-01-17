@@ -223,6 +223,7 @@ dependencies {
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.testcontainers:testcontainers:1.16.2")
+    testImplementation("org.testcontainers:mysql:1.16.2")
     testImplementation("org.testcontainers:junit-jupiter:1.16.2")
     testImplementation("org.testcontainers:toxiproxy:1.16.2")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
@@ -342,19 +343,28 @@ signing {
     }
 }
 
-// Run integrations tests for test host
+// Run integrations tests in container
 // Environment is being configured and started
-tasks.register<Test>("test-integration-host") {
+tasks.register<Test>("test-integration-docker") {
     this.testLogging {
         this.showStandardStreams = true
     }
     useJUnitPlatform()
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.*")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraMySqlIntegrationEnvTest.testRunTestInContainer")
 }
 
-// Run integration tests in container
+// Run community tests in container
 // Environment (like supplementary containers) should be up and running!
+tasks.register<Test>("test-community-docker") {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraMySqlIntegrationEnvTest.testRunCommunityTestInContainer")
+}
+
 tasks.register<Test>("test-integration-container-aurora") {
     this.testLogging {
         this.showStandardStreams = true
@@ -370,9 +380,6 @@ tasks.register<Test>("test-non-integration") {
         this.showStandardStreams = true
     }
     useJUnitPlatform()
-    group = "verification"
-    filter.excludeTestsMatching("testsuite.integration.*")
-
     // Pass the property to tests
     fun passProperty(name: String, default: String? = null) {
         val value = System.getProperty(name) ?: default
@@ -380,5 +387,8 @@ tasks.register<Test>("test-non-integration") {
     }
     passProperty("user.timezone")
     passProperty("com.mysql.cj.testsuite.url")
-    passProperty("com.mysql.cj.testsuite.url.openssl")
+
+    group = "verification"
+    filter.excludeTestsMatching("testsuite.integration.*")
+    filter.excludeTestsMatching("testsuite.failover.*")
 }

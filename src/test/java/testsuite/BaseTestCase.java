@@ -37,6 +37,22 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.mysql.cj.ServerVersion;
+import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.ConnectionUrlParser;
+import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.conf.PropertyDefinitions;
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.jdbc.Driver;
+import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.jdbc.NonRegisteringDriver;
+import com.mysql.cj.jdbc.ha.ReplicationConnection;
+import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.Util;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -58,23 +74,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.Callable;
-
-import com.mysql.cj.jdbc.Driver;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.TestInfo;
-
-import com.mysql.cj.ServerVersion;
-import com.mysql.cj.conf.ConnectionUrl;
-import com.mysql.cj.conf.ConnectionUrlParser;
-import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.conf.PropertyDefinitions;
-import com.mysql.cj.conf.PropertyKey;
-import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.jdbc.NonRegisteringDriver;
-import com.mysql.cj.jdbc.ha.ReplicationConnection;
-import com.mysql.cj.util.StringUtils;
-import com.mysql.cj.util.Util;
 
 /**
  * Base class for all test cases. Creates connections, statements, etc. and closes them.
@@ -152,6 +151,9 @@ public abstract class BaseTestCase {
 
     private static Driver registeredDriver;
 
+    private static final String DOMAIN_NAME = System.getenv("TEST_MYSQL_DOMAIN");
+    private static final String TEST_MYSQL_PORT = System.getenv("TEST_MYSQL_PORT");
+
     /**
      * Creates a new BaseTestCase object.
      */
@@ -171,18 +173,14 @@ public abstract class BaseTestCase {
 
         if ((newDbUrl != null) && (newDbUrl.trim().length() != 0)) {
             dbUrl = newDbUrl;
+            dbUrl = dbUrl
+                .replace("{domain}", DOMAIN_NAME)
+                .replace("{port}", TEST_MYSQL_PORT);
         }
         timeZoneFreeDbUrl = dbUrl.replaceAll(PropertyKey.connectionTimeZone.getKeyName() + "=", PropertyKey.connectionTimeZone.getKeyName() + "VOID=")
                 .replaceAll("serverTimezone=", "serverTimezoneVOID=");
         mainConnectionUrl = ConnectionUrl.getConnectionUrlInstance(dbUrl, null);
         this.dbName = mainConnectionUrl.getDatabase();
-
-        String defaultSha256Url = System.getProperty(PropertyDefinitions.SYSP_testsuite_url_openssl);
-
-        if ((defaultSha256Url != null) && (defaultSha256Url.trim().length() != 0)) {
-            sha256Url = defaultSha256Url;
-            sha256ConnectionUrl = ConnectionUrl.getConnectionUrlInstance(sha256Url, null);
-        }
     }
 
     protected void createSchemaObject(String objectType, String objectName, String columnsAndOtherStuff) throws SQLException {
@@ -682,8 +680,6 @@ public abstract class BaseTestCase {
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         this.conn = DriverManager.getConnection(dbUrl, props);
 
-        this.sha256Conn = sha256Url == null ? null : DriverManager.getConnection(sha256Url, props);
-
         this.serverVersion = ((JdbcConnection) this.conn).getServerVersion();
 
         this.stmt = this.conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
@@ -704,26 +700,6 @@ public abstract class BaseTestCase {
         }
 
         this.isOnCSFS = !this.conn.getMetaData().storesLowerCaseIdentifiers();
-
-        if (this.sha256Conn != null) {
-            this.sha256Stmt = this.sha256Conn.createStatement();
-
-            try {
-                if (sha256Url.indexOf("mysql") != -1) {
-                    this.sha256Rs = this.sha256Stmt.executeQuery("SELECT VERSION()");
-                    this.sha256Rs.next();
-                    logDebug("Connected to " + this.sha256Rs.getString(1));
-                } else {
-                    logDebug("Connected to " + this.sha256Conn.getMetaData().getDatabaseProductName() + " / "
-                            + this.sha256Conn.getMetaData().getDatabaseProductVersion());
-                }
-            } finally {
-                if (this.sha256Rs != null) {
-                    this.sha256Rs.close();
-                    this.sha256Rs = null;
-                }
-            }
-        }
     }
 
     /**
@@ -740,22 +716,8 @@ public abstract class BaseTestCase {
             }
         }
 
-        if (this.sha256Rs != null) {
-            try {
-                this.sha256Rs.close();
-            } catch (SQLException SQLE) {
-            }
-        }
-
         if (System.getProperty(PropertyDefinitions.SYSP_testsuite_retainArtifacts) == null) {
             Statement st = this.conn == null || this.conn.isClosed() ? getNewConnection().createStatement() : this.conn.createStatement();
-            Statement sha256st;
-            if (this.sha256Conn == null || this.sha256Conn.isClosed()) {
-                Connection c = getNewSha256Connection();
-                sha256st = c == null ? null : c.createStatement();
-            } else {
-                sha256st = this.sha256Conn.createStatement();
-            }
 
             for (int i = 0; i < this.createdObjects.size(); i++) {
                 String[] objectInfo = this.createdObjects.get(i);
@@ -764,28 +726,13 @@ public abstract class BaseTestCase {
                     dropSchemaObject(st, objectInfo[0], objectInfo[1]);
                 } catch (SQLException SQLE) {
                 }
-
-                try {
-                    dropSchemaObject(sha256st, objectInfo[0], objectInfo[1]);
-                } catch (SQLException SQLE) {
-                }
             }
             st.close();
-            if (sha256st != null) {
-                sha256st.close();
-            }
         }
 
         if (this.stmt != null) {
             try {
                 this.stmt.close();
-            } catch (SQLException SQLE) {
-            }
-        }
-
-        if (this.sha256Stmt != null) {
-            try {
-                this.sha256Stmt.close();
             } catch (SQLException SQLE) {
             }
         }
@@ -800,13 +747,6 @@ public abstract class BaseTestCase {
         if (this.conn != null) {
             try {
                 this.conn.close();
-            } catch (SQLException SQLE) {
-            }
-        }
-
-        if (this.sha256Conn != null) {
-            try {
-                this.sha256Conn.close();
             } catch (SQLException SQLE) {
             }
         }
@@ -1321,5 +1261,30 @@ public abstract class BaseTestCase {
             res = res.replaceFirst("'" + mode + "'", "").replaceFirst(mode, "").replaceFirst(",,", ",");
         }
         return res;
+    }
+
+    protected boolean supportsTimeZoneNames(Statement st) throws Exception {
+        ResultSet rs1 = st.executeQuery("SELECT COUNT(*) FROM mysql.time_zone_name");
+        return rs1.next() && rs1.getInt(1) > 0;
+    }
+
+    protected boolean supportsLoadLocalInfile(Statement st) throws Exception {
+        ResultSet rs1 = st.executeQuery("SHOW VARIABLES LIKE 'local_infile'");
+        return rs1.next() && "ON".equalsIgnoreCase(rs1.getString(2));
+    }
+
+    protected boolean supportsTestCertificates(Statement st) throws Exception {
+        ResultSet rs1 = st.executeQuery("SHOW VARIABLES LIKE 'ssl_ca'");
+        return rs1.next() && rs1.getString(2).contains("ssl-test-certs");
+    }
+
+    protected boolean supportsTestSha256PasswordKeys(Statement st) throws Exception {
+        ResultSet rs1 = st.executeQuery("SHOW VARIABLES LIKE 'sha256_password_public_key_path'");
+        return rs1.next() && rs1.getString(2).contains("ssl-test-certs");
+    }
+
+    protected boolean supportsTestCachingSha2PasswordKeys(Statement st) throws Exception {
+        ResultSet rs1 = st.executeQuery("SHOW VARIABLES LIKE 'caching_sha2_password_private_key_path'");
+        return rs1.next() && rs1.getString(2).contains("ssl-test-certs");
     }
 }

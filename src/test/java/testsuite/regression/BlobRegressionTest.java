@@ -34,6 +34,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.util.StringUtils;
+import org.junit.jupiter.api.Test;
+import testsuite.BaseTestCase;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -47,13 +52,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.Callable;
-
-import org.junit.jupiter.api.Test;
-
-import com.mysql.cj.conf.PropertyKey;
-import com.mysql.cj.util.StringUtils;
-
-import testsuite.BaseTestCase;
 
 /**
  * Tests fixes for BLOB handling.
