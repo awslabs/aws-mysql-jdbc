@@ -1,18 +1,19 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
-  pull_request_review:
     branches:
       - main
     paths-ignore:
       - '**/*.md'
 
+concurrency:
+  group: environment-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ubuntu-latest-aurora-run-integration-tests:
-    if: github.event.review.state == 'approved'
     concurrency: IntegrationTests
     name: 'Run Integration Tests'
     runs-on: ubuntu-latest
