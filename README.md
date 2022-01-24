@@ -134,7 +134,7 @@ import java.sql.*;
  */
 public class FailoverSampleApp1 {
 
-   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
    private static final String USERNAME = "username";
    private static final String PASSWORD = "password";
    private static final int MAX_RETRIES = 5;
@@ -212,7 +212,7 @@ import java.sql.*;
  */
 public class FailoverSampleApp2 {
 
-   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
    private static final String USERNAME = "username";
    private static final String PASSWORD = "password";
    private static final int MAX_RETRIES = 5;
@@ -350,7 +350,7 @@ The default XML parser contained a security risk which made the driver prone to 
 **Note:** To preserve compatibility with customers using the community driver, IAM Authentication requires the [AWS Java SDK for Amazon RDS v1.x](https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-rds) to be included separately in the classpath. The AWS Java SDK for Amazon RDS is a runtime dependency and must be resolved.
 
 The driver supports Amazon AWS Identity and Access Management (IAM) authentication. When using AWS IAM database authentication, the host URL must be a valid Amazon endpoint, and not a custom domain or an IP address.
-<br>ie. `database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com`
+<br>ie. `db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com`
 
 
 IAM database authentication is limited to certain database engines.
@@ -376,7 +376,7 @@ import java.util.Properties;
 
 public class AwsIamAuthenticationSample {
 
-   private static final String CONNECTION_STRING = "jdbc:mysql:aws://database-mysql-name.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
    private static final String USER = "username";
 
    public static void main(String[] args) throws SQLException {
@@ -413,41 +413,45 @@ You can now make changes in the repository.
 
 ### Building the AWS JDBC Driver for MySQL
 
-To build the AWS JDBC Driver without running the tests, navigate into the aws-mysql-jdbc directory and run the following command:
-
-```bash
-gradlew build -x test
-```
-
-To build the driver and run the tests, you must first install [Docker](https://docs.docker.com/get-docker/).  After installing Docker, execute the following commands to create the Docker servers that the tests will run against:
-
-```bash
-$ cd aws-mysql-jdbc/docker
-$ docker-compose up -d
-$ cd ../
-```
-
-Then, to build the driver, run the following command:
+To build the AWS JDBC Driver, navigate into the aws-mysql-jdbc directory and run the following command:
 
 ```bash
 gradlew build
 ```
 
+To build the driver without running the tests, run the following command:
+
+```bash
+gradlew build -x test
+```
+
 ### Running the Tests
 
-After building the driver, and installing and configuring Docker, you can run the tests in the ```aws-mysql-jdbc``` directory with the following command:
+To run the tests, you must first install [Docker](https://docs.docker.com/get-docker/). After building the driver, and installing and configuring Docker, you can run the tests in the `aws-mysql-jdbc` directory with the following command:
 
 ```bash
 gradlew test
 ```
 
-To shut down the Docker servers when you have finished testing:
-
+To run tests for the base driver functionality, use the following command:
 ```bash
-$ cd aws-mysql-jdbc/docker
-$ docker-compose down && docker-compose rm
-$ cd ../
+gradlew test-community-docker
 ```
+
+To run the integration tests, you will need some environment variables and an AWS Aurora database. Descriptions of the necessary environment variables is in the table below. To run the integration tests, use the following command (replace the <> tags with the appropriate values):
+```bash
+DB_READONLY_CONN_STR_SUFFIX=<.cluster-ro-XYZ.us-east-2.rds.amazonaws.com> TEST_USERNAME=<username> TEST_PASSWORD=<password> TEST_DB_CLUSTER_IDENTIFIER=<db-identifier> DB_CONN_STR_SUFFIX=<.XYZ.us-east-2.rds.amazonaws.com> TEST_DB_USER=<jane_doe> gradlew test-integration-docker
+```
+#### Environment Variables
+
+| Environment Variable          | Environment Variable Value                                                                                                                                                | Example Value                               |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|
+| `DB_READONLY_CONN_STR_SUFFIX` | The URL suffix for the read-only cluster connection for your database cluster.                                                                                            | .cluster-ro-XYZ.us-east-2.rds.amazonaws.com |
+| `TEST_USERNAME`               | The username to access the database.                                                                                                                                      | username                                    |
+| `TEST_PASSWORD`               | The database cluster password.                                                                                                                                            | password                                    |
+| `TEST_DB_CLUSTER_IDENTIFIER`  | The database identifier for your Aurora cluster (found under the “DB Identifier” column when managing your RDS databases in AWS Management Console).                      | db-identifier                               |
+| `DB_CONN_STR_SUFFIX`          | The suffix URL pattern to use for connections that are made directly to an instance in your database cluster. This should also include the database to use for the tests. | .XYZ.us-east-2.rds.amazonaws.com            |
+| `TEST_DB_USER`                | User within the database that is identified with AWS IAM database authentication. This is used for AWS IAM authentication.                                                | jane_doe                                    |
 
 ## Known Issues
 ### SSLHandshakeException
