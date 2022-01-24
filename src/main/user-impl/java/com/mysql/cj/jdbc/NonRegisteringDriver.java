@@ -31,6 +31,14 @@ package com.mysql.cj.jdbc;
 
 import static com.mysql.cj.util.StringUtils.isNullOrEmpty;
 
+import java.sql.DriverPropertyInfo;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.logging.Logger;
+
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.ConnectionUrl;
@@ -46,14 +54,6 @@ import com.mysql.cj.jdbc.ha.FailoverConnectionProxy;
 import com.mysql.cj.jdbc.ha.LoadBalancedConnectionProxy;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
 import com.mysql.cj.util.StringUtils;
-
-import java.sql.DriverPropertyInfo;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.logging.Logger;
 
 /**
  * The Java SQL framework allows for multiple database drivers. Each driver should supply a class that implements the Driver interface

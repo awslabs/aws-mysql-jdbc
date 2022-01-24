@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -31,6 +31,8 @@ package com.mysql.cj.protocol.a.authentication;
 
 import java.util.List;
 
+import com.mysql.cj.callback.MysqlCallbackHandler;
+import com.mysql.cj.callback.UsernameCallback;
 import com.mysql.cj.protocol.AuthenticationPlugin;
 import com.mysql.cj.protocol.Protocol;
 import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
@@ -41,13 +43,16 @@ import com.mysql.cj.util.StringUtils;
  * MySQL Clear Password Authentication Plugin
  */
 public class MysqlClearPasswordPlugin implements AuthenticationPlugin<NativePacketPayload> {
+    public static String PLUGIN_NAME = "mysql_clear_password";
 
-    private Protocol<NativePacketPayload> protocol;
+    private Protocol<NativePacketPayload> protocol = null;
+    private MysqlCallbackHandler usernameCallbackHandler = null;
     private String password = null;
 
     @Override
-    public void init(Protocol<NativePacketPayload> prot) {
+    public void init(Protocol<NativePacketPayload> prot, MysqlCallbackHandler cbh) {
         this.protocol = prot;
+        this.usernameCallbackHandler = cbh;
     }
 
     public void destroy() {
@@ -55,7 +60,7 @@ public class MysqlClearPasswordPlugin implements AuthenticationPlugin<NativePack
     }
 
     public String getProtocolPluginName() {
-        return "mysql_clear_password";
+        return PLUGIN_NAME;
     }
 
     public boolean requiresConfidentiality() {
@@ -68,12 +73,16 @@ public class MysqlClearPasswordPlugin implements AuthenticationPlugin<NativePack
 
     public void setAuthenticationParameters(String user, String password) {
         this.password = password;
+        if (user == null && this.usernameCallbackHandler != null) {
+            // Fall-back to system login user.
+            this.usernameCallbackHandler.handle(new UsernameCallback(System.getProperty("user.name")));
+        }
     }
 
     public boolean nextAuthenticationStep(NativePacketPayload fromServer, List<NativePacketPayload> toServer) {
         toServer.clear();
 
-        String encoding = this.protocol.versionMeetsMinimum(5, 7, 6) ? this.protocol.getPasswordCharacterEncoding() : "UTF-8";
+        String encoding = this.protocol.getServerSession().getCharsetSettings().getPasswordCharacterEncoding();
         NativePacketPayload bresp = new NativePacketPayload(StringUtils.getBytes(this.password != null ? this.password : "", encoding));
 
         bresp.setPosition(bresp.getPayloadLength());
@@ -83,5 +92,4 @@ public class MysqlClearPasswordPlugin implements AuthenticationPlugin<NativePack
         toServer.add(bresp);
         return true;
     }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -52,6 +52,8 @@ import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 
 import com.mysql.cj.Messages;
+import com.mysql.cj.callback.MysqlCallbackHandler;
+import com.mysql.cj.callback.UsernameCallback;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.ExceptionFactory;
@@ -68,11 +70,6 @@ import com.mysql.cj.util.StringUtils;
  * MySQL 'authentication_ldap_sasl_client' authentication plugin.
  */
 public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<NativePacketPayload> {
-    static {
-        // Register our own SCRAM-SHA SASL Client provider.
-        Security.addProvider(new ScramShaSaslProvider());
-    }
-
     public static String PLUGIN_NAME = "authentication_ldap_sasl_client";
 
     private static final String LOGIN_CONFIG_ENTRY = "MySQLConnectorJ";
@@ -83,8 +80,8 @@ public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<
         SCRAM_SHA_256(ScramSha256SaslClient.IANA_MECHANISM_NAME, ScramSha256SaslClient.MECHANISM_NAME), //
         GSSAPI("GSSAPI", "GSSAPI");
 
-        private String mechName;
-        private String saslServiceName;
+        private String mechName = null;
+        private String saslServiceName = null;
 
         private AuthenticationMechanisms(String mechName, String serviceName) {
             this.mechName = mechName;
@@ -110,11 +107,12 @@ public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<
     }
 
     private Protocol<?> protocol = null;
-    private String user;
-    private String password;
+    private MysqlCallbackHandler usernameCallbackHandler = null;
+    private String user = null;
+    private String password = null;
 
-    private AuthenticationMechanisms authMech;
-    private SaslClient saslClient;
+    private AuthenticationMechanisms authMech = null;
+    private SaslClient saslClient = null;
     private Subject subject = null;
 
     private boolean firstPass = true;
@@ -124,7 +122,8 @@ public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<
             if (NameCallback.class.isAssignableFrom(cb.getClass())) {
                 ((NameCallback) cb).setName(this.user);
             } else if (PasswordCallback.class.isAssignableFrom(cb.getClass())) {
-                ((PasswordCallback) cb).setPassword(this.password.toCharArray());
+                char[] passwordChars = this.password == null ? new char[0] : this.password.toCharArray();
+                ((PasswordCallback) cb).setPassword(passwordChars);
             } else {
                 throw new UnsupportedCallbackException(cb, cb.getClass().getName());
             }
@@ -134,6 +133,15 @@ public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<
     @Override
     public void init(Protocol<NativePacketPayload> prot) {
         this.protocol = prot;
+
+        // Register our own SCRAM-SHA SASL Client provider.
+        Security.addProvider(new ScramShaSaslProvider());
+    }
+
+    @Override
+    public void init(Protocol<NativePacketPayload> prot, MysqlCallbackHandler cbh) {
+        init(prot);
+        this.usernameCallbackHandler = cbh;
     }
 
     @Override
@@ -178,6 +186,14 @@ public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<
     public void setAuthenticationParameters(String user, String password) {
         this.user = user;
         this.password = password;
+
+        if (this.user == null) {
+            // Fall-back to system login user.
+            this.user = System.getProperty("user.name");
+            if (this.usernameCallbackHandler != null) {
+                this.usernameCallbackHandler.handle(new UsernameCallback(this.user));
+            }
+        }
     }
 
     @Override
@@ -193,8 +209,7 @@ public class AuthenticationLdapSaslClientPlugin implements AuthenticationPlugin<
                 if (this.firstPass) {
                     this.firstPass = false;
                     // Payload could be a salt (auth-plugin-data) value instead of an authentication mechanism identifier.
-                    // Give it another try in the hope of receiving a AuthSwitchRequest next time.
-                    toServer.add(new NativePacketPayload(new byte[0]));
+                    // Give it another try in the expectation of receiving a Protocol::AuthSwitchRequest or a Protocol::AuthNextFactor next time.
                     return true;
                 }
                 throw e;

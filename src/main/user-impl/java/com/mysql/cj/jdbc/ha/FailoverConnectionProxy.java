@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -144,7 +144,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      * 
      */
     @Override
-    protected JdbcInterfaceProxy getNewJdbcInterfaceProxy(Object toProxy) {
+    JdbcInterfaceProxy getNewJdbcInterfaceProxy(Object toProxy) {
         return new FailoverJdbcInterfaceProxy(toProxy);
     }
 
@@ -152,7 +152,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      * Local implementation for the connection switch exception checker.
      */
     @Override
-    protected boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
+    boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
 
         String sqlState = null;
         if (t instanceof CommunicationsException || t instanceof CJCommunicationsException) {
@@ -177,7 +177,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      * Checks if current connection is to a source host.
      */
     @Override
-    protected boolean isSourceConnection() {
+    boolean isSourceConnection() {
         return connectedToPrimaryHost();
     }
 
@@ -185,7 +185,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      * Local implementation for the new connection picker.
      */
     @Override
-    protected synchronized void pickNewConnection() throws SQLException {
+    synchronized void pickNewConnection() throws SQLException {
         if (this.isClosed && this.closedExplicitly) {
             return;
         }
@@ -468,7 +468,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      *             if an error occurs
      */
     @Override
-    protected synchronized void doClose() throws SQLException {
+    synchronized void doClose() throws SQLException {
         this.currentConnection.close();
     }
 
@@ -479,7 +479,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      *             if an error occurs
      */
     @Override
-    protected synchronized void doAbortInternal() throws SQLException {
+    synchronized void doAbortInternal() throws SQLException {
         this.currentConnection.abortInternal();
     }
 
@@ -490,7 +490,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      *             if an error occurs
      */
     @Override
-    protected synchronized void doAbort(Executor executor) throws SQLException {
+    synchronized void doAbort(Executor executor) throws SQLException {
         this.currentConnection.abort(executor);
     }
 
@@ -499,7 +499,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
      * This is the continuation of MultiHostConnectionProxy#invoke(Object, Method, Object[]).
      */
     @Override
-    public synchronized Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable {
+    public Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable {
         String methodName = method.getName();
 
         if (METHOD_SET_READ_ONLY.equals(methodName)) {

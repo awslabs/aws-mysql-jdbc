@@ -1751,7 +1751,7 @@ public class CallableStatementWrapper extends PreparedStatementWrapper implement
 
         String interfaceClassName = iface.getName();
 
-        return (interfaceClassName.equals(com.mysql.cj.jdbc.JdbcStatement.class.getName()) || interfaceClassName.equals("java.sql.Statement")
+        return (interfaceClassName.equals("com.mysql.cj.jdbc.Statement") || interfaceClassName.equals("java.sql.Statement")
                 || interfaceClassName.equals("java.sql.Wrapper") || interfaceClassName.equals("java.sql.PreparedStatement")
                 || interfaceClassName.equals("java.sql.CallableStatement"));
     }

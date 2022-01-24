@@ -233,7 +233,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
      *            The Exception instance to check.
      */
     @Override
-    protected boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
+    boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
         return false;
     }
 
@@ -247,7 +247,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Checks if current connection is the replicas l/b connection.
-     *
+     * 
      * @return true if current connection is the replicas l/b connection
      */
     public boolean isReplicasConnection() {
@@ -256,7 +256,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #isReplicasConnection()} instead.
-     *
+     * 
      * @return true if it's a replicas connection
      * @deprecated
      */
@@ -266,12 +266,12 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
     }
 
     @Override
-    protected void pickNewConnection() throws SQLException {
+    void pickNewConnection() throws SQLException {
         // no-op
     }
 
     @Override
-    protected void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readonly) throws SQLException {
+    void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readonly) throws SQLException {
         try {
             super.syncSessionState(source, target, readonly);
         } catch (SQLException e1) {
@@ -285,7 +285,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
     }
 
     @Override
-    protected void doClose() throws SQLException {
+    void doClose() throws SQLException {
         if (this.sourceConnection != null) {
             this.sourceConnection.close();
         }
@@ -299,7 +299,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
     }
 
     @Override
-    protected void doAbortInternal() throws SQLException {
+    void doAbortInternal() throws SQLException {
         this.sourceConnection.abortInternal();
         this.replicasConnection.abortInternal();
         if (this.connectionGroup != null) {
@@ -308,7 +308,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
     }
 
     @Override
-    protected void doAbort(Executor executor) throws SQLException {
+    void doAbort(Executor executor) throws SQLException {
         this.sourceConnection.abort(executor);
         this.replicasConnection.abort(executor);
         if (this.connectionGroup != null) {
@@ -321,7 +321,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
      * This is the continuation of MultiHostConnectionProxy#invoke(Object, Method, Object[]).
      */
     @Override
-    protected Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable {
+    Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable {
         checkConnectionCapabilityForMethod(method);
 
         boolean invokeAgain = false;
@@ -526,7 +526,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #getSourceConnection()} instead.
-     *
+     * 
      * @return {@link JdbcConnection}
      * @deprecated
      */
@@ -554,7 +554,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #promoteReplicaToSource(String)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @throws SQLException
@@ -571,7 +571,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #removeSourceHost(String)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @throws SQLException
@@ -588,7 +588,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #removeSourceHost(String, boolean)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @param waitUntilNotInUse
@@ -636,7 +636,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #removeSourceHost(String, boolean, boolean)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @param waitUntilNotInUse
@@ -660,7 +660,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #isHostSource(String)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @return true if it's a source host
@@ -677,7 +677,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #getReplicasConnection()} instead.
-     *
+     * 
      * @return {@link JdbcConnection}
      * @deprecated
      */
@@ -702,7 +702,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #addReplicaHost(String)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @throws SQLException
@@ -719,7 +719,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #removeReplica(String)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @throws SQLException
@@ -764,7 +764,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #removeReplica(String, boolean)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @param closeGently
@@ -786,7 +786,7 @@ public class ReplicationConnectionProxy extends MultiHostConnectionProxy impleme
 
     /**
      * Use {@link #isHostReplica(String)} instead.
-     *
+     * 
      * @param hostPortPair
      *            host:port
      * @return true if it's a replica

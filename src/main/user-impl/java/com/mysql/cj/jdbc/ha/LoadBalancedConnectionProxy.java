@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2007, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -286,7 +286,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * @return true if the given exception should trigger a connection fail-over
      */
     @Override
-    protected boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
+    boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
         return t instanceof SQLException && this.exceptionChecker.shouldExceptionTriggerFailover(t);
     }
 
@@ -294,7 +294,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * Always returns 'true' as there are no "sources" and "replicas" in this type of connection.
      */
     @Override
-    protected boolean isSourceConnection() {
+    boolean isSourceConnection() {
         return true;
     }
 
@@ -307,7 +307,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      *             if an error occurs
      */
     @Override
-    protected synchronized void invalidateConnection(JdbcConnection conn) throws SQLException {
+    synchronized void invalidateConnection(JdbcConnection conn) throws SQLException {
         super.invalidateConnection(conn);
 
         // add host to the global blocklist, if enabled
@@ -419,7 +419,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
     }
 
     @Override
-    protected void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readOnly) throws SQLException {
+    void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readOnly) throws SQLException {
         LoadBalancedAutoCommitInterceptor lbAutoCommitStmtInterceptor = null;
         for (QueryInterceptor stmtInterceptor : target.getQueryInterceptorsInstances()) {
             if (stmtInterceptor instanceof LoadBalancedAutoCommitInterceptor) {
@@ -480,7 +480,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * Closes all live connections.
      */
     @Override
-    protected synchronized void doClose() {
+    synchronized void doClose() {
         closeAllConnections();
     }
 
@@ -488,7 +488,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * Aborts all live connections
      */
     @Override
-    protected synchronized void doAbortInternal() {
+    synchronized void doAbortInternal() {
         // abort all underlying connections
         for (JdbcConnection c : this.liveConnections.values()) {
             try {
@@ -511,7 +511,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * Aborts all live connections, using the provided Executor.
      */
     @Override
-    protected synchronized void doAbort(Executor executor) {
+    synchronized void doAbort(Executor executor) {
         // close all underlying connections
         for (Connection c : this.liveConnections.values()) {
             try {
@@ -536,7 +536,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
      * This is the continuation of MultiHostConnectionProxy#invoke(Object, Method, Object[]).
      */
     @Override
-    public synchronized Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable {
+    Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable {
         String methodName = method.getName();
 
         if (this.isClosed && !allowedOnClosedConnection(method) && method.getExceptionTypes().length > 0) { // TODO remove method.getExceptionTypes().length ?

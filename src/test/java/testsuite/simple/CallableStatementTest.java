@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -108,7 +108,13 @@ public class CallableStatementTest extends BaseTestCase {
 
             executeBatchedStoredProc(this.conn);
 
-            batchedConn = getConnectionWithProps("logger=" + BufferingLogger.class.getName() + ",rewriteBatchedStatements=true,profileSQL=true");
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            props.setProperty(PropertyKey.logger.getKeyName(), BufferingLogger.class.getName());
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
+            props.setProperty(PropertyKey.profileSQL.getKeyName(), "true");
+            batchedConn = getConnectionWithProps(props);
 
             BufferingLogger.startLoggingToBuffer();
             executeBatchedStoredProc(batchedConn);
@@ -259,9 +265,6 @@ public class CallableStatementTest extends BaseTestCase {
 
         assertTrue("abc".equals(this.rs.getString(1)));
 
-        // TODO: This does not yet work in MySQL 5.0
-        // assertTrue(!storedProc.getMoreResults());
-        // assertTrue(storedProc.getUpdateCount() == 2);
         assertTrue(storedProc.getMoreResults());
 
         ResultSet nextResultSet = storedProc.getResultSet();
@@ -346,6 +349,8 @@ public class CallableStatementTest extends BaseTestCase {
         assertTrue(this.rs.getInt(1) == 1);
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.cacheCallableStmts.getKeyName(), "true");
 
         Connection cachedSpConn = getConnectionWithProps(props);
@@ -374,6 +379,8 @@ public class CallableStatementTest extends BaseTestCase {
         CallableStatement storedProc = null;
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.noAccessToProcedureBodies.getKeyName(), "true");
 
         Connection spConn = getConnectionWithProps(props);

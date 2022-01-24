@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -32,6 +32,7 @@ package testsuite.simple;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -65,6 +66,8 @@ public class XATest extends BaseTestCase {
     public void setup() {
         this.xaDs = new MysqlXADataSource();
         this.xaDs.setUrl(BaseTestCase.dbUrl);
+        this.xaDs.getStringProperty(PropertyKey.sslMode.getKeyName()).setValue("DISABLED");
+        this.xaDs.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
         this.xaDs.getProperty(PropertyKey.rollbackOnPooledClose).setValue(true);
     }
 
@@ -178,11 +181,10 @@ public class XATest extends BaseTestCase {
      */
     @Test
     public void testRecover() throws Exception {
-        if (versionMeetsMinimum(5, 7) && !versionMeetsMinimum(5, 7, 5)) {
-            // Test is broken in 5.7.0 - 5.7.4 after server bug#14670465 fix which changed the XA RECOVER output format.
-            // Fixed in 5.7.5 server version
-            return;
-        }
+        // Test is broken in 5.7.0 - 5.7.4 after server bug#14670465 fix which changed the XA RECOVER output format.
+        // Fixed in 5.7.5 server version
+        assumeFalse(versionMeetsMinimum(5, 7) && !versionMeetsMinimum(5, 7, 5),
+                "This test doesn't work with MySQL 5.7.0-5.7.4 because of server Bug#14670465.");
 
         XAConnection xaConn = null, recoverConn = null;
 
@@ -375,6 +377,8 @@ public class XATest extends BaseTestCase {
 
         MysqlXADataSource suspXaDs = new MysqlXADataSource();
         suspXaDs.setUrl(BaseTestCase.dbUrl);
+        suspXaDs.getStringProperty(PropertyKey.sslMode.getKeyName()).setValue("DISABLED");
+        suspXaDs.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
         suspXaDs.<Boolean>getProperty(PropertyKey.pinGlobalTxToPhysicalConnection).setValue(true);
         suspXaDs.<Boolean>getProperty(PropertyKey.rollbackOnPooledClose).setValue(true);
 

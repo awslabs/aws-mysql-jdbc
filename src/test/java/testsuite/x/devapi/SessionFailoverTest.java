@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -31,6 +31,7 @@ package testsuite.x.devapi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,7 +68,7 @@ public class SessionFailoverTest extends DevApiBaseTestCase {
      */
     private String buildConnectionString(String... hosts) {
         StringBuilder url = new StringBuilder(ConnectionUrl.Type.XDEVAPI_SESSION.getScheme()).append("//");
-        url.append(getTestUser()).append(":").append(getTestPassword()).append("@").append("[");
+        url.append(getTestUser() == null ? "" : getTestUser()).append(":").append(getTestPassword() == null ? "" : getTestPassword()).append("@").append("[");
         String separator = "";
         int priority = 100;
         for (String h : hosts) {
@@ -93,11 +94,10 @@ public class SessionFailoverTest extends DevApiBaseTestCase {
 
     @BeforeEach
     public void setupFailoverTest() {
-        if (this.isSetForXTests) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(getEncodedTestHost()).append(":").append(getTestPort());
-            this.testsHost = sb.toString();
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
+        StringBuilder sb = new StringBuilder();
+        sb.append(getEncodedTestHost()).append(":").append(getTestPort());
+        this.testsHost = sb.toString();
     }
 
     /**
@@ -107,10 +107,6 @@ public class SessionFailoverTest extends DevApiBaseTestCase {
      */
     @Test
     public void testGetSessionForSingleHost() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
-
         ConnectionsCounterFakeServer fakeServer = new ConnectionsCounterFakeServer();
         String fakeHost = fakeServer.getHostPortPair();
 
@@ -130,10 +126,6 @@ public class SessionFailoverTest extends DevApiBaseTestCase {
      */
     @Test
     public void testGetSessionForMultipleHostsWithFailover() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
-
         ConnectionsCounterFakeServer fakeServer = new ConnectionsCounterFakeServer();
         String fakeHost = fakeServer.getHostPortPair();
 
@@ -222,10 +214,6 @@ public class SessionFailoverTest extends DevApiBaseTestCase {
     @Test
     @Disabled("This test doesn't execute deterministically on some systems. It can be run manually in local systems when needed.")
     public void testConnectionTimeout() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
-
         String customFakeHost = System.getProperty(PropertyDefinitions.SYSP_testsuite_unavailable_host);
         String fakeHost = (customFakeHost != null && customFakeHost.trim().length() != 0) ? customFakeHost : "10.77.77.77:37070";
 
@@ -265,6 +253,7 @@ public class SessionFailoverTest extends DevApiBaseTestCase {
         sess.sql("SELECT SLEEP(11)").execute();
         long end = System.currentTimeMillis() - begin;
         assertTrue(end >= 11000 && end < 12000, "Expected: " + 11000 + ".." + 12000 + ". Got " + end);
+        sess.close();
 
         // TS11_1 Set connection property xdevapi.connect-timeout=null, try to create Session, check that WrongArgumentException is thrown
         // with message "The connection property 'xdevapi.connect-timeout' only accepts integer values. The value 'null' can not be converted to an integer."

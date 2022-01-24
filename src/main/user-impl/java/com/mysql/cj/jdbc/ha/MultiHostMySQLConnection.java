@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -58,6 +58,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPreparedStatement;
 import com.mysql.cj.jdbc.JdbcPropertySet;
 import com.mysql.cj.jdbc.exceptions.SQLError;
+import com.mysql.cj.protocol.ServerSessionStateController;
 import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaData;
 import com.mysql.cj.jdbc.result.ResultSetInternalMethods;
@@ -758,5 +759,10 @@ public class MultiHostMySQLConnection implements JdbcConnection {
     @Override
     public void cleanup(Throwable whyCleanedUp) {
         getActiveMySQLConnection().cleanup(whyCleanedUp);
+    }
+
+    @Override
+    public ServerSessionStateController getServerSessionStateController() {
+        return getActiveMySQLConnection().getServerSessionStateController();
     }
 }

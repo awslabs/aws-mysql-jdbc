@@ -233,6 +233,7 @@ dependencies {
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:1.7.30")
+    implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.13.0")
 
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }

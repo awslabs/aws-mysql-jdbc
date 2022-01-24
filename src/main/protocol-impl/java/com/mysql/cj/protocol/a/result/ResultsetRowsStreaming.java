@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -77,7 +77,7 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
 
     private ProtocolEntityFactory<T, NativePacketPayload> resultSetFactory;
 
-    private NativeMessageBuilder commandBuilder = new NativeMessageBuilder(); // TODO use shared builder
+    private NativeMessageBuilder commandBuilder = null;
 
     /**
      * Creates a new RowDataDynamic object.
@@ -100,6 +100,7 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
         this.resultSetFactory = resultSetFactory;
         this.rowFactory = this.isBinaryEncoded ? new BinaryRowFactory(this.protocol, this.metadata, Concurrency.READ_ONLY, true)
                 : new TextRowFactory(this.protocol, this.metadata, Concurrency.READ_ONLY, true);
+        this.commandBuilder = new NativeMessageBuilder(this.protocol.getServerSession().supportsQueryAttributes());
     }
 
     @Override
@@ -241,6 +242,10 @@ public class ResultsetRowsStreaming<T extends ProtocolEntity> extends AbstractRe
 
             throw cjEx;
         }
+    }
+
+    public int getPosition() {
+        throw ExceptionFactory.createException(Messages.getString("ResultSet.ForwardOnly"));
     }
 
     public void afterLast() {

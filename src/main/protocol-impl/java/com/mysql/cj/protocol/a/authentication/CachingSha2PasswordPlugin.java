@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -91,8 +91,9 @@ public class CachingSha2PasswordPlugin extends Sha256PasswordPlugin {
                 if (this.stage == AuthStage.FAST_AUTH_SEND_SCRAMBLE) {
                     // send a scramble for fast auth
                     this.seed = fromServer.readString(StringSelfDataType.STRING_TERM, null);
-                    toServer.add(new NativePacketPayload(Security
-                            .scrambleCachingSha2(StringUtils.getBytes(this.password, this.protocol.getPasswordCharacterEncoding()), this.seed.getBytes())));
+                    toServer.add(new NativePacketPayload(Security.scrambleCachingSha2(
+                            StringUtils.getBytes(this.password, this.protocol.getServerSession().getCharsetSettings().getPasswordCharacterEncoding()),
+                            this.seed.getBytes())));
                     this.stage = AuthStage.FAST_AUTH_READ_RESULT;
                     return true;
 
@@ -112,7 +113,8 @@ public class CachingSha2PasswordPlugin extends Sha256PasswordPlugin {
 
                 if (this.protocol.getSocketConnection().isSSLEstablished()) {
                     // allow plain text over SSL
-                    NativePacketPayload bresp = new NativePacketPayload(StringUtils.getBytes(this.password, this.protocol.getPasswordCharacterEncoding()));
+                    NativePacketPayload bresp = new NativePacketPayload(
+                            StringUtils.getBytes(this.password, this.protocol.getServerSession().getCharsetSettings().getPasswordCharacterEncoding()));
                     bresp.setPosition(bresp.getPayloadLength());
                     bresp.writeInteger(IntegerDataType.INT1, 0);
                     bresp.setPosition(0);
@@ -131,7 +133,7 @@ public class CachingSha2PasswordPlugin extends Sha256PasswordPlugin {
                     }
 
                     // We must request the public key from the server to encrypt the password
-                    if (this.publicKeyRequested && fromServer.getPayloadLength() > NativeConstants.SEED_LENGTH) {
+                    if (this.publicKeyRequested && fromServer.getPayloadLength() > NativeConstants.SEED_LENGTH + 1) { // auth data is null terminated
                         // Servers affected by Bug#70865 could send Auth Switch instead of key after Public Key Retrieval,
                         // so we check payload length to detect that.
 

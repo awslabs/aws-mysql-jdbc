@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -62,9 +62,6 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void basicAsyncQuery() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         String json = "{'firstName':'Frank', 'middleName':'Lloyd', 'lastName':'Wright'}".replaceAll("'", "\"");
         if (!mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
             json = json.replace("{", "{\"_id\": \"1\", "); // Inject an _id.
@@ -85,58 +82,61 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void overlappedAsyncQueries() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         final int NUMBER_OF_QUERIES = 1000;
-        Session sess = new SessionFactory().getSession(this.baseUrl);
-        Collection coll = sess.getSchema(this.schema.getName()).getCollection(this.collection.getName());
+        Session sess = null;
 
-        String json1 = "{'mode': 'sync'}".replaceAll("'", "\"");
-        String json2 = "{'mode': 'async'}".replaceAll("'", "\"");
-        if (!mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
-            // Inject an _id.
-            json1 = json1.replace("{", "{\"_id\": \"1\", ");
-            json2 = json2.replace("{", "{\"_id\": \"2\", ");
-        }
-        AddResult res = coll.add(json1).add(json2).execute();
-        if (mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
-            assertTrue(res.getGeneratedIds().get(0).matches("[a-f0-9]{28}"));
-            assertTrue(res.getGeneratedIds().get(1).matches("[a-f0-9]{28}"));
-        } else {
-            assertEquals(0, res.getGeneratedIds().size());
-        }
+        try {
+            sess = new SessionFactory().getSession(this.baseUrl);
+            Collection coll = sess.getSchema(this.schema.getName()).getCollection(this.collection.getName());
 
-        List<CompletableFuture<DocResult>> futures = new ArrayList<>();
-        for (int i = 0; i < NUMBER_OF_QUERIES; ++i) {
-            if (i % 5 == 0) {
-                futures.add(CompletableFuture.completedFuture(coll.find("mode = 'sync'").execute()));
-            } else {
-                futures.add(coll.find("mode = 'async'").executeAsync());
+            String json1 = "{'mode': 'sync'}".replaceAll("'", "\"");
+            String json2 = "{'mode': 'async'}".replaceAll("'", "\"");
+            if (!mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
+                // Inject an _id.
+                json1 = json1.replace("{", "{\"_id\": \"1\", ");
+                json2 = json2.replace("{", "{\"_id\": \"2\", ");
             }
-        }
+            AddResult res = coll.add(json1).add(json2).execute();
+            if (mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
+                assertTrue(res.getGeneratedIds().get(0).matches("[a-f0-9]{28}"));
+                assertTrue(res.getGeneratedIds().get(1).matches("[a-f0-9]{28}"));
+            } else {
+                assertEquals(0, res.getGeneratedIds().size());
+            }
 
-        for (int i = 0; i < NUMBER_OF_QUERIES; ++i) {
-            try {
-                DocResult docs = futures.get(i).get();
-                DbDoc d = docs.next();
-                JsonString mode = (JsonString) d.get("mode");
+            List<CompletableFuture<DocResult>> futures = new ArrayList<>();
+            for (int i = 0; i < NUMBER_OF_QUERIES; ++i) {
                 if (i % 5 == 0) {
-                    assertEquals("sync", mode.getString(), "i = " + i);
+                    futures.add(CompletableFuture.completedFuture(coll.find("mode = 'sync'").execute()));
                 } else {
-                    assertEquals("async", mode.getString(), "i = " + i);
+                    futures.add(coll.find("mode = 'async'").executeAsync());
                 }
-            } catch (Throwable t) {
-                throw new Exception("Error on i = " + i, t);
+            }
+
+            for (int i = 0; i < NUMBER_OF_QUERIES; ++i) {
+                try {
+                    DocResult docs = futures.get(i).get();
+                    DbDoc d = docs.next();
+                    JsonString mode = (JsonString) d.get("mode");
+                    if (i % 5 == 0) {
+                        assertEquals("sync", mode.getString(), "i = " + i);
+                    } else {
+                        assertEquals("async", mode.getString(), "i = " + i);
+                    }
+                } catch (Throwable t) {
+                    throw new Exception("Error on i = " + i, t);
+                }
+            }
+        } finally {
+            if (sess != null) {
+                sess.close();
+                sess = null;
             }
         }
     }
 
     @Test
     public void syntaxErrorEntireResult() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         CompletableFuture<DocResult> res = this.collection.find("NON_EXISTING_FUNCTION()").executeAsync();
         try {
             res.get();
@@ -150,9 +150,6 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void insertDocs() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         String json = "{'firstName':'Frank', 'middleName':'Lloyd', 'lastName':'Wright'}".replaceAll("'", "\"");
         if (!mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
             json = json.replace("{", "{\"_id\": \"1\", "); // Inject an _id.
@@ -174,9 +171,6 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void manyModifications() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         // we guarantee serial execution
         String json = "{'n':1}".replaceAll("'", "\"");
         if (!mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5"))) {
@@ -200,9 +194,6 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void sqlUpdate() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         CompletableFuture<SqlResult> resF = this.session.sql("set @cjTestVar = 1").executeAsync();
         resF.thenAccept(res -> {
             assertFalse(res.hasData());
@@ -215,9 +206,6 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void sqlQuery() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         CompletableFuture<SqlResult> resF = this.session.sql("select 1,2,3 from dual").executeAsync();
         resF.thenAccept(res -> {
             assertTrue(res.hasData());
@@ -234,16 +222,8 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
 
     @Test
     public void sqlError() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
-        try {
-            CompletableFuture<SqlResult> resF = this.session.sql("select x from dont_create_this_table").executeAsync();
-            resF.get();
-            fail("Should throw an exception");
-        } catch (Exception ex) {
-            // expected
-        }
+        CompletableFuture<SqlResult> resF = this.session.sql("select x from dont_create_this_table").executeAsync();
+        assertThrows(Exception.class, () -> resF.get());
     }
 
     /**
@@ -253,9 +233,6 @@ public class AsyncQueryTest extends BaseCollectionTestCase {
      */
     @Test
     public void manyFutures() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
         int MANY = 10;//100000;
         Collection coll = this.collection;
         List<CompletableFuture<DocResult>> futures = new ArrayList<>();

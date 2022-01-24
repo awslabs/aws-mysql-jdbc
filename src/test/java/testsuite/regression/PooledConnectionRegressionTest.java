@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -34,10 +34,31 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.Statement;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+
+import javax.sql.ConnectionEvent;
+import javax.sql.ConnectionEventListener;
+import javax.sql.ConnectionPoolDataSource;
+import javax.sql.PooledConnection;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.ServerVersion;
+import com.mysql.cj.conf.PropertyDefinitions.SslMode;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.Blob;
 import com.mysql.cj.jdbc.CallableStatementWrapper;
@@ -57,27 +78,8 @@ import com.mysql.cj.jdbc.PreparedStatementWrapper;
 import com.mysql.cj.jdbc.StatementWrapper;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.jdbc.exceptions.PacketTooBigException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
 import testsuite.BaseTestCase;
-
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
-import java.sql.SQLNonTransientConnectionException;
-import java.sql.Statement;
-import java.util.Properties;
-import java.util.concurrent.Callable;
-
-import javax.sql.ConnectionEvent;
-import javax.sql.ConnectionEventListener;
-import javax.sql.ConnectionPoolDataSource;
-import javax.sql.PooledConnection;
 
 /**
  * Tests a PooledConnection implementation provided by a JDBC driver. Test case provided by Johnny Macchione from bug database record BUG#884. According to
@@ -149,6 +151,8 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         MysqlConnectionPoolDataSource ds = new MysqlConnectionPoolDataSource();
 
         ds.setURL(BaseTestCase.dbUrl);
+        ds.<SslMode>getEnumProperty(PropertyKey.sslMode).setValue(SslMode.DISABLED);
+        ds.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval).setValue(true);
 
         this.cpds = ds;
     }
@@ -165,9 +169,11 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
 
     /**
      * Tests fix for BUG#7136 ... Statement.getConnection() returning physical connection instead of logical connection.
+     *
+     * @throws Exception
      */
     @Test
-    public void testBug7136() {
+    public void testBug7136() throws Exception {
         final ConnectionEventListener conListener = new ConnectionListener();
         PooledConnection pc = null;
         this.closeEventCount = 0;
@@ -199,24 +205,20 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
 
             assertEquals(1, this.closeEventCount, "One close event should've been registered");
 
-        } catch (SQLException ex) {
-            fail(ex.toString());
         } finally {
             if (pc != null) {
-                try {
-                    pc.close();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                }
+                pc.close();
             }
         }
     }
 
     /**
      * Test the nb of closeEvents generated when a Connection is reclaimed. No event should be generated in that case.
+     *
+     * @throws Exception
      */
     @Test
-    public void testConnectionReclaim() {
+    public void testConnectionReclaim() throws Exception {
         final ConnectionEventListener conListener = new ConnectionListener();
         PooledConnection pc = null;
         final int NB_TESTS = 5;
@@ -247,22 +249,12 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
                     }
                 }
             }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            fail(ex.toString());
         } finally {
             if (pc != null) {
-                try {
-                    System.out.println("Before pooledConnection.close().");
-
-                    // This should not generate a close event.
-                    pc.close();
-
-                    System.out.println("After pooledConnection.close().");
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                    fail(ex.toString());
-                }
+                System.out.println("Before pooledConnection.close().");
+                // This should not generate a close event.
+                pc.close();
+                System.out.println("After pooledConnection.close().");
             }
         }
 
@@ -297,12 +289,10 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
 
         pstmtFromPool.setBinaryStream(1, new BufferedInputStream(new FileInputStream(newTempBinaryFile("testPacketTooLargeException", numChars))), numChars);
 
-        try {
+        assertThrows(PacketTooBigException.class, () -> {
             pstmtFromPool.executeUpdate();
-            fail("Expecting PacketTooLargeException");
-        } catch (PacketTooBigException ptbe) {
-            // We're expecting this one...
-        }
+            return null;
+        });
 
         // This should still work okay, even though the last query on the same connection didn't...
         this.rs = connFromPool.createStatement().executeQuery("SELECT 1");
@@ -314,9 +304,11 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
     /**
      * Test the nb of closeEvents generated by a PooledConnection. A JDBC-compliant driver should only generate 1 closeEvent each time connection.close() is
      * called.
+     *
+     * @throws Exception
      */
     @Test
-    public void testCloseEvent() {
+    public void testCloseEvent() throws Exception {
         final ConnectionEventListener conListener = new ConnectionListener();
         PooledConnection pc = null;
         final int NB_TESTS = 5;
@@ -336,8 +328,6 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
 
                 System.out.println("After connection.close().");
             }
-        } catch (SQLException ex) {
-            fail(ex.toString());
         } finally {
             if (pc != null) {
                 try {
@@ -379,18 +369,24 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
     public void testBug35489() throws Exception {
         MysqlConnectionPoolDataSource pds = new MysqlConnectionPoolDataSource();
         pds.setUrl(dbUrl);
+        pds.<SslMode>getEnumProperty(PropertyKey.sslMode).setValue(SslMode.DISABLED);
+        pds.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
         this.pstmt = pds.getPooledConnection().getConnection().prepareStatement("SELECT 1");
         this.pstmt.execute();
         this.pstmt.close();
 
         MysqlXADataSource xads = new MysqlXADataSource();
         xads.setUrl(dbUrl);
+        xads.<SslMode>getEnumProperty(PropertyKey.sslMode).setValue(SslMode.DISABLED);
+        xads.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
         this.pstmt = xads.getXAConnection().getConnection().prepareStatement("SELECT 1");
         this.pstmt.execute();
         this.pstmt.close();
 
         xads = new MysqlXADataSource();
         xads.setUrl(dbUrl);
+        xads.<SslMode>getEnumProperty(PropertyKey.sslMode).setValue(SslMode.DISABLED);
+        xads.getBooleanProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName()).setValue(true);
         xads.getProperty(PropertyKey.pinGlobalTxToPhysicalConnection).setValue(true);
         this.pstmt = xads.getXAConnection().getConnection().prepareStatement("SELECT 1");
         this.pstmt.execute();
@@ -403,7 +399,6 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         PooledConnection pc = null;
         pc = this.cpds.getPooledConnection();
         ConnectionWrapper cw = (ConnectionWrapper) pc.getConnection();
-        final int initialCount = cw.getActiveStatementCount();
 
         assertEquals(PreparedStatementWrapper.class, cw.clientPrepare("SELECT 1").getClass());
         assertEquals(PreparedStatementWrapper.class, cw.clientPrepare("SELECT 1", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).getClass());
@@ -439,7 +434,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         assertEquals(StatementWrapper.class,
                 cw.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.CLOSE_CURSORS_AT_COMMIT).getClass());
 
-        assertEquals(initialCount + 26, cw.getActiveStatementCount());
+        assertEquals(26, cw.getActiveStatementCount());
 
         assertThrows(SQLFeatureNotSupportedException.class, new Callable<Void>() {
             public Void call() throws Exception {
@@ -483,7 +478,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         assertFalse(cw.isReadOnly());
         assertFalse(cw.isReadOnly(false));
         assertFalse(cw.isReadOnly(true));
-        // assertTrue(cw.isServerLocal());
+        assertEquals(isMysqlRunningLocally(), cw.isServerLocal());
         assertTrue(cw.isValid(10));
         assertTrue(cw.isWrapperFor(Connection.class));
         assertEquals(((JdbcConnection) this.conn).lowerCaseTableNames(), cw.lowerCaseTableNames());
@@ -581,7 +576,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
         //        cw.checkClosed();
 
         cw.close();
-        assertEquals(initialCount + 26, cw.getActiveStatementCount()); // TODO why are they still active? Active statements should be cleaned when connection is returned to pool.
+        assertEquals(26, cw.getActiveStatementCount()); // TODO why are they still active? Active statements should be cleaned when connection is returned to pool.
         checkConnectionReturnedToPool(cw);
 
         cw.normalClose();
@@ -851,7 +846,7 @@ public final class PooledConnectionRegressionTest extends BaseTestCase {
                 return null;
             }
         });
-        // assertTrue(cw.isServerLocal());
+        assertEquals(isMysqlRunningLocally(), cw.isServerLocal());
         assertTrue(cw.isValid(10));
         assertTrue(cw.isWrapperFor(Connection.class));
         assertEquals(((JdbcConnection) this.conn).lowerCaseTableNames(), cw.lowerCaseTableNames());

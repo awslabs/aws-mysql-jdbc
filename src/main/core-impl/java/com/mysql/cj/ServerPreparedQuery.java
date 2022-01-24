@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -52,6 +52,7 @@ import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.NativeMessageBuilder;
 import com.mysql.cj.protocol.a.NativePacketPayload;
+import com.mysql.cj.protocol.a.ValueEncoder;
 import com.mysql.cj.result.Field;
 import com.mysql.cj.util.StringUtils;
 
@@ -60,7 +61,8 @@ import com.mysql.cj.util.StringUtils;
 public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQueryBindings> {
 
     public static final int BLOB_STREAM_READ_BUF_SIZE = 8192;
-    public static final byte OPEN_CURSOR_FLAG = 1;
+    public static final byte OPEN_CURSOR_FLAG = 0x01;
+    public static final byte PARAMETER_COUNT_AVAILABLE = 0x08;
 
     /** The ID that the server uses to identify this PreparedStatement */
     private long serverStatementId;
@@ -89,7 +91,7 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
 
     protected boolean queryWasSlow = false;
 
-    protected NativeMessageBuilder commandBuilder = new NativeMessageBuilder(); // TODO use shared builder
+    protected NativeMessageBuilder commandBuilder = null;
 
     public static ServerPreparedQuery getInstance(NativeSession sess) {
         if (sess.getPropertySet().getBooleanProperty(PropertyKey.autoGenerateTestcaseScript).getValue()) {
@@ -107,6 +109,7 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
         this.slowQueryThresholdMillis = sess.getPropertySet().getIntegerProperty(PropertyKey.slowQueryThresholdMillis);
         this.explainSlowQueries = sess.getPropertySet().getBooleanProperty(PropertyKey.explainSlowQueries);
         this.useCursorFetch = sess.getPropertySet().getBooleanProperty(PropertyKey.useCursorFetch).getValue();
+        this.commandBuilder = new NativeMessageBuilder(this.session.getServerSession().supportsQueryAttributes());
     }
 
     /**
@@ -211,7 +214,6 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
     }
 
     public NativePacketPayload prepareExecutePacket() {
-
         ServerPreparedQueryBindValue[] parameterBindings = this.queryBindings.getBindValues();
 
         if (this.queryBindings.isLongParameterSwitchDetected()) {
@@ -232,7 +234,6 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
             }
 
             // Okay, we've got all "newly"-bound streams, so reset server-side state to clear out previous bindings
-
             serverResetStatement();
         }
 
@@ -250,68 +251,111 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
         //
         // store the parameter values
         //
-
         NativePacketPayload packet = this.session.getSharedSendPacket();
+
         packet.writeInteger(IntegerDataType.INT1, NativeConstants.COM_STMT_EXECUTE);
         packet.writeInteger(IntegerDataType.INT4, this.serverStatementId);
 
-        // we only create cursor-backed result sets if
-        // a) The query is a SELECT
-        // b) The server supports it
-        // c) We know it is forward-only (note this doesn't preclude updatable result sets)
-        // d) The user has set a fetch size
+        boolean supportsQueryAttributes = this.session.getServerSession().supportsQueryAttributes();
+        boolean sendQueryAttributes = false;
+        if (supportsQueryAttributes) {
+            // Servers between 8.0.23 8.0.25 are affected by Bug#103102, Bug#103268 and Bug#103377. Query attributes cannot be sent to these servers.
+            sendQueryAttributes = this.session.getServerSession().getServerVersion().meetsMinimum(new ServerVersion(8, 0, 26));
+        } else if (this.queryAttributesBindings.getCount() > 0) {
+            this.session.getLog().logWarn(Messages.getString("QueryAttributes.SetButNotSupported"));
+        }
+
+        byte flags = 0;
         if (this.resultFields != null && this.resultFields.getFields() != null && this.useCursorFetch && this.resultSetType == Type.FORWARD_ONLY
                 && this.fetchSize > 0) {
-            packet.writeInteger(IntegerDataType.INT1, OPEN_CURSOR_FLAG);
-        } else {
-            packet.writeInteger(IntegerDataType.INT1, 0); // placeholder for flags
+            // we only create cursor-backed result sets if
+            // a) The query is a SELECT
+            // b) The server supports it
+            // c) We know it is forward-only (note this doesn't preclude updatable result sets)
+            // d) The user has set a fetch size
+            flags |= OPEN_CURSOR_FLAG;
         }
+        if (sendQueryAttributes) {
+            flags |= PARAMETER_COUNT_AVAILABLE;
+        }
+        packet.writeInteger(IntegerDataType.INT1, flags);
 
         packet.writeInteger(IntegerDataType.INT4, 1); // placeholder for parameter iterations
 
-        /* Reserve place for null-marker bytes */
-        int nullCount = (this.parameterCount + 7) / 8;
-
-        int nullBitsPosition = packet.getPosition();
-
-        for (int i = 0; i < nullCount; i++) {
-            packet.writeInteger(IntegerDataType.INT1, 0);
-        }
-
-        byte[] nullBitsBuffer = new byte[nullCount];
-
-        /* In case if buffers (type) altered, indicate to server */
-        packet.writeInteger(IntegerDataType.INT1, this.queryBindings.getSendTypesToServer().get() ? (byte) 1 : (byte) 0);
-
-        if (this.queryBindings.getSendTypesToServer().get()) {
-            /*
-             * Store types of parameters in the first package that is sent to the server.
-             */
-            for (int i = 0; i < this.parameterCount; i++) {
-                packet.writeInteger(IntegerDataType.INT2, parameterBindings[i].bufferType);
+        int parametersAndAttributesCount = this.parameterCount;
+        if (supportsQueryAttributes) {
+            if (sendQueryAttributes) {
+                parametersAndAttributesCount += this.queryAttributesBindings.getCount();
+            }
+            if (sendQueryAttributes || parametersAndAttributesCount > 0) {
+                // Servers between 8.0.23 and 8.0.25 don't expect a 'parameter_count' value if the statement was prepared without parameters.
+                packet.writeInteger(IntegerDataType.INT_LENENC, parametersAndAttributesCount);
             }
         }
 
-        //
-        // store the parameter values
-        //
-        for (int i = 0; i < this.parameterCount; i++) {
-            if (!parameterBindings[i].isStream()) {
-                if (!parameterBindings[i].isNull()) {
-                    parameterBindings[i].storeBinding(packet, this.queryBindings.isLoadDataQuery(), this.charEncoding, this.session.getExceptionInterceptor());
-                } else {
-                    nullBitsBuffer[i / 8] |= (1 << (i & 7));
+        if (parametersAndAttributesCount > 0) {
+            /* Reserve place for null-marker bytes */
+            int nullCount = (parametersAndAttributesCount + 7) / 8;
+
+            int nullBitsPosition = packet.getPosition();
+
+            for (int i = 0; i < nullCount; i++) {
+                packet.writeInteger(IntegerDataType.INT1, 0);
+            }
+
+            byte[] nullBitsBuffer = new byte[nullCount];
+
+            // In case if buffers (type) changed or there are query attributes to send.
+            if (this.queryBindings.getSendTypesToServer().get() || sendQueryAttributes && this.queryAttributesBindings.getCount() > 0) {
+                packet.writeInteger(IntegerDataType.INT1, 1);
+
+                // Store types of parameters in the first package that is sent to the server.
+                for (int i = 0; i < this.parameterCount; i++) {
+                    packet.writeInteger(IntegerDataType.INT2, parameterBindings[i].bufferType);
+                    if (supportsQueryAttributes) {
+                        packet.writeBytes(StringSelfDataType.STRING_LENENC, "".getBytes()); // Parameters have no names.
+                    }
+                }
+
+                if (sendQueryAttributes) {
+                    this.queryAttributesBindings.runThroughAll(a -> {
+                        packet.writeInteger(IntegerDataType.INT2, a.getType());
+                        packet.writeBytes(StringSelfDataType.STRING_LENENC, a.getName().getBytes());
+                    });
+                }
+            } else {
+                packet.writeInteger(IntegerDataType.INT1, 0);
+            }
+
+            // Store the parameter values.
+            for (int i = 0; i < this.parameterCount; i++) {
+                if (!parameterBindings[i].isStream()) {
+                    if (!parameterBindings[i].isNull()) {
+                        parameterBindings[i].storeBinding(packet, this.queryBindings.isLoadDataQuery(), this.charEncoding,
+                                this.session.getExceptionInterceptor());
+                    } else {
+                        nullBitsBuffer[i >>> 3] |= (1 << (i & 7));
+                    }
                 }
             }
-        }
 
-        //
-        // Go back and write the NULL flags to the beginning of the packet
-        //
-        int endPosition = packet.getPosition();
-        packet.setPosition(nullBitsPosition);
-        packet.writeBytes(StringLengthDataType.STRING_FIXED, nullBitsBuffer);
-        packet.setPosition(endPosition);
+            if (sendQueryAttributes) {
+                for (int i = 0; i < this.queryAttributesBindings.getCount(); i++) {
+                    if (this.queryAttributesBindings.getAttributeValue(i).isNull()) {
+                        int b = i + this.parameterCount;
+                        nullBitsBuffer[b >>> 3] |= 1 << (b & 7);
+                    }
+                }
+                ValueEncoder valueEncoder = new ValueEncoder(packet, this.charEncoding, this.session.getServerSession().getDefaultTimeZone());
+                this.queryAttributesBindings.runThroughAll(a -> valueEncoder.encodeValue(a.getValue(), a.getType()));
+            }
+
+            // Go back and write the NULL flags to the beginning of the packet
+            int endPosition = packet.getPosition();
+            packet.setPosition(nullBitsPosition);
+            packet.writeBytes(StringLengthDataType.STRING_FIXED, nullBitsBuffer);
+            packet.setPosition(endPosition);
+        }
 
         return packet;
     }
@@ -589,7 +633,7 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
 
             if (clobEncoding != null) {
                 if (!clobEncoding.equals("UTF-16")) {
-                    maxBytesChar = this.session.getServerSession().getMaxBytesPerChar(clobEncoding);
+                    maxBytesChar = this.session.getServerSession().getCharsetSettings().getMaxBytesPerChar(clobEncoding);
 
                     if (maxBytesChar == 1) {
                         maxBytesChar = 2; // for safety
@@ -697,22 +741,32 @@ public class ServerPreparedQuery extends AbstractPreparedQuery<ServerPreparedQue
      */
     @Override
     protected long[] computeMaxParameterSetSizeAndBatchSize(int numBatchedArgs) {
+        boolean supportsQueryAttributes = this.session.getServerSession().supportsQueryAttributes();
 
-        long sizeOfEntireBatch = 1 + /* com_execute */+4 /* stmt id */ + 1 /* flags */ + 4 /* batch count padding */;
         long maxSizeOfParameterSet = 0;
+        long sizeOfEntireBatch = 1 /* com_stmt_execute */ + 4 /* statement_id */ + 1 /* flags */ + 4 /* iteration_count */ + 1 /* new_params_bind_flag */;
+        if (supportsQueryAttributes) {
+            sizeOfEntireBatch += 9 /* parameter_count */;
+            sizeOfEntireBatch += (this.queryAttributesBindings.getCount() + 7) / 8 /* null_bitmap */;
+            for (int i = 0; i < this.queryAttributesBindings.getCount(); i++) {
+                QueryAttributesBindValue queryAttribute = this.queryAttributesBindings.getAttributeValue(i);
+                sizeOfEntireBatch += 2 /* parameter_type */ + queryAttribute.getName().length() /* parameter_name */ + queryAttribute.getBoundLength();
+            }
+        }
 
         for (int i = 0; i < numBatchedArgs; i++) {
             ServerPreparedQueryBindValue[] paramArg = ((ServerPreparedQueryBindings) this.batchedArgs.get(i)).getBindValues();
 
-            long sizeOfParameterSet = (this.parameterCount + 7) / 8; // for isNull
-            sizeOfParameterSet += this.parameterCount * 2; // have to send types
+            long sizeOfParameterSet = (this.parameterCount + 7) / 8 /* null_bitmap */
+                    + this.parameterCount * 2 /* parameter_type */;
+            if (supportsQueryAttributes) {
+                sizeOfParameterSet += this.parameterCount /* parameter_name (all empty) */;
+            }
 
             ServerPreparedQueryBindValue[] parameterBindings = this.queryBindings.getBindValues();
             for (int j = 0; j < parameterBindings.length; j++) {
                 if (!paramArg[j].isNull()) {
-
                     long size = paramArg[j].getBoundLength();
-
                     if (paramArg[j].isStream()) {
                         if (size != -1) {
                             sizeOfParameterSet += size;
