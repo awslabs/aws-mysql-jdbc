@@ -106,8 +106,8 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
     this.nextPlugin = nextPlugin;
     this.monitorServiceSupplier = monitorServiceSupplier;
 
-    if (this.currentConnectionProvider.getCurrentConnection() != null) {
-      generateNodeKeys(this.currentConnectionProvider.getCurrentConnection());
+    if (this.connection != null) {
+      generateNodeKeys(this.connection);
     }
   }
 
@@ -280,7 +280,9 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
   private void checkIfChanged(JdbcConnection newConnection) {
     final boolean isSameConnection = this.connection != null && this.connection.equals(newConnection);
     if (!isSameConnection) {
-      this.monitorService.stopMonitoringForAllConnections(this.nodeKeys);
+      if (!this.nodeKeys.isEmpty()) {
+        this.monitorService.stopMonitoringForAllConnections(this.nodeKeys);
+      }
       this.connection = newConnection;
       generateNodeKeys(this.connection);
     }
@@ -293,7 +295,15 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    */
   private void generateNodeKeys(Connection connection) {
     this.nodeKeys.clear();
+
     final HostInfo hostInfo = this.currentConnectionProvider.getCurrentHostInfo();
+    this.nodeKeys.add(
+            String.format(
+                    "%s:%d",
+                    hostInfo.getHost(),
+                    hostInfo.getPort()
+            ));
+
     try (Statement stmt = connection.createStatement()) {
       try (ResultSet rs = stmt.executeQuery(RETRIEVE_HOST_PORT_SQL)) {
         while (rs.next()) {
@@ -305,12 +315,5 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
       this.logger.logTrace(
           "[NodeMonitoringConnectionPlugin.initNodes]: Could not retrieve Host:Port from querying");
     }
-
-    this.nodeKeys.add(
-        String.format(
-            "%s:%s",
-            hostInfo.getHost(),
-            hostInfo.getPort()
-        ));
   }
 }

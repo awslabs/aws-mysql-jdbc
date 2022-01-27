@@ -352,7 +352,16 @@ tasks.register<Test>("test-integration-docker") {
     }
     useJUnitPlatform()
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraMySqlIntegrationEnvTest.testRunTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunTestInContainer")
+}
+
+tasks.register<Test>("test-integration-performance-docker") {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunPerformanceTestInContainer")
 }
 
 // Run community tests in container
@@ -363,20 +372,29 @@ tasks.register<Test>("test-community-docker") {
     }
     useJUnitPlatform()
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraMySqlIntegrationEnvTest.testRunCommunityTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest")
 }
 
-tasks.register<Test>("test-integration-container-aurora") {
+tasks.register<Test>("in-container-aurora") {
     this.testLogging {
         this.showStandardStreams = true
     }
     useJUnitPlatform()
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.container.AuroraMySqlIntegrationTest")
+    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlIntegrationTest")
+}
+
+tasks.register<Test>("in-container-aurora-performance") {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlPerformanceIntegrationTest")
 }
 
 // Run all tests excluding integration tests
-tasks.register<Test>("test-non-integration") {
+tasks.register<Test>("in-container-community") {
     this.testLogging {
         this.showStandardStreams = true
     }
