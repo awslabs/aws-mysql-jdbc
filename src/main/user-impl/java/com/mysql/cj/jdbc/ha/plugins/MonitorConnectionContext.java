@@ -157,10 +157,12 @@ public class MonitorConnectionContext {
    * Update whether the connection is still valid if the total elapsed time has passed the
    * grace period.
    *
-   * @param currentTime The time when this method is called.
+   * @param statusCheckStartTime The time when connection status check started in milliseconds.
+   * @param currentTime The time when connection status check ended in milliseconds.
    * @param isValid Whether the connection is valid.
    */
   public void updateConnectionStatus(
+      long statusCheckStartTime,
       long currentTime,
       boolean isValid) {
     if (!this.activeContext) {
@@ -170,7 +172,7 @@ public class MonitorConnectionContext {
     final long totalElapsedTimeMillis = currentTime - this.startMonitorTime;
 
     if (totalElapsedTimeMillis > this.failureDetectionTimeMillis) {
-      this.setConnectionValid(isValid, currentTime);
+      this.setConnectionValid(isValid, statusCheckStartTime, currentTime);
     }
   }
 
@@ -186,21 +188,23 @@ public class MonitorConnectionContext {
    * </ul>
    *
    * @param connectionValid Boolean indicating whether the server is still responsive.
-   * @param currentTime The time when this method is invoked in milliseconds.
+   * @param statusCheckStartTime The time when connection status check started in milliseconds.
+   * @param currentTime The time when connection status check ended in milliseconds.
    */
   void setConnectionValid(
       boolean connectionValid,
+      long statusCheckStartTime,
       long currentTime) {
     if (!connectionValid) {
       this.failureCount++;
 
       if (!this.isInvalidNodeStartTimeDefined()) {
-        this.setInvalidNodeStartTime(currentTime);
+        this.setInvalidNodeStartTime(statusCheckStartTime);
       }
 
       final long invalidNodeDurationMillis = currentTime - this.getInvalidNodeStartTime();
       final long maxInvalidNodeDurationMillis =
-          (long) this.getFailureDetectionIntervalMillis() * this.getFailureDetectionCount();
+          (long) this.getFailureDetectionIntervalMillis() * Math.max(0, this.getFailureDetectionCount());
 
       if (invalidNodeDurationMillis >= maxInvalidNodeDurationMillis) {
         this.log.logTrace(

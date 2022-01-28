@@ -137,15 +137,16 @@ public class Monitor implements IMonitor {
       this.stopped.set(false);
       while (true) {
         if (!this.contexts.isEmpty()) {
-          final long currentTime = this.getCurrentTimeMillis();
-          this.lastContextUsedTimestamp.set(currentTime);
+          final long statusCheckStartTime = this.getCurrentTimeMillis();
+          this.lastContextUsedTimestamp.set(statusCheckStartTime);
 
           final ConnectionStatus status =
               checkConnectionStatus(this.getConnectionCheckIntervalMillis());
 
           for (MonitorConnectionContext monitorContext : this.contexts) {
             monitorContext.updateConnectionStatus(
-                currentTime,
+                statusCheckStartTime,
+                statusCheckStartTime + status.elapsedTime,
                 status.isValid);
           }
 
