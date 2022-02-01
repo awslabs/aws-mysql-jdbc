@@ -27,6 +27,7 @@
 package testsuite.integration.container;
 
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -55,7 +56,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   private static final int REPEAT_TIMES = 5;
-  private static final List<PerfStat> enhancedFailureMonitoringPerfDataList = new ArrayList<>();
+  private static final int FAILOVER_TIMEOUT_MS = 40000;
+  private static final List<PerfStatMonitoring> enhancedFailureMonitoringPerfDataList = new ArrayList<>();
+  private static final List<PerfStatMonitoring> failoverWithEfmPerfDataList = new ArrayList<>();
+  private static final List<PerfStatSocketTimeout> failoverWithSocketTimeoutPerfDataList = new ArrayList<>();
 
   @BeforeAll
   public static void setUp() throws IOException, SQLException {
@@ -65,49 +69,31 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
   @AfterAll
   public static void cleanUp() throws IOException {
     doWritePerfDataToFile("./build/reports/tests/FailureDetectionResults_EnhancedMonitoring.xlsx", enhancedFailureMonitoringPerfDataList);
+    doWritePerfDataToFile("./build/reports/tests/FailoverPerformanceResults_EnhancedMonitoring.xlsx", failoverWithEfmPerfDataList);
+    doWritePerfDataToFile("./build/reports/tests/FailoverPerformanceResults_SocketTimeout.xlsx", failoverWithSocketTimeoutPerfDataList);
   }
 
-  private static void doWritePerfDataToFile(String fileName, List<PerfStat> dataList) throws IOException {
+  private static void doWritePerfDataToFile(String fileName, List<? extends PerfStatBase> dataList) throws IOException {
+    if (dataList.isEmpty()) {
+      return;
+    }
+
     try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-      // Title
-      final XSSFSheet sheet = workbook.createSheet("FailureDetectionResults");
 
-      // Header
-      Row row = sheet.createRow(0);
-      Cell cell = row.createCell(0);
-      cell.setCellValue("FailureDetectionGraceTime");
-      cell = row.createCell(1);
-      cell.setCellValue("FailureDetectionInterval");
-      cell = row.createCell(2);
-      cell.setCellValue("FailureDetectionCount");
-      cell = row.createCell(3);
-      cell.setCellValue("NetworkOutageDelayMillis");
-      cell = row.createCell(4);
-      cell.setCellValue("MinFailureDetectionTime");
-      cell = row.createCell(5);
-      cell.setCellValue("MaxFailureDetectionTime");
-      cell = row.createCell(6);
-      cell.setCellValue("AvgFailureDetectionTime");
+      final XSSFSheet sheet = workbook.createSheet("PerformanceResults");
 
-      // Data
       for (int rows = 0; rows < dataList.size(); rows++) {
-        PerfStat perfStat = dataList.get(rows);
-        row = sheet.createRow(rows + 1);
+        PerfStatBase perfStat = dataList.get(rows);
+        Row row;
 
-        cell = row.createCell(0);
-        cell.setCellValue(perfStat.paramDetectionTime);
-        cell = row.createCell(1);
-        cell.setCellValue(perfStat.paramDetectionInterval);
-        cell = row.createCell(2);
-        cell.setCellValue(perfStat.paramDetectionCount);
-        cell = row.createCell(3);
-        cell.setCellValue(perfStat.paramNetworkOutageDelayMillis);
-        cell = row.createCell(4);
-        cell.setCellValue(perfStat.minFailureDetectionTimeMillis);
-        cell = row.createCell(5);
-        cell.setCellValue(perfStat.maxFailureDetectionTimeMillis);
-        cell = row.createCell(6);
-        cell.setCellValue(perfStat.avgFailureDetectionTimeMillis);
+        if (rows == 0) {
+          // Header
+          row = sheet.createRow(0);
+          perfStat.writeHeader(row);
+        }
+
+        row = sheet.createRow(rows + 1);
+        perfStat.writeData(row);
       }
 
       // Write to file
@@ -129,13 +115,53 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
     props.setProperty(PropertyKey.failureDetectionCount.getKeyName(), Integer.toString(detectionCount));
     props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), Boolean.FALSE.toString());
 
-    PerfStat data = doMeasurePerformance(detectionTime, detectionInterval, detectionCount, sleepDelayMillis, REPEAT_TIMES, props);
+    final PerfStatMonitoring data = new PerfStatMonitoring();
+    doMeasurePerformance(sleepDelayMillis, REPEAT_TIMES, props, false, data);
+    data.paramDetectionTime = detectionTime;
+    data.paramDetectionInterval = detectionInterval;
+    data.paramDetectionCount = detectionCount;
     enhancedFailureMonitoringPerfDataList.add(data);
   }
 
-  private PerfStat doMeasurePerformance(
-          int detectionTime, int detectionInterval, int detectionCount,
-          int sleepDelayMillis, int repeatTimes, Properties props)
+  @ParameterizedTest
+  @MethodSource("generateFailureDetectionTimeParams")
+  public void test_FailoverTime_EnhancedMonitoring(int detectionTime, int detectionInterval, int detectionCount, int sleepDelayMillis)
+          throws SQLException {
+    final Properties props = initDefaultPropsNoTimeouts();
+    props.setProperty(PropertyKey.failureDetectionTime.getKeyName(), Integer.toString(detectionTime));
+    props.setProperty(PropertyKey.failureDetectionInterval.getKeyName(), Integer.toString(detectionInterval));
+    props.setProperty(PropertyKey.failureDetectionCount.getKeyName(), Integer.toString(detectionCount));
+    props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), Boolean.TRUE.toString());
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), Integer.toString(40000));
+
+    final PerfStatMonitoring data = new PerfStatMonitoring();
+    doMeasurePerformance(sleepDelayMillis, REPEAT_TIMES, props, true, data);
+    data.paramDetectionTime = detectionTime;
+    data.paramDetectionInterval = detectionInterval;
+    data.paramDetectionCount = detectionCount;
+    failoverWithEfmPerfDataList.add(data);
+  }
+
+  @ParameterizedTest
+  @MethodSource("generateFailoverSocketTimeoutTimeParams")
+  public void test_FailoverTime_SocketTimeout(int socketTimeout, int sleepDelayMillis)
+          throws SQLException {
+    final Properties props = initDefaultPropsNoTimeouts();
+    // The goal of this performance test is to check how socket timeout changes overall failover time
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), Integer.toString(socketTimeout));
+    // Loads just failover plugin; don't load Enhanced Failure Monitoring plugin
+    props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(), FailoverConnectionPluginFactory.class.getName());
+    props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), Boolean.TRUE.toString());
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), Integer.toString(FAILOVER_TIMEOUT_MS));
+
+    final PerfStatSocketTimeout data = new PerfStatSocketTimeout();
+    doMeasurePerformance(sleepDelayMillis, REPEAT_TIMES, props, true, data);
+    data.paramSocketTimeout = socketTimeout;
+    failoverWithSocketTimeoutPerfDataList.add(data);
+  }
+
+  private void doMeasurePerformance(
+          int sleepDelayMillis, int repeatTimes, Properties props, boolean openReadOnlyConnection, PerfStatBase data)
     throws SQLException {
 
     final String QUERY = "select sleep(600)"; // 600s -> 10min
@@ -162,6 +188,7 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
       try (final Connection conn = openConnectionWithRetry(MYSQL_INSTANCE_1_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props);
            final Statement statement = conn.createStatement()) {
 
+        conn.setReadOnly(openReadOnlyConnection);
         thread.start();
 
         // Execute long query
@@ -183,7 +210,10 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
     int max = elapsedTimes.stream().max(Integer::compare).orElse(0);
     int avg = (int)elapsedTimes.stream().mapToInt(a -> a).summaryStatistics().getAverage();
 
-    return new PerfStat(detectionTime, detectionInterval, detectionCount, sleepDelayMillis, min, max, avg);
+    data.paramNetworkOutageDelayMillis = sleepDelayMillis;
+    data.minFailureDetectionTimeMillis = min;
+    data.maxFailureDetectionTimeMillis = max;
+    data.avgFailureDetectionTimeMillis = avg;
   }
 
   private Connection openConnectionWithRetry(String url, int port, Properties props) {
@@ -232,26 +262,99 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
       Arguments.of(6000, 1000, 1, 10000));
   }
 
-  private class PerfStat {
-    public PerfStat(int paramDetectionTime, int paramDetectionInterval, int paramDetectionCount,
-                    int paramNetworkOutageDelayMillis, int minFailureDetectionTimeMillis,
-                    int maxFailureDetectionTimeMillis, int avgFailureDetectionTimeMillis) {
-      this.paramDetectionTime = paramDetectionTime;
-      this.paramDetectionInterval = paramDetectionInterval;
-      this.paramDetectionCount = paramDetectionCount;
-      this.paramNetworkOutageDelayMillis = paramNetworkOutageDelayMillis;
-      this.minFailureDetectionTimeMillis = minFailureDetectionTimeMillis;
-      this.maxFailureDetectionTimeMillis = maxFailureDetectionTimeMillis;
-      this.avgFailureDetectionTimeMillis = avgFailureDetectionTimeMillis;
-    }
+  private static Stream<Arguments> generateFailoverSocketTimeoutTimeParams() {
+    // socketTimeout, sleepDelayMS
+    return Stream.of(
+      Arguments.of(30000, 5000),
+      Arguments.of(30000, 10000),
+      Arguments.of(30000, 15000),
+      Arguments.of(30000, 25000),
+      Arguments.of(30000, 20000),
+      Arguments.of(30000, 30000));
+  }
 
-    public int paramDetectionTime;
-    public int paramDetectionInterval;
-    public int paramDetectionCount;
+  private abstract class PerfStatBase {
     public int paramNetworkOutageDelayMillis;
     public int minFailureDetectionTimeMillis;
     public int maxFailureDetectionTimeMillis;
     public int avgFailureDetectionTimeMillis;
+
+    public abstract void writeHeader(Row row);
+    public abstract void writeData(Row row);
+  }
+
+  private class PerfStatMonitoring extends PerfStatBase {
+    public int paramDetectionTime;
+    public int paramDetectionInterval;
+    public int paramDetectionCount;
+
+    @Override
+    public void writeHeader(Row row) {
+      Cell cell = row.createCell(0);
+      cell.setCellValue("FailureDetectionGraceTime");
+      cell = row.createCell(1);
+      cell.setCellValue("FailureDetectionInterval");
+      cell = row.createCell(2);
+      cell.setCellValue("FailureDetectionCount");
+      cell = row.createCell(3);
+      cell.setCellValue("NetworkOutageDelayMillis");
+      cell = row.createCell(4);
+      cell.setCellValue("MinFailureDetectionTime");
+      cell = row.createCell(5);
+      cell.setCellValue("MaxFailureDetectionTime");
+      cell = row.createCell(6);
+      cell.setCellValue("AvgFailureDetectionTime");
+    }
+
+    @Override
+    public void writeData(Row row) {
+      Cell cell = row.createCell(0);
+      cell.setCellValue(this.paramDetectionTime);
+      cell = row.createCell(1);
+      cell.setCellValue(this.paramDetectionInterval);
+      cell = row.createCell(2);
+      cell.setCellValue(this.paramDetectionCount);
+      cell = row.createCell(3);
+      cell.setCellValue(this.paramNetworkOutageDelayMillis);
+      cell = row.createCell(4);
+      cell.setCellValue(this.minFailureDetectionTimeMillis);
+      cell = row.createCell(5);
+      cell.setCellValue(this.maxFailureDetectionTimeMillis);
+      cell = row.createCell(6);
+      cell.setCellValue(this.avgFailureDetectionTimeMillis);
+    }
+  }
+
+  private class PerfStatSocketTimeout extends PerfStatBase {
+    public int paramSocketTimeout;
+
+    @Override
+    public void writeHeader(Row row) {
+      Cell cell = row.createCell(0);
+      cell.setCellValue("SocketTimeout");
+      cell = row.createCell(1);
+      cell.setCellValue("NetworkOutageDelayMillis");
+      cell = row.createCell(2);
+      cell.setCellValue("MinFailureDetectionTime");
+      cell = row.createCell(3);
+      cell.setCellValue("MaxFailureDetectionTime");
+      cell = row.createCell(4);
+      cell.setCellValue("AvgFailureDetectionTime");
+    }
+
+    @Override
+    public void writeData(Row row) {
+      Cell cell = row.createCell(0);
+      cell.setCellValue(this.paramSocketTimeout);
+      cell = row.createCell(1);
+      cell.setCellValue(this.paramNetworkOutageDelayMillis);
+      cell = row.createCell(2);
+      cell.setCellValue(this.minFailureDetectionTimeMillis);
+      cell = row.createCell(3);
+      cell.setCellValue(this.maxFailureDetectionTimeMillis);
+      cell = row.createCell(4);
+      cell.setCellValue(this.avgFailureDetectionTimeMillis);
+    }
   }
 
 }

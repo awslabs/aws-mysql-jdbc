@@ -276,7 +276,14 @@ public enum PropertyKey {
     yearIsDateType("yearIsDateType", true), //
     zeroDateTimeBehavior("zeroDateTimeBehavior", true), //
 
+    // protocols for AWS MySQL Driver
+    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
+
+    // plugin system
     useConnectionPlugins("useConnectionPlugins", true),
+    connectionPluginFactories("connectionPluginFactories", true),
+
+    // Failover plugin
     enableClusterAwareFailover("enableClusterAwareFailover", true), //
     clusterInstanceHostPattern("clusterInstanceHostPattern", true), // "?.my-domain.com", "any-subdomain.?.my-domain.com:9999"; "?" will be replaced with node name
     clusterId("clusterId", true), //
@@ -285,14 +292,18 @@ public enum PropertyKey {
     failoverClusterTopologyRefreshRateMs("failoverClusterTopologyRefreshRateMs", true), //
     failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
     failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
-    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
-    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
-    connectionPluginFactories("connectionPluginFactories", true),
+
+    // Enhanced Failure Monitoring plugin
     failureDetectionEnabled("failureDetectionEnabled", true),
     failureDetectionTime("failureDetectionTime", true),
     failureDetectionInterval("failureDetectionInterval", true),
     failureDetectionCount("failureDetectionCount", true),
     monitorDisposalTime("monitorDisposalTime", true),
+
+    // XML enternal entity
+    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
+
+    // IAM authentication
     useAwsIam("useAwsIam", true);
 
     private String keyName;
