@@ -83,6 +83,7 @@ class FailoverConnectionPluginTest {
   @Mock private NativeSession mockSession;
   @Mock private Log mockLogger;
   @Mock private AuroraTopologyService mockTopologyService;
+  @Mock private ClusterAwareMetricsContainer mockClusterMetricContainer;
   private AutoCloseable closeable;
 
   @Test
@@ -636,6 +637,7 @@ class FailoverConnectionPluginTest {
         mockNextPlugin,
         mockLogger,
         mockConnectionProvider,
-        () -> mockTopologyService);
+        () -> mockTopologyService,
+        () -> mockClusterMetricContainer);
   }
 }

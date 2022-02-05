@@ -24,27 +24,16 @@
  *
  */
 
-package com.mysql.cj.jdbc.ha.plugins;
+package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import com.mysql.cj.log.Log;
-
-/**
- * This is a generic interface for performance metrics. It can be implemented by any class that
- * requires collecting internal metrics.
- */
-public interface ICanCollectPerformanceMetrics {
-
-  /**
-   * Enables or disables collecting of internal performance metrics.
-   *
-   * @param isEnabled True to enable internal metrics
-   */
-  void setPerformanceMetricsEnabled(boolean isEnabled);
-
-  /**
-   * Reports (prints out) collected metrics to provided logger.
-   *
-   * @param log Logger instance to report collected metrics to.
-   */
-  void reportMetrics(Log log);
+public interface IClusterAwareMetricsContainer {
+    void setClusterId(String clusterID);
+    void registerTopologyQueryExecutionTime(long timeMs);
+    void registerFailureDetectionTime(long timeMs);
+    void registerWriterFailoverProcedureTime(long timeMs);
+    void registerReaderFailoverProcedureTime(long timeMs);
+    void registerFailoverConnects(boolean isHit);
+    void registerInvalidInitialConnection(boolean isHit);
+    void registerUseLastConnectedReader(boolean isHit);
+    void registerUseCachedTopology(boolean isHit);
 }

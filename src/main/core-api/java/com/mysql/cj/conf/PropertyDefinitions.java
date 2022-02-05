@@ -659,6 +659,9 @@ public class PropertyDefinitions {
                 new BooleanPropertyDefinition(PropertyKey.enableClusterAwareFailover, DEFAULT_VALUE_TRUE, RUNTIME_MODIFIABLE,
                         Messages.getString("ConnectionProperties.enableClusterAwareFailover"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE),
 
+                new BooleanPropertyDefinition(PropertyKey.gatherAdditionalMetricsOnInstance, DEFAULT_VALUE_FALSE, RUNTIME_MODIFIABLE,
+                    Messages.getString("ConnectionProperties.gatherAdditionalMetricsOnInstance"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE),
+
                 new IntegerPropertyDefinition(PropertyKey.clusterTopologyRefreshRateMs, 30_000, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.clusterTopologyRefreshRateMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),

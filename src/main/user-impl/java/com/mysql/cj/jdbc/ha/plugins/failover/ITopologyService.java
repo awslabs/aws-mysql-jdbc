@@ -54,6 +54,13 @@ public interface ITopologyService {
   void setClusterId(String clusterId);
 
   /**
+   * Returns the unique cluster identifier for topology service instance
+   *
+   * @return cluster Id
+   */
+  String getClusterId();
+
+  /**
    * Sets host details common to each instance in the cluster, including the host dns pattern. "?"
    * (question mark) in a host dns pattern will be replaced with a host instance name to form a
    * fully qualified dns host endpoint.
