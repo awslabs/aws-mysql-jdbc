@@ -78,12 +78,11 @@ public class AuroraTestUtility {
     private String dbEngine = "aurora-mysql";
     private String dbInstanceClass = "db.r5.large";
     private final String dbRegion;
-    private String dbSecGroup = "default";
+    private final String dbSecGroup = "default";
     private int numOfInstances = 5;
 
-    private AmazonRDS rdsClient = null;
-    private AmazonEC2 ec2Client = null;
-    private String runnerIP = "";
+    private AmazonRDS rdsClient;
+    private AmazonEC2 ec2Client;
 
     private static final String DUPLICATE_IP_ERROR_CODE = "InvalidPermission.Duplicate";
 
@@ -217,7 +216,7 @@ public class AuroraTestUtility {
      * @throws UnknownHostException
      */
     public String getPublicIPAddress() throws UnknownHostException {
-        String ip = "";
+        String ip;
         try {
             URL ipChecker = new URL("http://checkip.amazonaws.com");
             BufferedReader reader = new BufferedReader(new InputStreamReader(

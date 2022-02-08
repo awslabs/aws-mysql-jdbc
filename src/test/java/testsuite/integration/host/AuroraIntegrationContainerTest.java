@@ -170,7 +170,7 @@ public class AuroraIntegrationContainerTest {
 
   protected static GenericContainer<?> initializeTestContainer(final Network network, List<String> mySqlInstances) {
 
-    final GenericContainer<?> container = containerHelper.createTestContainer("bq/rds-test-container")
+    final GenericContainer<?> container = containerHelper.createTestContainer("aws/rds-test-container")
         .withNetworkAliases(TEST_CONTAINER_NAME)
         .withNetwork(network)
         .withEnv("TEST_USERNAME", TEST_USERNAME)

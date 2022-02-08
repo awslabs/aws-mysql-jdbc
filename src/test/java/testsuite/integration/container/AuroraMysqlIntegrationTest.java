@@ -36,10 +36,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import eu.rekawek.toxiproxy.Proxy;
@@ -101,7 +99,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
     assertThrows(Exception.class, () -> {
       // expected to fail since communication is cut
-      final Connection tmp = connectToInstance(MYSQL_INSTANCE_1_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT);
+      connectToInstance(MYSQL_INSTANCE_1_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT);
     });
 
     containerHelper.enableConnectivity(proxyInstance_1);
@@ -114,7 +112,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   public void test_LostConnectionToWriter() throws SQLException, IOException {
 
     List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = currentClusterTopology.stream().findFirst().orElse(null);
+    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
     assertNotNull(currentWriterEndpoint);
 
     final Properties props = initDefaultProps();
@@ -149,8 +147,8 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   public void test_LostConnectionToReader() throws SQLException, IOException {
 
     List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = currentClusterTopology.stream().findFirst().orElse(null);
-    String anyReaderEndpoint = currentClusterTopology.stream().filter((x) -> x != currentWriterEndpoint).findAny().orElse(null);
+    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
+    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
     assertNotNull(currentWriterEndpoint);
     assertNotNull(anyReaderEndpoint);
 
@@ -182,8 +180,8 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   public void test_LostConnectionToAllReaders() throws SQLException {
 
     List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = currentClusterTopology.stream().findFirst().orElse(null);
-    String anyReaderEndpoint = currentClusterTopology.stream().filter((x) -> x != currentWriterEndpoint).findAny().orElse(null);
+    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
+    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
     assertNotNull(currentWriterEndpoint);
     assertNotNull(anyReaderEndpoint);
 
@@ -226,8 +224,8 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   public void test_LostConnectionToReaderInstance() throws SQLException, IOException {
 
     List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = currentClusterTopology.stream().findFirst().orElse(null);
-    String anyReaderEndpoint = currentClusterTopology.stream().filter((x) -> x != currentWriterEndpoint).findAny().orElse(null);
+    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
+    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
     assertNotNull(currentWriterEndpoint);
     assertNotNull(anyReaderEndpoint);
 
@@ -267,8 +265,8 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   public void test_LostConnectionReadOnly() throws SQLException, IOException {
 
     List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = currentClusterTopology.stream().findFirst().orElse(null);
-    String anyReaderEndpoint = currentClusterTopology.stream().filter((x) -> x != currentWriterEndpoint).findAny().orElse(null);
+    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
+    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
     assertNotNull(currentWriterEndpoint);
     assertNotNull(anyReaderEndpoint);
 

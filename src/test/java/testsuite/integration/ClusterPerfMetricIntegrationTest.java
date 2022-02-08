@@ -60,7 +60,7 @@ public class ClusterPerfMetricIntegrationTest {
     private static final String DB_CONN_STR = DB_CONN_STR_PREFIX + TEST_DB_CLUSTER_IDENTIFIER + ".cluster-" + DB_CONN_HOST_BASE;
     private static final String PORT_SUFFIX = ":3306";
 
-    private List<String> instanceUrls = null;
+    private List<String> instanceUrls;
 
     public ClusterPerfMetricIntegrationTest() throws ClassNotFoundException, SQLException {
         Class.forName("software.aws.rds.jdbc.mysql.Driver");

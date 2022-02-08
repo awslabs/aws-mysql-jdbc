@@ -75,7 +75,7 @@ public class CommunityContainerTest {
   protected static GenericContainer<?> createTestContainer(
           final Network network, String testContainerNetworkAlias, String mysqlContainerName, int mysqlPort) {
     final GenericContainer<?> container =
-      containerHelper.createTestContainer("bq/rds-test-container")
+      containerHelper.createTestContainer("aws/rds-test-container")
         .withNetworkAliases(testContainerNetworkAlias)
         .withNetwork(network)
         .withEnv("TEST_MYSQL_PORT", String.valueOf(mysqlPort))
