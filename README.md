@@ -353,6 +353,11 @@ Additional monitoring configurations can be included by adding the prefix `monit
 |`failureDetectionCount` | Integer | No | Number of failed connection checks before considering database node as unhealthy. | `3` |
 |`monitorDisposalTime` | Integer | No | Interval in milliseconds for a monitor to be considered inactive and to be disposed. | `60000` |
 
+>### :warning: Warnings About Usage of the AWS JDBC Driver for MySQL with RDS Proxy
+> Using RDS Proxy endpoints with AWS JDBC Driver for MySQL with Enhanced Failure Monitoring plugin doesn't cause any critical issue. However such approach isn't recommended. The main reason is that RDS Proxy transparently re-routes driver requests to one of database instances. RDS Proxy decides which database instance is used to based on many criteria and it's on per request basis. Such switching from between different instances makes the plugin useless in terms of instance health monitoring. The plugin couldn't identify what actual instance it's connected to and which one it's monitoring. That could be a source of false positive failure detections. At the same time the plugin can still proactively monitor network connectivity to RDS Proxy endpoints and report outages back to a user application if they occur.
+> 
+> It is suggested to turn off Enhanced Failure Monitoring plugin, or to avoid using RDS Proxy endpoints when the plugin is active. 
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
