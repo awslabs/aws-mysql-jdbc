@@ -29,22 +29,28 @@ The figure above provides a simplified overview of how the AWS JDBC Driver handl
 ### Prerequisites
 You need to install Amazon Corretto 8+ or Java 8+ before using the AWS JDBC Driver for MySQL.
 
-### Obtaining the AWS JDBC Driver for MySQL
+### Installing or Upgrading the AWS JDBC Driver for MySQL
 
-#### Direct Download
+#### Direct Download of the .jar file
 The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that can be downloaded directly from [GitHub Releases](https://github.com/awslabs/aws-mysql-jdbc/releases) or [Maven Central](https://search.maven.org/search?q=g:software.aws.rds). To install the driver, obtain the corresponding JAR file and include it in the application's CLASSPATH:
 
-**Example - Direct Download via wget**
+**Example - Direct download with wget**
 ```bash
 wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
-```
-
-**Example - Adding the Driver to the CLASSPATH**
-```bash
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
 export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
 ```
 
-#### As a Maven Dependency
+**Upgrading to a newer version with wget**
+
+To upgrade the driver, replace the .jar file of your earlier driver with the new `.jar` file. After replacing the `.jar` file, update the CLASSPATH to include the name of the new file. For example, to upgrade to version 1.0.0:
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.0.0/aws-mysql-jdbc-1.0.0.jar
+cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
+```
+
+#### As a Maven dependency
 You can use [Maven's dependency management](https://search.maven.org/search?q=g:software.aws.rds) to obtain the driver by adding the following configuration to the application's Project Object Model (POM) file:
 
 **Example - Maven**
@@ -58,7 +64,20 @@ You can use [Maven's dependency management](https://search.maven.org/search?q=g:
 </dependencies>
 ```
 
-#### As a Gradle Dependency
+**Upgrading to a newer version with Maven**
+
+To upgrade to a newer version of the driver, replace the version number identified in the `pom.xml` file with the newer driver version. For example, to upgrade to version 1.0.0, modify the file to include:
+```xml
+<dependencies>
+  <dependency>
+    <groupId>software.aws.rds</groupId>
+    <artifactId>aws-mysql-jdbc</artifactId>
+    <version>1.0.0</version>
+  </dependency>
+</dependencies>
+```
+
+#### As a Gradle dependency
 You can use [Gradle's dependency management](https://search.maven.org/search?q=g:software.aws.rds) to obtain the driver by adding the following configuration to the application's ```build.gradle``` file:
 
 **Example - Gradle**
@@ -67,6 +86,103 @@ dependencies {
     implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.4.0'
 }
 ```
+
+**Upgrading to a newer version with Gradle**
+
+To upgrade to a newer version of the driver, replace the version number identified in the application's ```build.gradle``` file with the newer driver version. For example, to upgrade to version 1.0.0:
+```gradle
+dependencies {
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '1.0.0'
+}
+```
+
+#### Using an IDE (IntelliJ)
+To use the driver with an IDE (for example, IntelliJ), download the `.jar` file and copy it into your `libs` folder.  Then, add the file to your CLASSPATH: 
+
+**Example - IntelliJ**
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+```
+
+After downloading the `.jar` file and updating the CLASSPATH, add the driver information to your `Project`:
+
+1. Open `Project Structure` in the IntelliJ user interface.
+
+2. Select `Modules`.
+
+3. Open the `Dependencies` tab for your project.
+
+4. Add the AWS JDBC Driver for MySQL .jar file.
+
+5. Update the connection URL prefix from jdbc:mysql:// to jdbc:mysql:aws://.
+
+**Upgrading to a newer version with IntelliJ**
+
+To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+```
+
+Then, follow the steps listed above to update your project to the latest version.
+
+
+#### Using the Driver with a database client (DBeaver)
+To use the driver with the DBeaver database client, download the `.jar` file, copy the file to your `libs` folder, and add the file to your `CLASSPATH`:
+
+**Example - DBeaver**
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+```
+
+After downloading the .jar file and adding it to your CLASSPATH, add the driver information to the DBeaver client:
+
+1. Open DBeaver’s `Driver Manager` window and click `New` to add the AWS JDBC Driver.
+
+2. In `Settings`, enter the following information:
+
+```bash
+Default Port: 3306
+Driver Name: AWS JDBC Driver for MySQL
+Class Name: software.aws.rds.jdbc.mysql.Driver
+URL Template: jdbc:mysql:aws://<endpoint>
+```
+
+3. Go to the `Libraries` tab, click `Add Artifact` and add the following dependency declaration:
+
+```bash
+<dependency>
+  <groupId>software.aws.rds</groupId>
+  <artifactId>aws-mysql-jdbc</artifactId>
+</dependency>
+```
+
+4. DBeaver will respond: `Artifacts Found: 1`.
+
+5. Click `OK` to finish adding the driver.
+
+After adding driver information, you can create new connections that use the AWS JDBC Driver for MySQL.
+
+**Upgrading to a newer version with the DBeaver Client**
+
+To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-1.0.0.jar
+cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+```
+Then, follow the steps listed above to update your DBeaver client settings.
+
+
 ### Using the AWS JDBC Driver for MySQL
 The AWS JDBC Driver for MySQL is drop-in compatible, so usage is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight driver usage specific to failover.
 
