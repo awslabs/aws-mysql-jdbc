@@ -30,14 +30,13 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.exception.DockerException;
-import eu.rekawek.toxiproxy.Proxy;
-import eu.rekawek.toxiproxy.model.ToxicDirection;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.InternetProtocol;
 import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.containers.output.FrameConsumerResultCallback;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -50,17 +49,19 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.sql.Connection;
-import java.sql.Statement;
-import java.sql.ResultSet;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.model.ToxicDirection;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ContainerHelper {
@@ -79,12 +80,33 @@ public class ContainerHelper {
     assertEquals(0, exitCode, "Some tests failed.");
   }
 
+  public void debugTest(GenericContainer<?> container, String task) throws IOException, InterruptedException {
+    System.out.println("==== Container console feed ==== >>>>");
+    Consumer<OutputFrame> consumer = new ConsoleConsumer();
+    Long exitCode = execInContainer(container, consumer, "./gradlew", task, "--debug-jvm");
+    System.out.println("==== Container console feed ==== <<<<");
+    assertEquals(0, exitCode, "Some tests failed.");
+  }
+
   public GenericContainer<?> createTestContainer(String dockerImageName) {
     return createTestContainer(dockerImageName, TEST_CONTAINER_IMAGE_NAME);
   }
 
   public GenericContainer<?> createTestContainer(String dockerImageName, String testContainerImageName) {
-    return new GenericContainer<>(
+    class FixedExposedPortContainer<SELF extends GenericContainer<SELF>> extends GenericContainer<SELF> {
+
+      public FixedExposedPortContainer(ImageFromDockerfile withDockerfileFromBuilder) {
+        super(withDockerfileFromBuilder);
+      }
+
+      public SELF withFixedExposedPort(int hostPort, int containerPort) {
+        super.addFixedExposedPort(hostPort, containerPort, InternetProtocol.TCP);
+
+        return self();
+      }
+    }
+
+    return new FixedExposedPortContainer<>(
       new ImageFromDockerfile(dockerImageName, true)
         .withDockerfileFromBuilder(builder ->
           builder
@@ -92,7 +114,9 @@ public class ContainerHelper {
             .run("mkdir", "app")
             .workDir("/app")
             .entryPoint("/bin/sh -c \"while true; do sleep 30; done;\"")
+            .expose(5005) // Exposing ports for debugger to be attached
             .build()))
+      .withFixedExposedPort(5005, 5005) // Mapping container port to host
       .withFileSystemBind("./.git", "/app/.git", BindMode.READ_WRITE)
       .withFileSystemBind("./build/reports/tests", "/app/build/reports/tests", BindMode.READ_WRITE) // some tests may write some files here
       .withFileSystemBind("./config", "/app/config", BindMode.READ_WRITE)

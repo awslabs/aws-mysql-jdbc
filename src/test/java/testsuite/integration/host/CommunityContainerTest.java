@@ -72,6 +72,13 @@ public class CommunityContainerTest {
     containerHelper.runTest(communityTestContainer, "in-container-community");
   }
 
+  @Test
+  public void testDebugCommunityTestInContainer()
+      throws UnsupportedOperationException, IOException, InterruptedException {
+
+    containerHelper.debugTest(communityTestContainer, "in-container-community");
+  }
+
   protected static GenericContainer<?> createTestContainer(
           final Network network, String testContainerNetworkAlias, String mysqlContainerName, int mysqlPort) {
     final GenericContainer<?> container =

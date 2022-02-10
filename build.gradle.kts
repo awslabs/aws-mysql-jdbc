@@ -348,19 +348,11 @@ signing {
 // Run integrations tests in container
 // Environment is being configured and started
 tasks.register<Test>("test-integration-docker") {
-    this.testLogging {
-        this.showStandardStreams = true
-    }
-    useJUnitPlatform()
     group = "verification"
     filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunTestInContainer")
 }
 
 tasks.register<Test>("test-integration-performance-docker") {
-    this.testLogging {
-        this.showStandardStreams = true
-    }
-    useJUnitPlatform()
     group = "verification"
     filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunPerformanceTestInContainer")
 }
@@ -368,38 +360,39 @@ tasks.register<Test>("test-integration-performance-docker") {
 // Run community tests in container
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("test-community-docker") {
-    this.testLogging {
-        this.showStandardStreams = true
-    }
-    useJUnitPlatform()
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest")
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testRunCommunityTestInContainer")
+}
+
+// Run integrations tests in container with debugger
+// Environment is being configured and started
+tasks.register<Test>("debug-integration-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugTestInContainer")
+}
+
+tasks.register<Test>("debug-integration-performance-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugPerformanceTestInContainer")
+}
+
+// Run community tests in container with debugger
+// Environment (like supplementary containers) should be up and running!
+tasks.register<Test>("debug-community-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testDebugCommunityTestInContainer")
 }
 
 tasks.register<Test>("in-container-aurora") {
-    this.testLogging {
-        this.showStandardStreams = true
-    }
-    useJUnitPlatform()
-    group = "verification"
     filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlIntegrationTest")
 }
 
 tasks.register<Test>("in-container-aurora-performance") {
-    this.testLogging {
-        this.showStandardStreams = true
-    }
-    useJUnitPlatform()
-    group = "verification"
     filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlPerformanceIntegrationTest")
 }
 
 // Run all tests excluding integration tests
 tasks.register<Test>("in-container-community") {
-    this.testLogging {
-        this.showStandardStreams = true
-    }
-    useJUnitPlatform()
     // Pass the property to tests
     fun passProperty(name: String, default: String? = null) {
         val value = System.getProperty(name) ?: default
@@ -408,7 +401,13 @@ tasks.register<Test>("in-container-community") {
     passProperty("user.timezone")
     passProperty("com.mysql.cj.testsuite.url")
 
-    group = "verification"
     filter.excludeTestsMatching("testsuite.integration.*")
     filter.excludeTestsMatching("testsuite.failover.*")
+}
+
+tasks.withType<Test> {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
 }

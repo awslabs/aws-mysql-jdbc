@@ -156,7 +156,7 @@ public class AuroraIntegrationContainerTest {
 
   @Test
   public void testRunTestInContainer()
-    throws UnsupportedOperationException, IOException, InterruptedException, SQLException {
+    throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.runTest(integrationTestContainer, "in-container-aurora");
   }
@@ -166,6 +166,20 @@ public class AuroraIntegrationContainerTest {
           throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.runTest(integrationTestContainer, "in-container-aurora-performance");
+  }
+
+  @Test
+  public void testDebugTestInContainer()
+      throws UnsupportedOperationException, IOException, InterruptedException {
+
+    containerHelper.debugTest(integrationTestContainer, "in-container-aurora");
+  }
+
+  @Test
+  public void testDebugPerformanceTestInContainer()
+      throws UnsupportedOperationException, IOException, InterruptedException {
+
+    containerHelper.debugTest(integrationTestContainer, "in-container-aurora-performance");
   }
 
   protected static GenericContainer<?> initializeTestContainer(final Network network, List<String> mySqlInstances) {
