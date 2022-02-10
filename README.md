@@ -124,9 +124,9 @@ After downloading the `.jar` file and updating the CLASSPATH, add the driver inf
 To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
 
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
-cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.0.0/aws-mysql-jdbc-1.0.0.jar
+cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
 ```
 
 Then, follow the steps listed above to update your project to the latest version.
@@ -176,9 +176,9 @@ After adding driver information, you can create new connections that use the AWS
 To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
 
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-1.0.0.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.0.0/aws-mysql-jdbc-1.0.0.jar
 cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
 ```
 Then, follow the steps listed above to update your DBeaver client settings.
 
