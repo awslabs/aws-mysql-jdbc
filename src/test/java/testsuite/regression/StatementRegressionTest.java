@@ -10252,12 +10252,14 @@ public class StatementRegressionTest extends BaseTestCase {
         int currPrepCount = this.rs.getInt(2);
         for (int i = 0; i < 10; i++) {
             testBug74932ExecuteStmts(testConn, sql1, sql2);
-
             this.rs = testConn.createStatement().executeQuery("SHOW STATUS LIKE 'Prepared_stmt_count'");
             assertTrue(this.rs.next());
             assertEquals(2, this.rs.getInt(2) - currPrepCount);
         }
         testConn.close();
+
+        // Wait for the connection to be closed and for any resources to be cleaned up
+        Thread.sleep(5000);
 
         // Prepare same statement.
         testConn = getConnectionWithProps(props);
@@ -11673,7 +11675,7 @@ public class StatementRegressionTest extends BaseTestCase {
             st.setQueryTimeout(2);
 
             PreparedStatement ps = con.prepareStatement("update testBug20391550 set c2=? where c1=?");
-            assertThrows(SQLException.class, "Statement cancelled due to timeout or client request", () -> st.executeQuery("select sleep(3)"));
+            assertThrows(SQLException.class, "Statement cancelled due to timeout or client request", () -> st.executeQuery("select sleep(10)"));
 
             assertThrows(SQLException.class, "No operations allowed after statement closed.", () -> {
                 ps.setInt(2, 100);
@@ -12152,6 +12154,9 @@ public class StatementRegressionTest extends BaseTestCase {
             }
         };
 
+        // Give previous tests time to close any sessions/cleanup
+        Thread.sleep(5000);
+
         int initialSessionCount = sessionCount.get();
 
         Properties props = new Properties();
@@ -12177,6 +12182,10 @@ public class StatementRegressionTest extends BaseTestCase {
         assertEquals(1, sessionCount.get() - initialSessionCount);
 
         testConn.close();
+
+        // Wait for the connection to be closed and for any resources to be cleaned up
+        Thread.sleep(3000);
+
         assertEquals(0, sessionCount.get() - initialSessionCount);
     }
 
@@ -12199,6 +12208,9 @@ public class StatementRegressionTest extends BaseTestCase {
                 throw new RuntimeException(e.getMessage(), e);
             }
         };
+
+        // Give previous tests time to close any sessions/cleanup
+        Thread.sleep(5000);
 
         int initialSessionCount = sessionCount.get();
 
