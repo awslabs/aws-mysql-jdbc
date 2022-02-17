@@ -28,6 +28,7 @@ package testsuite.integration.host;
 
 import com.mysql.cj.util.StringUtils;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -49,6 +50,11 @@ import testsuite.integration.utility.ContainerHelper;
  * Integration tests against RDS Aurora cluster.
  * Uses {@link AuroraTestUtility} which requires AWS Credentials to create/destroy clusters & set EC2 Whitelist.
  *
+ * The following environment variables are REQUIRED for AWS IAM tests
+ * - AWS_ACCESS_KEY_ID, AWS access key
+ * - AWS_SECRET_ACCESS_KEY, AWS secret access key
+ * - AWS_SESSION_TOKEN, AWS Session token
+ *
  * The following environment variables are optional but suggested differentiating between runners
  * Provided values are just examples.
  * Assuming cluster endpoint is "database-cluster-name.XYZ.us-east-2.rds.amazonaws.com"
@@ -65,14 +71,26 @@ public class AuroraIntegrationContainerTest {
   private static final String TEST_USERNAME =
       !StringUtils.isNullOrEmpty(System.getenv("TEST_USERNAME")) ?
         System.getenv("TEST_USERNAME") : "my_test_username";
+  private static final String TEST_DB_USER =
+      !StringUtils.isNullOrEmpty(System.getenv("TEST_DB_USER")) ?
+        System.getenv("TEST_DB_USER") : "jane_doe";
   private static final String TEST_PASSWORD =
       !StringUtils.isNullOrEmpty(System.getenv("TEST_PASSWORD")) ?
         System.getenv("TEST_PASSWORD") : "my_test_password";
+  protected static final String TEST_DB =
+      !StringUtils.isNullOrEmpty(System.getenv("TEST_DB")) ? System.getenv("TEST_DB") : "test";
+
+  private static final String AWS_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
+  private static final String AWS_SECRET_ACCESS_KEY = System.getenv("AWS_SECRET_ACCESS_KEY");
+  private static final String AWS_SESSION_TOKEN = System.getenv("AWS_SESSION_TOKEN");
 
   private static final String DB_CONN_STR_PREFIX = "jdbc:mysql://";
   private static String dbConnStrSuffix = "";
   private static final String DB_CONN_PROP = "?enabledTLSProtocols=TLSv1.2";
 
+  private static final String TEST_DB_REGION =
+      !StringUtils.isNullOrEmpty(System.getenv("TEST_DB_REGION")) ?
+        System.getenv("TEST_DB_REGION") : "us-east-2";
   private static final String TEST_DB_CLUSTER_IDENTIFIER =
       !StringUtils.isNullOrEmpty(System.getenv("TEST_DB_CLUSTER_IDENTIFIER")) ?
           System.getenv("TEST_DB_CLUSTER_IDENTIFIER") : "test-idenifer";
@@ -89,12 +107,19 @@ public class AuroraIntegrationContainerTest {
   private static Network network;
 
   private static final ContainerHelper containerHelper = new ContainerHelper();
-  private static final AuroraTestUtility auroraUtil = new AuroraTestUtility();
+  private static final AuroraTestUtility auroraUtil = new AuroraTestUtility(TEST_DB_REGION);
 
   @BeforeAll
   static void setUp() throws SQLException, InterruptedException, UnknownHostException {
+    Assertions.assertNotNull(AWS_ACCESS_KEY_ID);
+    Assertions.assertNotNull(AWS_SECRET_ACCESS_KEY);
+    Assertions.assertNotNull(AWS_SESSION_TOKEN);
+
     // Comment out below to not create a new cluster & instances
-    dbConnStrSuffix = auroraUtil.createCluster(TEST_USERNAME, TEST_PASSWORD, TEST_DB_CLUSTER_IDENTIFIER);
+    // Note: You will need to set it to the proper DB Conn Suffix
+    // i.e. For "database-cluster-name.XYZ.us-east-2.rds.amazonaws.com"
+    // dbConnStrSuffix = "XYZ.us-east-2.rds.amazonaws.com"
+    dbConnStrSuffix = auroraUtil.createCluster(TEST_USERNAME, TEST_PASSWORD, TEST_DB, TEST_DB_CLUSTER_IDENTIFIER);
 
     // Comment out getting public IP to not add & remove from EC2 whitelist
     runnerIP = auroraUtil.getPublicIPAddress();
@@ -104,6 +129,13 @@ public class AuroraIntegrationContainerTest {
     dbHostClusterRo = TEST_DB_CLUSTER_IDENTIFIER + ".cluster-ro-" + dbConnStrSuffix;
 
     DriverManager.registerDriver(new Driver());
+
+    containerHelper.addAuroraAwsIamUser(
+        DB_CONN_STR_PREFIX + dbHostCluster + "/" + TEST_DB + DB_CONN_PROP,
+        TEST_USERNAME,
+        TEST_PASSWORD,
+        dbConnStrSuffix,
+        TEST_DB_USER);
 
     network = Network.newNetwork();
     mySqlInstances = containerHelper.getAuroraClusterInstances(
@@ -188,13 +220,19 @@ public class AuroraIntegrationContainerTest {
         .withNetworkAliases(TEST_CONTAINER_NAME)
         .withNetwork(network)
         .withEnv("TEST_USERNAME", TEST_USERNAME)
+        .withEnv("TEST_DB_USER", TEST_DB_USER)
         .withEnv("TEST_PASSWORD", TEST_PASSWORD)
+        .withEnv("TEST_DB", TEST_DB)
+        .withEnv("DB_REGION", TEST_DB_REGION)
         .withEnv("DB_CLUSTER_CONN", dbHostCluster)
         .withEnv("DB_RO_CLUSTER_CONN", dbHostClusterRo)
         .withEnv("TOXIPROXY_CLUSTER_NETWORK_ALIAS", "toxiproxy-instance-cluster")
         .withEnv("TOXIPROXY_RO_CLUSTER_NETWORK_ALIAS", "toxiproxy-ro-instance-cluster")
         .withEnv("PROXIED_CLUSTER_TEMPLATE", "?." + dbConnStrSuffix + PROXIED_DOMAIN_NAME_SUFFIX)
-        .withEnv("DB_CONN_STR_SUFFIX", "." + dbConnStrSuffix);
+        .withEnv("DB_CONN_STR_SUFFIX", "." + dbConnStrSuffix)
+        .withEnv("AWS_ACCESS_KEY_ID", AWS_ACCESS_KEY_ID)
+        .withEnv("AWS_SECRET_ACCESS_KEY", AWS_SECRET_ACCESS_KEY)
+        .withEnv("AWS_SESSION_TOKEN", AWS_SESSION_TOKEN);
 
     // Add mysql instances & proxies to container env
     for (int i = 0; i < mySqlInstances.size(); i++) {

@@ -67,13 +67,14 @@ import java.util.concurrent.TimeoutException;
  *
  * If using environment variables for credential provider
  *     Required
- *     - AWS_ACCESS_KEY
- *     - AWS_SECRET_KEY
+ *     - AWS_ACCESS_KEY_ID
+ *     - AWS_SECRET_ACCESS_KEY
  */
 public class AuroraTestUtility {
     // Default values
     private String dbUsername = "my_test_username";
     private String dbPassword = "my_test_password";
+    private String dbName = "test";
     private String dbIdentifier = "test-identifier";
     private String dbEngine = "aurora-mysql";
     private String dbInstanceClass = "db.r5.large";
@@ -81,8 +82,8 @@ public class AuroraTestUtility {
     private final String dbSecGroup = "default";
     private int numOfInstances = 5;
 
-    private AmazonRDS rdsClient;
-    private AmazonEC2 ec2Client;
+    private final AmazonRDS rdsClient;
+    private final AmazonEC2 ec2Client;
 
     private static final String DUPLICATE_IP_ERROR_CODE = "InvalidPermission.Duplicate";
 
@@ -128,6 +129,7 @@ public class AuroraTestUtility {
      * Creates RDS Cluster/Instances and waits until they are up, and proper IP whitelisting for databases.
      * @param username Master username for access to database
      * @param password Master password for access to database
+     * @param name Database name
      * @param identifier Database cluster identifier
      * @param engine Database engine to use, refer to https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html
      * @param instanceClass instance class, refer to https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
@@ -135,10 +137,11 @@ public class AuroraTestUtility {
      * @return An endpoint for one of the instances
      * @throws InterruptedException when clusters have not started after 30 minutes
      */
-    public String createCluster(String username, String password, String identifier, String engine, String instanceClass, int instances)
+    public String createCluster(String username, String password, String name, String identifier, String engine, String instanceClass, int instances)
         throws InterruptedException {
         dbUsername = username;
         dbPassword = password;
+        dbName = name;
         dbIdentifier = identifier;
         dbEngine = engine;
         dbInstanceClass = instanceClass;
@@ -150,14 +153,16 @@ public class AuroraTestUtility {
      * Creates RDS Cluster/Instances and waits until they are up, and proper IP whitelisting for databases.
      * @param username Master username for access to database
      * @param password Master password for access to database
+     * @param name Database name
      * @param identifier Database identifier
      * @return An endpoint for one of the instances
      * @throws InterruptedException when clusters have not started after 30 minutes
      */
-    public String createCluster(String username, String password, String identifier)
+    public String createCluster(String username, String password, String name, String identifier)
         throws InterruptedException {
         dbUsername = username;
         dbPassword = password;
+        dbName = name;
         dbIdentifier = identifier;
         return createCluster();
     }
@@ -171,6 +176,7 @@ public class AuroraTestUtility {
         // Create Cluster
         final CreateDBClusterRequest dbClusterRequest = new CreateDBClusterRequest()
             .withDBClusterIdentifier(dbIdentifier)
+            .withDatabaseName(dbName)
             .withMasterUsername(dbUsername)
             .withMasterUserPassword(dbPassword)
             .withSourceRegion(dbRegion)

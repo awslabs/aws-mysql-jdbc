@@ -240,7 +240,6 @@ public class ContainerHelper {
          final Statement stmt = conn.createStatement()) {
       // Get instances
       try (final ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
-        int instanceCount = 0;
         while (resultSet.next()) {
           // Get Instance endpoints
           final String hostEndpoint = resultSet.getString("SERVER_ID") + "." + hostBase;
@@ -249,6 +248,18 @@ public class ContainerHelper {
       }
     }
     return mySqlInstances;
+  }
+
+  public void addAuroraAwsIamUser(String connectionUrl, String userName, String password, String hostBase, String dbUser)
+      throws SQLException {
+
+    final String dropAwsIamUserSQL = "DROP USER IF EXISTS " + dbUser + ";";
+    final String createAwsIamUserSQL = "CREATE USER " + dbUser + " IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';";
+    try (final Connection conn = DriverManager.getConnection(connectionUrl, userName, password);
+        final Statement stmt = conn.createStatement()) {
+          stmt.execute(dropAwsIamUserSQL);
+          stmt.execute(createAwsIamUserSQL);
+    }
   }
 
   public List<ToxiproxyContainer> createProxyContainers(final Network network, List<String> clusterInstances, String proxyDomainNameSuffix) {
@@ -266,7 +277,7 @@ public class ContainerHelper {
   public int createAuroraInstanceProxies(List<String> clusterInstances, List<ToxiproxyContainer> containers, int port) {
     Set<Integer> proxyPorts = new HashSet<>();
 
-    for(int i = 0; i < clusterInstances.size(); i++) {
+    for (int i = 0; i < clusterInstances.size(); i++) {
       String instanceEndpoint = clusterInstances.get(i);
       ToxiproxyContainer container = containers.get(i);
       ToxiproxyContainer.ContainerProxy proxy = container.getProxy(instanceEndpoint, port);
@@ -334,5 +345,4 @@ public class ContainerHelper {
       // ignore
     }
   }
-
 }
