@@ -23,22 +23,28 @@ Although Aurora is able to provide maximum availability through the use of failo
 ### Prerequisites
 You need to install Amazon Corretto 8+ or Java 8+ before using the AWS JDBC Driver for MySQL.
 
-### Obtaining the AWS JDBC Driver for MySQL
+### Installing or Upgrading the AWS JDBC Driver for MySQL
 
-#### Direct Download
+#### Direct Download of the .jar file
 The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that can be downloaded directly from [GitHub Releases](https://github.com/awslabs/aws-mysql-jdbc/releases) or [Maven Central](https://search.maven.org/search?q=g:software.aws.rds). To install the driver, obtain the corresponding JAR file and include it in the application's CLASSPATH:
 
-**Example - Direct Download via wget**
+**Example - Direct download with wget**
 ```bash
 wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
-```
-
-**Example - Adding the Driver to the CLASSPATH**
-```bash
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
 export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
 ```
 
-#### As a Maven Dependency
+**Upgrading to a newer version with wget**
+
+To upgrade the driver, replace the .jar file of your earlier driver with the new `.jar` file. After replacing the `.jar` file, update the CLASSPATH to include the name of the new file. For example, to upgrade to version 1.0.0:
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.0.0/aws-mysql-jdbc-1.0.0.jar
+cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
+```
+
+#### As a Maven dependency
 You can use [Maven's dependency management](https://search.maven.org/search?q=g:software.aws.rds) to obtain the driver by adding the following configuration to the application's Project Object Model (POM) file:
 
 **Example - Maven**
@@ -52,7 +58,20 @@ You can use [Maven's dependency management](https://search.maven.org/search?q=g:
 </dependencies>
 ```
 
-#### As a Gradle Dependency
+**Upgrading to a newer version with Maven**
+
+To upgrade to a newer version of the driver, replace the version number identified in the `pom.xml` file with the newer driver version. For example, to upgrade to version 1.0.0, modify the file to include:
+```xml
+<dependencies>
+  <dependency>
+    <groupId>software.aws.rds</groupId>
+    <artifactId>aws-mysql-jdbc</artifactId>
+    <version>1.0.0</version>
+  </dependency>
+</dependencies>
+```
+
+#### As a Gradle dependency
 You can use [Gradle's dependency management](https://search.maven.org/search?q=g:software.aws.rds) to obtain the driver by adding the following configuration to the application's ```build.gradle``` file:
 
 **Example - Gradle**
@@ -61,6 +80,103 @@ dependencies {
     implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '0.4.0'
 }
 ```
+
+**Upgrading to a newer version with Gradle**
+
+To upgrade to a newer version of the driver, replace the version number identified in the application's ```build.gradle``` file with the newer driver version. For example, to upgrade to version 1.0.0:
+```gradle
+dependencies {
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '1.0.0'
+}
+```
+
+#### Using an IDE (IntelliJ)
+To use the driver with an IDE (for example, IntelliJ), download the `.jar` file and copy it into your `libs` folder.  Then, add the file to your CLASSPATH: 
+
+**Example - IntelliJ**
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+```
+
+After downloading the `.jar` file and updating the CLASSPATH, add the driver information to your `Project`:
+
+1. Open `Project Structure` in the IntelliJ user interface.
+
+2. Select `Modules`.
+
+3. Open the `Dependencies` tab for your project.
+
+4. Add the AWS JDBC Driver for MySQL .jar file.
+
+5. Update the connection URL prefix from jdbc:mysql:// to jdbc:mysql:aws://.
+
+**Upgrading to a newer version with IntelliJ**
+
+To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.0.0/aws-mysql-jdbc-1.0.0.jar
+cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
+```
+
+Then, follow the steps listed above to update your project to the latest version.
+
+
+#### Using the Driver with a database client (DBeaver)
+To use the driver with the DBeaver database client, download the `.jar` file, copy the file to your `libs` folder, and add the file to your `CLASSPATH`:
+
+**Example - DBeaver**
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/0.4.0/aws-mysql-jdbc-0.4.0.jar
+cp aws-mysql-jdbc-0.4.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-0.4.0.jar
+```
+
+After downloading the .jar file and adding it to your CLASSPATH, add the driver information to the DBeaver client:
+
+1. Open DBeaver’s `Driver Manager` window and click `New` to add the AWS JDBC Driver.
+
+2. In `Settings`, enter the following information:
+
+```bash
+Default Port: 3306
+Driver Name: AWS JDBC Driver for MySQL
+Class Name: software.aws.rds.jdbc.mysql.Driver
+URL Template: jdbc:mysql:aws://<endpoint>
+```
+
+3. Go to the `Libraries` tab, click `Add Artifact` and add the following dependency declaration:
+
+```bash
+<dependency>
+  <groupId>software.aws.rds</groupId>
+  <artifactId>aws-mysql-jdbc</artifactId>
+</dependency>
+```
+
+4. DBeaver will respond: `Artifacts Found: 1`.
+
+5. Click `OK` to finish adding the driver.
+
+After adding driver information, you can create new connections that use the AWS JDBC Driver for MySQL.
+
+**Upgrading to a newer version with the DBeaver Client**
+
+To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
+
+```bash
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.0.0/aws-mysql-jdbc-1.0.0.jar
+cp aws-mysql-jdbc-1.0.0.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
+```
+Then, follow the steps listed above to update your DBeaver client settings.
+
+
 ### Using the AWS JDBC Driver for MySQL
 The AWS JDBC Driver for MySQL is drop-in compatible, so usage is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight driver usage specific to failover.
 
@@ -239,7 +355,7 @@ public class FailoverSampleApp1 {
 ```
 
 #### 08007 - Transaction Resolution Unknown
-When the driver throws a SQLException with code ```08007```, the original connection failed within a transaction (while autocommit was set to false). In this scenario, the driver first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the driver recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, the user should:
+When the driver throws a SQLException with code ```08007```, the original connection failed within a transaction (while autocommit was set to false). In this scenario, the driver first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the driver recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, you should:
 
 - Reconfigure and reuse the original connection (the reconfigured session state will be the same as the original connection).
 
@@ -328,8 +444,6 @@ public class FailoverSampleApp2 {
 
 >### :warning: Warnings About Proper Usage of the AWS JDBC Driver for MySQL
 >1. A common practice when using JDBC drivers is to wrap invocations against a Connection object in a try-catch block, and dispose of the Connection object if an Exception is hit. If your application takes this approach, it will lose the fast-failover functionality offered by the Driver. When failover occurs, the Driver internally establishes a ready-to-use connection inside the original Connection object before throwing an exception to the user. If this Connection object is disposed of, the newly established connection will be thrown away. The correct practice is to check the SQL error code of the exception and reuse the Connection object if the error code indicates successful failover. [FailoverSampleApp1](#sample-code) and [FailoverSampleApp2](#sample-code-1) demonstrate this practice. See the section below on [Failover Exception Codes](#failover-exception-codes) for more details.
-> 
-> 
 >2. It is highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident about your application's usage of instance endpoints. Although the Driver will correctly failover to the new writer instance when using instance endpoints, use of these endpoints is discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The driver will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
 
 ## Enhanced Failure Monitoring
@@ -461,20 +575,24 @@ To run tests for the base driver functionality, use the following command:
 gradlew test-community-docker
 ```
 
-To run the integration tests, you will need some environment variables and an AWS Aurora database. Descriptions of the necessary environment variables is in the table below. To run the integration tests, use the following command (replace the <> tags with the appropriate values):
-```bash
-DB_READONLY_CONN_STR_SUFFIX=<.cluster-ro-XYZ.us-east-2.rds.amazonaws.com> TEST_USERNAME=<username> TEST_PASSWORD=<password> TEST_DB_CLUSTER_IDENTIFIER=<db-identifier> DB_CONN_STR_SUFFIX=<.XYZ.us-east-2.rds.amazonaws.com> TEST_DB_USER=<jane_doe> gradlew test-integration-docker
-```
-#### Environment Variables
+To run the integration tests, you will need some environment variables and an AWS User. Integration tests are set up to create clusters for each test. The AWS User will need access to do the following: create/delete Aurora clusters for testing, AWS IAM access for RDS, and whitelisting IP address of the current runner in EC2 Security Group. 
+Descriptions of the necessary environment variables is in the table below.
 
-| Environment Variable          | Environment Variable Value                                                                                                                                                | Example Value                               |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|
-| `DB_READONLY_CONN_STR_SUFFIX` | The URL suffix for the read-only cluster connection for your database cluster.                                                                                            | .cluster-ro-XYZ.us-east-2.rds.amazonaws.com |
-| `TEST_USERNAME`               | The username to access the database.                                                                                                                                      | username                                    |
-| `TEST_PASSWORD`               | The database cluster password.                                                                                                                                            | password                                    |
-| `TEST_DB_CLUSTER_IDENTIFIER`  | The database identifier for your Aurora cluster (found under the “DB Identifier” column when managing your RDS databases in AWS Management Console).                      | db-identifier                               |
-| `DB_CONN_STR_SUFFIX`          | The suffix URL pattern to use for connections that are made directly to an instance in your database cluster. This should also include the database to use for the tests. | .XYZ.us-east-2.rds.amazonaws.com            |
-| `TEST_DB_USER`                | User within the database that is identified with AWS IAM database authentication. This is used for AWS IAM authentication.                                                | jane_doe                                    |
+To run the integration tests, use the following command (replace the <> tags with the appropriate values):
+```bash
+AWS_ACCESS_KEY_ID=<ASIAIOSFODNN7EXAMPLE> AWS_SECRET_ACCESS_KEY=<wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY> AWS_SESSION_TOKEN=<AQoDYXdzEJr...<remainder of session token>> gradlew test-integration-docker
+```
+
+#### Environment Variables
+| Environment Variable | Required        | Description  | Example Value |
+| -------------------- |:---------------:|:------------:| ------------- |
+| `AWS_ACCESS_KEY_ID` | Yes | Access keys for CLI, SDK, & API access | ASIAIOSFODNN7EXAMPLE |
+| `AWS_SECRET_ACCESS_KEY` | Yes | Secret Access keys for CLI, SDK, & API access | wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY |
+| `AWS_SESSION_TOKEN` | Required if using [temporary AWS credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html). | AWS Session Token for CLI, SDK, & API access. | AQoDYXdzEJr...<remainder of session token> |
+| `TEST_DB_CLUSTER_IDENTIFIER` | No, but suggested to set | The database identifier for your Aurora cluster. It is suggested to have this set to avoid conflicting with existing clusters. | db-identifier |
+| `TEST_USERNAME` | No | The username to access the database. | username |
+| `TEST_PASSWORD` | No | The database cluster password. | password |
+| `TEST_DB_USER` | No | User within the database that is identified with AWS IAM database authentication. This is used for AWS IAM authentication. | jane_doe |
 
 ## Known Issues
 ### SSLHandshakeException
