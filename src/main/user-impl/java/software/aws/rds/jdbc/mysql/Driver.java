@@ -31,7 +31,6 @@
 package software.aws.rds.jdbc.mysql;
 
 import com.mysql.cj.jdbc.NonRegisteringDriver;
-import com.mysql.cj.jdbc.ha.ca.plugins.ConnectionPluginManager;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -86,12 +85,5 @@ public class Driver extends NonRegisteringDriver {
    */
   public Driver() throws SQLException {
     // Required for Class.forName().newInstance()
-  }
-
-  /**
-   * Release all resources currently held up by {@link ConnectionPluginManager}.
-   */
-  public static void releasePluginManagers() {
-    ConnectionPluginManager.releaseAllResources();
   }
 }
