@@ -697,8 +697,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     List<HostInfo> latestTopology =
         this.topologyService.getTopology(connection, forceUpdate);
 
-    this.hosts = latestTopology;
     updateHostIndex(latestTopology);
+    this.hosts = latestTopology;
   }
 
   boolean isCurrentConnectionReadOnly() {
