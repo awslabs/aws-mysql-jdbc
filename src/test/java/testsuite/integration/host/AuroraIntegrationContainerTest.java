@@ -138,7 +138,7 @@ public class AuroraIntegrationContainerTest {
         TEST_DB_USER);
 
     network = Network.newNetwork();
-    mySqlInstances = containerHelper.getAuroraClusterInstances(
+    mySqlInstances = containerHelper.getAuroraInstanceEndpoints(
             DB_CONN_STR_PREFIX + dbHostCluster + DB_CONN_PROP,
             TEST_USERNAME,
             TEST_PASSWORD,

@@ -71,6 +71,7 @@ public class ContainerHelper {
 
   private static final String RETRIEVE_TOPOLOGY_SQL =
           "SELECT SERVER_ID FROM information_schema.replica_host_status ORDER BY IF(SESSION_ID = 'MASTER_SESSION_ID', 0, 1)";
+  private static final String SERVER_ID = "SERVER_ID";
 
   public void runTest(GenericContainer<?> container, String task) throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
@@ -231,7 +232,7 @@ public class ContainerHelper {
     return container;
   }
 
-  public List<String> getAuroraClusterInstances(String connectionUrl, String userName, String password, String hostBase)
+  public List<String> getAuroraInstanceEndpoints(String connectionUrl, String userName, String password, String hostBase)
       throws SQLException {
 
     ArrayList<String> mySqlInstances = new ArrayList<>();
@@ -242,7 +243,26 @@ public class ContainerHelper {
       try (final ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
         while (resultSet.next()) {
           // Get Instance endpoints
-          final String hostEndpoint = resultSet.getString("SERVER_ID") + "." + hostBase;
+          final String hostEndpoint = resultSet.getString(SERVER_ID) + "." + hostBase;
+          mySqlInstances.add(hostEndpoint);
+        }
+      }
+    }
+    return mySqlInstances;
+  }
+
+  public List<String> getAuroraInstanceIds(String connectionUrl, String userName, String password)
+      throws SQLException {
+
+    ArrayList<String> mySqlInstances = new ArrayList<>();
+
+    try (final Connection conn = DriverManager.getConnection(connectionUrl, userName, password);
+        final Statement stmt = conn.createStatement()) {
+      // Get instances
+      try (final ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
+        while (resultSet.next()) {
+          // Get Instance endpoints
+          final String hostEndpoint = resultSet.getString(SERVER_ID);
           mySqlInstances.add(hostEndpoint);
         }
       }

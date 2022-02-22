@@ -42,6 +42,7 @@ jobs:
           | xargs));
           echo "::add-mask::${creds[0]}"
           echo "::add-mask::${creds[1]}"
+          echo "::add-mask::${creds[2]}"
           echo "TEMP_AWS_ACCESS_KEY_ID=${creds[0]}" >> $GITHUB_ENV
           echo "TEMP_AWS_SECRET_ACCESS_KEY=${creds[1]}" >> $GITHUB_ENV
           echo "TEMP_AWS_SESSION_TOKEN=${creds[2]}" >> $GITHUB_ENV

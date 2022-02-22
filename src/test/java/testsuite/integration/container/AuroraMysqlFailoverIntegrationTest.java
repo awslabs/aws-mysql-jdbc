@@ -40,7 +40,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -156,25 +155,6 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
       currentConnectionId = queryInstanceId(conn);
       assertTrue(
           readerAId.equals(currentConnectionId) || readerBId.equals(currentConnectionId));
-    }
-  }
-
-  /** Connect to a readonly cluster endpoint and ensure that we are doing a reader failover. */
-  @Test
-  public void test_clusterEndpointReadOnlyFailover() throws SQLException, IOException {
-    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
-      final String initialConnectionId = queryInstanceId(conn);
-      assertTrue(isDBInstanceReader(initialConnectionId));
-
-      final Proxy instanceProxy = proxyMap.get(initialConnectionId);
-      containerHelper.disableConnectivity(instanceProxy);
-      containerHelper.disableConnectivity(proxyReadOnlyCluster);
-
-      assertFirstQueryThrows(conn, "08S02");
-
-      final String newConnectionId = queryInstanceId(conn);
-      assertTrue(isDBInstanceReader(newConnectionId));
-      assertNotEquals(newConnectionId, initialConnectionId);
     }
   }
 
@@ -372,11 +352,8 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   public void test_pooledWriterConnection_BasicFailover()
       throws SQLException, InterruptedException {
 
-    final List<String> currentClusterTopology = getTopology();
-    final String initialWriterEndpoint = currentClusterTopology.get(0);
-    final String initialWriterId = initialWriterEndpoint.substring(0, initialWriterEndpoint.indexOf('.'));
-    final String nominatedWriterEndpoint = currentClusterTopology.get(1);
-    final String nominatedWriterId = nominatedWriterEndpoint.substring(0, nominatedWriterEndpoint.indexOf('.'));
+    final String initialWriterId = instanceIDs[0];
+    final String nominatedWriterId = instanceIDs[1];
 
     try (final Connection conn = createPooledConnectionWithInstanceId(initialWriterId)) {
       // Crash writer Instance1 and nominate Instance2 as the new writer
@@ -400,9 +377,8 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
 
   @Test
   public void test_takeOverConnectionProperties() throws SQLException, InterruptedException {
-    final List<String> currentClusterTopology = getTopology();
-    final String initialWriterEndpoint = currentClusterTopology.get(0);
-    final String initialWriterId = initialWriterEndpoint.substring(0, initialWriterEndpoint.indexOf('.'));
+
+    final String initialWriterId = instanceIDs[0];
 
     final Properties props = initDefaultProps();
     props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "false");

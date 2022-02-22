@@ -50,7 +50,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -183,16 +182,14 @@ public abstract class AuroraMysqlIntegrationBaseTest {
   }
 
   @BeforeEach
-  public void setUpEach() throws InterruptedException {
+  public void setUpEach() throws InterruptedException, SQLException {
     proxyMap.forEach((instance, proxy) -> containerHelper.enableConnectivity(proxy));
 
     // Always get the latest topology info with writer as first
-    List<DBClusterMember> dbClusterMembers = getDBClusterMemberList();
-    instanceIDs = dbClusterMembers.stream()
-        .sorted(Comparator.comparing((DBClusterMember x) -> !x.isClusterWriter())
-            .thenComparing(DBClusterMember::getDBInstanceIdentifier))
-        .map(DBClusterMember::getDBInstanceIdentifier)
-        .toArray(String[]::new);
+    List<String> latestTopology = getTopologyIds();
+    instanceIDs = new String[latestTopology.size()];
+    latestTopology.toArray(instanceIDs);
+
     clusterSize = instanceIDs.length;
     assertTrue(clusterSize >= 2); // many tests assume that cluster contains at least a writer and a reader
     assertTrue(isDBInstanceWriter(instanceIDs[0]));
@@ -258,14 +255,21 @@ public abstract class AuroraMysqlIntegrationBaseTest {
 
   // Return list of instance endpoints.
   // Writer instance goes first.
-  protected List<String> getTopology() throws SQLException {
+  protected List<String> getTopologyEndpoints() throws SQLException {
     final String dbConnHostBase =
             DB_CONN_STR_SUFFIX.startsWith(".")
                     ? DB_CONN_STR_SUFFIX.substring(1)
                     : DB_CONN_STR_SUFFIX;
 
     final String url = "jdbc:mysql://" + MYSQL_INSTANCE_1_URL + ":" + MYSQL_PORT;
-    return this.containerHelper.getAuroraClusterInstances(url, TEST_USERNAME, TEST_PASSWORD, dbConnHostBase);
+    return this.containerHelper.getAuroraInstanceEndpoints(url, TEST_USERNAME, TEST_PASSWORD, dbConnHostBase);
+  }
+
+  // Return list of instance Ids.
+  // Writer instance goes first.
+  protected List<String> getTopologyIds() throws SQLException {
+    final String url = "jdbc:mysql://" + MYSQL_INSTANCE_1_URL + ":" + MYSQL_PORT;
+    return this.containerHelper.getAuroraInstanceIds(url, TEST_USERNAME, TEST_PASSWORD);
   }
 
   protected static class TestLogger extends NullLogger {

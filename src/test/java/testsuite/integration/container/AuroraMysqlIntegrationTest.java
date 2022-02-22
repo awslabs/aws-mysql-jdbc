@@ -29,8 +29,9 @@ package testsuite.integration.container;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ha.plugins.failover.IClusterAwareMetricsReporter;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -55,15 +56,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@TestMethodOrder(MethodOrderer.MethodName.class)
 public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   protected String currWriter;
   protected String currReader;
-
-  @BeforeAll
-  public static void setUp() throws IOException, SQLException {
-    AuroraMysqlIntegrationBaseTest.setUp();
-  }
 
   @ParameterizedTest(name = "test_ConnectionString")
   @MethodSource("generateConnectionString")
@@ -116,15 +113,13 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   @Test
   public void test_LostConnectionToWriter() throws SQLException, IOException {
 
-    List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
-    assertNotNull(currentWriterEndpoint);
+    final String initialWriterId = instanceIDs[0];
 
     final Properties props = initDefaultProxiedProps();
     props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10000");
 
     // Connect to cluster
-    try (final Connection testConnection = connectToInstance(currentWriterEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+    try (final Connection testConnection = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
       // Get writer
       currWriter = queryInstanceId(testConnection);
 
@@ -150,19 +145,16 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   @Test
   public void test_LostConnectionToAllReaders() throws SQLException {
 
-    List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
-    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
-    assertNotNull(currentWriterEndpoint);
-    assertNotNull(anyReaderEndpoint);
+    String currentWriterId = instanceIDs[0];
+    String anyReaderId = instanceIDs[1];
 
     // Get Writer
-    try (final Connection checkWriterConnection = connectToInstance(currentWriterEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+    try (final Connection checkWriterConnection = connectToInstance(currentWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
       currWriter = queryInstanceId(checkWriterConnection);
     }
 
     // Connect to cluster
-    try (final Connection testConnection = connectToInstance(anyReaderEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+    try (final Connection testConnection = connectToInstance(anyReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
       // Get reader
       currReader = queryInstanceId(testConnection);
       assertNotEquals(currWriter, currReader);
@@ -193,21 +185,18 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   @Test
   public void test_LostConnectionToReaderInstance() throws SQLException, IOException {
 
-    List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
-    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
-    assertNotNull(currentWriterEndpoint);
-    assertNotNull(anyReaderEndpoint);
+    String currentWriterId = instanceIDs[0];
+    String anyReaderId = instanceIDs[1];
 
     // Get Writer
-    try (final Connection checkWriterConnection = connectToInstance(currentWriterEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+    try (final Connection checkWriterConnection = connectToInstance(currentWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
       currWriter = queryInstanceId(checkWriterConnection);
     } catch (SQLException e) {
       fail(e);
     }
 
     // Connect to instance
-    try (final Connection testConnection = connectToInstance(anyReaderEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+    try (final Connection testConnection = connectToInstance(anyReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
       // Get reader
       currReader = queryInstanceId(testConnection);
 
@@ -233,19 +222,16 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   @Test
   public void test_LostConnectionReadOnly() throws SQLException, IOException {
 
-    List<String> currentClusterTopology = getTopology();
-    String currentWriterEndpoint = (currentClusterTopology.size() >= 1) ? currentClusterTopology.get(0) : null;
-    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
-    assertNotNull(currentWriterEndpoint);
-    assertNotNull(anyReaderEndpoint);
+    String currentWriterId = instanceIDs[0];
+    String anyReaderId = instanceIDs[1];
 
     // Get Writer
-    try (final Connection checkWriterConnection = connectToInstance(currentWriterEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+    try (final Connection checkWriterConnection = connectToInstance(currentWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
       currWriter = queryInstanceId(checkWriterConnection);
     }
 
     // Connect to instance
-    try (final Connection testConnection = connectToInstance(anyReaderEndpoint + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+    try (final Connection testConnection = connectToInstance(anyReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
       // Get reader
       currReader = queryInstanceId(testConnection);
 
@@ -393,7 +379,6 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    */
   @Test
   public void test_CollectClusterMetrics() throws SQLException {
-    List<String> currentClusterTopology = getTopology();
 
     final Properties props = initDefaultProps();
     props.setProperty(PropertyKey.gatherPerfMetrics.getKeyName(), "TRUE");
@@ -407,8 +392,8 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     final List<String> logs = logger.getLogs();
 
     // Not collecting for instances
-    for (int i = 0; i < currentClusterTopology.size(); i++) {
-      final String instanceUrl = currentClusterTopology.get(i);
+    for (int i = 0; i < clusterSize; i++) {
+      final String instanceUrl = instanceIDs[i] + DB_CONN_STR_SUFFIX;
       IClusterAwareMetricsReporter.reportMetrics(instanceUrl + ":" + MYSQL_PORT, logger);
       Assertions.assertEquals("** No metrics collected for '" + instanceUrl + ":" + MYSQL_PORT + "' **\n", logs.get(i));
     }
@@ -423,21 +408,20 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    */
   @Test
   public void test_CollectInstanceMetrics() throws SQLException {
-    List<String> currentClusterTopology = getTopology();
-    String anyReaderEndpoint = (currentClusterTopology.size() >= 2) ? currentClusterTopology.get(1) : null;
+    String anyReaderId = instanceIDs[1];
 
     final Properties props = initDefaultProps();
     props.setProperty(PropertyKey.gatherPerfMetrics.getKeyName(), "TRUE");
     props.setProperty(PropertyKey.gatherAdditionalMetricsOnInstance.getKeyName(), "TRUE");
     IClusterAwareMetricsReporter.resetMetrics();
 
-    final Connection conn = connectToInstance(anyReaderEndpoint, MYSQL_PORT, props);
+    final Connection conn = connectToInstance(anyReaderId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props);
     conn.close();
 
     final TestLogger logger = new TestLogger();
     final List<String> logs = logger.getLogs();
 
-    IClusterAwareMetricsReporter.reportMetrics(anyReaderEndpoint + ":" + MYSQL_PORT, logger, true);
+    IClusterAwareMetricsReporter.reportMetrics(anyReaderId + DB_CONN_STR_SUFFIX + ":" + MYSQL_PORT, logger, true);
     Assertions.assertTrue(logs.size() > 1);
   }
 
@@ -592,4 +576,24 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
               || secondReaderInstanceId.equals(lastInstanceId));
     }
   }
+
+  /** Connect to a readonly cluster endpoint and ensure that we are doing a reader failover. */
+  @Test
+  public void test_ClusterEndpointReadOnlyFailover() throws SQLException, IOException {
+    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT)) {
+      final String initialConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(initialConnectionId));
+
+      final Proxy instanceProxy = proxyMap.get(initialConnectionId);
+      containerHelper.disableConnectivity(instanceProxy);
+      containerHelper.disableConnectivity(proxyReadOnlyCluster);
+
+      assertFirstQueryThrows(conn, "08S02");
+
+      final String newConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(newConnectionId));
+      assertNotEquals(newConnectionId, initialConnectionId);
+    }
+  }
+
 }

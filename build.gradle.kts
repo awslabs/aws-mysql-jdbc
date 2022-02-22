@@ -221,6 +221,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-commons:1.8.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.8.2")
+    testImplementation("org.junit.platform:junit-platform-suite-engine:1.8.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.testcontainers:testcontainers:1.16.2")
@@ -383,11 +384,10 @@ tasks.register<Test>("debug-community-docker") {
     filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testDebugCommunityTestInContainer")
 }
 
+// Integration tests are run in a specific order.
+// To add more tests, see testsuite.integration.container.IntegrationTestSuite.java
 tasks.register<Test>("in-container-aurora") {
-    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlIntegrationTest")
-    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlFailoverIntegrationTest")
-    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlHardFailureIntegrationTest")
-    filter.includeTestsMatching("testsuite.integration.container.ReplicationFailoverIntegrationTest")
+    filter.includeTestsMatching("testsuite.integration.container.IntegrationTestSuite")
 }
 
 tasks.register<Test>("in-container-aurora-performance") {
