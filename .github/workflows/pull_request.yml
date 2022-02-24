@@ -19,8 +19,7 @@ jobs:
   ubuntu-latest-aurora-run-integration-tests:
     needs: [approve]
     concurrency: IntegrationTests
-    environment:
-      name: Integration Forked Pull Request
+    environment: 'Integration Forked Pull Request'
     name: 'Run Integration Tests'
     runs-on: ubuntu-latest
     steps:
