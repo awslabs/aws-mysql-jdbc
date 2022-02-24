@@ -1,8 +1,7 @@
-name: Main CI
+name: Pull Request CI
 
 on:
-  workflow_dispatch:
-  push:
+  pull_request:
     branches:
       - main
 
@@ -11,8 +10,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  approve:
+    name: 'Require Approval'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve
+        run: echo For security reasons, all pull requests need to be approved first before running any automated CI.
   ubuntu-latest-aurora-run-integration-tests:
+    needs: [approve]
     concurrency: IntegrationTests
+    environment:
+      name: Integration Forked Pull Request
     name: 'Run Integration Tests'
     runs-on: ubuntu-latest
     steps:

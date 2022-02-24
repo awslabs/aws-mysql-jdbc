@@ -196,7 +196,8 @@ public class AuroraTestUtility {
             .withDBClusterIdentifier(dbIdentifier)
             .withDBInstanceClass(dbInstanceClass)
             .withEngine(dbEngine)
-            .withPubliclyAccessible(true);
+            .withPubliclyAccessible(true)
+            .withTags(testRunnerTag);
 
         for (int i = 1; i <= numOfInstances; i++) {
             rdsClient.createDBInstance(dbInstanceRequest.withDBInstanceIdentifier(dbIdentifier + "-" + i));
