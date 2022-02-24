@@ -93,7 +93,7 @@ public class AuroraIntegrationContainerTest {
         System.getenv("TEST_DB_REGION") : "us-east-2";
   private static final String TEST_DB_CLUSTER_IDENTIFIER =
       !StringUtils.isNullOrEmpty(System.getenv("TEST_DB_CLUSTER_IDENTIFIER")) ?
-          System.getenv("TEST_DB_CLUSTER_IDENTIFIER") : "test-idenifer";
+          System.getenv("TEST_DB_CLUSTER_IDENTIFIER") : "test-identifier";
   private static final String PROXIED_DOMAIN_NAME_SUFFIX = ".proxied";
   private static List<ToxiproxyContainer> proxyContainers = new ArrayList<>();
   private static List<String> mySqlInstances = new ArrayList<>();
@@ -144,7 +144,7 @@ public class AuroraIntegrationContainerTest {
             TEST_PASSWORD,
             dbConnStrSuffix);
     proxyContainers = containerHelper.createProxyContainers(network, mySqlInstances, PROXIED_DOMAIN_NAME_SUFFIX);
-    for(ToxiproxyContainer container : proxyContainers) {
+    for (ToxiproxyContainer container : proxyContainers) {
       container.start();
     }
     mySQLProxyPort = containerHelper.createAuroraInstanceProxies(mySqlInstances, proxyContainers, MYSQL_PORT);
@@ -250,7 +250,7 @@ public class AuroraIntegrationContainerTest {
     container.addEnv("PROXIED_DOMAIN_NAME_SUFFIX", PROXIED_DOMAIN_NAME_SUFFIX);
     container.addEnv("MYSQL_PROXY_PORT", Integer.toString(mySQLProxyPort));
 
-    System.out.println("Toxyproxy Instances port: " + mySQLProxyPort);
+    System.out.println("Toxiproxy Instances port: " + mySQLProxyPort);
     System.out.println("Instances Proxied: " + mySqlInstances.size());
 
     container.start();

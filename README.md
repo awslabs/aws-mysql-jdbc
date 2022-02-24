@@ -235,7 +235,7 @@ To learn how to write custom plugins, refer to examples located inside [Custom P
 | `useConnectionPlugins` | Boolean | No | When set to the default value `true`, the connection p[ugins will be loaded, including the Failover and Enhanced Failure Monitor plugins. When set to `false`, the connection plugins will not be loaded and the driver will instead execute JDBC methods directly. <br><br> **NOTE:** Since the failover functionality and Enhanced Failure Monitoring are implemented with plugins, disabling connection plugins will also disable such functionality. | `true` |
 | `connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories that will create the plugin objects. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` | `com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` |
 
-## Failover
+## Failover Plugin
 
 The failover plugin is loaded by default and can be disabled by setting parameter `enableClusterAwareFailover` to `false`.
 
@@ -439,6 +439,28 @@ public class FailoverSampleApp2 {
          }
       }
    }
+}
+```
+
+### Connection Pooling
+The AWS JDBC Driver for MySQL is compatible with connection pooling, but some connection pooling libraries may contain additional behaviour when dealing with SQL exceptions. This means the exceptions created by the AWS JDBC Driver for MySQL may not be recognized, and depending on the connection pool, connections may be closed prematurely due to the unrecognized SQL exceptions. Users are recommended to investigate the connection pooling library of their choice, and to implement any required additional code to allow the connection pool to accept the exceptions raised by the driver. For example, the library HikariCP has an interface that users can implement to prevent connections from being closed immediately after failover, as seen below.
+
+#### Sample Code
+```java
+import com.zaxxer.hikari.SQLExceptionOverride;
+
+import java.sql.SQLException;
+
+public class HikariCPSQLException implements SQLExceptionOverride {
+    public Override adjudicate(final SQLException sqlException) {
+        String sqlState = sqlException.getSQLState();
+        if (sqlState.equalsIgnoreCase("08S02") ||
+            sqlState.equalsIgnoreCase("08007")) {
+            return Override.DO_NOT_EVICT;
+        } else {
+            return Override.CONTINUE_EVICT;
+        }
+    }
 }
 ```
 
