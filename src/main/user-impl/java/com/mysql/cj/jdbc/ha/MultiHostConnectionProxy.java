@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -66,20 +66,20 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
     private static final String METHOD_GET_TRANSACTION_ISOLATION = "getTransactionIsolation";
     private static final String METHOD_GET_SESSION_MAX_ROWS = "getSessionMaxRows";
 
-    protected List<HostInfo> hostsList;
+    List<HostInfo> hostsList;
     protected ConnectionUrl connectionUrl;
 
-    protected boolean autoReconnect = false;
+    boolean autoReconnect = false;
 
-    protected JdbcConnection thisAsConnection = null;
+    JdbcConnection thisAsConnection = null;
     JdbcConnection parentProxyConnection = null;
     JdbcConnection topProxyConnection = null;
 
-    protected JdbcConnection currentConnection = null;
+    JdbcConnection currentConnection = null;
 
-    protected boolean isClosed = false;
-    protected boolean closedExplicitly = false;
-    protected String closedReason = null;
+    boolean isClosed = false;
+    boolean closedExplicitly = false;
+    String closedReason = null;
 
     // Keep track of the last exception processed in 'dealWithInvocationException()' in order to avoid creating connections repeatedly from each time the same
     // exception is caught in every proxy instance belonging to the same call stack.
@@ -134,7 +134,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected MultiHostConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
+    MultiHostConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
         this();
         initializeHostsSpecs(connectionUrl, connectionUrl.getHostsList());
     }
@@ -233,7 +233,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @return
      *         The proxied object or the original one if it does not implement a JDBC interface.
      */
-    protected Object proxyIfReturnTypeIsJdbcInterface(Class<?> returnType, Object toProxy) {
+    Object proxyIfReturnTypeIsJdbcInterface(Class<?> returnType, Object toProxy) {
         if (toProxy != null) {
             if (Util.isJdbcInterface(returnType)) {
                 Class<?> toProxyClass = toProxy.getClass();
@@ -251,7 +251,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @return
      *         The new InvocationHandler instance.
      */
-    protected InvocationHandler getNewJdbcInterfaceProxy(Object toProxy) {
+    InvocationHandler getNewJdbcInterfaceProxy(Object toProxy) {
         return new JdbcInterfaceProxy(toProxy);
     }
 
@@ -267,7 +267,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws InvocationTargetException
      *             if an error occurs
      */
-    protected void dealWithInvocationException(InvocationTargetException e) throws SQLException, Throwable, InvocationTargetException {
+    void dealWithInvocationException(InvocationTargetException e) throws SQLException, Throwable, InvocationTargetException {
         Throwable t = e.getTargetException();
 
         if (t != null) {
@@ -288,14 +288,14 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @param t
      *            The Throwable instance to analyze.
      */
-    protected abstract boolean shouldExceptionTriggerConnectionSwitch(Throwable t);
+    abstract boolean shouldExceptionTriggerConnectionSwitch(Throwable t);
 
     /**
      * Checks if current connection is to a source host.
      *
      * @return true if current connection is to a source host
      */
-    protected abstract boolean isSourceConnection();
+    abstract boolean isSourceConnection();
 
     /**
      * Use {@link #isSourceConnection()} instead.
@@ -314,7 +314,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected void invalidateCurrentConnection() throws SQLException {
+    synchronized void invalidateCurrentConnection() throws SQLException {
         invalidateConnection(this.currentConnection);
     }
 
@@ -326,7 +326,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected synchronized void invalidateConnection(JdbcConnection conn) throws SQLException {
+    synchronized void invalidateConnection(JdbcConnection conn) throws SQLException {
         try {
             if (conn != null && !conn.isClosed()) {
                 conn.realClose(true, !conn.getAutoCommit(), true, null);
@@ -336,14 +336,13 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
         }
     }
 
-
     /**
      * Picks the "best" connection to use from now on. Each subclass needs to implement its connection switch strategy on it.
      * 
      * @throws SQLException
      *             if an error occurs
      */
-    protected abstract void pickNewConnection() throws SQLException;
+    abstract void pickNewConnection() throws SQLException;
 
     /**
      * Creates a new physical connection for the given {@link HostInfo}.
@@ -355,7 +354,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected synchronized ConnectionImpl createConnectionForHost(HostInfo hostInfo) throws SQLException {
+    synchronized ConnectionImpl createConnectionForHost(HostInfo hostInfo) throws SQLException {
         ConnectionImpl conn = (ConnectionImpl) ConnectionImpl.getInstance(hostInfo);
         JdbcConnection topmostProxy = getProxy();
         if (topmostProxy != this.thisAsConnection) {
@@ -401,7 +400,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readOnly) throws SQLException {
+    void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readOnly) throws SQLException {
         if (target != null) {
             target.setReadOnly(readOnly);
         }
@@ -431,7 +430,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected abstract void doClose() throws SQLException;
+    abstract void doClose() throws SQLException;
 
     /**
      * Executes a abortInternal() invocation;
@@ -439,7 +438,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected abstract void doAbortInternal() throws SQLException;
+    abstract void doAbortInternal() throws SQLException;
 
     /**
      * Executes a abort() invocation;
@@ -449,7 +448,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws SQLException
      *             if an error occurs
      */
-    protected abstract void doAbort(Executor executor) throws SQLException;
+    abstract void doAbort(Executor executor) throws SQLException;
 
     /**
      * Proxies method invocation on the java.sql.Connection interface, trapping multi-host specific methods and generic methods.
@@ -467,7 +466,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      *             if an error occurs
      */
     @Override
-    public synchronized Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         String methodName = method.getName();
 
         if (METHOD_GET_MULTI_HOST_SAFE_PROXY.equals(methodName)) {
@@ -479,50 +478,53 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
             return args[0].equals(this);
         }
 
-        if (METHOD_HASH_CODE.equals(methodName)) {
-            return this.hashCode();
+        // Execute remaining ubiquitous methods right away.
+        if (method.getDeclaringClass().equals(Object.class)) {
+            return method.invoke(this, args);
         }
 
-        if (METHOD_CLOSE.equals(methodName)) {
-            doClose();
-            this.isClosed = true;
-            this.closedReason = "Connection explicitly closed.";
-            this.closedExplicitly = true;
-            return null;
-        }
-
-        if (METHOD_ABORT_INTERNAL.equals(methodName)) {
-            doAbortInternal();
-            this.currentConnection.abortInternal();
-            this.isClosed = true;
-            this.closedReason = "Connection explicitly closed.";
-            return null;
-        }
-
-        if (METHOD_ABORT.equals(methodName) && args.length == 1) {
-            doAbort((Executor) args[0]);
-            this.isClosed = true;
-            this.closedReason = "Connection explicitly closed.";
-            return null;
-        }
-
-        if (METHOD_IS_CLOSED.equals(methodName)) {
-            return this.isClosed;
-        }
-
-        try {
-            return invokeMore(proxy, method, args);
-        } catch (InvocationTargetException e) {
-            throw e.getCause() != null ? e.getCause() : e;
-        } catch (Exception e) {
-            // Check if the captured exception must be wrapped by an unchecked exception.
-            Class<?>[] declaredException = method.getExceptionTypes();
-            for (Class<?> declEx : declaredException) {
-                if (declEx.isAssignableFrom(e.getClass())) {
-                    throw e;
-                }
+        synchronized (this) {
+            if (METHOD_CLOSE.equals(methodName)) {
+                doClose();
+                this.isClosed = true;
+                this.closedReason = "Connection explicitly closed.";
+                this.closedExplicitly = true;
+                return null;
             }
-            throw new IllegalStateException(e.getMessage(), e);
+
+            if (METHOD_ABORT_INTERNAL.equals(methodName)) {
+                doAbortInternal();
+                this.currentConnection.abortInternal();
+                this.isClosed = true;
+                this.closedReason = "Connection explicitly closed.";
+                return null;
+            }
+
+            if (METHOD_ABORT.equals(methodName) && args.length == 1) {
+                doAbort((Executor) args[0]);
+                this.isClosed = true;
+                this.closedReason = "Connection explicitly closed.";
+                return null;
+            }
+
+            if (METHOD_IS_CLOSED.equals(methodName)) {
+                return this.isClosed;
+            }
+
+            try {
+                return invokeMore(proxy, method, args);
+            } catch (InvocationTargetException e) {
+                throw e.getCause() != null ? e.getCause() : e;
+            } catch (Exception e) {
+                // Check if the captured exception must be wrapped by an unchecked exception.
+                Class<?>[] declaredException = method.getExceptionTypes();
+                for (Class<?> declEx : declaredException) {
+                    if (declEx.isAssignableFrom(e.getClass())) {
+                        throw e;
+                    }
+                }
+                throw new IllegalStateException(e.getMessage(), e);
+            }
         }
     }
 
@@ -539,7 +541,7 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
      * @throws Throwable
      *             if an error occurs
      */
-    protected abstract Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable;
+    abstract Object invokeMore(Object proxy, Method method, Object[] args) throws Throwable;
 
     /**
      * Checks if the given method is allowed on closed connections.

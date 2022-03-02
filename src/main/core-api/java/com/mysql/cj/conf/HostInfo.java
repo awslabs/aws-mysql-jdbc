@@ -41,7 +41,8 @@ import java.util.Properties;
  * <ul>
  * <li>host: an IP or host name.
  * <li>port: the port number or 0 if not known.
- * <li>user info: a structure containing the user name and password.
+ * <li>user: the user name.
+ * <li>password: the password.
  * <li>host properties: host specific connection arguments.
  * </ul>
  */
@@ -104,7 +105,7 @@ public class HostInfo implements DatabaseUrlContainer {
 
     /**
      * Constructs a {@link HostInfo} instance initialized with the provided host, port, user, password and connection arguments.
-     * 
+     *
      * @param url
      *            a reference to the original database URL that produced this host info
      * @param host
@@ -179,7 +180,7 @@ public class HostInfo implements DatabaseUrlContainer {
 
     /**
      * Returns true if the is the default one, i.e., no password was provided in the connection URL or arguments.
-     * 
+     *
      * @return
      *         true if no password was provided in the connection URL or arguments.
      */

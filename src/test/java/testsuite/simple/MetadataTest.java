@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -35,6 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -76,6 +78,8 @@ public class MetadataTest extends BaseTestCase {
     @Test
     public void testSupports() throws SQLException {
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -115,6 +119,8 @@ public class MetadataTest extends BaseTestCase {
     @Test
     public void testGetCatalogVsGetSchemas() throws SQLException {
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -223,6 +229,8 @@ public class MetadataTest extends BaseTestCase {
                     + "index(TYPE_ID), foreign key(TYPE_ID) references fktable1(TYPE_ID)) ", "InnoDB");
 
             Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
             Connection conn1 = null;
 
             for (boolean useIS : new boolean[] { false, true }) {
@@ -416,6 +424,8 @@ public class MetadataTest extends BaseTestCase {
         createTable("multikey", "(d INT NOT NULL, b INT NOT NULL, a INT NOT NULL, c INT NOT NULL, PRIMARY KEY (d, b, a, c))");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -458,9 +468,7 @@ public class MetadataTest extends BaseTestCase {
                         this.rs.getString("PK_NAME");
                     }
 
-                    if ((keySeqs[0] != 3) && (keySeqs[1] != 2) && (keySeqs[2] != 4) && (keySeqs[3] != 1)) {
-                        fail("Keys returned in wrong order");
-                    }
+                    assertFalse((keySeqs[0] != 3) && (keySeqs[1] != 2) && (keySeqs[2] != 4) && (keySeqs[3] != 1), "Keys returned in wrong order");
 
                 } finally {
                     if (conn1 != null) {
@@ -615,6 +623,8 @@ public class MetadataTest extends BaseTestCase {
             for (boolean tinyInt1isBit : new boolean[] { true, true }) {
                 for (boolean transformedBitIsBoolean : new boolean[] { false, true }) {
                     props.clear();
+                    props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+                    props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
                     props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
                     props.setProperty(PropertyKey.tinyInt1isBit.getKeyName(), "" + tinyInt1isBit);
                     props.setProperty(PropertyKey.transformedBitIsBoolean.getKeyName(), "" + transformedBitIsBoolean);
@@ -688,6 +698,8 @@ public class MetadataTest extends BaseTestCase {
         assertEquals(0, this.rs.getMetaData().getScale(1));
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useOldAliasMetadataBehavior.getKeyName(), "true");
         Connection con = getConnectionWithProps(props);
 
@@ -705,6 +717,8 @@ public class MetadataTest extends BaseTestCase {
     public void testGetPrimaryKeysUsingInfoShcema() throws Exception {
         createTable("t1", "(c1 int(1) primary key)");
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "true");
         Connection conn1 = null;
         try {
@@ -727,6 +741,8 @@ public class MetadataTest extends BaseTestCase {
         this.stmt.executeUpdate("CREATE INDEX index1 ON t1 (c1)");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -789,6 +805,8 @@ public class MetadataTest extends BaseTestCase {
     public void testGetColumns() throws Exception {
         createTable("t1", "(c1 char(1))");
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
 
         for (boolean useIS : new boolean[] { false, true }) {
@@ -848,6 +866,8 @@ public class MetadataTest extends BaseTestCase {
         tableNames.add("t1-1");
         tableNames.add("t1-2");
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "true");
         Connection conn1 = null;
         try {
@@ -873,6 +893,8 @@ public class MetadataTest extends BaseTestCase {
         createTable("`t2`", "(c1 char(1))");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -961,86 +983,82 @@ public class MetadataTest extends BaseTestCase {
     @Test
     public void testGetColumnPrivileges() throws Exception {
 
-        if (!runTestIfSysPropDefined(PropertyDefinitions.SYSP_testsuite_cantGrant)) {
-            Properties props = new Properties();
+        assumeFalse(isSysPropDefined(PropertyDefinitions.SYSP_testsuite_cantGrant),
+                "This testcase needs to be run with a URL that allows the user to issue GRANTs "
+                        + " in the current database. Aborted because the system property \"" + PropertyDefinitions.SYSP_testsuite_cantGrant + "\" is set.");
 
-            props.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
-            Connection conn1 = null;
-            Statement stmt1 = null;
-            String userHostQuoted = null;
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
+        Connection conn1 = null;
+        Statement stmt1 = null;
+        String userHostQuoted = null;
 
-            for (boolean useIS : new boolean[] { false, true }) {
-                for (boolean dbMapsToSchema : new boolean[] { false, true }) {
-                    props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
-                    props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbMapsToSchema ? DatabaseTerm.SCHEMA.name() : DatabaseTerm.CATALOG.name());
+        for (boolean useIS : new boolean[] { false, true }) {
+            for (boolean dbMapsToSchema : new boolean[] { false, true }) {
+                props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
+                props.setProperty(PropertyKey.databaseTerm.getKeyName(), dbMapsToSchema ? DatabaseTerm.SCHEMA.name() : DatabaseTerm.CATALOG.name());
 
-                    boolean grantFailed = true;
+                boolean grantFailed = true;
+
+                try {
+                    conn1 = getConnectionWithProps(props);
+                    stmt1 = conn1.createStatement();
+                    createTable("t1", "(c1 int)");
+                    this.rs = stmt1.executeQuery("SELECT CURRENT_USER()");
+                    this.rs.next();
+                    String user = this.rs.getString(1);
+                    List<String> userHost = StringUtils.split(user, "@", false);
+                    assertFalse(userHost.size() < 2, "This test requires a JDBC URL with a user, and won't work with the anonymous user. "
+                            + "You can skip this test by setting the system property " + PropertyDefinitions.SYSP_testsuite_cantGrant);
+                    userHostQuoted = "'" + userHost.get(0) + "'@'" + userHost.get(1) + "'";
 
                     try {
-                        conn1 = getConnectionWithProps(props);
-                        stmt1 = conn1.createStatement();
-                        createTable("t1", "(c1 int)");
-                        this.rs = stmt1.executeQuery("SELECT CURRENT_USER()");
+                        stmt1.executeUpdate("GRANT update (c1) on t1 to " + userHostQuoted);
+                        grantFailed = false;
+                    } catch (SQLException sqlEx) {
+                        fail("This testcase needs to be run with a URL that allows the user to issue GRANTs "
+                                + " in the current database. You can skip this test by setting the system property \""
+                                + PropertyDefinitions.SYSP_testsuite_cantGrant + "\".");
+                    }
+
+                    if (!grantFailed) {
+                        DatabaseMetaData metaData = conn1.getMetaData();
+                        this.rs = metaData.getColumnPrivileges(null, null, "t1", null);
                         this.rs.next();
-                        String user = this.rs.getString(1);
-                        List<String> userHost = StringUtils.split(user, "@", false);
-                        if (userHost.size() < 2) {
-                            fail("This test requires a JDBC URL with a user, and won't work with the anonymous user. "
-                                    + "You can skip this test by setting the system property " + PropertyDefinitions.SYSP_testsuite_cantGrant);
+                        if (dbMapsToSchema) {
+                            assertEquals("def", this.rs.getString("TABLE_CAT"));
+                            assertEquals(this.dbName, this.rs.getString("TABLE_SCHEM"));
+                        } else {
+                            assertEquals(this.dbName, this.rs.getString("TABLE_CAT"));
+                            assertNull(this.rs.getString("TABLE_SCHEM"));
                         }
-                        userHostQuoted = "'" + userHost.get(0) + "'@'" + userHost.get(1) + "'";
+                        assertEquals("t1", this.rs.getString("TABLE_NAME"));
+                        assertEquals("c1", this.rs.getString("COLUMN_NAME"));
+                        assertEquals(useIS ? userHostQuoted : userHost.get(0) + "@" + userHost.get(1), this.rs.getString("GRANTEE"));
+                        assertEquals("UPDATE", this.rs.getString("PRIVILEGE"));
 
-                        try {
-                            stmt1.executeUpdate("GRANT update (c1) on t1 to " + userHostQuoted);
-
-                            grantFailed = false;
-
-                        } catch (SQLException sqlEx) {
-                            fail("This testcase needs to be run with a URL that allows the user to issue GRANTs "
-                                    + " in the current database. You can skip this test by setting the system property \""
-                                    + PropertyDefinitions.SYSP_testsuite_cantGrant + "\".");
+                        if (dbMapsToSchema) {
+                            String dbPattern = conn1.getSchema().substring(0, conn1.getSchema().length() - 1) + "%";
+                            this.rs = metaData.getColumnPrivileges(null, dbPattern, "t1", null);
+                            assertFalse(this.rs.next(), "Schema pattern " + dbPattern + " should not be recognized.");
+                        } else {
+                            String dbPattern = conn1.getCatalog().substring(0, conn1.getCatalog().length() - 1) + "%";
+                            this.rs = metaData.getColumnPrivileges(dbPattern, null, "t1", null);
+                            assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
                         }
-
+                    }
+                } finally {
+                    if (stmt1 != null) {
                         if (!grantFailed) {
-                            DatabaseMetaData metaData = conn1.getMetaData();
-                            this.rs = metaData.getColumnPrivileges(null, null, "t1", null);
-                            this.rs.next();
-                            if (dbMapsToSchema) {
-                                assertEquals("def", this.rs.getString("TABLE_CAT"));
-                                assertEquals(this.dbName, this.rs.getString("TABLE_SCHEM"));
-                            } else {
-                                assertEquals(this.dbName, this.rs.getString("TABLE_CAT"));
-                                assertNull(this.rs.getString("TABLE_SCHEM"));
-                            }
-                            assertEquals("t1", this.rs.getString("TABLE_NAME"));
-                            assertEquals("c1", this.rs.getString("COLUMN_NAME"));
-                            assertEquals(useIS ? userHostQuoted : userHost.get(0) + "@" + userHost.get(1), this.rs.getString("GRANTEE"));
-                            assertEquals("UPDATE", this.rs.getString("PRIVILEGE"));
-
-                            if (dbMapsToSchema) {
-                                String dbPattern = conn1.getSchema().substring(0, conn1.getSchema().length() - 1) + "%";
-                                this.rs = metaData.getColumnPrivileges(null, dbPattern, "t1", null);
-                                assertFalse(this.rs.next(), "Schema pattern " + dbPattern + " should not be recognized.");
-                            } else {
-                                String dbPattern = conn1.getCatalog().substring(0, conn1.getCatalog().length() - 1) + "%";
-                                this.rs = metaData.getColumnPrivileges(dbPattern, null, "t1", null);
-                                assertFalse(this.rs.next(), "Catalog pattern " + dbPattern + " should not be recognized.");
-                            }
-
+                            stmt1.executeUpdate("REVOKE UPDATE (c1) ON t1 FROM " + userHostQuoted);
                         }
-                    } finally {
-                        if (stmt1 != null) {
+                        stmt1.close();
+                    }
 
-                            if (!grantFailed) {
-                                stmt1.executeUpdate("REVOKE UPDATE (c1) ON t1 FROM " + userHostQuoted);
-                            }
-
-                            stmt1.close();
-                        }
-
-                        if (conn1 != null) {
-                            conn1.close();
-                        }
+                    if (conn1 != null) {
+                        conn1.close();
                     }
                 }
             }
@@ -1052,6 +1070,8 @@ public class MetadataTest extends BaseTestCase {
         createProcedure("sp1", "() COMMENT 'testGetProcedures comment1' \n BEGIN\nSELECT 1;end\n");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1116,6 +1136,8 @@ public class MetadataTest extends BaseTestCase {
         createFunction("testGetFunctionsF", "(d INT) RETURNS INT DETERMINISTIC COMMENT 'testGetFunctions comment1' BEGIN RETURN d; END");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1177,6 +1199,8 @@ public class MetadataTest extends BaseTestCase {
         createProcedure("testGetProcedureColumnsP", "(d INT) COMMENT 'testGetProcedureColumns comment1' \n BEGIN\nSELECT 1;end\n");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1253,6 +1277,8 @@ public class MetadataTest extends BaseTestCase {
         createFunction("testGetFunctionColumnsF", "(d INT) RETURNS INT DETERMINISTIC COMMENT 'testGetFunctionColumnsF comment1' BEGIN RETURN d; END");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1359,17 +1385,20 @@ public class MetadataTest extends BaseTestCase {
         this.stmt.executeUpdate(
                 "CREATE TABLE child(id INT, parent_id INT, " + "FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE SET NULL) ENGINE=INNODB");
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "true");
         Connection conn1 = null;
         try {
             conn1 = getConnectionWithProps(props);
             DatabaseMetaData metaData = conn1.getMetaData();
             this.rs = metaData.getCrossReference(null, null, "parent", null, null, "child");
-            this.rs.next();
+            assertTrue(this.rs.next());
             assertEquals("parent", this.rs.getString("PKTABLE_NAME"));
             assertEquals("id", this.rs.getString("PKCOLUMN_NAME"));
             assertEquals("child", this.rs.getString("FKTABLE_NAME"));
             assertEquals("parent_id", this.rs.getString("FKCOLUMN_NAME"));
+            assertFalse(this.rs.next());
         } finally {
             this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
             this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
@@ -1387,6 +1416,8 @@ public class MetadataTest extends BaseTestCase {
         createTable("child", "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE SET NULL) ENGINE=INNODB");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1451,6 +1482,8 @@ public class MetadataTest extends BaseTestCase {
         createTable("child", "(id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE SET NULL) ENGINE=INNODB");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1519,9 +1552,7 @@ public class MetadataTest extends BaseTestCase {
      */
     @Test
     public void testGeneratedColumns() throws Exception {
-        if (!versionMeetsMinimum(5, 7, 6)) {
-            return;
-        }
+        assumeTrue(versionMeetsMinimum(5, 7, 6), "MySQL 5.7.6+ is required to run this test.");
 
         // Test GENERATED columns syntax.
         createTable("pythagorean_triple", "(side_a DOUBLE NULL, side_b DOUBLE NULL, "
@@ -1623,13 +1654,14 @@ public class MetadataTest extends BaseTestCase {
                 + "SQL_CALC_FOUND_ROWS,SQL_SMALL_RESULT,SSL,STARTING,STORED,STRAIGHT_JOIN,TERMINATED,TINYBLOB,TINYINT,TINYTEXT,UNDO,UNLOCK,UNSIGNED,USAGE,USE,"
                 + "UTC_DATE,UTC_TIME,UTC_TIMESTAMP,VARBINARY,VARCHARACTER,VIRTUAL,WHILE,WRITE,XOR,YEAR_MONTH,ZEROFILL";
 
-        if (!versionMeetsMinimum(8, 0, 11)) {
-            Connection testConn = getConnectionWithProps("useInformationSchema=true");
-            assertEquals(mysqlKeywords, testConn.getMetaData().getSQLKeywords(), "MySQL keywords don't match expected.");
-            testConn.close();
-        }
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.useInformationSchema.getKeyName(), //
+                versionMeetsMinimum(8, 0, 11) ? "false" // Required for MySQL 8.0.11 and above, otherwise returns dynamic keywords
+                        : "true");
 
-        Connection testConn = getConnectionWithProps("useInformationSchema=false"); // Required for MySQL 8.0.11 and above, otherwise returns dynamic keywords.
+        Connection testConn = getConnectionWithProps(props);
         assertEquals(mysqlKeywords, testConn.getMetaData().getSQLKeywords(), "MySQL keywords don't match expected.");
         testConn.close();
     }
@@ -1644,10 +1676,7 @@ public class MetadataTest extends BaseTestCase {
      */
     @Test
     public void testGetSqlKeywordsDynamic() throws Exception {
-        if (!versionMeetsMinimum(8, 0, 11)) {
-            // Tested in testGetSqlKeywordsStatic();
-            return;
-        }
+        assumeTrue(versionMeetsMinimum(8, 0, 11), "MySQL 8.0.11+ is required to run this test.");
 
         /*
          * Setup test case.
@@ -1733,6 +1762,8 @@ public class MetadataTest extends BaseTestCase {
         this.stmt.executeUpdate("grant SELECT on `" + this.dbName + "`.`testGetTablePrivileges` to 'testGTPUser'@'%'");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
@@ -1803,6 +1834,8 @@ public class MetadataTest extends BaseTestCase {
         createTable(tableName, "(field1 INT NOT NULL PRIMARY KEY)");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), "DISABLED");
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         for (boolean useIS : new boolean[] { false, true }) {
             for (boolean dbMapsToSchema : new boolean[] { false, true }) {
                 props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);

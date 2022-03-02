@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -31,12 +31,14 @@ package testsuite.x.internal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.protocol.x.OkBuilder;
 import com.mysql.cj.protocol.x.XMessageBuilder;
@@ -55,6 +57,7 @@ public class XProtocolAuthTest extends InternalXBaseTestCase {
     public void setupTestProtocol() throws Exception {
         if (this.isSetForXTests) {
             protocol = createTestProtocol();
+            protocol.beforeHandshake();
             this.messageBuilder = (XMessageBuilder) protocol.getMessageBuilder();
         }
     }
@@ -74,34 +77,24 @@ public class XProtocolAuthTest extends InternalXBaseTestCase {
      */
     @Test
     public void testBadAuthMessage() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
-        try {
-            protocol.send(this.messageBuilder.buildCreateCollection(getTestDatabase(), "wont_be_Created"), 0);
-            protocol.readQueryResult(new OkBuilder());
-            fail("Should fail after first message is sent");
-        } catch (XProtocolError err) {
-            // expected
-            //ex.printStackTrace();
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
+        protocol.send(this.messageBuilder.buildCreateCollection(getTestDatabase(), "wont_be_Created"), 0);
+        assertThrows("Should fail after first message is sent", XProtocolError.class, () -> protocol.readQueryResult(new OkBuilder()));
     }
 
     @Test
     @Disabled("PLAIN only supported over SSL")
     public void testBasicSaslPlainAuth() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
+
         protocol.send(this.messageBuilder.buildPlainAuthStart(getTestUser(), getTestPassword(), getTestDatabase()), 0);
         protocol.readAuthenticateOk();
     }
 
     @Test
     public void testBasicSaslMysql41Auth() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
+
         try {
             Session testSession = this.fact.getSession(this.baseUrl);
             testSession.sql("CREATE USER IF NOT EXISTS 'testPlainAuth'@'%' IDENTIFIED WITH mysql_native_password BY 'pwd'").execute();
@@ -124,9 +117,8 @@ public class XProtocolAuthTest extends InternalXBaseTestCase {
     @Test
     @Disabled("PLAIN only supported over SSL")
     public void testBasicSaslPlainAuthFailure() throws Exception {
-        if (!this.isSetForXTests) {
-            return;
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
+
         try {
             protocol.send(this.messageBuilder.buildPlainAuthStart(getTestUser(), "com.mysql.cj.theWrongPassword", getTestDatabase()), 0);
             protocol.readAuthenticateOk();
@@ -142,9 +134,7 @@ public class XProtocolAuthTest extends InternalXBaseTestCase {
      */
     @Test
     public void testEmptyDatabaseMYSQL41() {
-        if (!this.isSetForXTests) {
-            return;
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
 
         try {
             Session testSession = this.fact.getSession(this.baseUrl);
@@ -170,9 +160,8 @@ public class XProtocolAuthTest extends InternalXBaseTestCase {
     @Test
     @Disabled("PLAIN only supported over SSL")
     public void testEmptyDatabasePLAIN() {
-        if (!this.isSetForXTests) {
-            return;
-        }
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
+
         protocol.send(this.messageBuilder.buildPlainAuthStart(getTestUser(), getTestPassword(), null), 0);
         protocol.readAuthenticateOk();
     }

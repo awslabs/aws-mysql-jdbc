@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -43,13 +43,14 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.mysql.cj.CancelQueryTask;
-import com.mysql.cj.CharsetMapping;
 import com.mysql.cj.Messages;
 import com.mysql.cj.MysqlType;
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.ParseInfo;
 import com.mysql.cj.PingTarget;
 import com.mysql.cj.Query;
+import com.mysql.cj.QueryAttributesBindings;
+import com.mysql.cj.QueryReturnType;
 import com.mysql.cj.Session;
 import com.mysql.cj.SimpleQuery;
 import com.mysql.cj.TransactionEventHandler;
@@ -99,13 +100,13 @@ import com.mysql.cj.util.Util;
 public class StatementImpl implements JdbcStatement {
     protected static final String PING_MARKER = "/* ping */";
 
-    protected NativeMessageBuilder commandBuilder = new NativeMessageBuilder(); // TODO use shared builder
-
     public final static byte USES_VARIABLES_FALSE = 0;
 
     public final static byte USES_VARIABLES_TRUE = 1;
 
     public final static byte USES_VARIABLES_UNKNOWN = -1;
+
+    protected NativeMessageBuilder commandBuilder = null; // TODO use shared builder
 
     /** The character encoding to use (if available) */
     protected String charEncoding = null;
@@ -211,6 +212,8 @@ public class StatementImpl implements JdbcStatement {
         this.session = (NativeSession) c.getSession();
         this.exceptionInterceptor = c.getExceptionInterceptor();
 
+        this.commandBuilder = new NativeMessageBuilder(this.session.getServerSession().supportsQueryAttributes());
+
         try {
             initQuery();
         } catch (CJException e) {
@@ -286,15 +289,14 @@ public class StatementImpl implements JdbcStatement {
         }
 
         if (!this.isClosed && this.connection != null) {
-            JdbcConnection cancelConn = null;
-            java.sql.Statement cancelStmt = null;
+            NativeSession newSession = null;
 
             try {
                 HostInfo hostInfo = this.session.getHostInfo();
                 String database = hostInfo.getDatabase();
-                String user = StringUtils.isNullOrEmpty(hostInfo.getUser()) ? "" : hostInfo.getUser();
-                String password = StringUtils.isNullOrEmpty(hostInfo.getPassword()) ? "" : hostInfo.getPassword();
-                NativeSession newSession = new NativeSession(this.session.getHostInfo(), this.session.getPropertySet());
+                String user = hostInfo.getUser();
+                String password = hostInfo.getPassword();
+                newSession = new NativeSession(this.session.getHostInfo(), this.session.getPropertySet());
                 newSession.connect(hostInfo, user, password, database, 30000, new TransactionEventHandler() {
                     @Override
                     public void transactionCompleted() {
@@ -304,18 +306,14 @@ public class StatementImpl implements JdbcStatement {
                     public void transactionBegun() {
                     }
                 });
-                newSession.sendCommand(new NativeMessageBuilder().buildComQuery(newSession.getSharedSendPacket(), "KILL QUERY " + this.session.getThreadId()),
-                        false, 0);
+                newSession.sendCommand(new NativeMessageBuilder(newSession.getServerSession().supportsQueryAttributes())
+                        .buildComQuery(newSession.getSharedSendPacket(), "KILL QUERY " + this.session.getThreadId()), false, 0);
                 setCancelStatus(CancelStatus.CANCELED_BY_USER);
             } catch (IOException e) {
                 throw SQLExceptionsMapping.translateException(e, this.exceptionInterceptor);
             } finally {
-                if (cancelStmt != null) {
-                    cancelStmt.close();
-                }
-
-                if (cancelConn != null) {
-                    cancelConn.close();
+                if (newSession != null) {
+                    newSession.forceClose();
                 }
             }
 
@@ -342,29 +340,29 @@ public class StatementImpl implements JdbcStatement {
     }
 
     /**
-     * Checks if the given SQL query with the given first non-ws char is a DML
-     * statement. Throws an exception if it is.
+     * Checks if the given SQL query is a result set producing query.
      * 
      * @param sql
      *            the SQL to check
-     * @param firstStatementChar
-     *            the UC first non-ws char of the statement
-     * 
-     * @throws SQLException
-     *             if the statement contains DML
+     * @return
+     *         <code>true</code> if the query produces a result set, <code>false</code> otherwise.
      */
-    protected void checkForDml(String sql, char firstStatementChar) throws SQLException {
-        if ((firstStatementChar == 'I') || (firstStatementChar == 'U') || (firstStatementChar == 'D') || (firstStatementChar == 'A')
-                || (firstStatementChar == 'C') || (firstStatementChar == 'T') || (firstStatementChar == 'R')) {
-            String noCommentSql = StringUtils.stripComments(sql, "'\"", "'\"", true, false, true, true);
+    protected boolean isResultSetProducingQuery(String sql) {
+        QueryReturnType queryReturnType = ParseInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+        return queryReturnType == QueryReturnType.PRODUCES_RESULT_SET || queryReturnType == QueryReturnType.MAY_PRODUCE_RESULT_SET;
+    }
 
-            if (StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "INSERT") || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "UPDATE")
-                    || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "DELETE") || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "DROP")
-                    || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "CREATE") || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "ALTER")
-                    || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "TRUNCATE") || StringUtils.startsWithIgnoreCaseAndWs(noCommentSql, "RENAME")) {
-                throw SQLError.createSQLException(Messages.getString("Statement.57"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
-            }
-        }
+    /**
+     * Checks if the given SQL query does not return a result set.
+     * 
+     * @param sql
+     *            the SQL to check
+     * @return
+     *         <code>true</code> if the query does not produce a result set, <code>false</code> otherwise.
+     */
+    protected boolean isNonResultSetProducingQuery(String sql) {
+        QueryReturnType queryReturnType = ParseInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+        return queryReturnType == QueryReturnType.DOES_NOT_PRODUCE_RESULT_SET || queryReturnType == QueryReturnType.MAY_PRODUCE_RESULT_SET;
     }
 
     /**
@@ -554,6 +552,10 @@ public class StatementImpl implements JdbcStatement {
 
             pStmt.setFetchSize(this.query.getResultFetchSize());
 
+            if (this.getQueryTimeout() > 0) {
+                pStmt.setQueryTimeout(this.getQueryTimeout());
+            }
+
             if (this.maxRows > -1) {
                 pStmt.setMaxRows(this.maxRows);
             }
@@ -666,14 +668,13 @@ public class StatementImpl implements JdbcStatement {
                 }
             }
 
-            char firstNonWsChar = StringUtils.firstAlphaCharUc(sql, findStartOfStatement(sql));
-            boolean maybeSelect = firstNonWsChar == 'S';
-
             this.retrieveGeneratedKeys = returnGeneratedKeys;
 
-            this.lastQueryIsOnDupKeyUpdate = returnGeneratedKeys && firstNonWsChar == 'I' && containsOnDuplicateKeyInString(sql);
+            this.lastQueryIsOnDupKeyUpdate = returnGeneratedKeys
+                    && ParseInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet()) == 'I'
+                    && containsOnDuplicateKeyInString(sql);
 
-            if (!maybeSelect && locallyScopedConn.isReadOnly()) {
+            if (!ParseInfo.isReadOnlySafeQuery(sql, this.session.getServerSession().isNoBackslashEscapesSet()) && locallyScopedConn.isReadOnly()) {
                 throw SQLError.createSQLException(Messages.getString("Statement.27") + Messages.getString("Statement.28"),
                         MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
             }
@@ -715,7 +716,7 @@ public class StatementImpl implements JdbcStatement {
                         }
 
                         // Only apply max_rows to selects
-                        locallyScopedConn.setSessionMaxRows(maybeSelect ? this.maxRows : -1);
+                        locallyScopedConn.setSessionMaxRows(isResultSetProducingQuery(sql) ? this.maxRows : -1);
 
                         statementBegins();
 
@@ -744,7 +745,7 @@ public class StatementImpl implements JdbcStatement {
 
                     this.results = rs;
 
-                    rs.setFirstCharOfQuery(firstNonWsChar);
+                    rs.setFirstCharOfQuery(ParseInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet()));
 
                     if (rs.hasRows()) {
                         if (cachedMetaData != null) {
@@ -968,6 +969,8 @@ public class StatementImpl implements JdbcStatement {
                 StringBuilder queryBuf = new StringBuilder();
 
                 batchStmt = locallyScopedConn.createStatement();
+                JdbcStatement jdbcBatchedStmt = (JdbcStatement) batchStmt;
+                getQueryAttributesBindings().runThroughAll(a -> jdbcBatchedStmt.setAttribute(a.getName(), a.getValue()));
 
                 timeoutTask = startQueryTimer((StatementImpl) batchStmt, individualStatementTimeout);
 
@@ -976,14 +979,14 @@ public class StatementImpl implements JdbcStatement {
                 String connectionEncoding = locallyScopedConn.getPropertySet().getStringProperty(PropertyKey.characterEncoding).getValue();
 
                 int numberOfBytesPerChar = StringUtils.startsWithIgnoreCase(connectionEncoding, "utf") ? 3
-                        : (CharsetMapping.isMultibyteCharset(connectionEncoding) ? 2 : 1);
+                        : (this.session.getServerSession().getCharsetSettings().isMultibyteCharset(connectionEncoding) ? 2 : 1);
 
                 int escapeAdjust = 1;
 
                 batchStmt.setEscapeProcessing(this.doEscapeProcessing);
 
                 if (this.doEscapeProcessing) {
-                    escapeAdjust = 2; // We assume packet _could_ grow by this amount, as we're not sure how big statement will end up after  escape processing
+                    escapeAdjust = 2; // We assume packet _could_ grow by this amount, as we're not sure how big statement will end up after escape processing
                 }
 
                 SQLException sqlEx = null;
@@ -1128,9 +1131,9 @@ public class StatementImpl implements JdbcStatement {
                 sql = escapedSqlResult instanceof String ? (String) escapedSqlResult : ((EscapeProcessorResult) escapedSqlResult).escapedSql;
             }
 
-            char firstStatementChar = StringUtils.firstAlphaCharUc(sql, findStartOfStatement(sql));
-
-            checkForDml(sql, firstStatementChar);
+            if (!isResultSetProducingQuery(sql)) {
+                throw SQLError.createSQLException(Messages.getString("Statement.57"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
+            }
 
             CachedResultSetMetaData cachedMetaData = null;
 
@@ -1219,8 +1222,8 @@ public class StatementImpl implements JdbcStatement {
 
     protected ResultSetInternalMethods generatePingResultSet() throws SQLException {
         synchronized (checkClosed().getConnectionMutex()) {
-            String encoding = this.session.getServerSession().getCharacterSetMetadata();
-            int collationIndex = this.session.getServerSession().getMetadataCollationIndex();
+            String encoding = this.session.getServerSession().getCharsetSettings().getMetadataEncoding();
+            int collationIndex = this.session.getServerSession().getCharsetSettings().getMetadataCollationIndex();
             Field[] fields = { new Field(null, "1", collationIndex, encoding, MysqlType.BIGINT, 1) };
             ArrayList<Row> rows = new ArrayList<>();
             byte[] colVal = new byte[] { (byte) '1' };
@@ -1251,7 +1254,10 @@ public class StatementImpl implements JdbcStatement {
 
             resetCancelledState();
 
-            char firstStatementChar = StringUtils.firstAlphaCharUc(sql, findStartOfStatement(sql));
+            char firstStatementChar = ParseInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+            if (!isNonResultSetProducingQuery(sql)) {
+                throw SQLError.createSQLException(Messages.getString("Statement.46"), "01S03", getExceptionInterceptor());
+            }
 
             this.retrieveGeneratedKeys = returnGeneratedKeys;
 
@@ -1269,10 +1275,6 @@ public class StatementImpl implements JdbcStatement {
             if (locallyScopedConn.isReadOnly(false)) {
                 throw SQLError.createSQLException(Messages.getString("Statement.42") + Messages.getString("Statement.43"),
                         MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
-            }
-
-            if (StringUtils.startsWithIgnoreCaseAndWs(sql, "select")) {
-                throw SQLError.createSQLException(Messages.getString("Statement.46"), "01S03", getExceptionInterceptor());
             }
 
             implicitlyCloseAllOpenResults();
@@ -1382,8 +1384,8 @@ public class StatementImpl implements JdbcStatement {
                 return this.generatedKeysResults = getGeneratedKeysInternal();
             }
 
-            String encoding = this.session.getServerSession().getCharacterSetMetadata();
-            int collationIndex = this.session.getServerSession().getMetadataCollationIndex();
+            String encoding = this.session.getServerSession().getCharsetSettings().getMetadataEncoding();
+            int collationIndex = this.session.getServerSession().getCharsetSettings().getMetadataCollationIndex();
             Field[] fields = new Field[1];
             fields[0] = new Field("", "GENERATED_KEY", collationIndex, encoding, MysqlType.BIGINT_UNSIGNED, 20);
 
@@ -1406,8 +1408,8 @@ public class StatementImpl implements JdbcStatement {
 
     protected ResultSetInternalMethods getGeneratedKeysInternal(long numKeys) throws SQLException {
         synchronized (checkClosed().getConnectionMutex()) {
-            String encoding = this.session.getServerSession().getCharacterSetMetadata();
-            int collationIndex = this.session.getServerSession().getMetadataCollationIndex();
+            String encoding = this.session.getServerSession().getCharsetSettings().getMetadataEncoding();
+            int collationIndex = this.session.getServerSession().getCharsetSettings().getMetadataCollationIndex();
             Field[] fields = new Field[1];
             fields[0] = new Field("", "GENERATED_KEY", collationIndex, encoding, MysqlType.BIGINT_UNSIGNED, 20);
 
@@ -1728,7 +1730,7 @@ public class StatementImpl implements JdbcStatement {
                 return null;
             }
 
-            SQLWarning pendingWarningsFromServer = this.session.getProtocol().convertShowWarningsToSQLWarnings(0, false);
+            SQLWarning pendingWarningsFromServer = this.session.getProtocol().convertShowWarningsToSQLWarnings(false);
 
             if (this.warningChain != null) {
                 this.warningChain.setNextWarning(pendingWarningsFromServer);
@@ -1793,6 +1795,8 @@ public class StatementImpl implements JdbcStatement {
 
             closeAllOpenResults();
         }
+
+        clearAttributes();
 
         this.isClosed = true;
 
@@ -2029,32 +2033,6 @@ public class StatementImpl implements JdbcStatement {
         }
     }
 
-    protected static int findStartOfStatement(String sql) {
-        int statementStartPos = 0;
-
-        if (StringUtils.startsWithIgnoreCaseAndWs(sql, "/*")) {
-            statementStartPos = sql.indexOf("*/");
-
-            if (statementStartPos == -1) {
-                statementStartPos = 0;
-            } else {
-                statementStartPos += 2;
-            }
-        } else if (StringUtils.startsWithIgnoreCaseAndWs(sql, "--") || StringUtils.startsWithIgnoreCaseAndWs(sql, "#")) {
-            statementStartPos = sql.indexOf('\n');
-
-            if (statementStartPos == -1) {
-                statementStartPos = sql.indexOf('\r');
-
-                if (statementStartPos == -1) {
-                    statementStartPos = 0;
-                }
-            }
-        }
-
-        return statementStartPos;
-    }
-
     @Override
     public InputStream getLocalInfileInputStream() {
         return this.session.getLocalInfileInputStream();
@@ -2268,5 +2246,20 @@ public class StatementImpl implements JdbcStatement {
     @Override
     public Query getQuery() {
         return this.query;
+    }
+
+    @Override
+    public QueryAttributesBindings getQueryAttributesBindings() {
+        return this.query.getQueryAttributesBindings();
+    }
+
+    @Override
+    public void setAttribute(String name, Object value) {
+        getQueryAttributesBindings().setAttribute(name, value);
+    }
+
+    @Override
+    public void clearAttributes() {
+        getQueryAttributesBindings().clearAttributes();
     }
 }

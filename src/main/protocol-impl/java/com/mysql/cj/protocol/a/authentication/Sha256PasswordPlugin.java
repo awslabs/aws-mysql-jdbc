@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.List;
 
 import com.mysql.cj.Messages;
+import com.mysql.cj.callback.MysqlCallbackHandler;
+import com.mysql.cj.callback.UsernameCallback;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.conf.RuntimeProperty;
@@ -57,7 +59,8 @@ import com.mysql.cj.util.StringUtils;
 public class Sha256PasswordPlugin implements AuthenticationPlugin<NativePacketPayload> {
     public static String PLUGIN_NAME = "sha256_password";
 
-    protected Protocol<NativePacketPayload> protocol;
+    protected Protocol<NativePacketPayload> protocol = null;
+    protected MysqlCallbackHandler usernameCallbackHandler = null;
     protected String password = null;
     protected String seed = null;
     protected boolean publicKeyRequested = false;
@@ -65,8 +68,9 @@ public class Sha256PasswordPlugin implements AuthenticationPlugin<NativePacketPa
     protected RuntimeProperty<String> serverRSAPublicKeyFile = null;
 
     @Override
-    public void init(Protocol<NativePacketPayload> prot) {
+    public void init(Protocol<NativePacketPayload> prot, MysqlCallbackHandler cbh) {
         this.protocol = prot;
+        this.usernameCallbackHandler = cbh;
         this.serverRSAPublicKeyFile = this.protocol.getPropertySet().getStringProperty(PropertyKey.serverRSAPublicKeyFile);
 
         String pkURL = this.serverRSAPublicKeyFile.getValue();
@@ -95,6 +99,10 @@ public class Sha256PasswordPlugin implements AuthenticationPlugin<NativePacketPa
 
     public void setAuthenticationParameters(String user, String password) {
         this.password = password;
+        if (user == null && this.usernameCallbackHandler != null) {
+            // Fall-back to system login user.
+            this.usernameCallbackHandler.handle(new UsernameCallback(System.getProperty("user.name")));
+        }
     }
 
     public boolean nextAuthenticationStep(NativePacketPayload fromServer, List<NativePacketPayload> toServer) {
@@ -109,7 +117,8 @@ public class Sha256PasswordPlugin implements AuthenticationPlugin<NativePacketPa
             try {
                 if (this.protocol.getSocketConnection().isSSLEstablished()) {
                     // allow plain text over SSL
-                    NativePacketPayload bresp = new NativePacketPayload(StringUtils.getBytes(this.password, this.protocol.getPasswordCharacterEncoding()));
+                    NativePacketPayload bresp = new NativePacketPayload(
+                            StringUtils.getBytes(this.password, this.protocol.getServerSession().getCharsetSettings().getPasswordCharacterEncoding()));
                     bresp.setPosition(bresp.getPayloadLength());
                     bresp.writeInteger(IntegerDataType.INT1, 0);
                     bresp.setPosition(0);
@@ -129,7 +138,7 @@ public class Sha256PasswordPlugin implements AuthenticationPlugin<NativePacketPa
                     }
 
                     // We must request the public key from the server to encrypt the password
-                    if (this.publicKeyRequested && fromServer.getPayloadLength() > NativeConstants.SEED_LENGTH) {
+                    if (this.publicKeyRequested && fromServer.getPayloadLength() > NativeConstants.SEED_LENGTH + 1) { // auth data is null terminated
                         // Servers affected by Bug#70865 could send Auth Switch instead of key after Public Key Retrieval,
                         // so we check payload length to detect that.
 
@@ -159,7 +168,9 @@ public class Sha256PasswordPlugin implements AuthenticationPlugin<NativePacketPa
 
     protected byte[] encryptPassword(String transformation) {
         byte[] input = null;
-        input = this.password != null ? StringUtils.getBytesNullTerminated(this.password, this.protocol.getPasswordCharacterEncoding()) : new byte[] { 0 };
+        input = this.password != null
+                ? StringUtils.getBytesNullTerminated(this.password, this.protocol.getServerSession().getCharsetSettings().getPasswordCharacterEncoding())
+                : new byte[] { 0 };
         byte[] mysqlScrambleBuff = new byte[input.length];
         Security.xorString(input, mysqlScrambleBuff, this.seed.getBytes(), input.length);
         return ExportControlled.encryptWithRSAPublicKey(mysqlScrambleBuff, ExportControlled.decodeRSAPublicKey(this.publicKeyString), transformation);

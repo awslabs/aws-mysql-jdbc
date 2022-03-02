@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.0.0] - 2022-02-17
+
+### Added
+* Upstream changes from MySQL 8.0.28 community driver.
+* Docker containers are now created as part of testing and used to run both unit and integration tests.
+* Failover performance metrics tracked based on a cluster. With options to enable additional performance metrics per instance.
+
+### Changed
+* Failover functionality refactored into a connection plugin.
+
+### Fixed
+* Enhanced Failure Monitoring connection status check.
+
 ## [0.4.0] - 2021-12-14
 
 ### Added
@@ -39,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.0.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.4.0...1.0.0
 [0.4.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.1.0...0.2.0

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -41,6 +41,8 @@ import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
@@ -53,11 +55,14 @@ import java.security.cert.PKIXParameters;
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509CertSelector;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
@@ -87,16 +92,16 @@ import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.conf.PropertyDefinitions.SslMode;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.conf.RuntimeProperty;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.ExceptionInterceptor;
 import com.mysql.cj.exceptions.FeatureNotAvailableException;
 import com.mysql.cj.exceptions.RSAException;
 import com.mysql.cj.exceptions.SSLParamsException;
-import com.mysql.cj.exceptions.WrongArgumentException;
+import com.mysql.cj.log.Log;
 import com.mysql.cj.util.Base64Decoder;
 import com.mysql.cj.util.StringUtils;
-import com.mysql.cj.util.Util;
 
 /**
  * Holds functionality that falls under export-control regulations.
@@ -106,7 +111,8 @@ public class ExportControlled {
     private static final String TLSv1_1 = "TLSv1.1";
     private static final String TLSv1_2 = "TLSv1.2";
     private static final String TLSv1_3 = "TLSv1.3";
-    private static final String[] TLS_PROTOCOLS = new String[] { TLSv1_3, TLSv1_2, TLSv1_1, TLSv1 };
+    private static final String[] KNOWN_TLS_PROTOCOLS = new String[] { TLSv1_3, TLSv1_2, TLSv1_1, TLSv1 };
+    private static final String[] VALID_TLS_PROTOCOLS = new String[] { TLSv1_3, TLSv1_2 };
 
     private static final String TLS_SETTINGS_RESOURCE = "/com/mysql/cj/TlsSettings.properties";
     private static final List<String> ALLOWED_CIPHERS = new ArrayList<>();
@@ -116,9 +122,19 @@ public class ExportControlled {
         try {
             Properties tlsSettings = new Properties();
             tlsSettings.load(ExportControlled.class.getResourceAsStream(TLS_SETTINGS_RESOURCE));
-            Arrays.stream(tlsSettings.getProperty("TLSCiphers.Mandatory").split("\\s*,\\s*")).forEach(s -> ALLOWED_CIPHERS.add(s.trim()));
-            Arrays.stream(tlsSettings.getProperty("TLSCiphers.Approved").split("\\s*,\\s*")).forEach(s -> ALLOWED_CIPHERS.add(s.trim()));
-            Arrays.stream(tlsSettings.getProperty("TLSCiphers.Deprecated").split("\\s*,\\s*")).forEach(s -> ALLOWED_CIPHERS.add(s.trim()));
+            // Ciphers prefixed with "TLS_" are used by Oracle Java while the ones prefixed with "SSL_" are used by IBM Java
+            Arrays.stream(tlsSettings.getProperty("TLSCiphers.Mandatory").split("\\s*,\\s*")).forEach(s -> {
+                ALLOWED_CIPHERS.add("TLS_" + s.trim());
+                ALLOWED_CIPHERS.add("SSL_" + s.trim());
+            });
+            Arrays.stream(tlsSettings.getProperty("TLSCiphers.Approved").split("\\s*,\\s*")).forEach(s -> {
+                ALLOWED_CIPHERS.add("TLS_" + s.trim());
+                ALLOWED_CIPHERS.add("SSL_" + s.trim());
+            });
+            Arrays.stream(tlsSettings.getProperty("TLSCiphers.Deprecated").split("\\s*,\\s*")).forEach(s -> {
+                ALLOWED_CIPHERS.add("TLS_" + s.trim());
+                ALLOWED_CIPHERS.add("SSL_" + s.trim());
+            });
             Arrays.stream(tlsSettings.getProperty("TLSCiphers.Unacceptable.Mask").split("\\s*,\\s*")).forEach(s -> RESTRICTED_CIPHER_SUBSTR.add(s.trim()));
         } catch (IOException e) {
             throw ExceptionFactory.createException("Unable to load TlsSettings.properties");
@@ -134,7 +150,7 @@ public class ExportControlled {
     }
 
     private static String[] getAllowedCiphers(PropertySet pset, List<String> socketCipherSuites) {
-        String enabledSSLCipherSuites = pset.getStringProperty(PropertyKey.enabledSSLCipherSuites).getValue();
+        String enabledSSLCipherSuites = pset.getStringProperty(PropertyKey.tlsCiphersuites).getValue();
         Stream<String> filterStream = StringUtils.isNullOrEmpty(enabledSSLCipherSuites) ? socketCipherSuites.stream()
                 : Arrays.stream(enabledSSLCipherSuites.split("\\s*,\\s*")).filter(socketCipherSuites::contains);
 
@@ -149,54 +165,66 @@ public class ExportControlled {
         return allowedCiphers.toArray(new String[] {});
     }
 
-    private static String[] getAllowedProtocols(PropertySet pset, ServerVersion serverVersion, String[] socketProtocols) {
-        String[] tryProtocols = null;
+    private static String[] getAllowedProtocols(PropertySet pset, @SuppressWarnings("unused") ServerVersion serverVersion, String[] socketProtocols) {
+        List<String> tryProtocols = null;
 
-        // If enabledTLSProtocols configuration option is set, overriding the default TLS version restrictions.
-        // This allows enabling TLSv1.2 for self-compiled MySQL versions supporting it, as well as the ability
-        // for users to restrict TLS connections to approved protocols (e.g., prohibiting TLSv1) on the client side.
-        String enabledTLSProtocols = pset.getStringProperty(PropertyKey.enabledTLSProtocols).getValue();
-        if (enabledTLSProtocols != null && enabledTLSProtocols.length() > 0) {
-            tryProtocols = enabledTLSProtocols.split("\\s*,\\s*");
-        }
-        // It is problematic to enable TLSv1.2 on the client side when the server is compiled with yaSSL. When client attempts to connect with
-        // TLSv1.2 yaSSL just closes the socket instead of re-attempting handshake with lower TLS version. So here we allow all protocols only
-        // for server versions which are known to be compiled with OpenSSL.
-        else if (serverVersion == null) {
-            // X Protocol doesn't provide server version, but we prefer to use most recent TLS version, though it also mean that X Protocol
-            // connection to old MySQL 5.7 GPL releases will fail by default, user must use enabledTLSProtocols=TLSv1.1 to connect them.
-            tryProtocols = TLS_PROTOCOLS;
-        } else if (serverVersion.meetsMinimum(new ServerVersion(5, 7, 28))
-                || serverVersion.meetsMinimum(new ServerVersion(5, 6, 46)) && !serverVersion.meetsMinimum(new ServerVersion(5, 7, 0))
-                || serverVersion.meetsMinimum(new ServerVersion(5, 6, 0)) && Util.isEnterpriseEdition(serverVersion.toString())) {
-            tryProtocols = TLS_PROTOCOLS;
+        RuntimeProperty<String> tlsVersions = pset.getStringProperty(PropertyKey.tlsVersions);
+        if (tlsVersions != null && tlsVersions.isExplicitlySet()) {
+            // If tlsVersions configuration option is set then override the default TLS versions restriction.
+            if (tlsVersions.getValue() == null) {
+                throw ExceptionFactory.createException(SSLParamsException.class,
+                        "Specified list of TLS versions is empty. Accepted values are TLSv1.2 and TLSv1.3.");
+            }
+            tryProtocols = getValidProtocols(tlsVersions.getValue().split("\\s*,\\s*"));
         } else {
-            // allow only TLSv1 and TLSv1.1 for other server versions by default
-            tryProtocols = new String[] { TLSv1_1, TLSv1 };
+            tryProtocols = new ArrayList<>(Arrays.asList(VALID_TLS_PROTOCOLS));
         }
 
-        List<String> configuredProtocols = new ArrayList<>(Arrays.asList(tryProtocols));
         List<String> jvmSupportedProtocols = Arrays.asList(socketProtocols);
-
         List<String> allowedProtocols = new ArrayList<>();
-        for (String protocol : TLS_PROTOCOLS) {
-            if (jvmSupportedProtocols.contains(protocol) && configuredProtocols.contains(protocol)) {
+        for (String protocol : tryProtocols) {
+            if (jvmSupportedProtocols.contains(protocol)) {
                 allowedProtocols.add(protocol);
             }
         }
         return allowedProtocols.toArray(new String[0]);
+    }
 
+    private static List<String> getValidProtocols(String[] protocols) {
+
+        List<String> requestedProtocols = Arrays.stream(protocols).filter(p -> !StringUtils.isNullOrEmpty(p.trim())).collect(Collectors.toList());
+        if (requestedProtocols.size() == 0) {
+            throw ExceptionFactory.createException(SSLParamsException.class,
+                    "Specified list of TLS versions is empty. Accepted values are TLSv1.2 and TLSv1.3.");
+        }
+
+        List<String> sanitizedProtocols = new ArrayList<>();
+        for (String protocol : KNOWN_TLS_PROTOCOLS) {
+            if (requestedProtocols.contains(protocol)) {
+                sanitizedProtocols.add(protocol);
+            }
+        }
+        if (sanitizedProtocols.size() == 0) {
+            throw ExceptionFactory.createException(SSLParamsException.class,
+                    "Specified list of TLS versions only contains non valid TLS protocols. Accepted values are TLSv1.2 and TLSv1.3.");
+        }
+
+        List<String> validProtocols = new ArrayList<>();
+        for (String protocol : VALID_TLS_PROTOCOLS) {
+            if (sanitizedProtocols.contains(protocol)) {
+                validProtocols.add(protocol);
+            }
+        }
+        if (validProtocols.size() == 0) {
+            throw ExceptionFactory.createException(SSLParamsException.class,
+                    "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2 and TLSv1.3.");
+        }
+
+        return validProtocols;
     }
 
     public static void checkValidProtocols(List<String> protocols) {
-        List<String> validProtocols = Arrays.asList(TLS_PROTOCOLS);
-        for (String protocol : protocols) {
-            if (!validProtocols.contains(protocol)) {
-                throw ExceptionFactory.createException(WrongArgumentException.class,
-                        "'" + protocol + "' not recognized as a valid TLS protocol version (should be one of "
-                                + Arrays.stream(TLS_PROTOCOLS).collect(Collectors.joining(", ")) + ").");
-            }
-        }
+        getValidProtocols(protocols.toArray(new String[0]));
     }
 
     private static class KeyStoreConf {
@@ -279,6 +307,8 @@ public class ExportControlled {
      *            the Protocol instance containing the socket to convert to an SSLSocket.
      * @param serverVersion
      *            ServerVersion object
+     * @param log
+     *            Logger
      * @return SSL socket
      * @throws IOException
      *             if i/o exception occurs
@@ -287,7 +317,7 @@ public class ExportControlled {
      * @throws FeatureNotAvailableException
      *             if TLS is not supported
      */
-    public static Socket performTlsHandshake(Socket rawSocket, SocketConnection socketConnection, ServerVersion serverVersion)
+    public static Socket performTlsHandshake(Socket rawSocket, SocketConnection socketConnection, ServerVersion serverVersion, Log log)
             throws IOException, SSLParamsException, FeatureNotAvailableException {
         PropertySet pset = socketConnection.getPropertySet();
 
@@ -315,7 +345,6 @@ public class ExportControlled {
         }
 
         sslSocket.startHandshake();
-
         return sslSocket;
     }
 
@@ -665,5 +694,32 @@ public class ExportControlled {
 
     public static byte[] encryptWithRSAPublicKey(byte[] source, RSAPublicKey key) throws RSAException {
         return encryptWithRSAPublicKey(source, key, "RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
+    }
+
+    public static RSAPrivateKey decodeRSAPrivateKey(String key) throws RSAException {
+        if (key == null) {
+            throw ExceptionFactory.createException(RSAException.class, "Key parameter is null");
+        }
+
+        String keyData = key.replace("-----BEGIN PRIVATE KEY-----", "").replaceAll("\\R", "").replace("-----END PRIVATE KEY-----", "");
+        byte[] decodedKeyData = Base64.getDecoder().decode(keyData);
+
+        try {
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            return (RSAPrivateKey) keyFactory.generatePrivate(new PKCS8EncodedKeySpec(decodedKeyData));
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw ExceptionFactory.createException(RSAException.class, "Unable to decode private key", e);
+        }
+    }
+
+    public static byte[] sign(byte[] source, RSAPrivateKey privateKey) throws RSAException {
+        try {
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(privateKey);
+            signature.update(source);
+            return signature.sign();
+        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
+            throw ExceptionFactory.createException(RSAException.class, e.getMessage(), e);
+        }
     }
 }

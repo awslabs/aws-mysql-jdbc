@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -58,6 +58,7 @@ import java.util.Map;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.MysqlType;
+import com.mysql.cj.ParseInfo;
 import com.mysql.cj.PreparedQuery;
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
 import com.mysql.cj.conf.PropertyKey;
@@ -71,6 +72,7 @@ import com.mysql.cj.protocol.a.result.ResultsetRowsStatic;
 import com.mysql.cj.result.DefaultColumnDefinition;
 import com.mysql.cj.result.Field;
 import com.mysql.cj.result.Row;
+import com.mysql.cj.util.SearchMode;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
@@ -530,7 +532,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                     int parenOpenPos = q.getOriginalSql().indexOf('(', startPos + 4);
 
                     if (parenOpenPos != -1) {
-                        int parenClosePos = StringUtils.indexOfIgnoreCase(parenOpenPos, q.getOriginalSql(), ")", "'", "'", StringUtils.SEARCH_MODE__ALL);
+                        int parenClosePos = StringUtils.indexOfIgnoreCase(parenOpenPos, q.getOriginalSql(), ")", "'", "'", SearchMode.__FULL);
 
                         if (parenClosePos != -1) {
                             List<?> parsedParameters = StringUtils.split(q.getOriginalSql().substring(parenOpenPos + 1, parenClosePos), ",", "'\"", "'\"",
@@ -705,8 +707,8 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
      */
     private void fakeParameterTypes(boolean isReallyProcedure) throws SQLException {
         synchronized (checkClosed().getConnectionMutex()) {
-            String encoding = this.connection.getSession().getServerSession().getCharacterSetMetadata();
-            int collationIndex = this.connection.getSession().getServerSession().getMetadataCollationIndex();
+            String encoding = this.connection.getSession().getServerSession().getCharsetSettings().getMetadataEncoding();
+            int collationIndex = this.connection.getSession().getServerSession().getCharsetSettings().getMetadataCollationIndex();
             Field[] fields = new Field[13];
 
             fields[0] = new Field("", "PROCEDURE_CAT", collationIndex, encoding, MysqlType.CHAR, 0);
@@ -900,7 +902,8 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
     }
 
     private String extractProcedureName() throws SQLException {
-        String sanitizedSql = StringUtils.stripComments(((PreparedQuery<?>) this.query).getOriginalSql(), "`\"'", "`\"'", true, false, true, true);
+        String sanitizedSql = StringUtils.stripCommentsAndHints(((PreparedQuery<?>) this.query).getOriginalSql(), "`'\"", "`'\"",
+                !this.session.getServerSession().isNoBackslashEscapesSet());
 
         // TODO: Do this with less memory allocation
         int endCallIndex = StringUtils.indexOfIgnoreCase(sanitizedSql, "CALL ");
@@ -2330,7 +2333,20 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
 
     @Override
     protected boolean checkReadOnlySafeStatement() throws SQLException {
-        return (super.checkReadOnlySafeStatement() || this.checkReadOnlyProcedure());
+        if (ParseInfo.isReadOnlySafeQuery(((PreparedQuery<?>) this.query).getOriginalSql(), this.session.getServerSession().isNoBackslashEscapesSet())) {
+            String sql = ((PreparedQuery<?>) this.query).getOriginalSql();
+            int statementKeywordPos = ParseInfo.indexOfStatementKeyword(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+            if (StringUtils.startsWithIgnoreCaseAndWs(sql, "CALL", statementKeywordPos)
+                    || StringUtils.startsWithIgnoreCaseAndWs(sql, "SELECT", statementKeywordPos)) {
+                // "CALL" and "SELECT" are read-only safe but the routine they call may not be.
+                if (!this.connection.isReadOnly()) { // Only proceed with checking the routine body if really needed.
+                    return true;
+                }
+                return checkReadOnlyProcedure();
+            }
+            return true;
+        }
+        return !this.connection.isReadOnly();
     }
 
     @Override

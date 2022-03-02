@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -36,7 +36,6 @@ import java.math.BigDecimal;
 import java.sql.Clob;
 import java.sql.JDBCType;
 import java.sql.NClob;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLType;
 import java.sql.SQLXML;
@@ -285,7 +284,7 @@ public class UpdatableResultSet extends ResultSetImpl {
                     }
 
                     // Can't reference more than one database
-                    if ((dbName == null) || !otherDbName.equals(dbName)) {
+                    if ((dbName == null) || !dbName.equals(otherDbName)) {
                         this.isUpdatable = false;
                         this.notUpdatableReason = Messages.getString("NotUpdatableReason.1");
 
@@ -979,7 +978,7 @@ public class UpdatableResultSet extends ResultSetImpl {
     @Override
     public void refreshRow() throws SQLException {
         synchronized (checkClosed().getConnectionMutex()) {
-            if (getType() == ResultSet.TYPE_FORWARD_ONLY) {
+            if (isStrictlyForwardOnly()) {
                 throw ExceptionFactory.createException(Messages.getString("ResultSet.ForwardOnly"));
             }
 

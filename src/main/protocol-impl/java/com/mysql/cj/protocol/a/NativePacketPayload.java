@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -29,6 +29,9 @@
 
 package com.mysql.cj.protocol.a;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
 import com.mysql.cj.exceptions.ExceptionFactory;
@@ -49,7 +52,6 @@ import com.mysql.cj.util.StringUtils;
  * A position is maintained for reading/writing data. A payload length is
  * maintained allowing the PacketPayload to be decoupled from the size of
  * the underlying buffer.
- * 
  */
 public class NativePacketPayload implements Message {
     static final int NO_LENGTH_LIMIT = -1;
@@ -62,6 +64,8 @@ public class NativePacketPayload implements Message {
     public static final short TYPE_ID_AUTH_SWITCH = 0xFE;
     public static final short TYPE_ID_LOCAL_INFILE = 0xFB;
     public static final short TYPE_ID_OK = 0;
+    public static final short TYPE_ID_AUTH_MORE_DATA = 0x01;
+    public static final short TYPE_ID_AUTH_NEXT_FACTOR = 0x02;
 
     private int payloadLength = 0;
 
@@ -70,6 +74,8 @@ public class NativePacketPayload implements Message {
     private int position = 0;
 
     static final int MAX_BYTES_TO_DUMP = 1024;
+
+    private Map<String, Integer> tags = new HashMap<>();
 
     @Override
     public String toString() {
@@ -208,17 +214,17 @@ public class NativePacketPayload implements Message {
 
     /**
      * Is it a EOF packet.
-     * See http://dev.mysql.com/doc/internals/en/packet-EOF_Packet.html
+     * See https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_eof_packet.html
      * 
      * @return true if it is a EOF packet
      */
     public final boolean isEOFPacket() {
-        return (this.byteBuffer[0] & 0xff) == TYPE_ID_EOF && (getPayloadLength() <= 5);
+        return (this.byteBuffer[0] & 0xff) == TYPE_ID_EOF && (this.payloadLength <= 5);
     }
 
     /**
      * Is it a Protocol::AuthSwitchRequest packet.
-     * See http://dev.mysql.com/doc/internals/en/connection-phase-packets.html
+     * See https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_auth_switch_request.html
      * 
      * @return true if it is a Protocol::AuthSwitchRequest packet
      */
@@ -228,7 +234,7 @@ public class NativePacketPayload implements Message {
 
     /**
      * Is it an OK packet.
-     * See http://dev.mysql.com/doc/internals/en/packet-OK_Packet.html
+     * See https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_ok_packet.html
      * 
      * @return true if it is an OK packet
      */
@@ -238,22 +244,32 @@ public class NativePacketPayload implements Message {
 
     /**
      * Is it an OK packet for ResultSet. Unlike usual 0x00 signature it has 0xfe signature.
-     * See http://dev.mysql.com/doc/internals/en/packet-OK_Packet.html
+     * See https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_ok_packet.html
      * 
      * @return true if it is an OK packet for ResultSet
      */
     public final boolean isResultSetOKPacket() {
-        return (this.byteBuffer[0] & 0xff) == TYPE_ID_EOF && (getPayloadLength() < 16777215);
+        return (this.byteBuffer[0] & 0xff) == TYPE_ID_EOF && (this.payloadLength > 5) && (this.payloadLength < 16777215);
     }
 
     /**
      * Is it a Protocol::AuthMoreData packet.
-     * See http://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::AuthMoreData
+     * See https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_auth_more_data.html
      * 
      * @return true if it is a Protocol::AuthMoreData packet
      */
-    public final boolean isAuthMoreData() {
-        return ((this.byteBuffer[0] & 0xff) == 1);
+    public final boolean isAuthMoreDataPacket() {
+        return (this.byteBuffer[0] & 0xff) == TYPE_ID_AUTH_MORE_DATA;
+    }
+
+    /**
+     * Is it a Protocol::AuthNextFactor packet.
+     * See https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_auth_next_factor_request.html
+     * 
+     * @return true if it is a Protocol::AuthNextFactor packet
+     */
+    public final boolean isAuthNextFactorPacket() {
+        return (this.byteBuffer[0] & 0xff) == TYPE_ID_AUTH_NEXT_FACTOR;
     }
 
     /**
@@ -659,4 +675,29 @@ public class NativePacketPayload implements Message {
         return extractedSql;
     }
 
+    /**
+     * Tag current position with the given key for future reference.
+     * 
+     * @param key
+     *            the position tag key name.
+     * @return
+     *         the previous value of this tag, if there was one, or -1.
+     */
+    public int setTag(String key) {
+        Integer pos = this.tags.put(key, getPosition());
+        return pos == null ? -1 : pos;
+    }
+
+    /**
+     * Gets the value of the position tag for the given key.
+     * 
+     * @param key
+     *            the position tag key name.
+     * @return
+     *         the position value of this tag, if there was one, or -1.
+     */
+    public int getTag(String key) {
+        Integer pos = this.tags.get(key);
+        return pos == null ? -1 : pos;
+    }
 }

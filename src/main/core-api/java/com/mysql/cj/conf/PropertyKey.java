@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -62,11 +62,11 @@ public enum PropertyKey {
 
     allowLoadLocalInfile("allowLoadLocalInfile", true), //
     allowLoadLocalInfileInPath("allowLoadLocalInfileInPath", true), //
-    allowSourceDownConnections("allowSourceDownConnections", "allowMasterDownConnections", true), //
     allowMultiQueries("allowMultiQueries", true), //
     allowNanAndInf("allowNanAndInf", true), //
     allowPublicKeyRetrieval("allowPublicKeyRetrieval", true), //
     allowReplicaDownConnections("allowReplicaDownConnections", "allowSlaveDownConnections", true), //
+    allowSourceDownConnections("allowSourceDownConnections", "allowMasterDownConnections", true), //
     allowUrlInLocalInfile("allowUrlInLocalInfile", true), //
     alwaysSendSetIsolation("alwaysSendSetIsolation", true), //
     authenticationPlugins("authenticationPlugins", true), //
@@ -100,6 +100,7 @@ public enum PropertyKey {
     connectTimeout("connectTimeout", true), //
     continueBatchOnError("continueBatchOnError", true), //
     createDatabaseIfNotExist("createDatabaseIfNotExist", true), //
+    customCharsetMapping("customCharsetMapping", true), //
     databaseTerm("databaseTerm", true), //
     defaultAuthenticationPlugin("defaultAuthenticationPlugin", true), //
     defaultFetchSize("defaultFetchSize", true), //
@@ -114,8 +115,6 @@ public enum PropertyKey {
     emptyStringsConvertToZero("emptyStringsConvertToZero", true), //
     emulateLocators("emulateLocators", true), //
     emulateUnsupportedPstmts("emulateUnsupportedPstmts", true), //
-    enabledSSLCipherSuites("enabledSSLCipherSuites", true), //
-    enabledTLSProtocols("enabledTLSProtocols", true), //
     enableEscapeProcessing("enableEscapeProcessing", true), //
     enablePacketDebug("enablePacketDebug", true), //
     enableQueryTimeouts("enableQueryTimeouts", true), //
@@ -124,13 +123,14 @@ public enum PropertyKey {
     failOverReadOnly("failOverReadOnly", true), //
     fallbackToSystemKeyStore("fallbackToSystemKeyStore", true), //
     fallbackToSystemTrustStore("fallbackToSystemTrustStore", true), //
+    forceConnectionTimeZoneToSession("forceConnectionTimeZoneToSession", true), //
     functionsNeverReturnBlobs("functionsNeverReturnBlobs", true), //
     gatherPerfMetrics("gatherPerfMetrics", true), //
     generateSimpleParameterMetadata("generateSimpleParameterMetadata", true), //
     getProceduresReturnsFunctions("getProceduresReturnsFunctions", true), //
-    holdResultsOpenOverStatementClose("holdResultsOpenOverStatementClose", true), //
     ha_enableJMX("ha.enableJMX", "haEnableJMX", true), //
     ha_loadBalanceStrategy("ha.loadBalanceStrategy", "haLoadBalanceStrategy", true), //
+    holdResultsOpenOverStatementClose("holdResultsOpenOverStatementClose", true), //
     ignoreNonTxTables("ignoreNonTxTables", true), //
     includeInnodbStatusInDeadlockExceptions("includeInnodbStatusInDeadlockExceptions", true), //
     includeThreadDumpInDeadlockExceptions("includeThreadDumpInDeadlockExceptions", true), //
@@ -147,8 +147,8 @@ public enum PropertyKey {
     loadBalanceExceptionChecker("loadBalanceExceptionChecker", true), //
     loadBalanceHostRemovalGracePeriod("loadBalanceHostRemovalGracePeriod", true), //
     loadBalancePingTimeout("loadBalancePingTimeout", true), //
-    loadBalanceSQLStateFailover("loadBalanceSQLStateFailover", true), //
     loadBalanceSQLExceptionSubclassFailover("loadBalanceSQLExceptionSubclassFailover", true), //
+    loadBalanceSQLStateFailover("loadBalanceSQLStateFailover", true), //
     loadBalanceValidateConnectionOnSwapServer("loadBalanceValidateConnectionOnSwapServer", true), //
     localSocketAddress("localSocketAddress", true), //
     locatorFetchBufferSize("locatorFetchBufferSize", true), //
@@ -165,11 +165,15 @@ public enum PropertyKey {
     noAccessToProcedureBodies("noAccessToProcedureBodies", true), //
     noDatetimeStringSync("noDatetimeStringSync", true), //
     nullDatabaseMeansCurrent("nullDatabaseMeansCurrent", "nullCatalogMeansCurrent", true), //
+    ociConfigFile("ociConfigFile", true), //
     overrideSupportsIntegrityEnhancementFacility("overrideSupportsIntegrityEnhancementFacility", true), //
     packetDebugBufferSize("packetDebugBufferSize", true), //
     padCharsWithSpace("padCharsWithSpace", true), //
     paranoid("paranoid", false), //
     parseInfoCacheFactory("parseInfoCacheFactory", true), //
+    password1("password1", true), //
+    password2("password2", true), //
+    password3("password3", true), //
     passwordCharacterEncoding("passwordCharacterEncoding", true), //
     pedantic("pedantic", true), //
     pinGlobalTxToPhysicalConnection("pinGlobalTxToPhysicalConnection", true), //
@@ -180,7 +184,6 @@ public enum PropertyKey {
     processEscapeCodesForPrepStmts("processEscapeCodesForPrepStmts", true), //
     profilerEventHandler("profilerEventHandler", true), //
     profileSQL("profileSQL", true), //
-    forceConnectionTimeZoneToSession("forceConnectionTimeZoneToSession", true), //
     propertiesTransform("propertiesTransform", true), //
     queriesBeforeRetrySource("queriesBeforeRetrySource", "queriesBeforeRetryMaster", true), //
     queryInterceptors("queryInterceptors", true), //
@@ -196,6 +199,7 @@ public enum PropertyKey {
     retriesAllDown("retriesAllDown", true), //
     rewriteBatchedStatements("rewriteBatchedStatements", true), //
     rollbackOnPooledClose("rollbackOnPooledClose", true), //
+    scrollTolerantForwardOnly("scrollTolerantForwardOnly", true), //
     secondsBeforeRetrySource("secondsBeforeRetrySource", "secondsBeforeRetryMaster", true), //
     selfDestructOnPingMaxOperations("selfDestructOnPingMaxOperations", true), //
     selfDestructOnPingSecondsLifetime("selfDestructOnPingSecondsLifetime", true), //
@@ -219,7 +223,10 @@ public enum PropertyKey {
     tcpSndBuf("tcpSndBuf", true), //
     tcpTrafficClass("tcpTrafficClass", true), //
     tinyInt1isBit("tinyInt1isBit", true), //
+    tlsCiphersuites("tlsCiphersuites", "enabledSSLCipherSuites", true), //
+    tlsVersions("tlsVersions", "enabledTLSProtocols", true), //
     traceProtocol("traceProtocol", true), //
+    trackSessionState("trackSessionState", true), //
     transformedBitIsBoolean("transformedBitIsBoolean", true), //
     treatUtilDateAsTimestamp("treatUtilDateAsTimestamp", true), //
     trustCertificateKeyStorePassword("trustCertificateKeyStorePassword", true), //
@@ -265,13 +272,20 @@ public enum PropertyKey {
     xdevapiSslTrustStoreUrl("xdevapi.ssl-truststore", "xdevapiSslTruststore", true), //
     xdevapiTlsCiphersuites("xdevapi.tls-ciphersuites", "xdevapiTlsCiphersuites", true), //
     xdevapiTlsVersions("xdevapi.tls-versions", "xdevapiTlsVersions", true), //
-    xdevapiUseAsyncProtocol("xdevapi.useAsyncProtocol", "xdevapiUseAsyncProtocol", true), //
 
     yearIsDateType("yearIsDateType", true), //
     zeroDateTimeBehavior("zeroDateTimeBehavior", true), //
 
-    //Cluster-aware failover
+    // protocols for AWS MySQL Driver
+    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
+
+    // plugin system
+    useConnectionPlugins("useConnectionPlugins", true),
+    connectionPluginFactories("connectionPluginFactories", true),
+
+    // Failover plugin
     enableClusterAwareFailover("enableClusterAwareFailover", true), //
+    gatherAdditionalMetricsOnInstance("gatherAdditionalMetricsOnInstance", true),
     clusterInstanceHostPattern("clusterInstanceHostPattern", true), // "?.my-domain.com", "any-subdomain.?.my-domain.com:9999"; "?" will be replaced with node name
     clusterId("clusterId", true), //
     clusterTopologyRefreshRateMs("clusterTopologyRefreshRateMs", true), //
@@ -279,14 +293,18 @@ public enum PropertyKey {
     failoverClusterTopologyRefreshRateMs("failoverClusterTopologyRefreshRateMs", true), //
     failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
     failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
-    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
-    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
-    connectionPluginFactories("connectionPluginFactories", true),
+
+    // Enhanced Failure Monitoring plugin
     failureDetectionEnabled("failureDetectionEnabled", true),
     failureDetectionTime("failureDetectionTime", true),
     failureDetectionInterval("failureDetectionInterval", true),
     failureDetectionCount("failureDetectionCount", true),
     monitorDisposalTime("monitorDisposalTime", true),
+
+    // XML enternal entity
+    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
+
+    // IAM authentication
     useAwsIam("useAwsIam", true);
 
     private String keyName;
@@ -307,7 +325,7 @@ public enum PropertyKey {
 
     /**
      * Initializes each enum element with the proper key name to be used in the connection string or properties maps.
-     * 
+     *
      * @param keyName
      *            the key name for the enum element.
      * @param isCaseSensitive
@@ -320,7 +338,7 @@ public enum PropertyKey {
 
     /**
      * Initializes each enum element with the proper key name to be used in the connection string or properties maps.
-     * 
+     *
      * @param keyName
      *            the key name for the enum element.
      * @param alias
@@ -340,7 +358,7 @@ public enum PropertyKey {
 
     /**
      * Gets the key name of this enum element.
-     * 
+     *
      * @return
      *         the key name associated with the enum element.
      */
@@ -350,7 +368,7 @@ public enum PropertyKey {
 
     /**
      * Gets the camel-case alias key name of this enum element.
-     * 
+     *
      * @return
      *         the camel-case alias key name associated with the enum element or null.
      */
@@ -360,7 +378,7 @@ public enum PropertyKey {
 
     /**
      * Looks for a {@link PropertyKey} that matches the given value as key name.
-     * 
+     *
      * @param value
      *            the key name to look for.
      * @return
@@ -383,7 +401,7 @@ public enum PropertyKey {
 
     /**
      * Helper method that normalizes the case of the given key, if it is one of {@link PropertyKey} elements.
-     * 
+     *
      * @param keyName
      *            the key name to normalize.
      * @return

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -40,7 +40,9 @@ import com.mysql.cj.protocol.Message;
 import com.mysql.cj.protocol.a.NativeConstants;
 import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
+import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
 import com.mysql.cj.protocol.a.NativePacketPayload;
+import com.mysql.cj.protocol.a.ValueEncoder;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
@@ -66,14 +68,11 @@ public abstract class AbstractPreparedQuery<T extends QueryBindings<?>> extends 
 
     private byte[] streamConvertBuf = null;
 
-    private boolean usingAnsiMode;
-
     public AbstractPreparedQuery(NativeSession sess) {
         super(sess);
 
         this.autoClosePStmtStreams = this.session.getPropertySet().getBooleanProperty(PropertyKey.autoClosePStmtStreams);
         this.useStreamLengthsInPrepStmts = this.session.getPropertySet().getBooleanProperty(PropertyKey.useStreamLengthsInPrepStmts);
-        this.usingAnsiMode = !this.session.getServerSession().useAnsiQuotedIdentifiers();
     }
 
     @Override
@@ -232,7 +231,7 @@ public abstract class AbstractPreparedQuery<T extends QueryBindings<?>> extends 
     @SuppressWarnings("unchecked")
     @Override
     public <M extends Message> M fillSendPacket(QueryBindings<?> bindings) {
-        // TODO this method is specific to CSPS and a native protocol; must be unified with SSPS via message builder
+        // TODO this method is specific to CSPS and the native protocol; must be unified with SSPS via message builder
 
         synchronized (this) {
             BindValue[] bindValues = bindings.getBindValues();
@@ -240,6 +239,34 @@ public abstract class AbstractPreparedQuery<T extends QueryBindings<?>> extends 
             NativePacketPayload sendPacket = this.session.getSharedSendPacket();
 
             sendPacket.writeInteger(IntegerDataType.INT1, NativeConstants.COM_QUERY);
+
+            if (getSession().getServerSession().supportsQueryAttributes()) {
+                if (this.queryAttributesBindings.getCount() > 0) {
+                    sendPacket.writeInteger(IntegerDataType.INT_LENENC, this.queryAttributesBindings.getCount());
+                    sendPacket.writeInteger(IntegerDataType.INT_LENENC, 1); // parameter_set_count (always 1)
+                    byte[] nullBitsBuffer = new byte[(this.queryAttributesBindings.getCount() + 7) / 8];
+                    for (int i = 0; i < this.queryAttributesBindings.getCount(); i++) {
+                        if (this.queryAttributesBindings.getAttributeValue(i).isNull()) {
+                            nullBitsBuffer[i >>> 3] |= 1 << (i & 7);
+                        }
+                    }
+                    sendPacket.writeBytes(StringLengthDataType.STRING_VAR, nullBitsBuffer);
+                    sendPacket.writeInteger(IntegerDataType.INT1, 1); // new_params_bind_flag (always 1)
+                    this.queryAttributesBindings.runThroughAll(a -> {
+                        sendPacket.writeInteger(IntegerDataType.INT2, a.getType());
+                        sendPacket.writeBytes(StringSelfDataType.STRING_LENENC, a.getName().getBytes());
+                    });
+                    ValueEncoder valueEncoder = new ValueEncoder(sendPacket, this.charEncoding, this.session.getServerSession().getDefaultTimeZone());
+                    this.queryAttributesBindings.runThroughAll(a -> valueEncoder.encodeValue(a.getValue(), a.getType()));
+                } else {
+                    sendPacket.writeInteger(IntegerDataType.INT_LENENC, 0);
+                    sendPacket.writeInteger(IntegerDataType.INT_LENENC, 1); // parameter_set_count (always 1)
+                }
+            } else if (this.queryAttributesBindings.getCount() > 0) {
+                this.session.getLog().logWarn(Messages.getString("QueryAttributes.SetButNotSupported"));
+            }
+
+            sendPacket.setTag("QUERY");
 
             boolean useStreamLengths = this.useStreamLengthsInPrepStmts.getValue();
 
@@ -370,14 +397,14 @@ public abstract class AbstractPreparedQuery<T extends QueryBindings<?>> extends 
                 packet.writeInteger(IntegerDataType.INT1, (byte) '0');
                 lastwritten = i + 1;
             } else {
-                if ((b == '\\') || (b == '\'') || (!this.usingAnsiMode && b == '"')) {
+                if ((b == '\\') || (b == '\'')) {
                     // write stuff not yet written
                     if (i > lastwritten) {
                         packet.writeBytes(StringLengthDataType.STRING_FIXED, buf, lastwritten, i - lastwritten);
                     }
 
                     // write escape
-                    packet.writeInteger(IntegerDataType.INT1, (byte) '\\');
+                    packet.writeInteger(IntegerDataType.INT1, b);
                     lastwritten = i; // not i+1 as b wasn't written.
                 }
             }

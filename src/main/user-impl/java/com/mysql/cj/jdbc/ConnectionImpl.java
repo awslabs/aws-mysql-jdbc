@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -45,6 +45,7 @@ import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Struct;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -52,7 +53,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Stack;
-import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -71,6 +71,7 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.RuntimeProperty;
+import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.ExceptionInterceptor;
@@ -83,7 +84,6 @@ import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping;
 import com.mysql.cj.jdbc.ha.MultiHostMySQLConnection;
 import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
-import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptorProvider;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaData;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaDataImpl;
 import com.mysql.cj.jdbc.result.ResultSetFactory;
@@ -91,6 +91,7 @@ import com.mysql.cj.jdbc.result.ResultSetInternalMethods;
 import com.mysql.cj.jdbc.result.UpdatableResultSet;
 import com.mysql.cj.log.ProfilerEvent;
 import com.mysql.cj.log.StandardLogger;
+import com.mysql.cj.protocol.ServerSessionStateController;
 import com.mysql.cj.protocol.SocksProxySocketFactory;
 import com.mysql.cj.util.LRUCache;
 import com.mysql.cj.util.StringUtils;
@@ -212,12 +213,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             return this.hashCode;
         }
     }
-
-    /**
-     * The mapping between MySQL charset names and Java charset names.
-     * Initialized by loadCharacterSetMapping()
-     */
-    public static Map<?, ?> charsetMap;
 
     /** Default logger class name */
     protected static final String DEFAULT_LOGGER_CLASS = StandardLogger.class.getName();
@@ -572,7 +567,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             this.user = userName;
             this.password = newPassword;
 
-            this.session.configureClientCharacterSet(true);
+            this.session.getServerSession().getCharsetSettings().configurePostHandshake(true);
 
             this.session.setSessionVariables();
 
@@ -826,8 +821,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public void createNewIO(boolean isForReconnect) {
         synchronized (getConnectionMutex()) {
-            // Synchronization Not needed for *new* connections, but defintely for connections going through fail-over, since we might get the new connection up
-            // and running *enough* to start sending cached or still-open server-side prepared statements over to the backend before we get a chance to
+            // Synchronization Not needed for *new* connections, but definitely for connections going through fail-over, since we might get the new connection
+            // up and running *enough* to start sending cached or still-open server-side prepared statements over to the backend before we get a chance to
             // re-prepare them...
 
             try {
@@ -1145,7 +1140,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public String getCharacterSetMetadata() {
         synchronized (getConnectionMutex()) {
-            return this.session.getServerSession().getCharacterSetMetadata();
+            return this.session.getServerSession().getCharsetSettings().getMetadataEncoding();
         }
     }
 
@@ -1188,8 +1183,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 this.nullStatementResultSetFactory);
 
         if (getSession() != null && getSession().getProtocol() != null) {
-            dbmeta.setMetadataEncoding(getSession().getServerSession().getCharacterSetMetadata());
-            dbmeta.setMetadataCollationIndex(getSession().getServerSession().getMetadataCollationIndex());
+            dbmeta.setMetadataEncoding(getSession().getServerSession().getCharsetSettings().getMetadataEncoding());
+            dbmeta.setMetadataCollationIndex(getSession().getServerSession().getCharsetSettings().getMetadataCollationIndex());
         }
 
         return dbmeta;
@@ -1318,8 +1313,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
         this.autoIncrementIncrement = this.session.getServerSession().getServerVariable("auto_increment_increment", 1);
 
-        this.session.buildCollationMapping();
-
         try {
             LicenseConfiguration.checkLicenseType(this.session.getServerSession().getServerVariables());
         } catch (CJException e) {
@@ -1330,20 +1323,11 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
         checkTransactionIsolationLevel();
 
-        this.session.checkForCharsetMismatch();
-
-        this.session.configureClientCharacterSet(false);
-
         handleAutoCommitDefaults();
 
-        //
-        // We need to figure out what character set metadata and error messages will be returned in, and then map them to Java encoding names
-        //
-        // We've already set it, and it might be different than what was originally on the server, which is why we use the "special" key to retrieve it
-        this.session.getServerSession().configureCharacterSets();
-
-        ((com.mysql.cj.jdbc.DatabaseMetaData) this.dbmd).setMetadataEncoding(getSession().getServerSession().getCharacterSetMetadata());
-        ((com.mysql.cj.jdbc.DatabaseMetaData) this.dbmd).setMetadataCollationIndex(getSession().getServerSession().getMetadataCollationIndex());
+        ((com.mysql.cj.jdbc.DatabaseMetaData) this.dbmd).setMetadataEncoding(this.session.getServerSession().getCharsetSettings().getMetadataEncoding());
+        ((com.mysql.cj.jdbc.DatabaseMetaData) this.dbmd)
+                .setMetadataCollationIndex(this.session.getServerSession().getCharsetSettings().getMetadataCollationIndex());
 
         //
         // Server can do this more efficiently for us
@@ -1353,11 +1337,9 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     private void addProxyInterceptor() {
-        if(this.realProxy != null) {
+        if (this.realProxy != null) {
             ConnectionLifecycleInterceptor proxyInterceptor = null;
-            if(this.realProxy instanceof ConnectionLifecycleInterceptorProvider) {
-                proxyInterceptor = ((ConnectionLifecycleInterceptorProvider)this.realProxy).getConnectionLifecycleInterceptor();
-            } else if (this.realProxy instanceof ConnectionLifecycleInterceptor) {
+            if (this.realProxy instanceof ConnectionLifecycleInterceptor) {
                 proxyInterceptor = (ConnectionLifecycleInterceptor)this.realProxy;
             }
 
@@ -1368,6 +1350,18 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 if(!this.connectionLifecycleInterceptors.contains(proxyInterceptor)) {
                     this.connectionLifecycleInterceptors.add(proxyInterceptor);
                 }
+            }
+        }
+    }
+
+    @Override
+    public void setConnectionLifecycleInterceptor(ConnectionLifecycleInterceptor interceptor) {
+        if (interceptor != null) {
+            if (this.connectionLifecycleInterceptors == null) {
+                this.connectionLifecycleInterceptors = new ArrayList<>();
+            }
+            if (!this.connectionLifecycleInterceptors.contains(interceptor)) {
+                this.connectionLifecycleInterceptors.add(interceptor);
             }
         }
     }
@@ -2067,10 +2061,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 this.autoReconnect.setValue(true);
             }
 
+            boolean isAutocommit = this.session.getServerSession().isAutocommit();
             try {
                 boolean needsSetOnServer = true;
-
-                if (this.useLocalSessionState.getValue() && this.session.getServerSession().isAutoCommit() == autoCommitFlag) {
+                if (this.useLocalSessionState.getValue() && isAutocommit == autoCommitFlag) {
                     needsSetOnServer = false;
                 } else if (!this.autoReconnect.getValue()) {
                     needsSetOnServer = getSession().isSetNeededForAutoCommitMode(autoCommitFlag);
@@ -2085,6 +2079,13 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                     this.session.execSQL(null, autoCommitFlag ? "SET autocommit=1" : "SET autocommit=0", -1, null, false, this.nullStatementResultSetFactory,
                             null, false);
                 }
+            } catch (CJCommunicationsException e) {
+                throw e;
+            } catch (CJException e) {
+                // Reset to current autocommit value in case of an exception different than a communication exception occurs.
+                this.session.getServerSession().setAutoCommit(isAutocommit);
+                // Update the stacktrace.
+                throw SQLError.createSQLException(e.getMessage(), e.getSQLState(), e.getVendorCode(), e.isTransient(), e, getExceptionInterceptor());
             } finally {
                 if (this.autoReconnectForPools.getValue()) {
                     this.autoReconnect.setValue(false);
@@ -2460,6 +2461,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public void setSessionMaxRows(int max) throws SQLException {
         synchronized (getConnectionMutex()) {
+            checkClosed();
             if (this.session.getSessionMaxRows() != max) {
                 this.session.setSessionMaxRows(max);
                 this.session.execSQL(null, "SET SQL_SELECT_LIMIT=" + (this.session.getSessionMaxRows() == -1 ? "DEFAULT" : this.session.getSessionMaxRows()),
@@ -2731,6 +2733,11 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public void handleCleanup(Throwable whyCleanedUp) {
         cleanup(whyCleanedUp);
+    }
+
+    @Override
+    public ServerSessionStateController getServerSessionStateController() {
+        return this.session.getServerSession().getServerSessionStateController();
     }
 
 }

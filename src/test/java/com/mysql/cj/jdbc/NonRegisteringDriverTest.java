@@ -30,10 +30,24 @@
 
 package com.mysql.cj.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+
 import com.mysql.cj.conf.ConnectionUrl;
-import com.mysql.cj.jdbc.ha.*;
-import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
-import org.junit.jupiter.api.*;
+import com.mysql.cj.jdbc.ha.ConnectionProxy;
+import com.mysql.cj.jdbc.ha.FailoverConnectionProxy;
+import com.mysql.cj.jdbc.ha.LoadBalancedConnection;
+import com.mysql.cj.jdbc.ha.LoadBalancedConnectionProxy;
+import com.mysql.cj.jdbc.ha.ReplicationConnection;
+import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -42,10 +56,6 @@ import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 public class NonRegisteringDriverTest {
 
@@ -107,8 +117,9 @@ public class NonRegisteringDriverTest {
         ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
         NonRegisteringDriver driver = new NonRegisteringDriver();
 
-        try (MockedStatic<ClusterAwareConnectionProxy> mockStaticClusterAwareConnectionProxy = mockStatic(ClusterAwareConnectionProxy.class)) {
-            mockStaticClusterAwareConnectionProxy.when(() -> ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(eq(connUrl))).thenReturn(mockAwsProtocolConn);
+        try (MockedStatic<ConnectionProxy> mockStaticClusterAwareConnectionProxy = mockStatic(
+            ConnectionProxy.class)) {
+            mockStaticClusterAwareConnectionProxy.when(() -> ConnectionProxy.autodetectClusterAndCreateProxyInstance(eq(connUrl))).thenReturn(mockAwsProtocolConn);
             Connection conn = driver.connect(url, new Properties());
             assertEquals(mockAwsProtocolConn, conn);
         }

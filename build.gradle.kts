@@ -43,10 +43,10 @@ plugins {
     `maven-publish`
     signing
     // Release
-    id("com.github.vlsi.crlf")
-    id("com.github.vlsi.gradle-extensions")
-    id("com.github.vlsi.license-gather") apply false
-    id("com.github.vlsi.stage-vote-release")
+    id("com.github.vlsi.crlf") version "1.77"
+    id("com.github.vlsi.gradle-extensions") version "1.77"
+    id("com.github.vlsi.license-gather") version "1.77" apply false
+    id("com.github.vlsi.stage-vote-release") version "1.77"
     id("com.github.johnrengelman.shadow") version "7.1.0"
 }
 
@@ -181,6 +181,7 @@ tasks.assemble {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+    filter.excludeTestsMatching("testsuite.integration.*")
 
     // Pass the property to tests
     fun passProperty(name: String, default: String? = null) {
@@ -213,20 +214,29 @@ tasks.withType<Checkstyle>().configureEach {
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
     testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
+    testImplementation("com.amazonaws:aws-java-sdk-ec2:1.12.148")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
     testImplementation("org.junit.platform:junit-platform-commons:1.8.2")
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
-    testImplementation("org.junit.platform:junit-platform-launcher:1.6.2")
+    testImplementation("org.junit.platform:junit-platform-launcher:1.8.2")
+    testImplementation("org.junit.platform:junit-platform-suite-engine:1.8.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
+    testImplementation("org.testcontainers:testcontainers:1.16.2")
+    testImplementation("org.testcontainers:mysql:1.16.2")
+    testImplementation("org.testcontainers:junit-jupiter:1.16.2")
+    testImplementation("org.testcontainers:toxiproxy:1.16.2")
+    testImplementation("org.apache.poi:poi-ooxml:5.1.0")
+    testImplementation("com.zaxxer:HikariCP:4.0.3")
 
     implementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:1.7.30")
+    implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.13.0")
 
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }
@@ -335,4 +345,73 @@ signing {
             && project.property("signing.secretKeyRingFile") != "") {
         sign(publishing.publications["maven"])
     }
+}
+
+// Run integrations tests in container
+// Environment is being configured and started
+tasks.register<Test>("test-integration-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunTestInContainer")
+}
+
+tasks.register<Test>("test-integration-performance-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunPerformanceTestInContainer")
+}
+
+// Run community tests in container
+// Environment (like supplementary containers) should be up and running!
+tasks.register<Test>("test-community-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testRunCommunityTestInContainer")
+}
+
+// Run integrations tests in container with debugger
+// Environment is being configured and started
+tasks.register<Test>("debug-integration-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugTestInContainer")
+}
+
+tasks.register<Test>("debug-integration-performance-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugPerformanceTestInContainer")
+}
+
+// Run community tests in container with debugger
+// Environment (like supplementary containers) should be up and running!
+tasks.register<Test>("debug-community-docker") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testDebugCommunityTestInContainer")
+}
+
+// Integration tests are run in a specific order.
+// To add more tests, see testsuite.integration.container.IntegrationTestSuite.java
+tasks.register<Test>("in-container-aurora") {
+    filter.includeTestsMatching("testsuite.integration.container.IntegrationTestSuite")
+}
+
+tasks.register<Test>("in-container-aurora-performance") {
+    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlPerformanceIntegrationTest")
+}
+
+// Run all tests excluding integration tests
+tasks.register<Test>("in-container-community") {
+    // Pass the property to tests
+    fun passProperty(name: String, default: String? = null) {
+        val value = System.getProperty(name) ?: default
+        value?.let { systemProperty(name, it) }
+    }
+    passProperty("user.timezone")
+    passProperty("com.mysql.cj.testsuite.url")
+
+    filter.excludeTestsMatching("testsuite.integration.*")
+    filter.excludeTestsMatching("testsuite.failover.*")
+}
+
+tasks.withType<Test> {
+    this.testLogging {
+        this.showStandardStreams = true
+    }
+    useJUnitPlatform()
 }

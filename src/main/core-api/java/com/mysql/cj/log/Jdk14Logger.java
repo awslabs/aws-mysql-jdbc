@@ -29,8 +29,6 @@
 
 package com.mysql.cj.log;
 
-import com.mysql.cj.util.Util;
-
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -227,10 +225,8 @@ public class Jdk14Logger implements Log {
         for (int i = 0; i < numFrames; i++) {
             String callerClassName = stackTrace[i].getClassName();
 
-            String basePackageName = Util.getPackageName(com.mysql.cj.MysqlType.class); // "com.mysql.cj"
-
-            if (!(callerClassName.startsWith(basePackageName) || callerClassName.startsWith(basePackageName + ".core")
-                    || callerClassName.startsWith(basePackageName + ".jdbc"))) {
+            if (!(callerClassName.startsWith("com.mysql.cj") || callerClassName.startsWith("com.mysql.cj.core")
+                    || callerClassName.startsWith("com.mysql.cj.jdbc"))) {
                 return i;
             }
         }

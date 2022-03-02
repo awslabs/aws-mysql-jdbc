@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -29,8 +29,11 @@
 
 package com.mysql.cj.protocol;
 
+import com.mysql.cj.util.TimeUtil;
+
 public class InternalTime {
 
+    private boolean negative = false;
     private int hours = 0;
     private int minutes = 0;
     private int seconds = 0;
@@ -49,6 +52,14 @@ public class InternalTime {
         this.seconds = seconds;
         this.nanos = nanos;
         this.scale = scale;
+    }
+
+    public boolean isNegative() {
+        return this.negative;
+    }
+
+    public void setNegative(boolean negative) {
+        this.negative = negative;
     }
 
     public int getHours() {
@@ -93,5 +104,13 @@ public class InternalTime {
 
     public void setScale(int scale) {
         this.scale = scale;
+    }
+
+    @Override
+    public String toString() {
+        if (this.nanos > 0) {
+            return String.format("%02d:%02d:%02d.%s", this.hours, this.minutes, this.seconds, TimeUtil.formatNanos(this.nanos, this.scale, false));
+        }
+        return String.format("%02d:%02d:%02d", this.hours, this.minutes, this.seconds);
     }
 }

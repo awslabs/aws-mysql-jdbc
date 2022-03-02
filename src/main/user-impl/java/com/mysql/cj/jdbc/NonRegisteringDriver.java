@@ -34,8 +34,8 @@ import static com.mysql.cj.util.StringUtils.isNullOrEmpty;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -49,7 +49,7 @@ import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.UnableToConnectException;
 import com.mysql.cj.exceptions.UnsupportedConnectionStringException;
-import com.mysql.cj.jdbc.ha.ca.ClusterAwareConnectionProxy;
+import com.mysql.cj.jdbc.ha.ConnectionProxy;
 import com.mysql.cj.jdbc.ha.FailoverConnectionProxy;
 import com.mysql.cj.jdbc.ha.LoadBalancedConnectionProxy;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
@@ -218,7 +218,7 @@ public class NonRegisteringDriver implements java.sql.Driver {
                     return isAcceptAwsProtocolOnly(url) ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
 
                 case SINGLE_CONNECTION_AWS:
-                    return ClusterAwareConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
+                    return ConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
 
                 case FAILOVER_CONNECTION:
                 case FAILOVER_DNS_SRV_CONNECTION:

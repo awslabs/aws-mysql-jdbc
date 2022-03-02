@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -30,7 +30,6 @@
 package testsuite.x.devapi;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.net.Inet6Address;
@@ -53,10 +52,13 @@ public class Ipv6SupportTest extends DevApiBaseTestCase {
 
     @BeforeEach
     public void setupIpv6SupportTest() {
+        assumeTrue(this.isSetForXTests, PropertyDefinitions.SYSP_testsuite_url_mysqlx + " must be set to run this test.");
         if (setupTestSession()) {
-            List<Inet6Address> ipv6List = TestUtils.getIpv6List();
+            List<Inet6Address> ipv6List = isMysqlRunningLocally() ? TestUtils.getIpv6List() : TestUtils.getIpv6List(getTestHost());
             this.ipv6Addrs = ipv6List.stream().map((e) -> e.getHostAddress()).collect(Collectors.toList());
-            this.ipv6Addrs.add("::1"); // IPv6 loopback
+            if (isMysqlRunningLocally()) {
+                this.ipv6Addrs.add("::1"); // IPv6 loopback
+            }
 
             this.session.sql("DROP USER IF EXISTS '" + this.testUser + "'@'%'").execute();
             this.session.sql("CREATE USER '" + this.testUser + "'@'%' IDENTIFIED WITH mysql_native_password BY '" + this.testUser + "'").execute();
@@ -78,8 +80,6 @@ public class Ipv6SupportTest extends DevApiBaseTestCase {
      */
     @Test
     public void testIpv6SupportInSession() {
-        assumeTrue(this.isSetForXTests,
-                "Not set to run X tests. Set the url to the X server using the property " + PropertyDefinitions.SYSP_testsuite_url_mysqlx);
         assumeTrue(mysqlVersionMeetsMinimum(ServerVersion.parseVersion("5.7.17")), "Server version 5.7.17 or higher is required.");
 
         // Although per specification IPv6 addresses must be enclosed by square brackets, we actually support them directly.
@@ -102,9 +102,11 @@ public class Ipv6SupportTest extends DevApiBaseTestCase {
         }
 
         if (!atLeastOne) {
-            fail("None of the tested hosts have server sockets listening on the port " + port
+            String errMsg = "None of the tested hosts have server sockets listening on the port " + port
                     + ". This test requires a MySQL server with X Protocol running in local host with IPv6 support enabled "
-                    + "(set '--mysqlx-bind-address = *' if needed.");
+                    + "(set '--mysqlx-bind-address = *' if needed.";
+            assertFalse(isMysqlRunningLocally(), errMsg);
+            System.err.println(errMsg);
         }
     }
 }

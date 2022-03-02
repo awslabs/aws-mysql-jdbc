@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -299,9 +299,9 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         primaryDb = this.pedantic ? primaryDb : StringUtils.unQuoteIdentifier(primaryDb, this.quotedId);
         foreignDb = this.pedantic ? foreignDb : StringUtils.unQuoteIdentifier(foreignDb, this.quotedId);
 
-        StringBuilder sqlBuf = new StringBuilder(
-                this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? "SELECT A.CONSTRAINT_CATALOG AS PKTABLE_CAT, A.REFERENCED_TABLE_SCHEMA AS PKTABLE_SCHEM,"
-                        : "SELECT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT,NULL AS PKTABLE_SCHEM,");
+        StringBuilder sqlBuf = new StringBuilder(this.databaseTerm.getValue() == DatabaseTerm.SCHEMA
+                ? "SELECT DISTINCT A.CONSTRAINT_CATALOG AS PKTABLE_CAT, A.REFERENCED_TABLE_SCHEMA AS PKTABLE_SCHEM,"
+                : "SELECT DISTINCT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT,NULL AS PKTABLE_SCHEM,");
         sqlBuf.append(" A.REFERENCED_TABLE_NAME AS PKTABLE_NAME, A.REFERENCED_COLUMN_NAME AS PKCOLUMN_NAME,");
         sqlBuf.append(this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? " A.TABLE_CATALOG AS FKTABLE_CAT, A.TABLE_SCHEMA AS FKTABLE_SCHEM,"
                 : " A.TABLE_SCHEMA AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM,");
@@ -309,13 +309,14 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(generateUpdateRuleClause());
         sqlBuf.append(" AS UPDATE_RULE,");
         sqlBuf.append(generateDeleteRuleClause());
-        sqlBuf.append(" AS DELETE_RULE, A.CONSTRAINT_NAME AS FK_NAME,");
-        sqlBuf.append(" (SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = A.REFERENCED_TABLE_SCHEMA");
-        sqlBuf.append(" AND TABLE_NAME = A.REFERENCED_TABLE_NAME AND CONSTRAINT_TYPE IN ('UNIQUE','PRIMARY KEY') LIMIT 1) AS PK_NAME, ");
+        sqlBuf.append(" AS DELETE_RULE, A.CONSTRAINT_NAME AS FK_NAME, TC.CONSTRAINT_NAME AS PK_NAME,");
         sqlBuf.append(importedKeyNotDeferrable);
         sqlBuf.append(" AS DEFERRABILITY FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE A");
         sqlBuf.append(" JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS B USING (TABLE_SCHEMA, TABLE_NAME, CONSTRAINT_NAME) ");
         sqlBuf.append(generateOptionalRefContraintsJoin());
+        sqlBuf.append(" LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC ON (A.REFERENCED_TABLE_SCHEMA = TC.TABLE_SCHEMA");
+        sqlBuf.append("  AND A.REFERENCED_TABLE_NAME = TC.TABLE_NAME");
+        sqlBuf.append("  AND TC.CONSTRAINT_TYPE IN ('UNIQUE', 'PRIMARY KEY'))");
         sqlBuf.append("WHERE B.CONSTRAINT_TYPE = 'FOREIGN KEY'");
         if (primaryDb != null) {
             sqlBuf.append(" AND A.REFERENCED_TABLE_SCHEMA=?");
@@ -325,7 +326,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             sqlBuf.append(" AND A.TABLE_SCHEMA = ?");
         }
         sqlBuf.append(" AND A.TABLE_NAME=?");
-        sqlBuf.append(" ORDER BY A.TABLE_SCHEMA, A.TABLE_NAME, A.ORDINAL_POSITION");
+        sqlBuf.append(" ORDER BY FKTABLE_NAME, FKTABLE_NAME, KEY_SEQ");
 
         java.sql.PreparedStatement pStmt = null;
 
@@ -363,9 +364,9 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
 
         db = this.pedantic ? db : StringUtils.unQuoteIdentifier(db, this.quotedId);
 
-        StringBuilder sqlBuf = new StringBuilder(
-                this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? "SELECT A.CONSTRAINT_CATALOG AS PKTABLE_CAT, A.REFERENCED_TABLE_SCHEMA AS PKTABLE_SCHEM,"
-                        : "SELECT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT,NULL AS PKTABLE_SCHEM,");
+        StringBuilder sqlBuf = new StringBuilder(this.databaseTerm.getValue() == DatabaseTerm.SCHEMA
+                ? "SELECT DISTINCT A.CONSTRAINT_CATALOG AS PKTABLE_CAT, A.REFERENCED_TABLE_SCHEMA AS PKTABLE_SCHEM,"
+                : "SELECT DISTINCT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT,NULL AS PKTABLE_SCHEM,");
         sqlBuf.append(" A.REFERENCED_TABLE_NAME AS PKTABLE_NAME, A.REFERENCED_COLUMN_NAME AS PKCOLUMN_NAME,");
         sqlBuf.append(this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? " A.TABLE_CATALOG AS FKTABLE_CAT, A.TABLE_SCHEMA AS FKTABLE_SCHEM,"
                 : " A.TABLE_SCHEMA AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM,");
@@ -373,19 +374,20 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(generateUpdateRuleClause());
         sqlBuf.append(" AS UPDATE_RULE,");
         sqlBuf.append(generateDeleteRuleClause());
-        sqlBuf.append(" AS DELETE_RULE, A.CONSTRAINT_NAME AS FK_NAME, (SELECT CONSTRAINT_NAME FROM");
-        sqlBuf.append(" INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = A.REFERENCED_TABLE_SCHEMA AND");
-        sqlBuf.append(" TABLE_NAME = A.REFERENCED_TABLE_NAME AND CONSTRAINT_TYPE IN ('UNIQUE','PRIMARY KEY') LIMIT 1) AS PK_NAME,");
+        sqlBuf.append(" AS DELETE_RULE, A.CONSTRAINT_NAME AS FK_NAME, TC.CONSTRAINT_NAME AS PK_NAME,");
         sqlBuf.append(importedKeyNotDeferrable);
         sqlBuf.append(" AS DEFERRABILITY FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE A");
         sqlBuf.append(" JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS B USING (TABLE_SCHEMA, TABLE_NAME, CONSTRAINT_NAME) ");
         sqlBuf.append(generateOptionalRefContraintsJoin());
+        sqlBuf.append(" LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC ON (A.REFERENCED_TABLE_SCHEMA = TC.TABLE_SCHEMA");
+        sqlBuf.append("  AND A.REFERENCED_TABLE_NAME = TC.TABLE_NAME");
+        sqlBuf.append("  AND TC.CONSTRAINT_TYPE IN ('UNIQUE', 'PRIMARY KEY'))");
         sqlBuf.append(" WHERE B.CONSTRAINT_TYPE = 'FOREIGN KEY'");
         if (db != null) {
             sqlBuf.append(" AND A.REFERENCED_TABLE_SCHEMA = ?");
         }
         sqlBuf.append(" AND A.REFERENCED_TABLE_NAME=?");
-        sqlBuf.append(" ORDER BY A.TABLE_SCHEMA, A.TABLE_NAME, A.ORDINAL_POSITION");
+        sqlBuf.append(" ORDER BY FKTABLE_NAME, FKTABLE_NAME, KEY_SEQ");
 
         java.sql.PreparedStatement pStmt = null;
 
@@ -441,9 +443,9 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
 
         db = this.pedantic ? db : StringUtils.unQuoteIdentifier(db, this.quotedId);
 
-        StringBuilder sqlBuf = new StringBuilder(
-                this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? "SELECT A.CONSTRAINT_CATALOG AS PKTABLE_CAT, A.REFERENCED_TABLE_SCHEMA AS PKTABLE_SCHEM,"
-                        : "SELECT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT,NULL AS PKTABLE_SCHEM,");
+        StringBuilder sqlBuf = new StringBuilder(this.databaseTerm.getValue() == DatabaseTerm.SCHEMA
+                ? "SELECT DISTINCT A.CONSTRAINT_CATALOG AS PKTABLE_CAT, A.REFERENCED_TABLE_SCHEMA AS PKTABLE_SCHEM,"
+                : "SELECT DISTINCT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT,NULL AS PKTABLE_SCHEM,");
         sqlBuf.append(" A.REFERENCED_TABLE_NAME AS PKTABLE_NAME, A.REFERENCED_COLUMN_NAME AS PKCOLUMN_NAME,");
         sqlBuf.append(this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? " A.TABLE_CATALOG AS FKTABLE_CAT, A.TABLE_SCHEMA AS FKTABLE_SCHEM,"
                 : " A.TABLE_SCHEMA AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM,");
@@ -451,9 +453,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(generateUpdateRuleClause());
         sqlBuf.append(" AS UPDATE_RULE,");
         sqlBuf.append(generateDeleteRuleClause());
-        sqlBuf.append(" AS DELETE_RULE, A.CONSTRAINT_NAME AS FK_NAME, (SELECT CONSTRAINT_NAME FROM");
-        sqlBuf.append(" INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = A.REFERENCED_TABLE_SCHEMA AND");
-        sqlBuf.append(" TABLE_NAME = A.REFERENCED_TABLE_NAME AND CONSTRAINT_TYPE IN ('UNIQUE','PRIMARY KEY') LIMIT 1) AS PK_NAME,");
+        sqlBuf.append(" AS DELETE_RULE, A.CONSTRAINT_NAME AS FK_NAME, R.UNIQUE_CONSTRAINT_NAME AS PK_NAME,");
         sqlBuf.append(importedKeyNotDeferrable);
         sqlBuf.append(" AS DEFERRABILITY FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE A");
         sqlBuf.append(" JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS B USING (CONSTRAINT_NAME, TABLE_NAME) ");
@@ -735,7 +735,14 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append("10 AS RADIX,");
         sqlBuf.append(procedureNullable);
         sqlBuf.append(" AS `NULLABLE`, NULL AS `REMARKS`, NULL AS `COLUMN_DEF`, NULL AS `SQL_DATA_TYPE`, NULL AS `SQL_DATETIME_SUB`,");
-        sqlBuf.append(" CHARACTER_OCTET_LENGTH AS `CHAR_OCTET_LENGTH`, ORDINAL_POSITION, 'YES' AS `IS_NULLABLE`, SPECIFIC_NAME");
+
+        sqlBuf.append(" CASE WHEN CHARACTER_OCTET_LENGTH > ");
+        sqlBuf.append(Integer.MAX_VALUE);
+        sqlBuf.append(" THEN ");
+        sqlBuf.append(Integer.MAX_VALUE);
+        sqlBuf.append(" ELSE CHARACTER_OCTET_LENGTH END AS `CHAR_OCTET_LENGTH`,"); //
+
+        sqlBuf.append(" ORDINAL_POSITION, 'YES' AS `IS_NULLABLE`, SPECIFIC_NAME");
         sqlBuf.append(" FROM INFORMATION_SCHEMA.PARAMETERS");
 
         StringBuilder conditionBuf = new StringBuilder();
@@ -1020,7 +1027,15 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
 
         sqlBuf.append("NUMERIC_SCALE AS `SCALE`, 10 AS RADIX, ");
         sqlBuf.append(getFunctionConstant(FunctionConstant.FUNCTION_NULLABLE));
-        sqlBuf.append(" AS `NULLABLE`,  NULL AS `REMARKS`, CHARACTER_OCTET_LENGTH AS `CHAR_OCTET_LENGTH`,  ORDINAL_POSITION, 'YES' AS `IS_NULLABLE`,");
+        sqlBuf.append(" AS `NULLABLE`,  NULL AS `REMARKS`,");
+
+        sqlBuf.append(" CASE WHEN CHARACTER_OCTET_LENGTH > ");
+        sqlBuf.append(Integer.MAX_VALUE);
+        sqlBuf.append(" THEN ");
+        sqlBuf.append(Integer.MAX_VALUE);
+        sqlBuf.append(" ELSE CHARACTER_OCTET_LENGTH END AS `CHAR_OCTET_LENGTH`,"); //
+
+        sqlBuf.append(" ORDINAL_POSITION, 'YES' AS `IS_NULLABLE`,");
         sqlBuf.append(" SPECIFIC_NAME FROM INFORMATION_SCHEMA.PARAMETERS WHERE");
 
         StringBuilder conditionBuf = new StringBuilder();

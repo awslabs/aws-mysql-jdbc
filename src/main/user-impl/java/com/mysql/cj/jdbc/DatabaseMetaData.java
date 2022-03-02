@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -72,6 +72,7 @@ import com.mysql.cj.protocol.a.result.ResultsetRowsStatic;
 import com.mysql.cj.result.DefaultColumnDefinition;
 import com.mysql.cj.result.Field;
 import com.mysql.cj.result.Row;
+import com.mysql.cj.util.SearchMode;
 import com.mysql.cj.util.StringUtils;
 
 /**
@@ -182,10 +183,9 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     class TypeDescriptor {
         int bufferLength;
 
-        int charOctetLength;
-
         Integer datetimePrecision = null;
         Integer columnSize = null;
+        Integer charOctetLength = null;
 
         Integer decimalDigits = null;
 
@@ -383,6 +383,27 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             if (this.columnSize == null) {
                 // JDBC spec reserved only 'int' type for precision, thus we need to cut longer values
                 this.columnSize = this.mysqlType.getPrecision() > Integer.MAX_VALUE ? Integer.MAX_VALUE : this.mysqlType.getPrecision().intValue();
+            }
+
+            switch (this.mysqlType) {
+                case CHAR:
+                case VARCHAR:
+                case TINYTEXT:
+                case MEDIUMTEXT:
+                case LONGTEXT:
+                case JSON:
+                case TEXT:
+                case TINYBLOB:
+                case MEDIUMBLOB:
+                case LONGBLOB:
+                case BLOB:
+                case BINARY:
+                case VARBINARY:
+                case BIT:
+                    this.charOctetLength = this.columnSize;
+                    break;
+                default:
+                    break;
             }
 
             // BUFFER_LENGTH
@@ -880,7 +901,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         row[12] = null;
 
         if (forGetFunctionColumns) {
-            row[13] = null;                                                                                         // CHAR_OCTECT_LENGTH
+            row[13] = typeDesc.charOctetLength == null ? null : s2b(typeDesc.charOctetLength.toString());           // CHAR_OCTET_LENGTH
             row[14] = s2b(String.valueOf(ordinal));                                                                 // ORDINAL_POSITION
             row[15] = s2b(typeDesc.isNullable);                                                                     // IS_NULLABLE
             row[16] = procNameAsBytes;                                                                              // SPECIFIC_NAME
@@ -889,8 +910,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             row[13] = null;                                                                                         // COLUMN_DEF
             row[14] = null;                                                                                         // SQL_DATA_TYPE (future use)
             row[15] = null;                                                                                         // SQL_DATETIME_SUB (future use)
-            // TODO CHAR_OCTET_LENGTH the maximum length of binary and character based columns. For any other datatype the returned value is a NULL
-            row[16] = null;                                                                                         // CHAR_OCTET_LENGTH
+            row[16] = typeDesc.charOctetLength == null ? null : s2b(typeDesc.charOctetLength.toString());           // CHAR_OCTET_LENGTH
             row[17] = s2b(String.valueOf(ordinal));                                                                 // ORDINAL_POSITION
             row[18] = s2b(typeDesc.isNullable);                                                                     // IS_NULLABLE
             row[19] = procNameAsBytes;                                                                              // SPECIFIC_NAME
@@ -1041,13 +1061,14 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                 if (indexOfFK != -1) {
                     int afterFk = indexOfFK + "FOREIGN KEY".length();
 
-                    int indexOfRef = StringUtils.indexOfIgnoreCase(afterFk, line, "REFERENCES", this.quotedId, this.quotedId, StringUtils.SEARCH_MODE__ALL);
+                    int indexOfRef = StringUtils.indexOfIgnoreCase(afterFk, line, "REFERENCES", this.quotedId, this.quotedId,
+                            SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
                     if (indexOfRef != -1) {
 
                         int indexOfParenOpen = line.indexOf('(', afterFk);
                         int indexOfParenClose = StringUtils.indexOfIgnoreCase(indexOfParenOpen, line, ")", this.quotedId, this.quotedId,
-                                StringUtils.SEARCH_MODE__ALL);
+                                SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
                         if (indexOfParenOpen == -1 || indexOfParenClose == -1) {
                             // throw SQLError.createSQLException();
@@ -1058,20 +1079,20 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                         int afterRef = indexOfRef + "REFERENCES".length();
 
                         int referencedColumnBegin = StringUtils.indexOfIgnoreCase(afterRef, line, "(", this.quotedId, this.quotedId,
-                                StringUtils.SEARCH_MODE__ALL);
+                                SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
                         if (referencedColumnBegin != -1) {
                             referencedTableName = line.substring(afterRef, referencedColumnBegin);
 
                             int referencedColumnEnd = StringUtils.indexOfIgnoreCase(referencedColumnBegin + 1, line, ")", this.quotedId, this.quotedId,
-                                    StringUtils.SEARCH_MODE__ALL);
+                                    SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
                             if (referencedColumnEnd != -1) {
                                 referencedColumnName = line.substring(referencedColumnBegin + 1, referencedColumnEnd);
                             }
 
                             int indexOfDbSep = StringUtils.indexOfIgnoreCase(0, referencedTableName, ".", this.quotedId, this.quotedId,
-                                    StringUtils.SEARCH_MODE__ALL);
+                                    SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
                             if (indexOfDbSep != -1) {
                                 referencedDbName = referencedTableName.substring(0, indexOfDbSep);
@@ -1416,7 +1437,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
             int dotIndex = " ".equals(this.quotedId) ? quotedProcName.indexOf(".")
                     : StringUtils.indexOfIgnoreCase(0, quotedProcName, ".", this.quotedId, this.quotedId,
-                            this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                            this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
             String dbName = null;
 
@@ -1476,10 +1497,11 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
                 if (procedureDef != null && procedureDef.length() != 0) {
                     // sanitize/normalize by stripping out comments
-                    procedureDef = StringUtils.stripComments(procedureDef, identifierAndStringMarkers, identifierAndStringMarkers, true, false, true, true);
+                    procedureDef = StringUtils.stripCommentsAndHints(procedureDef, identifierAndStringMarkers, identifierAndStringMarkers,
+                            !this.session.getServerSession().isNoBackslashEscapesSet());
 
                     int openParenIndex = StringUtils.indexOfIgnoreCase(0, procedureDef, "(", this.quotedId, this.quotedId,
-                            this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                            this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__FULL);
                     int endOfParamDeclarationIndex = 0;
 
                     endOfParamDeclarationIndex = endPositionOfParameterDeclaration(openParenIndex, procedureDef, this.quotedId);
@@ -1489,7 +1511,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                         // Grab the return column since it needs
                         // to go first in the output result set
                         int returnsIndex = StringUtils.indexOfIgnoreCase(0, procedureDef, " RETURNS ", this.quotedId, this.quotedId,
-                                this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                                this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__FULL);
 
                         int endReturnsDef = findEndOfReturnsClause(procedureDef, returnsIndex);
 
@@ -1672,11 +1694,11 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         while (parenDepth > 0 && currentPos < procedureDef.length()) {
             int closedParenIndex = StringUtils.indexOfIgnoreCase(currentPos, procedureDef, ")", quoteChar, quoteChar,
-                    this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                    this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
             if (closedParenIndex != -1) {
                 int nextOpenParenIndex = StringUtils.indexOfIgnoreCase(currentPos, procedureDef, "(", quoteChar, quoteChar,
-                        this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                        this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
                 if (nextOpenParenIndex != -1 && nextOpenParenIndex < closedParenIndex) {
                     parenDepth++;
@@ -1724,7 +1746,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         for (int i = 0; i < tokens.length; i++) {
             int nextEndOfReturn = StringUtils.indexOfIgnoreCase(startLookingAt, procedureDefn, tokens[i], openingMarkers, closingMarkers,
-                    this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                    this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
             if (nextEndOfReturn != -1) {
                 if (endOfReturn == -1 || (nextEndOfReturn < endOfReturn)) {
@@ -1739,7 +1761,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         // Label?
         endOfReturn = StringUtils.indexOfIgnoreCase(startLookingAt, procedureDefn, ":", openingMarkers, closingMarkers,
-                this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
         if (endOfReturn != -1) {
             // seek back until whitespace
@@ -3148,7 +3170,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             //Continuing from above (database_name.sp_name)
             if (!" ".equals(this.quotedId)) {
                 idx = StringUtils.indexOfIgnoreCase(0, procName, ".", this.quotedId, this.quotedId,
-                        this.session.getServerSession().isNoBackslashEscapesSet() ? StringUtils.SEARCH_MODE__MRK_COM_WS : StringUtils.SEARCH_MODE__ALL);
+                        this.session.getServerSession().isNoBackslashEscapesSet() ? SearchMode.__MRK_COM_MYM_HNT_WS : SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
             } else {
                 idx = procName.indexOf(".");
             }
@@ -4312,7 +4334,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         String columnsDelimitter = ","; // what version did this change in?
 
-        int indexOfOpenParenLocalColumns = StringUtils.indexOfIgnoreCase(0, keysComment, "(", this.quotedId, this.quotedId, StringUtils.SEARCH_MODE__ALL);
+        int indexOfOpenParenLocalColumns = StringUtils.indexOfIgnoreCase(0, keysComment, "(", this.quotedId, this.quotedId,
+                SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
         if (indexOfOpenParenLocalColumns == -1) {
             throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.14"), MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR, getExceptionInterceptor());
@@ -4324,7 +4347,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         String keysCommentTrimmed = keysComment.trim();
 
         int indexOfCloseParenLocalColumns = StringUtils.indexOfIgnoreCase(0, keysCommentTrimmed, ")", this.quotedId, this.quotedId,
-                StringUtils.SEARCH_MODE__ALL);
+                SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
         if (indexOfCloseParenLocalColumns == -1) {
             throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.15"), MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR, getExceptionInterceptor());
@@ -4332,14 +4355,14 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         String localColumnNamesString = keysCommentTrimmed.substring(1, indexOfCloseParenLocalColumns);
 
-        int indexOfRefer = StringUtils.indexOfIgnoreCase(0, keysCommentTrimmed, "REFER ", this.quotedId, this.quotedId, StringUtils.SEARCH_MODE__ALL);
+        int indexOfRefer = StringUtils.indexOfIgnoreCase(0, keysCommentTrimmed, "REFER ", this.quotedId, this.quotedId, SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
         if (indexOfRefer == -1) {
             throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.16"), MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR, getExceptionInterceptor());
         }
 
         int indexOfOpenParenReferCol = StringUtils.indexOfIgnoreCase(indexOfRefer, keysCommentTrimmed, "(", this.quotedId, this.quotedId,
-                StringUtils.SEARCH_MODE__MRK_COM_WS);
+                SearchMode.__MRK_COM_MYM_HNT_WS);
 
         if (indexOfOpenParenReferCol == -1) {
             throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.17"), MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR, getExceptionInterceptor());
@@ -4347,7 +4370,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         String referDbTableString = keysCommentTrimmed.substring(indexOfRefer + "REFER ".length(), indexOfOpenParenReferCol);
 
-        int indexOfSlash = StringUtils.indexOfIgnoreCase(0, referDbTableString, "/", this.quotedId, this.quotedId, StringUtils.SEARCH_MODE__MRK_COM_WS);
+        int indexOfSlash = StringUtils.indexOfIgnoreCase(0, referDbTableString, "/", this.quotedId, this.quotedId, SearchMode.__MRK_COM_MYM_HNT_WS);
 
         if (indexOfSlash == -1) {
             throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.18"), MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR, getExceptionInterceptor());
@@ -4357,7 +4380,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         String referTable = StringUtils.unQuoteIdentifier(referDbTableString.substring(indexOfSlash + 1).trim(), this.quotedId);
 
         int indexOfCloseParenRefer = StringUtils.indexOfIgnoreCase(indexOfOpenParenReferCol, keysCommentTrimmed, ")", this.quotedId, this.quotedId,
-                StringUtils.SEARCH_MODE__ALL);
+                SearchMode.__BSE_MRK_COM_MYM_HNT_WS);
 
         if (indexOfCloseParenRefer == -1) {
             throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.19"), MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR, getExceptionInterceptor());
@@ -4666,28 +4689,13 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public boolean supportsResultSetConcurrency(int type, int concurrency) throws SQLException {
-        switch (type) {
-            case ResultSet.TYPE_SCROLL_INSENSITIVE:
-                if ((concurrency == ResultSet.CONCUR_READ_ONLY) || (concurrency == ResultSet.CONCUR_UPDATABLE)) {
-                    return true;
-                }
-                throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.20"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
-
-            case ResultSet.TYPE_FORWARD_ONLY:
-                if ((concurrency == ResultSet.CONCUR_READ_ONLY) || (concurrency == ResultSet.CONCUR_UPDATABLE)) {
-                    return true;
-                }
-                throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.20"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
-
-            case ResultSet.TYPE_SCROLL_SENSITIVE:
-                return false;
-            default:
-                throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.20"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT,
-                        getExceptionInterceptor());
+        if ((type == ResultSet.TYPE_FORWARD_ONLY || type == ResultSet.TYPE_SCROLL_INSENSITIVE)
+                && (concurrency == ResultSet.CONCUR_READ_ONLY || concurrency == ResultSet.CONCUR_UPDATABLE)) {
+            return true;
+        } else if (type == ResultSet.TYPE_SCROLL_SENSITIVE) {
+            return false;
         }
-
+        throw SQLError.createSQLException(Messages.getString("DatabaseMetaData.20"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
     }
 
     @Override

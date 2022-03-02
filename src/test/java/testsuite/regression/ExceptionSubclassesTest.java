@@ -44,9 +44,9 @@ public class ExceptionSubclassesTest extends BaseTestCase {
         assertEquals("java.sql.SQLNonTransientConnectionException", SQLError.createSQLException("test", "08000", 0, false, null).getClass().getCanonicalName());
         assertEquals("java.sql.SQLSyntaxErrorException", SQLError.createSQLException("test", "42000", null).getClass().getCanonicalName());
         assertEquals("java.sql.SQLIntegrityConstraintViolationException", SQLError.createSQLException("test", "23000", null).getClass().getCanonicalName());
-        assertEquals(com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException.class.getName(),
+        assertEquals("com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException",
                 SQLError.createSQLException("test", "40000", null).getClass().getCanonicalName());
-        assertEquals(com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException.class.getName(),
+        assertEquals("com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException",
                 SQLError.createSQLException("test", "70100", null).getClass().getCanonicalName());
     }
 }

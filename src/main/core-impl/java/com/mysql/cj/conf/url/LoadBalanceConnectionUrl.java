@@ -101,7 +101,7 @@ public class LoadBalanceConnectionUrl extends ConnectionUrl {
                 int autoCommitSwapThreshold = Integer.parseInt(props.get(PropertyKey.loadBalanceAutoCommitStatementThreshold.getKeyName()));
                 if (autoCommitSwapThreshold > 0) {
                     String queryInterceptors = props.get(PropertyKey.queryInterceptors.getKeyName());
-                    String lbi = com.mysql.cj.jdbc.ha.LoadBalancedAutoCommitInterceptor.class.getName();
+                    String lbi = "com.mysql.cj.jdbc.ha.LoadBalancedAutoCommitInterceptor";
                     if (StringUtils.isNullOrEmpty(queryInterceptors)) {
                         props.put(PropertyKey.queryInterceptors.getKeyName(), lbi);
                     } else {

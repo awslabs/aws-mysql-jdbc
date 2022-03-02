@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -54,6 +54,7 @@ import java.util.concurrent.Callable;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
+import com.mysql.cj.conf.PropertyDefinitions.SslMode;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.JdbcConnection;
@@ -88,7 +89,11 @@ public class CallableStatementRegressionTest extends BaseTestCase {
     public void testBug3540() throws Exception {
         createProcedure("testBug3540", "(x int, out y int)\nBEGIN\nSELECT 1;end\n");
 
-        Connection con = getConnectionWithProps("nullCatalogMeansCurrent=true");
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
+        Connection con = getConnectionWithProps(props);
         try {
             this.rs = con.getMetaData().getProcedureColumns(null, null, "testBug3540%", "%");
 
@@ -117,7 +122,11 @@ public class CallableStatementRegressionTest extends BaseTestCase {
     public void testBug7026() throws Exception {
         createProcedure("testBug7026", "(x int, out y int)\nBEGIN\nSELECT 1;end\n");
 
-        Connection con = getConnectionWithProps("nullCatalogMeansCurrent=true");
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
+        Connection con = getConnectionWithProps(props);
         try {
             //
             // Should be found this time.
@@ -162,101 +171,103 @@ public class CallableStatementRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug9319() throws Exception {
-        boolean doASelect = true; // SELECT currently causes the server to hang on the last execution of this testcase, filed as BUG#9405
+        boolean doASelect = true;
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
 
-        if (isAdminConnectionConfigured()) {
-            Connection db2Connection = null;
-            Connection db1Connection = null;
+        Connection db2Connection = null;
+        Connection db1Connection = null;
 
-            db2Connection = getAdminConnection();
-            db1Connection = getAdminConnection();
+        db2Connection = getConnectionWithProps(props);
+        db1Connection = getConnectionWithProps(props);
 
-            Statement db1st = db1Connection.createStatement();
-            Statement db2st = db2Connection.createStatement();
+        Statement db1st = db1Connection.createStatement();
+        Statement db2st = db2Connection.createStatement();
 
-            createDatabase(db2st, "db_9319_2");
-            db2Connection.setCatalog("db_9319_2");
-            createProcedure(db2st, "COMPROVAR_USUARI",
-                    "(IN p_CodiUsuari VARCHAR(10),\nIN p_contrasenya VARCHAR(10),\nOUT p_userId INTEGER,"
-                            + "\nOUT p_userName VARCHAR(30),\nOUT p_administrador VARCHAR(1),\nOUT p_idioma VARCHAR(2))\nBEGIN"
-                            + (doASelect ? "\nselect 2;" : "\nSELECT 2 INTO p_administrador;") + "\nEND");
+        createDatabase(db2st, "db_9319_2");
+        db2Connection.setCatalog("db_9319_2");
 
-            createDatabase(db1st, "db_9319_1");
-            db1Connection.setCatalog("db_9319_1");
-            createProcedure(db1st, "COMPROVAR_USUARI",
-                    "(IN p_CodiUsuari VARCHAR(10),\nIN p_contrasenya VARCHAR(10),\nOUT p_userId INTEGER,"
-                            + "\nOUT p_userName VARCHAR(30),\nOUT p_administrador VARCHAR(1))\nBEGIN"
-                            + (doASelect ? "\nselect 1;" : "\nSELECT 1 INTO p_administrador;") + "\nEND");
+        createProcedure(db2st, "db_9319_2.COMPROVAR_USUARI",
+                "(IN p_CodiUsuari VARCHAR(10),\nIN p_contrasenya VARCHAR(10),\nOUT p_userId INTEGER,"
+                        + "\nOUT p_userName VARCHAR(30),\nOUT p_administrador VARCHAR(1),\nOUT p_idioma VARCHAR(2))\nBEGIN"
+                        + (doASelect ? "\nselect 2;" : "\nSELECT 2 INTO p_administrador;") + "\nEND");
 
-            CallableStatement cstmt = db2Connection.prepareCall("{ call COMPROVAR_USUARI(?, ?, ?, ?, ?, ?) }");
-            cstmt.setString(1, "abc");
-            cstmt.setString(2, "def");
-            cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
-            cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
-            cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
+        createDatabase(db1st, "db_9319_1");
+        db1Connection.setCatalog("db_9319_1");
+        createProcedure(db1st, "db_9319_1.COMPROVAR_USUARI",
+                "(IN p_CodiUsuari VARCHAR(10),\nIN p_contrasenya VARCHAR(10),\nOUT p_userId INTEGER,"
+                        + "\nOUT p_userName VARCHAR(30),\nOUT p_administrador VARCHAR(1))\nBEGIN"
+                        + (doASelect ? "\nselect 1;" : "\nSELECT 1 INTO p_administrador;") + "\nEND");
 
+        CallableStatement cstmt = db2Connection.prepareCall("{ call COMPROVAR_USUARI(?, ?, ?, ?, ?, ?) }");
+        cstmt.setString(1, "abc");
+        cstmt.setString(2, "def");
+        cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
+        cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
+        cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
+
+        cstmt.registerOutParameter(6, java.sql.Types.VARCHAR);
+
+        cstmt.execute();
+
+        if (doASelect) {
+            this.rs = cstmt.getResultSet();
+            assertTrue(this.rs.next());
+            assertEquals(2, this.rs.getInt(1));
+        } else {
+            assertEquals(2, cstmt.getInt(5));
+        }
+
+        cstmt = db1Connection.prepareCall("{ call COMPROVAR_USUARI(?, ?, ?, ?, ?, ?) }");
+        cstmt.setString(1, "abc");
+        cstmt.setString(2, "def");
+        cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
+        cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
+        cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
+
+        try {
             cstmt.registerOutParameter(6, java.sql.Types.VARCHAR);
+            fail("Should've thrown an exception");
+        } catch (SQLException sqlEx) {
+            assertEquals(MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, sqlEx.getSQLState());
+        }
 
-            cstmt.execute();
+        cstmt = db1Connection.prepareCall("{ call COMPROVAR_USUARI(?, ?, ?, ?, ?) }");
+        cstmt.setString(1, "abc");
+        cstmt.setString(2, "def");
+        cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
+        cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
+        cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
 
-            if (doASelect) {
-                this.rs = cstmt.getResultSet();
-                assertTrue(this.rs.next());
-                assertEquals(2, this.rs.getInt(1));
-            } else {
-                assertEquals(2, cstmt.getInt(5));
-            }
+        cstmt.execute();
 
-            cstmt = db1Connection.prepareCall("{ call COMPROVAR_USUARI(?, ?, ?, ?, ?, ?) }");
-            cstmt.setString(1, "abc");
-            cstmt.setString(2, "def");
-            cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
-            cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
-            cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
+        if (doASelect) {
+            this.rs = cstmt.getResultSet();
+            assertTrue(this.rs.next());
+            assertEquals(1, this.rs.getInt(1));
+        } else {
+            assertEquals(1, cstmt.getInt(5));
+        }
 
-            try {
-                cstmt.registerOutParameter(6, java.sql.Types.VARCHAR);
-                fail("Should've thrown an exception");
-            } catch (SQLException sqlEx) {
-                assertEquals(MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, sqlEx.getSQLState());
-            }
+        String quoteChar = db2Connection.getMetaData().getIdentifierQuoteString();
 
-            cstmt = db1Connection.prepareCall("{ call COMPROVAR_USUARI(?, ?, ?, ?, ?) }");
-            cstmt.setString(1, "abc");
-            cstmt.setString(2, "def");
-            cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
-            cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
-            cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
+        cstmt = db2Connection.prepareCall(
+                "{ call " + quoteChar + db1Connection.getCatalog() + quoteChar + "." + quoteChar + "COMPROVAR_USUARI" + quoteChar + "(?, ?, ?, ?, ?) }");
+        cstmt.setString(1, "abc");
+        cstmt.setString(2, "def");
+        cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
+        cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
+        cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
 
-            cstmt.execute();
+        cstmt.execute();
 
-            if (doASelect) {
-                this.rs = cstmt.getResultSet();
-                assertTrue(this.rs.next());
-                assertEquals(1, this.rs.getInt(1));
-            } else {
-                assertEquals(1, cstmt.getInt(5));
-            }
-
-            String quoteChar = db2Connection.getMetaData().getIdentifierQuoteString();
-
-            cstmt = db2Connection.prepareCall(
-                    "{ call " + quoteChar + db1Connection.getCatalog() + quoteChar + "." + quoteChar + "COMPROVAR_USUARI" + quoteChar + "(?, ?, ?, ?, ?) }");
-            cstmt.setString(1, "abc");
-            cstmt.setString(2, "def");
-            cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
-            cstmt.registerOutParameter(4, java.sql.Types.VARCHAR);
-            cstmt.registerOutParameter(5, java.sql.Types.VARCHAR);
-
-            cstmt.execute();
-
-            if (doASelect) {
-                this.rs = cstmt.getResultSet();
-                assertTrue(this.rs.next());
-                assertEquals(1, this.rs.getInt(1));
-            } else {
-                assertEquals(1, cstmt.getInt(5));
-            }
+        if (doASelect) {
+            this.rs = cstmt.getResultSet();
+            assertTrue(this.rs.next());
+            assertEquals(1, this.rs.getInt(1));
+        } else {
+            assertEquals(1, cstmt.getInt(5));
         }
     }
 
@@ -432,31 +443,28 @@ public class CallableStatementRegressionTest extends BaseTestCase {
 
     @Test
     public void testBug15121() throws Exception {
-        if (!this.DISABLED_testBug15121 /* needs to be fixed on server */) {
-            createProcedure("p_testBug15121", "()\nBEGIN\nSELECT * from idonotexist;\nEND");
+        createProcedure("p_testBug15121", "()\nBEGIN\nSELECT * from idonotexist;\nEND");
 
-            Properties props = new Properties();
-            props.setProperty(PropertyKey.DBNAME.getKeyName(), "");
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.DBNAME.getKeyName(), "");
 
-            Connection noDbConn = null;
+        Connection noDbConn = getConnectionWithProps(props);
 
-            try {
-                noDbConn = getConnectionWithProps(props);
+        StringBuilder queryBuf = new StringBuilder("{call ");
+        String quotedId = this.conn.getMetaData().getIdentifierQuoteString();
+        queryBuf.append(quotedId);
+        queryBuf.append(this.conn.getCatalog());
+        queryBuf.append(quotedId);
+        queryBuf.append(".p_testBug15121()}");
 
-                StringBuilder queryBuf = new StringBuilder("{call ");
-                String quotedId = this.conn.getMetaData().getIdentifierQuoteString();
-                queryBuf.append(quotedId);
-                queryBuf.append(this.conn.getCatalog());
-                queryBuf.append(quotedId);
-                queryBuf.append(".p_testBug15121()}");
-
+        assertThrows(SQLException.class, "Table '" + this.conn.getCatalog() + ".idonotexist' doesn't exist", new Callable<Void>() {
+            public Void call() throws Exception {
                 noDbConn.prepareCall(queryBuf.toString()).execute();
-            } finally {
-                if (noDbConn != null) {
-                    noDbConn.close();
-                }
+                return null;
             }
-        }
+        });
     }
 
     /**
@@ -872,7 +880,11 @@ public class CallableStatementRegressionTest extends BaseTestCase {
 
         createProcedure("sp_testBug28689", "(tid INT)\nBEGIN\nUPDATE testBug28689 SET usuario = 'BBBBBB' WHERE id = tid;\nEND");
 
-        Connection noProcedureBodiesConn = getConnectionWithProps("noAccessToProcedureBodies=true");
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.noAccessToProcedureBodies.getKeyName(), "true");
+        Connection noProcedureBodiesConn = getConnectionWithProps(props);
         CallableStatement cStmt = null;
 
         try {
@@ -1120,7 +1132,14 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         execProcBug49831(this.conn);
         this.stmt.execute("TRUNCATE TABLE testBug49831");
         assertEquals(0, getRowCount("testBug49831"));
-        Connection noBodiesConn = getConnectionWithProps("noAccessToProcedureBodies=true,jdbcCompliantTruncation=false,characterEncoding=utf8");
+
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.noAccessToProcedureBodies.getKeyName(), "true");
+        props.setProperty(PropertyKey.jdbcCompliantTruncation.getKeyName(), "false");
+        props.setProperty(PropertyKey.characterEncoding.getKeyName(), "utf8");
+        Connection noBodiesConn = getConnectionWithProps(props);
         try {
             execProcBug49831(noBodiesConn);
         } finally {
@@ -1183,6 +1202,8 @@ public class CallableStatementRegressionTest extends BaseTestCase {
                 + "\nOUT fdoc VARCHAR(100))\nBEGIN\nSET nfact = 'ncfact string';\nSET ffact = 'ffact string';\nSET fdoc = 'fdoc string';\nEND");
 
         Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.jdbcCompliantTruncation.getKeyName(), "true");
         props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "true");
         Connection conn1 = null;
@@ -1484,7 +1505,9 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         createProcedure("testBug26259384", "(IN p1 int,INOUT p2 int)\nBEGIN\nSET p2=p1+100;\nEND");
 
         Properties props = new Properties();
-        props.setProperty("autoReconnect", "true");
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.autoReconnect.getKeyName(), "true");
 
         Connection conn1 = getConnectionWithProps(props);
         conn1.prepareCall("{ call testBug26259384(?+?,?) }");
@@ -1501,7 +1524,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
                 "(IN PARAMIN BIGINT, OUT PARAM_OUT_LONG BIGINT, OUT PARAM_OUT_STR VARCHAR(100))\nBEGIN\nSET PARAM_OUT_LONG = PARAMIN + 100000;\nSET PARAM_OUT_STR = concat('STR' ,PARAM_OUT_LONG);end\n");
 
         final Properties props = new Properties();
-        props.setProperty(PropertyKey.useSSL.getKeyName(), "false");
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), "true");
         props.setProperty(PropertyKey.cachePrepStmts.getKeyName(), "true");
@@ -1531,6 +1554,90 @@ public class CallableStatementRegressionTest extends BaseTestCase {
             if (callableStatement != null) {
                 callableStatement.close();
             }
+            if (con != null) {
+                con.close();
+            }
+        }
+    }
+
+    /**
+     * Tests fix for Bug#20279641, CANNOT CALL A PROCEDURE USING `DATABASE`.PROCNAME FORMAT.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug20279641() throws Exception {
+        createDatabase("`abc1`");
+        createProcedure("`abc1`.procBug20279641", "(IN c1 int, INOUT c2 int, OUT c3  int)" + " BEGIN Set c3=c2+c1; END");
+
+        CallableStatement cstmt = this.conn.prepareCall("{ call `abc1`.procBug20279641(?, ?, ?) }");
+        cstmt.registerOutParameter(2, java.sql.Types.INTEGER);
+        cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
+        cstmt.setInt(1, 113);
+        cstmt.setInt(2, 123);
+        cstmt.setNull(3, java.sql.Types.INTEGER);
+        cstmt.execute();
+
+        assertEquals("123", cstmt.getString(2));
+        assertEquals("236", cstmt.getString(3));
+    }
+
+    /**
+     * Tests fix for Bug#19857166, SET FUNCTIONS ON CALLABLESTATEMENT RETURNS EXCEPTION WHEN CALLED WITH PARAM NAME.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBug19857166() throws Exception {
+        createProcedure("testBug19857166p", "(IN inp1 VARCHAR(10),INOUT inp2 VARCHAR(10)) begin" + " set inp2 = 'data'; END");
+        createFunction("testBug19857166f", "(a char(10),b varchar(10)) RETURNS CHAR(50) COMMENT 'Returns string' DETERMINISTIC BEGIN RETURN CONCAT(a, b); END");
+
+        Connection con = null;
+        try {
+            for (boolean getProcRetFuncs : new boolean[] { false, true }) {
+                Properties props = new Properties();
+                props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+                props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+                props.setProperty(PropertyKey.getProceduresReturnsFunctions.getKeyName(), "" + getProcRetFuncs);
+                con = getConnectionWithProps(props);
+
+                CallableStatement callSt1 = con.prepareCall(" call testBug19857166p(?, ?) ");
+                assertThrows(SQLException.class, "No parameter named 'iNp1'", () -> {
+                    callSt1.setString("iNp1", "xxx");
+                    return null;
+                });
+                assertThrows(SQLException.class, "No parameter named 'inP2'", () -> {
+                    callSt1.setString("inP2", "xxx");
+                    return null;
+                });
+                callSt1.setString("inp1", "xxx");
+                callSt1.registerOutParameter(2, java.sql.Types.VARCHAR);
+                callSt1.execute();
+                assertEquals("data", callSt1.getString(2));
+                callSt1.close();
+
+                CallableStatement callSt2 = con.prepareCall("{? = CALL testBug19857166f(?,?)}");
+                callSt2.registerOutParameter(1, java.sql.Types.VARCHAR);
+                if (getProcRetFuncs) {
+                    callSt2.setString("a", "abcd");
+                    callSt2.setString("b", "rr");
+                } else {
+                    assertThrows(SQLException.class, "No parameter named 'a'", () -> {
+                        callSt2.setString("a", "abcd");
+                        return null;
+                    });
+                    assertThrows(SQLException.class, "No parameter named 'b'", () -> {
+                        callSt2.setString("b", "rr");
+                        return null;
+                    });
+                    callSt2.setString(2, "abcd");
+                    callSt2.setString(3, "rr");
+                }
+                callSt2.execute();
+                assertEquals("abcdrr", callSt2.getString(1), "Data Comparison failed");
+                callSt2.close();
+            }
+        } finally {
             if (con != null) {
                 con.close();
             }
