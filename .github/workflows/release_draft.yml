@@ -55,7 +55,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           draft: true
-          name: "AWS JDBC Driver for MySQL Public Preview - v${{ env.RELEASE_VERSION }}"
+          name: "AWS JDBC Driver for MySQL - v${{ env.RELEASE_VERSION }}"
           bodyFile: RELEASE_DETAILS.md
           artifacts: build/libs/*
           token: ${{ secrets.GITHUB_TOKEN }}
