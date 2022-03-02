@@ -66,7 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ContainerHelper {
   private static final String TEST_CONTAINER_IMAGE_NAME = "openjdk:8-jdk-alpine";
-  private static final String MYSQL_CONTAINER_IMAGE_NAME = "mysql:8.0.21";
+  private static final String MYSQL_CONTAINER_IMAGE_NAME = "mysql:8.0.28";
   private static final DockerImageName TOXIPROXY_IMAGE = DockerImageName.parse("shopify/toxiproxy:2.1.0");
 
   private static final String RETRIEVE_TOPOLOGY_SQL =
