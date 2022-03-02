@@ -222,7 +222,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.8.2")
     testImplementation("org.junit.platform:junit-platform-suite-engine:1.8.2")
-    testImplementation("org.mockito:mockito-inline:4.1.0")
+    testImplementation("org.mockito:mockito-inline:4.3.1")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.testcontainers:testcontainers:1.16.2")
     testImplementation("org.testcontainers:mysql:1.16.2")
