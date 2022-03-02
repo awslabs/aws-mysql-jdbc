@@ -3,10 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [1.0.0] - 2022-02-17
+## [1.0.0] - 2022-03-01
 
 ### Added
 * Upstream changes from MySQL 8.0.28 community driver.
+* Hikari connection pool integration tests have been added.
 * Docker containers are now created as part of testing and used to run both unit and integration tests.
 * Failover performance metrics tracked based on a cluster. With options to enable additional performance metrics per instance.
 
