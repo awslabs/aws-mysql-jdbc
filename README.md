@@ -600,9 +600,14 @@ gradlew test-community-docker
 To run the integration tests, you will need some environment variables and an AWS User. Integration tests are set up to create clusters for each test. The AWS User will need access to do the following: create/delete Aurora clusters for testing, AWS IAM access for RDS, and whitelisting IP address of the current runner in EC2 Security Group. 
 Descriptions of the necessary environment variables is in the table below.
 
-To run the integration tests, use the following command (replace the <> tags with the appropriate values):
+To run the integration tests on macOS, use the following command (replace the variables with the appropriate values):
 ```bash
-AWS_ACCESS_KEY_ID=<ASIAIOSFODNN7EXAMPLE> AWS_SECRET_ACCESS_KEY=<wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY> AWS_SESSION_TOKEN=<AQoDYXdzEJr...<remainder of session token>> gradlew test-integration-docker
+AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY AWS_SESSION_TOKEN=AQoDYXdzEJr...<remainder of session token> ./gradlew test-integration-docker
+```
+
+To run the integration tests on Windows, use the following command (replace the variables with the appropriate values):
+```bash
+cmd /c "SET AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE & SET AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY & SET AWS_SESSION_TOKEN=AQoDYXdzEJr...<remainder of session token> .\gradlew test-integration-docker
 ```
 
 #### Environment Variables

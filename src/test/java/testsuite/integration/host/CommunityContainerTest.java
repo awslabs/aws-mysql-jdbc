@@ -36,6 +36,8 @@ import testsuite.integration.utility.ContainerHelper;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 public class CommunityContainerTest {
 
   private static final int MYSQL_PORT = 3306;
@@ -57,6 +59,12 @@ public class CommunityContainerTest {
 
     communityTestContainer = createTestContainer(network, TEST_CONTAINER_NAME, MYSQL_CONTAINER_NAME, MYSQL_PORT);
     communityTestContainer.start();
+
+    try {
+      communityTestContainer.execInContainer("dos2unix", "gradlew");
+    } catch (InterruptedException | UnsupportedOperationException | IOException e) {
+      fail("Community test container initialised incorrectly");
+    }
   }
 
   @AfterAll
