@@ -597,7 +597,7 @@ To run tests for the base driver functionality, use the following command:
 gradlew test-community-docker
 ```
 
-To run the integration tests, you will need some environment variables and an AWS User. Integration tests are set up to create clusters for each test. The AWS User will need access to do the following: create/delete Aurora clusters for testing, AWS IAM access for RDS, and whitelisting IP address of the current runner in EC2 Security Group. 
+To run the integration tests, you will need some environment variables and an AWS User. Integration tests are set up to create clusters for each test. The AWS User will need access to do the following: create/delete Aurora clusters for testing, AWS IAM access for RDS, and allowlisting IP address of the current runner in EC2 Security Group. 
 Descriptions of the necessary environment variables is in the table below.
 
 To run the integration tests on macOS, use the following command (replace the variables with the appropriate values):
