@@ -213,8 +213,8 @@ tasks.withType<Checkstyle>().configureEach {
 
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
-    testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
-    testImplementation("com.amazonaws:aws-java-sdk-ec2:1.12.148")
+    testImplementation("software.amazon.awssdk:rds:2.17.165")
+    testImplementation("software.amazon.awssdk:ec2:2.17.165")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
@@ -231,7 +231,7 @@ dependencies {
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
 
-    implementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
+    implementation("software.amazon.awssdk:rds:2.17.165")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
