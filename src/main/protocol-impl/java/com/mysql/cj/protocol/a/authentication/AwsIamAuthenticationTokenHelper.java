@@ -26,22 +26,22 @@
 
 package com.mysql.cj.protocol.a.authentication;
 
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.rds.auth.GetIamAuthTokenRequest;
-import com.amazonaws.services.rds.auth.RdsIamAuthTokenGenerator;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.rds.RdsUtilities;
 import com.mysql.cj.Messages;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AwsIamAuthenticationTokenHelper {
 
   private String token;
-  private final String region;
+  private final Region region;
   private final String hostname;
   private final int port;
   private final Log log;
@@ -63,21 +63,20 @@ public class AwsIamAuthenticationTokenHelper {
   }
 
   private String generateAuthenticationToken(final String user) {
-    final RdsIamAuthTokenGenerator generator = RdsIamAuthTokenGenerator
-        .builder()
-        .region(this.region)
-        .credentials(new DefaultAWSCredentialsProviderChain())
-        .build();
+    RdsUtilities utilities = RdsUtilities.builder()
+      .credentialsProvider(DefaultCredentialsProvider.create())
+      .region(this.region)
+      .build();
 
-    return generator.getAuthToken(GetIamAuthTokenRequest
-        .builder()
-        .hostname(this.hostname)
-        .port(this.port)
-        .userName(user)
-        .build());
+    return utilities.generateAuthenticationToken((builder) ->
+      builder
+        .hostname(hostname)
+        .port(port)
+        .username(user)
+    );
   }
 
-  private String getRdsRegion() {
+  private Region getRdsRegion() {
     // Check Hostname
     final Pattern auroraDnsPattern =
         Pattern.compile(
@@ -94,25 +93,22 @@ public class AwsIamAuthenticationTokenHelper {
       throw ExceptionFactory.createException(exceptionMessage);
     }
 
-    // Get and Check Region
+    // Get Region
     final String rdsRegion = matcher.group(REGION_MATCHER_GROUP);
-    try {
-      Regions.fromName(rdsRegion);
-    } catch (final IllegalArgumentException exception) {
+
+    // Check Region
+    Optional<Region> regionOptional = Region.regions().stream()
+            .filter(r -> r.id().equalsIgnoreCase(rdsRegion))
+            .findFirst();
+
+    if (!regionOptional.isPresent()) {
       final String exceptionMessage = Messages.getString(
           "AuthenticationAwsIamPlugin.UnsupportedRegion",
           new String[]{hostname});
 
-      log.logTrace(
-          exceptionMessage,
-          exception
-      );
-
-      throw ExceptionFactory.createException(
-          exceptionMessage,
-          exception
-      );
+      log.logTrace(exceptionMessage);
+      throw ExceptionFactory.createException(exceptionMessage);
     }
-    return rdsRegion;
+    return regionOptional.get();
   }
 }

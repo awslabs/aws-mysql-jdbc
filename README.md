@@ -507,7 +507,7 @@ The default XML parser contained a security risk which made the driver prone to 
 
 ### AWS IAM Database Authentication
 
-**Note:** To preserve compatibility with customers using the community driver, IAM Authentication requires the [AWS Java SDK for Amazon RDS v1.x](https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-rds) to be included separately in the classpath. The AWS Java SDK for Amazon RDS is a runtime dependency and must be resolved.
+**Note:** To preserve compatibility with customers using the community driver, IAM Authentication requires the [AWS Java SDK RDS v2.x](https://mvnrepository.com/artifact/software.amazon.awssdk/rds) to be included separately in the classpath. The AWS Java SDK RDS is a runtime dependency and must be resolved.
 
 The driver supports Amazon AWS Identity and Access Management (IAM) authentication. When using AWS IAM database authentication, the host URL must be a valid Amazon endpoint, and not a custom domain or an IP address.
 <br>ie. `db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com`

@@ -30,8 +30,6 @@
 
 package testsuite.integration.container;
 
-import com.amazonaws.services.rds.model.FailoverDBClusterRequest;
-import com.amazonaws.services.rds.model.RebootDBInstanceRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -107,22 +105,18 @@ public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   private void rebootInstance(String instance) {
-    RebootDBInstanceRequest rebootRequest =
-        new RebootDBInstanceRequest().withDBInstanceIdentifier(instance);
-    rdsClient.rebootDBInstance(rebootRequest);
+    rdsClient.rebootDBInstance((builder) -> builder.dbInstanceIdentifier(instance));
   }
 
   private void failoverClusterWithATargetInstance(String targetInstanceId)
       throws InterruptedException {
     waitUntilClusterHasRightState();
-    FailoverDBClusterRequest request =
-        new FailoverDBClusterRequest()
-            .withDBClusterIdentifier(DB_CLUSTER_IDENTIFIER)
-            .withTargetDBInstanceIdentifier(targetInstanceId);
 
     while (true) {
       try {
-        rdsClient.failoverDBCluster(request);
+        rdsClient.failoverDBCluster(
+          (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER)
+            .targetDBInstanceIdentifier(targetInstanceId));
         break;
       } catch (Exception e) {
         Thread.sleep(3000);
@@ -131,10 +125,10 @@ public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   private void waitUntilClusterHasRightState() throws InterruptedException {
-    String status = getDBCluster().getStatus();
+    String status = getDBCluster().status();
     while (!"available".equalsIgnoreCase(status)) {
       Thread.sleep(3000);
-      status = getDBCluster().getStatus();
+      status = getDBCluster().status();
     }
   }
 
