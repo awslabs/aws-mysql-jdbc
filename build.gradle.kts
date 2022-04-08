@@ -212,7 +212,7 @@ tasks.withType<Checkstyle>().configureEach {
 }
 
 dependencies {
-    testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
+    testImplementation("org.apache.commons:commons-dbcp2:2.9.0")
     testImplementation("software.amazon.awssdk:rds:2.17.165")
     testImplementation("software.amazon.awssdk:ec2:2.17.165")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
