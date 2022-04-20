@@ -190,16 +190,16 @@ There are many different types of URLs that can connect to an Aurora DB cluster;
 Note: The connection string follows standard URL parameters. In order to add parameters to the connection string, simply add `?` and then the `parameter_name=value` pair at the end of the connection string. You may add multiple parameters by separating the parameter name and value set (`parameter_name=value`) with the `&` symbol. For example, to add 2 parameters simply add `?param_name=value&param_2=value2` at the end of the connection string.
  
 
-| URL Type        | Example           | Required Parameters  | Driver Behavior |
-| --------------- |-------------------| :-------------------:| --------------- |
-| Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306` | None | *Initial connection:* primary DB instance<br/>*Failover behavior:* connect to the new primary DB instance |
-| Read-Only Cluster Endpoint      | `jdbc:mysql:aws://db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306`      |   None |  *Initial connection:* any Aurora Replica<br/>*Failover behavior:* prioritize connecting to any active Aurora Replica but might connect to the primary DB instance if it provides a faster connection|
-| Instance Endpoint | `jdbc:mysql:aws://instance-1.XYZ.us-east-2.rds.amazonaws.com:3306`      |    None | *Initial connection:* the instance specified (DB instance 1)<br/>*Failover behavior:* connect to the primary DB instance|
-| RDS Custom Cluster | `jdbc:mysql:aws://db-identifier.cluster-custom-XYZ.us-east-2.rds.amazonaws.com:3306`      |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
-| IP Address | `jdbc:mysql:aws://10.10.10.10:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
-| Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
-| Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    None | A regular JDBC connection will be returned - no failover functionality |
-| Aurora Endpoint | `jdbc:mysql:aws://localhost:3306` <br/> when using a tunnel to access Aurora DB instances (e.g. local tunnel) |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
+| URL Type                                      | Example           | Required Parameters  | Driver Behavior |
+|-----------------------------------------------|-------------------| :-------------------:| --------------- |
+| Cluster Endpoint                              | `jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306` | None | *Initial connection:* primary DB instance<br/>*Failover behavior:* connect to the new primary DB instance |
+| Read-Only Cluster Endpoint                    | `jdbc:mysql:aws://db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306`     |   None |  *Initial connection:* any Aurora Replica<br/>*Failover behavior:* prioritize connecting to any active Aurora Replica but might connect to the primary DB instance if it provides a faster connection|
+| Instance Endpoint                             | `jdbc:mysql:aws://instance-1.XYZ.us-east-2.rds.amazonaws.com:3306`     |    None | *Initial connection:* the instance specified (DB instance 1)<br/>*Failover behavior:* connect to the primary DB instance|
+| RDS Custom Cluster                            | `jdbc:mysql:aws://db-identifier.cluster-custom-XYZ.us-east-2.rds.amazonaws.com:3306`     |    None | *Initial connection:* any DB instance in the custom DB cluster<br/>*Failover behavior:* connect to the primary DB instance (note that this might be outside of the custom DB cluster) |
+| IP Address                                    | `jdbc:mysql:aws://10.10.10.10:3306`     |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
+| Custom Domain                                 | `jdbc:mysql:aws://my-custom-domain.com:3306`     |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
+| Non-Aurora Endpoint                           | `jdbc:mysql:aws://localhost:3306`    |    None | A regular JDBC connection will be returned - no failover functionality |
+| Aurora Endpoint<br/>(through a custom tunnel) | `jdbc:mysql:aws://localhost:3306` |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 
 Information about the `clusterInstanceHostPattern` parameter is provided in the section below.
 
