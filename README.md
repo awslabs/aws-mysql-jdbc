@@ -199,7 +199,7 @@ Note: The connection string follows standard URL parameters. In order to add par
 | IP Address | `jdbc:mysql:aws://10.10.10.10:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Custom Domain | `jdbc:mysql:aws://my-custom-domain.com:3306`      |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 | Non-Aurora Endpoint | `jdbc:mysql:aws://localhost:3306`     |    None | A regular JDBC connection will be returned - no failover functionality |
-| Aurora Endpoint | `jdbc:mysql:aws://localhost:3306` <br/> (when use a local tunnel to access Aurora DB instances) |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
+| Aurora Endpoint | `jdbc:mysql:aws://localhost:3306` <br/> when using a tunnel to access Aurora DB instances (e.g. local tunnel) |    `clusterInstanceHostPattern` | *Initial connection:* the DB instance specified<br/>*Failover behavior:* connect to the primary DB instance |
 
 Information about the `clusterInstanceHostPattern` parameter is provided in the section below.
 
