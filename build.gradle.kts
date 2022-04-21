@@ -34,7 +34,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 val versionMajor = project.property("com.mysql.cj.build.driver.version.major")
 val versionMinor = project.property("com.mysql.cj.build.driver.version.minor")
 val versionSubminor = project.property("com.mysql.cj.build.driver.version.subminor")
-version = "$versionMajor.$versionMinor.$versionSubminor"
+version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
 
 plugins {
     base
@@ -325,7 +325,13 @@ publishing {
     repositories {
         maven {
             name = "OSSRH"
-            url = uri("https://aws.oss.sonatype.org/service/local/staging/deploy/maven2/")
+
+            url = if(project.property("snapshot") == "true") {
+                uri("https://aws.oss.sonatype.org/content/repositories/snapshots/")
+            } else {
+                uri("https://aws.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            }
+
             credentials {
                 username = System.getenv("MAVEN_USERNAME")
                 password = System.getenv("MAVEN_PASSWORD")
