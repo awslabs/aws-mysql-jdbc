@@ -33,7 +33,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 // Driver version numbers
 val versionMajor = project.property("com.mysql.cj.build.driver.version.major")
 val versionMinor = project.property("com.mysql.cj.build.driver.version.minor")
-val versionSubminor = project.property("com.mysql.cj.build.driver.version.subminor")
+val versionSubminor = Integer.parseInt(project.property("com.mysql.cj.build.driver.version.subminor").toString()) + if (project.property("snapshot") == "true") 1 else 0
 version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
 
 plugins {
