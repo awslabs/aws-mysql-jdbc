@@ -26,6 +26,7 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 
@@ -35,7 +36,9 @@ import com.mysql.cj.jdbc.JdbcConnection;
 public interface ICurrentConnectionProvider {
   JdbcConnection getCurrentConnection();
 
+  void setCurrentConnection(JdbcConnection connection, HostInfo info);
+
   HostInfo getCurrentHostInfo();
 
-  void setCurrentConnection(JdbcConnection connection, HostInfo info);
+  ConnectionUrl getOriginalUrl();
 }
