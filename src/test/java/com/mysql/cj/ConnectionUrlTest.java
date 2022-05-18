@@ -488,6 +488,7 @@ public class ConnectionUrlTest {
 
         // AWS Standard schemes:
         assertEquals(ConnectionUrl.Type.SINGLE_CONNECTION_AWS, ConnectionUrl.Type.fromValue("jdbc:mysql:aws:", 1));
+        assertEquals(ConnectionUrl.Type.MULTI_HOST_CONNECTION_AWS, ConnectionUrl.Type.fromValue("jdbc:mysql:aws:", 2));
     }
 
     /**

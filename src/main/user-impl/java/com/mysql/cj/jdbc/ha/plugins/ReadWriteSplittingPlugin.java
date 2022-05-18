@@ -1,10 +1,13 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 public class ReadWriteSplittingPlugin implements IConnectionPlugin {
@@ -14,6 +17,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   private final Log logger;
 
   protected boolean inTransaction = false;
+  private List<HostInfo> hosts;
 
   public ReadWriteSplittingPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
@@ -24,6 +28,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
+    this.hosts = new ArrayList<>(currentConnectionProvider.getOriginalUrl().getHostsList());
   }
 
   @Override
@@ -51,5 +56,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   public void transactionCompleted() {
     this.inTransaction = false;
     this.nextPlugin.transactionCompleted();
+  }
+
+  protected List<HostInfo> getHosts() {
+    return this.hosts;
   }
 }

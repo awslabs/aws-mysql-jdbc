@@ -25,27 +25,23 @@ import static org.mockito.Mockito.*;
 public class ReadWriteSplittingPluginTest {
 
   @Test
-  public void testPluginInstantiation() throws SQLException {
-    String url = "jdbc:mysql:aws://localhost:5432/test?connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    JdbcPropertySetImpl connProps = new JdbcPropertySetImpl();
-    connProps.initializeProperties(conStr.getConnectionArgumentsAsProperties());
+  public void testHostInfoStored() throws SQLException {
+    String url = "jdbc:mysql:aws://host1,host2,host3/test?" +
+        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
+    ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
 
-    ConnectionProxy mockProxy = mock(ConnectionProxy.class);
-    Log mockLog = mock(Log.class);
+    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
+    PropertySet mockPropertySet = Mockito.mock(PropertySet.class);
+    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
+    Log mockLog = Mockito.mock(Log.class);
 
-    try(MockedConstruction<ReadWriteSplittingPluginFactory> mockReadWriteSplitterConstruction = mockConstruction(ReadWriteSplittingPluginFactory.class)) {
-        ConnectionPluginManager manager = new ConnectionPluginManager(mockLog);
-        manager.init(mockProxy, connProps);
-        assertEquals(1, mockReadWriteSplitterConstruction.constructed().size());
-        ReadWriteSplittingPluginFactory mockSplitterFactory = mockReadWriteSplitterConstruction.constructed().get(0);
+    when(mockCurrentConnectionProvider.getOriginalUrl()).thenReturn(connUrl);
 
-        verify(mockSplitterFactory, times(1)).getInstance(
-            any(ICurrentConnectionProvider.class),
-            any(PropertySet.class),
-            any(IConnectionPlugin.class),
-            any(Log.class)
-        );
-    }
+    ReadWriteSplittingPlugin plugin = new ReadWriteSplittingPlugin(mockCurrentConnectionProvider,
+        mockPropertySet,
+        mockNextPlugin,
+        mockLog);
+
+    assertEquals(3, plugin.getHosts().size());
   }
 }
