@@ -171,12 +171,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.metricsContainer = metricsContainerSupplier.get();
 
     this.initialConnectionProps = new HashMap<>();
-    Properties originalProperties = this.propertySet.exposeAsProperties();
-    if (originalProperties != null) {
-      for (String p : originalProperties.stringPropertyNames()) {
-        this.initialConnectionProps.put(p, originalProperties.getProperty(p));
-      }
-    }
+    this.initialConnectionProps = getInitialConnectionProps(this.propertySet);
 
     initSettings();
 
@@ -792,8 +787,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
           hostInfo.getDatabase());
     }
 
+    final Properties connectionProperties = new Properties();
+    connectionProperties.putAll(this.initialConnectionProps);
+
     final ConnectionUrl connectionUrl = ConnectionUrl.getConnectionUrlInstance(
-            hostInfo.getDatabaseUrl(), this.propertySet.exposeAsProperties());
+        hostInfo.getDatabaseUrl(),
+        connectionProperties);
 
     return new HostInfo(
         connectionUrl,
@@ -1281,5 +1280,16 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       this.logger.logError(Messages.getString("ClusterAwareConnectionProxy.18"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.18"));
     }
+  }
+
+  private Map<String, String> getInitialConnectionProps(final PropertySet propertySet) {
+    final Map<String, String> initialConnectionProperties = new HashMap<>();
+    final Properties originalProperties = propertySet.exposeAsProperties();
+    originalProperties.stringPropertyNames()
+        .stream()
+        .filter(x -> this.propertySet.getProperty(x).isExplicitlySet())
+        .forEach(x -> initialConnectionProperties.put(x, originalProperties.getProperty(x)));
+
+    return initialConnectionProperties;
   }
 }
