@@ -39,6 +39,4 @@ public interface ICurrentConnectionProvider {
   void setCurrentConnection(JdbcConnection connection, HostInfo info);
 
   HostInfo getCurrentHostInfo();
-
-  ConnectionUrl getOriginalUrl();
 }

@@ -23,7 +23,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   private boolean inTransaction = false;
   private boolean readOnly = false;
-  private List<HostInfo> hosts;
+  private List<HostInfo> hosts = new ArrayList<>();
   private JdbcConnection writerConnection;
   private JdbcConnection readerConnection;
 
@@ -46,7 +46,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
-    this.hosts = new ArrayList<>(currentConnectionProvider.getOriginalUrl().getHostsList());
   }
 
   @Override
@@ -95,6 +94,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   @Override
   public void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException {
+    this.hosts.addAll(connectionUrl.getHostsList());
     this.nextPlugin.openInitialConnection(connectionUrl);
     this.writerConnection = this.currentConnectionProvider.getCurrentConnection();
   }
