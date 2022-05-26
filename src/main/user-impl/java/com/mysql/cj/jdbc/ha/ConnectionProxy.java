@@ -68,7 +68,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   protected Map<String, String> initialConnectionProps;
   protected ConnectionPluginManager pluginManager = null;
   private HostInfo currentHostInfo;
-  private ConnectionUrl originalUrl;
   private JdbcConnection currentConnection;
 
   public ConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
@@ -92,7 +91,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       JdbcConnection connection,
       Function<Log, ConnectionPluginManager> connectionPluginManagerInitializer)
       throws SQLException {
-    this.originalUrl = connectionUrl;
     this.currentHostInfo = connectionUrl.getMainHost();
     this.currentConnection = connection;
 
@@ -152,13 +150,13 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   }
 
   @Override
-  public HostInfo getCurrentHostInfo() {
-    return this.currentHostInfo;
+  public JdbcConnection getCurrentConnection() {
+    return this.currentConnection;
   }
 
   @Override
-  public JdbcConnection getCurrentConnection() {
-    return this.currentConnection;
+  public HostInfo getCurrentHostInfo() {
+    return this.currentHostInfo;
   }
 
   @Override
