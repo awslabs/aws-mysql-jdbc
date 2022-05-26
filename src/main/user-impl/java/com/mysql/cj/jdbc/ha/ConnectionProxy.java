@@ -157,11 +157,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   }
 
   @Override
-  public ConnectionUrl getOriginalUrl() {
-    return this.originalUrl;
-  }
-
-  @Override
   public JdbcConnection getCurrentConnection() {
     return this.currentConnection;
   }
