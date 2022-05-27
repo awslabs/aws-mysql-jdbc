@@ -1,42 +1,92 @@
+/*
+ * AWS JDBC Driver for MySQL
+ * Copyright Amazon.com Inc. or affiliates.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcPropertySet;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.log.Log;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class ReadWriteSplittingPluginTest {
   private static final int WRITER_INDEX = 0;
+  @Mock ICurrentConnectionProvider mockCurrentConnectionProvider;
+  @Mock IConnectionProvider mockConnectionProvider;
+  @Mock IConnectionPlugin mockNextPlugin;
+  @Mock ConnectionImpl mockWriterConn;
+  @Mock ConnectionImpl mockReaderConn;
+  @Mock Log mockLog;
+  @Mock ConnectionImpl mockClosedWriterConn;
+  @Mock ConnectionImpl mockNewWriterConn;
+  private AutoCloseable closeable;
+
+  @AfterEach
+  void cleanUp() throws Exception {
+    closeable.close();
+  }
+
+  @BeforeEach
+  void init() {
+    closeable = MockitoAnnotations.openMocks(this);
+  }
 
   @Test
   public void testHostInfoStored() throws SQLException {
     String url = "jdbc:mysql:aws://writer,reader1,reader2/test?" +
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    PropertySet mockPropertySet = Mockito.mock(PropertySet.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
+    JdbcPropertySet props = new JdbcPropertySetImpl();
 
     ReadWriteSplittingPlugin plugin = new ReadWriteSplittingPlugin(
         mockCurrentConnectionProvider,
-        mockPropertySet,
+        props,
         mockNextPlugin,
         mockLog);
     plugin.openInitialConnection(connUrl);
@@ -50,13 +100,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -94,18 +137,55 @@ public class ReadWriteSplittingPluginTest {
   }
 
   @Test
-  public void testSetReadOnly_trueTrue() throws SQLException {
+  public void testSetReadOnly_falseInTransaction() throws SQLException {
     String url = "jdbc:mysql:aws://writer,reader1,reader2/test?" +
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
 
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
+    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
+        mockWriterConn,
+        mockWriterConn, mockWriterConn, mockWriterConn,
+        mockReaderConn, mockReaderConn, mockReaderConn);
+    ReadWriteSplittingPlugin plugin = new ReadWriteSplittingPlugin(
+        mockCurrentConnectionProvider,
+        mockConnectionProvider,
+        props,
+        mockNextPlugin,
+        mockLog);
+    plugin.openInitialConnection(connUrl);
+    HostInfo writerHost = plugin.getHosts().get(WRITER_INDEX);
+
+    when(mockConnectionProvider.connect(not(eq(writerHost)))).thenReturn(mockReaderConn);
+    when(mockConnectionProvider.connect(eq(writerHost))).thenReturn(mockWriterConn);
+    when(mockReaderConn.isClosed()).thenReturn(false);
+    when(mockWriterConn.getPropertySet()).thenReturn(props);
+    when(mockReaderConn.getHostPortPair()).thenReturn("reader2:3306");
+    when(mockReaderConn.getPropertySet()).thenReturn(props);
+
+    plugin.switchConnectionIfRequired(true);
+    verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    assertEquals(mockReaderConn, plugin.getReaderConnection());
+    assertEquals(mockWriterConn, plugin.getWriterConnection());
+    assertTrue(plugin.getReadOnly());
+
+    plugin.transactionBegun();
+    SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(false));
+    assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, e.getSQLState());
+    verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    assertEquals(mockReaderConn, plugin.getReaderConnection());
+    assertEquals(mockWriterConn, plugin.getWriterConnection());
+    assertTrue(plugin.getReadOnly());
+  }
+
+  @Test
+  public void testSetReadOnly_trueTrue() throws SQLException {
+    String url = "jdbc:mysql:aws://writer,reader1,reader2/test?" +
+        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
+    ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    JdbcPropertySet props = new JdbcPropertySetImpl();
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -147,12 +227,6 @@ public class ReadWriteSplittingPluginTest {
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
 
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn);
@@ -177,13 +251,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -213,12 +280,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -250,12 +311,6 @@ public class ReadWriteSplittingPluginTest {
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
 
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn);
@@ -280,13 +335,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockClosedWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockNewWriterConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockClosedWriterConn,
@@ -320,13 +368,6 @@ public class ReadWriteSplittingPluginTest {
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
 
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
-
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn);
@@ -359,13 +400,6 @@ public class ReadWriteSplittingPluginTest {
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
 
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
-
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn);
@@ -394,13 +428,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -447,13 +474,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -503,13 +523,6 @@ public class ReadWriteSplittingPluginTest {
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
 
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
-
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn,
@@ -552,13 +565,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
-    ConnectionImpl mockReaderConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
@@ -603,12 +609,6 @@ public class ReadWriteSplittingPluginTest {
         "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
     ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
     JdbcPropertySet props = new JdbcPropertySetImpl();
-
-    ICurrentConnectionProvider mockCurrentConnectionProvider = Mockito.mock(ICurrentConnectionProvider.class);
-    IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
-    IConnectionPlugin mockNextPlugin = Mockito.mock(IConnectionPlugin.class);
-    Log mockLog = Mockito.mock(Log.class);
-    ConnectionImpl mockWriterConn = Mockito.mock(ConnectionImpl.class);
 
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
