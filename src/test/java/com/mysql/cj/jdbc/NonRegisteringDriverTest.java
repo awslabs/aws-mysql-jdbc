@@ -45,11 +45,9 @@ import com.mysql.cj.jdbc.ha.LoadBalancedConnection;
 import com.mysql.cj.jdbc.ha.LoadBalancedConnectionProxy;
 import com.mysql.cj.jdbc.ha.ReplicationConnection;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
-import com.mysql.cj.jdbc.ha.plugins.DefaultConnectionPlugin;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
