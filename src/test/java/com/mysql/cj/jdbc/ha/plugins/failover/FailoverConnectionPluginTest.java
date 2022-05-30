@@ -55,10 +55,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Method;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -125,9 +125,8 @@ class FailoverConnectionPluginTest {
     assertTrue(failoverPlugin.isCurrentConnectionReadOnly());
     assertTrue(failoverPlugin.explicitlyReadOnly);
 
-    Method method = Mockito.mock(Method.class);
-    when(method.getName()).thenReturn("setReadOnly");
-    failoverPlugin.executeOnConnection(method, Arrays.asList(new Object[] { false }));
+    Method setReadOnlyMethod = Connection.class.getMethod("setReadOnly", boolean.class);
+    failoverPlugin.executeOnConnection(setReadOnlyMethod, Arrays.asList(new Object[] { false }));
     assertFalse(failoverPlugin.explicitlyReadOnly);
 
     assertTrue(failoverPlugin.isCurrentConnectionWriter());
