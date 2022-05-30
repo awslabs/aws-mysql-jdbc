@@ -44,7 +44,6 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
-import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySet;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
@@ -56,8 +55,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -124,14 +125,9 @@ class FailoverConnectionPluginTest {
     assertTrue(failoverPlugin.isCurrentConnectionReadOnly());
     assertTrue(failoverPlugin.explicitlyReadOnly);
 
-    failoverPlugin.executeOnConnectionBoundObject(
-        JdbcConnection.class,
-        "setReadOnly",
-        () -> {
-          mockConnection.setReadOnly(false);
-          return true;
-        },
-        new Object[] {false});
+    Method method = Mockito.mock(Method.class);
+    when(method.getName()).thenReturn("setReadOnly");
+    failoverPlugin.executeOnConnection(method, Arrays.asList(new Object[] { false }));
     assertFalse(failoverPlugin.explicitlyReadOnly);
 
     assertTrue(failoverPlugin.isCurrentConnectionWriter());
