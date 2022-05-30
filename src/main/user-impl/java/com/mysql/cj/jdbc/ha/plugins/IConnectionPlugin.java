@@ -28,7 +28,9 @@ package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.conf.ConnectionUrl;
 
+import java.lang.reflect.Method;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -36,11 +38,21 @@ import java.util.concurrent.Callable;
  * and to clean up resources used before closing the plugin.
  */
 public interface IConnectionPlugin extends ITransactionContextHandler {
-  Object execute(
+  /**
+   * All methods invoked on Connection-bound objects should pass through this method.
+   * This includes methods invoked on Statements and ResultSets.
+   */
+  Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeSqlFunc,
       Object[] args)
+      throws Exception;
+
+  /**
+   * All methods invoked on the Connection object should pass through this method.
+   */
+  Object executeOnConnection(Method method, List<Object> args)
       throws Exception;
 
   void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException;

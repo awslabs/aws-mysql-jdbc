@@ -48,6 +48,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -182,14 +184,10 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       return executeMethodDirectly(methodName, args);
     }
 
-    Object[] argsCopy = args == null ?  null : Arrays.copyOf(args, args.length);
+    List<Object> argsCopy = args == null ?  null : Collections.unmodifiableList(Arrays.asList(args));
 
     try {
-      Object result = this.pluginManager.execute(
-          this.currentConnection.getClass(),
-          methodName,
-          () -> method.invoke(currentConnection, args),
-          argsCopy);
+      Object result = this.pluginManager.execute(method, argsCopy);
       return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (Exception e) {
       // Check if the captured exception must be wrapped by an unchecked exception.

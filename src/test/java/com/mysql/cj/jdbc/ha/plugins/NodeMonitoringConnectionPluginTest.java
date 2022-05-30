@@ -140,7 +140,7 @@ class NodeMonitoringConnectionPluginTest {
         anyInt()))
         .thenReturn(context);
 
-    when(mockPlugin.execute(
+    when(mockPlugin.executeOnConnectionBoundObject(
         any(Class.class),
         anyString(),
         Mockito.any(Callable.class),
@@ -191,14 +191,14 @@ class NodeMonitoringConnectionPluginTest {
         .thenReturn(Boolean.FALSE);
 
     initializePlugin();
-    plugin.execute(
+    plugin.executeOnConnectionBoundObject(
         MONITOR_METHOD_INVOKE_ON,
         MONITOR_METHOD_NAME,
         sqlFunction,
         EMPTY_ARGS);
 
     verify(supplier, never()).get();
-    verify(mockPlugin).execute(
+    verify(mockPlugin).executeOnConnectionBoundObject(
         any(Class.class),
         eq(MONITOR_METHOD_NAME),
         eq(sqlFunction),
@@ -211,11 +211,11 @@ class NodeMonitoringConnectionPluginTest {
         .thenReturn(Boolean.TRUE);
 
     initializePlugin();
-    plugin.execute(MONITOR_METHOD_INVOKE_ON, NO_MONITOR_METHOD_NAME, sqlFunction,
+    plugin.executeOnConnectionBoundObject(MONITOR_METHOD_INVOKE_ON, NO_MONITOR_METHOD_NAME, sqlFunction,
         EMPTY_ARGS);
 
     verify(supplier, atMostOnce()).get();
-    verify(mockPlugin).execute(
+    verify(mockPlugin).executeOnConnectionBoundObject(
         any(Class.class),
         eq(NO_MONITOR_METHOD_NAME),
         eq(sqlFunction),

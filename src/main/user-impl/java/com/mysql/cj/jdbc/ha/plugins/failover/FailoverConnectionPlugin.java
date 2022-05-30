@@ -53,6 +53,7 @@ import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
 import java.io.EOFException;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -219,7 +220,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   @Override
-  public Object execute(
+  public Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeSqlFunc,
@@ -227,7 +228,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       throws Exception {
 
     if (!this.enableFailoverSetting || canDirectExecute(methodName)) {
-      return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+      return this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeSqlFunc, args);
     }
 
     if (this.isClosed && !allowedOnClosedConnection(methodName)) {
@@ -240,7 +241,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     try {
       updateTopologyAndConnectIfNeeded(false);
-      result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+      result = this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeSqlFunc, args);
     } catch (IllegalStateException e) {
       dealWithIllegalStateException(e);
     } catch (Exception e) {
@@ -248,6 +249,37 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
 
     performSpecialMethodHandlingIfRequired(args, methodName);
+
+    return result;
+  }
+
+  @Override
+  public Object executeOnConnection(Method method, List<Object> args)
+      throws Exception {
+    String methodName = method.getName();
+
+    if (!this.enableFailoverSetting || canDirectExecute(methodName)) {
+      return this.nextPlugin.executeOnConnection(method, args);
+    }
+
+    if (this.isClosed && !allowedOnClosedConnection(methodName)) {
+      invalidInvocationOnClosedConnection();
+    }
+
+    this.invokeStartTimeMs = System.currentTimeMillis();
+
+    Object result = null;
+
+    try {
+      updateTopologyAndConnectIfNeeded(false);
+      result = this.nextPlugin.executeOnConnection(method, args);
+    } catch (IllegalStateException e) {
+      dealWithIllegalStateException(e);
+    } catch (Exception e) {
+      this.dealWithOriginalException(e, null);
+    }
+
+    performSpecialMethodHandlingIfRequired(args.toArray(), methodName);
 
     return result;
   }

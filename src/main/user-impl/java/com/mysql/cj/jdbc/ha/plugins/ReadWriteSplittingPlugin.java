@@ -40,6 +40,7 @@ import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,14 +84,20 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   @Override
-  public Object execute(Class<?> methodInvokeOn, String methodName, Callable<?> executeSqlFunc, Object[] args) throws Exception {
-    if (METHOD_SET_READ_ONLY.equals(methodName)) {
-      switchConnectionIfRequired((boolean) args[0]);
-    }
-    return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+  public Object executeOnConnectionBoundObject(Class<?> methodInvokeOn, String methodName, Callable<?> executeSqlFunc, Object[] args) throws Exception {
+    return this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeSqlFunc, args);
   }
 
-  void switchConnectionIfRequired(boolean readOnly) throws SQLException {
+  @Override
+  public Object executeOnConnection(Method method, List<Object> args) throws Exception {
+    if (METHOD_SET_READ_ONLY.equals(method.getName()) && args.size() > 0) {
+      switchConnectionIfRequired((Boolean) args.get(0));
+    }
+    return this.nextPlugin.executeOnConnection(method, args);
+  }
+
+  void switchConnectionIfRequired(Boolean readOnly) throws SQLException {
+    if (readOnly == null) return;
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (readOnly) {
       if (!this.inTransaction && (!isReaderConnection() || currentConnection.isClosed())) {
@@ -144,6 +151,23 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   @Override
   public void releaseResources() {
+    JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    if (this.readerConnection != currentConnection) {
+      try {
+        this.readerConnection.close();
+      } catch (SQLException e) {
+        // ignore
+      }
+    }
+
+    if (this.writerConnection != currentConnection) {
+      try {
+        this.writerConnection.close();
+      } catch (SQLException e) {
+        // ignore
+      }
+    }
+
     this.nextPlugin.releaseResources();
   }
 

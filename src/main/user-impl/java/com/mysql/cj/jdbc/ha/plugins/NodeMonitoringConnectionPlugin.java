@@ -35,6 +35,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.ha.ConnectionProxy;
 import com.mysql.cj.log.Log;
 
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -112,10 +113,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
   }
 
   /**
-   * Executes the given SQL function with {@link Monitor} if connection monitoring is enabled.
-   * Otherwise, executes the SQL function directly.
+   * Executes the given SQL function on the Connection-bound object with a {@link Monitor} if connection
+   * monitoring is enabled. Otherwise, executes the SQL function directly.
    *
-   * @param methodInvokeOn Class of an object that method to monitor to be invoked on.
+   * @param methodInvokeOn Class of the object that the method to monitor will be invoked on.
    * @param methodName     Name of the method to monitor.
    * @param executeSqlFunc {@link Callable} SQL function.
    * @param args Arguments used to execute the given method.
@@ -123,7 +124,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    * @throws Exception if an error occurs.
    */
   @Override
-  public Object execute(
+  public Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeSqlFunc, Object[] args) throws Exception {
@@ -134,10 +135,78 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
     if (!isEnabled || !this.doesNeedMonitoring(methodInvokeOn, methodName)) {
       // do direct call
-      return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+      return this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeSqlFunc, args);
     }
     // ... otherwise, use a separate thread to execute method
 
+    Object result;
+    MonitorConnectionContext monitorContext = null;
+
+    try {
+      monitorContext = startMonitoringService(methodName, methodInvokeOn);
+      result = this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeSqlFunc, args);
+    } finally {
+      stopMonitoringService(methodInvokeOn, methodName, monitorContext);
+    }
+
+    return result;
+  }
+
+  private void stopMonitoringService(Class<?> methodInvokeOn, String methodName, MonitorConnectionContext monitorContext) throws SQLException {
+    if (monitorContext != null) {
+      this.monitorService.stopMonitoring(monitorContext);
+      synchronized (monitorContext) {
+        if (monitorContext.isNodeUnhealthy() && !this.connection.isClosed()) {
+          abortConnection();
+          throw new CJCommunicationsException("Node is unavailable.");
+        }
+      }
+    }
+    this.logger.logTrace(String.format(
+        "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
+        methodInvokeOn.getName(),
+        methodName));
+  }
+
+  /**
+   * Executes the given SQL function on the Connection with a {@link Monitor} if connection
+   * monitoring is enabled. Otherwise, executes the SQL function directly.
+   *
+   * @param method The method to monitor
+   * @param args Arguments used to execute the given method.
+   * @return Results of the SQL function invocation
+   * @throws Exception if an error occurs.
+   */
+  @Override
+  public Object executeOnConnection(Method method, List<Object> args)
+      throws Exception {
+    String methodName = method.getName();
+    Class methodInvokeOn = this.currentConnectionProvider.getCurrentConnection().getClass();
+    // update config settings since they may change
+    final boolean isEnabled = this.propertySet
+        .getBooleanProperty(PropertyKey.failureDetectionEnabled)
+        .getValue();
+
+    if (!isEnabled || !this.doesNeedMonitoring(methodInvokeOn, methodName)) {
+      // do direct call
+      return this.nextPlugin.executeOnConnection(method, args);
+    }
+
+    // ... otherwise, use a separate thread to execute method
+    Object result;
+    MonitorConnectionContext monitorContext = null;
+
+    try {
+      monitorContext = startMonitoringService(methodName, methodInvokeOn);
+      result = this.nextPlugin.executeOnConnection(method, args);
+    } finally {
+      stopMonitoringService(methodInvokeOn, methodName, monitorContext);
+    }
+
+    return result;
+  }
+
+  private MonitorConnectionContext startMonitoringService(String methodName, Class methodInvokeOn) {
     final int failureDetectionTimeMillis = this.propertySet
         .getIntegerProperty(PropertyKey.failureDetectionTime)
         .getValue();
@@ -149,46 +218,22 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
         .getValue();
 
     initMonitorService();
+    this.logger.logTrace(String.format(
+        "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is activated",
+        methodInvokeOn.getName(),
+        methodName));
 
-    Object result;
-    MonitorConnectionContext monitorContext = null;
+    this.checkIfChanged(this.currentConnectionProvider.getCurrentConnection());
 
-    try {
-      this.logger.logTrace(String.format(
-          "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is activated",
-          methodInvokeOn.getName(),
-          methodName));
-
-      this.checkIfChanged(this.currentConnectionProvider.getCurrentConnection());
-
-      monitorContext = this.monitorService.startMonitoring(
-          this.connection, //abort current connection if needed
-          this.nodeKeys,
-          this.currentConnectionProvider.getCurrentHostInfo(),
-          this.propertySet,
-          failureDetectionTimeMillis,
-          failureDetectionIntervalMillis,
-          failureDetectionCount);
-
-      result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
-
-    } finally {
-      if (monitorContext != null) {
-        this.monitorService.stopMonitoring(monitorContext);
-        synchronized (monitorContext) {
-          if (monitorContext.isNodeUnhealthy() && !this.connection.isClosed()) {
-            abortConnection();
-            throw new CJCommunicationsException("Node is unavailable.");
-          }
-        }
-      }
-      this.logger.logTrace(String.format(
-          "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
-          methodInvokeOn.getName(),
-          methodName));
-    }
-
-    return result;
+    MonitorConnectionContext monitorContext = this.monitorService.startMonitoring(
+        this.connection, //abort current connection if needed
+        this.nodeKeys,
+        this.currentConnectionProvider.getCurrentHostInfo(),
+        this.propertySet,
+        failureDetectionTimeMillis,
+        failureDetectionIntervalMillis,
+        failureDetectionCount);
+    return monitorContext;
   }
 
   void abortConnection() {
