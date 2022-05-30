@@ -32,7 +32,9 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -66,11 +68,15 @@ public class DefaultConnectionPlugin implements IConnectionPlugin {
   }
 
   @Override
-  public Object execute(
+  public Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeSqlFunc,
       Object[] args) throws Exception {
+    return execute(methodInvokeOn, methodName, executeSqlFunc);
+  }
+
+  private Object execute(Class<?> methodInvokeOn, String methodName, Callable<?> executeSqlFunc) throws Exception {
     try {
       return executeSqlFunc.call();
     } catch (InvocationTargetException invocationTargetException) {
@@ -84,9 +90,17 @@ public class DefaultConnectionPlugin implements IConnectionPlugin {
       throw (Exception) targetException;
     } catch (Exception ex) {
       this.logger.logTrace(
-          String.format("[DefaultConnectionPlugin.execute]: method=%s.%s, exception: ", methodInvokeOn.getName(), methodName), ex);
+          String.format("[DefaultConnectionPlugin.execute]: method=%s.%s, exception: ",
+              methodInvokeOn.getName(), methodName), ex);
       throw ex;
     }
+  }
+
+  @Override
+  public Object executeOnConnection(Method method, List<Object> args) throws Exception {
+    JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    return execute(currentConnection.getClass(), method.getName(),
+        () -> method.invoke(currentConnection, args.toArray()));
   }
 
   @Override

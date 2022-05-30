@@ -30,9 +30,11 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.log.Log;
 
+import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -56,8 +58,8 @@ public class MethodCountConnectionPlugin implements IConnectionPlugin {
   }
 
   /**
-   * All method calls related to the connection object will be passed to this method as
-   * {@code Callable<?> executeJdbcMethod}.
+   * All method calls on Connection-bound objects (eg Statements and ResultSets)
+   * will be passed to this method as {@code Callable<?> executeJdbcMethod}.
    * This includes methods that may be called frequently, such as:
    * <ul>
    *   <li>{@link ResultSet#next()}</li>
@@ -65,15 +67,28 @@ public class MethodCountConnectionPlugin implements IConnectionPlugin {
    * </ul>
    */
   @Override
-  public Object execute(
+  public Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeJdbcMethod, Object[] args) throws Exception {
     // Increment the number of calls to this method.
     methodCount.merge(methodName, 1, Integer::sum);
-    // Traverse the connection plugin chain by invoking the `execute` method in the
-    // next plugin.
-    return this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod, args);
+    // Traverse the connection plugin chain by invoking the
+    // method in the next plugin.
+    return this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeJdbcMethod, args);
+  }
+
+  /**
+   * All method calls on Connection objects will be directed to this method
+   */
+  @Override
+  public Object executeOnConnection(Method method, List<Object> args)
+      throws Exception {
+    // Increment the number of calls to this method.
+    methodCount.merge(method.getName(), 1, Integer::sum);
+    // Traverse the connection plugin chain by invoking the
+    // method in the next plugin.
+    return this.nextPlugin.executeOnConnection(method, args);
   }
 
   @Override

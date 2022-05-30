@@ -30,8 +30,11 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.log.Log;
 
+import java.lang.reflect.Method;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -58,20 +61,41 @@ public class ExecutionTimeConnectionPlugin implements IConnectionPlugin {
     initializeTime = System.currentTimeMillis();
   }
 
+  /**
+   * This method measures the time it takes for the remaining connection plugins
+   * to execute the given method call on Statement and ResultSet objects
+   */
   @Override
-  public Object execute(
+  public Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeJdbcMethod, Object[] args)
       throws Exception {
-    // This `execute` measures the time it takes for the remaining connection plugins to
-    // execute the given method call.
     final long startTime = System.nanoTime();
     final Object executeResult =
-        this.nextPlugin.execute(methodInvokeOn, methodName, executeJdbcMethod, args);
+        this.nextPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeJdbcMethod, args);
     final long elapsedTime = System.nanoTime() - startTime;
     methodExecutionTimes.merge(
         methodName,
+        elapsedTime / 1000000,
+        Long::sum);
+
+    return executeResult;
+  }
+
+  /**
+   * This method measures the time it takes for the remaining connection plugins
+   * to execute the given method call on the Connection object
+   */
+  @Override
+  public Object executeOnConnection(Method method, List<Object> args)
+      throws Exception {
+    final long startTime = System.nanoTime();
+    final Object executeResult =
+        this.nextPlugin.executeOnConnection(method, args);
+    final long elapsedTime = System.nanoTime() - startTime;
+    methodExecutionTimes.merge(
+        method.getName(),
         elapsedTime / 1000000,
         Long::sum);
 
