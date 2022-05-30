@@ -119,7 +119,7 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
   }
 
   /**
-   * Execute a JDBC method with the connection plugin chain.
+   * Pass a JDBC method invoked on a Connection-bound Object through the plugin chain
    *
    * @param methodInvokeOn The Java Class invoking the JDBC method.
    * @param methodName The name of the method being invoked.
@@ -128,7 +128,7 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
    * @return the result from the execution.
    * @throws Exception if errors occurred during the execution.
    */
-  public Object execute(
+  public Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
       String methodName,
       Callable<?> executeSqlFunc,
@@ -137,14 +137,14 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
   }
 
   /**
-   * Execute a JDBC method with the connection plugin chain.
+   * Pass a JDBC method invoked on a Connection through the plugin chain
    *
    * @param method The method being invoked.
    * @param args The arguments passed to the method being invoked.
    * @return the result from the execution.
    * @throws Exception if errors occurred during the execution.
    */
-  public Object execute(Method method, List<Object> args) throws Exception {
+  public Object executeOnConnection(Method method, List<Object> args) throws Exception {
     return this.headPlugin.executeOnConnection(method, args);
   }
 

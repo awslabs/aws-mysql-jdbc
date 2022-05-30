@@ -51,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -123,7 +124,7 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -165,7 +166,7 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -174,7 +175,7 @@ public class ReadWriteSplittingPluginTest {
     SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(false));
     assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, e.getSQLState());
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -207,14 +208,14 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -239,7 +240,7 @@ public class ReadWriteSplittingPluginTest {
     plugin.openInitialConnection(connUrl);
 
     plugin.switchConnectionIfRequired(false);
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertNull(plugin.getReaderConnection());
     assertFalse(plugin.getReadOnly());
@@ -268,7 +269,7 @@ public class ReadWriteSplittingPluginTest {
     hosts.clear();
 
     plugin.switchConnectionIfRequired(true);
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertEquals(mockWriterConn, plugin.getReaderConnection());
     assertTrue(plugin.getReadOnly());
@@ -298,7 +299,7 @@ public class ReadWriteSplittingPluginTest {
 
     SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(true));
     assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertNull(plugin.getReaderConnection());
     assertFalse(plugin.getReadOnly());
@@ -323,7 +324,7 @@ public class ReadWriteSplittingPluginTest {
     plugin.openInitialConnection(connUrl);
 
     plugin.switchConnectionIfRequired(true);
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertEquals(mockWriterConn, plugin.getReaderConnection());
     assertTrue(plugin.getReadOnly());
@@ -355,7 +356,7 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockNewWriterConn), eq(writerHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(not(eq(mockNewWriterConn)), eq(writerHost));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(not(eq(mockNewWriterConn)), eq(writerHost));
     assertEquals(mockNewWriterConn, plugin.getWriterConnection());
     assertEquals(mockNewWriterConn, plugin.getReaderConnection());
     assertTrue(plugin.getReadOnly());
@@ -387,7 +388,7 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(readerHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -416,7 +417,7 @@ public class ReadWriteSplittingPluginTest {
     when(mockConnectionProvider.connect(not(eq(writerHost)))).thenThrow(SQLException.class);
 
     plugin.switchConnectionIfRequired(true);
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertEquals(mockWriterConn, plugin.getReaderConnection());
     assertTrue(plugin.getReadOnly());
@@ -544,7 +545,7 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(readerHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -553,7 +554,7 @@ public class ReadWriteSplittingPluginTest {
     SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(false));
     assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(readerHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -589,7 +590,7 @@ public class ReadWriteSplittingPluginTest {
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(readerHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -597,7 +598,7 @@ public class ReadWriteSplittingPluginTest {
     SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(false));
     assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(readerHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertTrue(plugin.getReadOnly());
@@ -628,7 +629,7 @@ public class ReadWriteSplittingPluginTest {
 
     SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(true));
     assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
+    verify(mockCurrentConnectionProvider, never()).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
     assertNull(plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertFalse(plugin.getReadOnly());
