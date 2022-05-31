@@ -122,6 +122,7 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
    * @param methodInvokeOn The Java Class invoking the JDBC method.
    * @param methodName The name of the method being invoked.
    * @param executeSqlFunc A lambda executing the method.
+   * @param args The arguments passed to the JDBC method.
    * @return the result from the execution.
    * @throws Exception if errors occurred during the execution.
    */
