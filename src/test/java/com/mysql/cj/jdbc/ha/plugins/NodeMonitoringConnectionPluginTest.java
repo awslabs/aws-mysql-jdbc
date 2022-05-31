@@ -58,7 +58,6 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Method;
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -197,14 +196,15 @@ class NodeMonitoringConnectionPluginTest {
   void test_2_executeOnConnectionWithFailoverDisabled() throws Exception {
     when(failureDetectionEnabledProperty.getValue())
         .thenReturn(Boolean.FALSE);
+    Method method = Mockito.mock(Method.class);
+    when(method.getName()).thenReturn("setReadOnly");
 
-    Method setReadOnlyMethod = Connection.class.getMethod("setReadOnly", boolean.class);
     initializePlugin();
-    plugin.executeOnConnection(setReadOnlyMethod, EMPTY_ARGS_LIST);
+    plugin.executeOnConnection(method, EMPTY_ARGS_LIST);
 
     verify(supplier, never()).get();
     verify(mockPlugin).executeOnConnection(
-        eq(setReadOnlyMethod),
+        any(Method.class),
         eq(EMPTY_ARGS_LIST));
   }
 
@@ -232,14 +232,15 @@ class NodeMonitoringConnectionPluginTest {
   void test_4_executeOnConnectionWithNoNeedToMonitor() throws Exception {
     when(failureDetectionEnabledProperty.getValue())
         .thenReturn(Boolean.TRUE);
+    Method method = Mockito.mock(Method.class);
+    when(method.getName()).thenReturn("setReadOnly");
 
-    Method setReadOnlyMethod = Connection.class.getMethod("setReadOnly", boolean.class);
     initializePlugin();
-    plugin.executeOnConnection(setReadOnlyMethod, EMPTY_ARGS_LIST);
+    plugin.executeOnConnection(method, EMPTY_ARGS_LIST);
 
     verify(supplier, atMostOnce()).get();
     verify(mockPlugin).executeOnConnection(
-        eq(setReadOnlyMethod),
+        any(Method.class),
         eq(EMPTY_ARGS_LIST));
   }
 

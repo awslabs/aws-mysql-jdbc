@@ -39,7 +39,8 @@ import java.util.concurrent.Callable;
  */
 public interface IConnectionPlugin extends ITransactionContextHandler {
   /**
-   * Execute a JDBC method on a Connection-bound Object such as a Statement or ResultSet.
+   * All methods invoked on Connection-bound objects should pass through this method.
+   * This includes methods invoked on Statements and ResultSets.
    */
   Object executeOnConnectionBoundObject(
       Class<?> methodInvokeOn,
@@ -49,7 +50,7 @@ public interface IConnectionPlugin extends ITransactionContextHandler {
       throws Exception;
 
   /**
-   * Execute a JDBC method on a Connection Object.
+   * All methods invoked on the Connection object should pass through this method.
    */
   Object executeOnConnection(Method method, List<Object> args)
       throws Exception;
