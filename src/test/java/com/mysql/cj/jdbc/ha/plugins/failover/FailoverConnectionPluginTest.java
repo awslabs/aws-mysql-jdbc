@@ -124,7 +124,7 @@ class FailoverConnectionPluginTest {
     assertTrue(failoverPlugin.isCurrentConnectionReadOnly());
     assertTrue(failoverPlugin.explicitlyReadOnly);
 
-    failoverPlugin.executeOnConnectionBoundObject(
+    failoverPlugin.execute(
         JdbcConnection.class,
         "setReadOnly",
         () -> {

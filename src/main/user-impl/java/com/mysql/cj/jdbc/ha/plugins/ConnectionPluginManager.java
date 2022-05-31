@@ -34,9 +34,7 @@ import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
-import java.lang.reflect.Method;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -124,7 +122,6 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
    * @param methodInvokeOn The Java Class invoking the JDBC method.
    * @param methodName The name of the method being invoked.
    * @param executeSqlFunc A lambda executing the method.
-   * @param args The arguments passed to the method being invoked.
    * @return the result from the execution.
    * @throws Exception if errors occurred during the execution.
    */
@@ -133,19 +130,7 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
       String methodName,
       Callable<?> executeSqlFunc,
       Object[] args) throws Exception {
-    return this.headPlugin.executeOnConnectionBoundObject(methodInvokeOn, methodName, executeSqlFunc, args);
-  }
-
-  /**
-   * Execute a JDBC method with the connection plugin chain.
-   *
-   * @param method The method being invoked
-   * @param args The arguments passed to the method being invoked.
-   * @return the result from the execution.
-   * @throws Exception if errors occurred during the execution.
-   */
-  public Object execute(Method method, List<Object> args) throws Exception {
-    return this.headPlugin.executeOnConnection(method, args);
+    return this.headPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
   }
 
   /**
