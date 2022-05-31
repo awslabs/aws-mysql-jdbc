@@ -90,7 +90,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   @Override
   public Object executeOnConnection(Method method, List<Object> args) throws Exception {
-    if (METHOD_SET_READ_ONLY.equals(method.getName()) && args.size() > 0) {
+    if (METHOD_SET_READ_ONLY.equals(method.getName()) && args != null && args.size() > 0) {
       switchConnectionIfRequired((Boolean) args.get(0));
     }
     return this.nextPlugin.executeOnConnection(method, args);
@@ -204,7 +204,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       initializeWriterConnection();
     }
     if (!isWriterConnection() && this.writerConnection != null) {
-      syncSessionState(currentConnection, this.writerConnection, false);
+      syncSessionStateOnReadWriteSplit(currentConnection, this.writerConnection);
       final HostInfo writerHostInfo = this.hosts.get(WRITER_INDEX);
       this.currentConnectionProvider.setCurrentConnection(this.writerConnection, writerHostInfo);
     }
@@ -220,21 +220,17 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   /**
-   * Synchronizes session state between two connections, allowing to override the read-only status.
+   * This method should only be called if setReadOnly is currently being invoked through the connection plugin chain,
+   * and we have decided to switch connections. It synchronizes session state from the source to the target, except for
+   * the readOnly state, which will be set later when setReadOnly continues down the connection plugin chain.
    *
    * @param source
    *            The connection where to get state from.
    * @param target
    *            The connection where to set state.
-   * @param readOnly
-   *            The new read-only status.
    */
-  void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readOnly) {
+  void syncSessionStateOnReadWriteSplit(JdbcConnection source, JdbcConnection target) {
     try {
-      if (target != null) {
-        target.setReadOnly(readOnly);
-      }
-
       if (source == null || target == null) {
         return;
       }
@@ -279,7 +275,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    syncSessionState(currentConnection, this.readerConnection, true);
+    syncSessionStateOnReadWriteSplit(currentConnection, this.readerConnection);
     this.currentConnectionProvider.setCurrentConnection(this.readerConnection, readerHostInfo);
   }
 
