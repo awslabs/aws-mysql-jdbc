@@ -279,7 +279,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       this.dealWithOriginalException(e, null);
     }
 
-    performSpecialMethodHandlingIfRequired(args.toArray(), methodName);
+    Object[] argsArray = args == null ? null : args.toArray();
+    performSpecialMethodHandlingIfRequired(argsArray, methodName);
 
     return result;
   }
@@ -1183,7 +1184,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void performSpecialMethodHandlingIfRequired(Object[] args, String methodName)
       throws SQLException {
-    if (METHOD_SET_AUTO_COMMIT.equals(methodName)) {
+    if (METHOD_SET_AUTO_COMMIT.equals(methodName) && args != null && args.length > 0) {
       this.explicitlyAutoCommit = (Boolean) args[0];
       this.inTransaction = !this.explicitlyAutoCommit;
     }
@@ -1192,7 +1193,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       this.inTransaction = false;
     }
 
-    if (METHOD_SET_READ_ONLY.equals(methodName)) {
+    if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       this.explicitlyReadOnly = (Boolean) args[0];
       this.logger.logTrace(
           Messages.getString(

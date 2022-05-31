@@ -99,8 +99,9 @@ public class DefaultConnectionPlugin implements IConnectionPlugin {
   @Override
   public Object executeOnConnection(Method method, List<Object> args) throws Exception {
     JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    Object[] argsArray = args == null ? null : args.toArray();
     return execute(currentConnection.getClass(), method.getName(),
-        () -> method.invoke(currentConnection, args.toArray()));
+        () -> method.invoke(currentConnection, argsArray));
   }
 
   @Override
