@@ -9,7 +9,6 @@
 
 The AWS JDBC Driver for MySQL supports fast failover for Amazon Aurora with MySQL compatibility. Support for additional features of clustered databases, including features of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
 
-
 ## What is Failover?
 
 An Amazon Aurora DB cluster uses failover to automatically repairs the DB cluster status when a primary DB instance becomes unavailable. During failover, Aurora promotes a replica to become the new primary DB instance, so that the DB cluster can provide maximum availability to a primary read-write DB instance. The AWS JDBC Driver for MySQL is designed to coordinate with this behavior in order to provide minimal downtime in the event of a DB instance failure.
@@ -641,7 +640,8 @@ To run tests for the base driver functionality, use the following command:
 gradlew test-community-docker
 ```
 
-To run the integration tests, you will need some environment variables and an AWS User. Integration tests are set up to create clusters for each test. The AWS User will need access to do the following: create/delete Aurora clusters for testing, AWS IAM access for RDS, and allowlisting IP address of the current runner in EC2 Security Group. Descriptions of the necessary environment variables is in the table below.
+To run the integration tests, you will need some environment variables and an AWS User. Integration tests are set up to create clusters for each test. The AWS User will need access to do the following: create/delete Aurora clusters for testing, AWS IAM access for RDS, and allowlisting IP address of the current runner in EC2 Security Group. 
+Descriptions of the necessary environment variables is in the table below.
 
 To run the integration tests on macOS, use the following command (replace the variables with the appropriate values):
 ```bash
