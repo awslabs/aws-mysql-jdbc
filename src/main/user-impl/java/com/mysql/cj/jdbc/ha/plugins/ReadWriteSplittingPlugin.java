@@ -84,13 +84,17 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   @Override
   public Object execute(Class<?> methodInvokeOn, String methodName, Callable<?> executeSqlFunc, Object[] args) throws Exception {
-    if (METHOD_SET_READ_ONLY.equals(methodName)) {
-      switchConnectionIfRequired((boolean) args[0]);
+    if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
+      switchConnectionIfRequired((Boolean) args[0]);
     }
     return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
   }
 
-  void switchConnectionIfRequired(boolean readOnly) throws SQLException {
+  void switchConnectionIfRequired(Boolean readOnly) throws SQLException {
+    if (readOnly == null) {
+      return;
+    }
+
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (readOnly) {
       if (!this.inTransaction && (!isReaderConnection() || currentConnection.isClosed())) {
@@ -109,7 +113,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       }
     } else {
       if (!isWriterConnection() || currentConnection.isClosed()) {
-        if(this.inTransaction) {
+        if (this.inTransaction) {
           throw new SQLException(
               Messages.getString("ReadWriteSplittingPlugin.6"),
               MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION
@@ -144,6 +148,23 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   @Override
   public void releaseResources() {
+    JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    if (this.readerConnection != currentConnection) {
+      try {
+        this.readerConnection.close();
+      } catch (SQLException e) {
+        // ignore
+      }
+    }
+
+    if (this.writerConnection != currentConnection) {
+      try {
+        this.writerConnection.close();
+      } catch (SQLException e) {
+        // ignore
+      }
+    }
+
     this.nextPlugin.releaseResources();
   }
 
@@ -180,7 +201,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       initializeWriterConnection();
     }
     if (!isWriterConnection() && this.writerConnection != null) {
-      syncSessionState(currentConnection, this.writerConnection, false);
+      syncSessionStateOnReadWriteSplit(currentConnection, this.writerConnection);
       final HostInfo writerHostInfo = this.hosts.get(WRITER_INDEX);
       this.currentConnectionProvider.setCurrentConnection(this.writerConnection, writerHostInfo);
     }
@@ -196,21 +217,17 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   /**
-   * Synchronizes session state between two connections, allowing to override the read-only status.
+   * This method should only be called if setReadOnly is currently being invoked through the connection plugin chain,
+   * and we have decided to switch connections. It synchronizes session state from the source to the target, except for
+   * the readOnly state, which will be set later when setReadOnly continues down the connection plugin chain.
    *
    * @param source
    *            The connection where to get state from.
    * @param target
    *            The connection where to set state.
-   * @param readOnly
-   *            The new read-only status.
    */
-  void syncSessionState(JdbcConnection source, JdbcConnection target, boolean readOnly) {
+  void syncSessionStateOnReadWriteSplit(JdbcConnection source, JdbcConnection target) {
     try {
-      if (target != null) {
-        target.setReadOnly(readOnly);
-      }
-
       if (source == null || target == null) {
         return;
       }
@@ -255,7 +272,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    syncSessionState(currentConnection, this.readerConnection, true);
+    syncSessionStateOnReadWriteSplit(currentConnection, this.readerConnection);
     this.currentConnectionProvider.setCurrentConnection(this.readerConnection, readerHostInfo);
   }
 
