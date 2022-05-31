@@ -139,7 +139,7 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
   /**
    * Execute a JDBC method with the connection plugin chain.
    *
-   * @param method The method being invoked.
+   * @param method The method being invoked
    * @param args The arguments passed to the method being invoked.
    * @return the result from the execution.
    * @throws Exception if errors occurred during the execution.

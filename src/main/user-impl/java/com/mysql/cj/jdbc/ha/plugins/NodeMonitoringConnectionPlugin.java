@@ -172,9 +172,9 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    * Executes the given SQL function on the Connection with a {@link Monitor} if connection
    * monitoring is enabled. Otherwise, executes the SQL function directly.
    *
-   * @param method The method to monitor.
+   * @param method The method to monitor
    * @param args Arguments used to execute the given method.
-   * @return Results of the SQL function invocation.
+   * @return Results of the SQL function invocation
    * @throws Exception if an error occurs.
    */
   @Override
