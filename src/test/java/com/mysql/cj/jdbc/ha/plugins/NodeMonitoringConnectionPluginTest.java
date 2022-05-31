@@ -57,11 +57,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
-import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -75,7 +72,6 @@ class NodeMonitoringConnectionPluginTest {
   static final int FAILURE_DETECTION_INTERVAL = 100;
   static final int FAILURE_DETECTION_COUNT = 5;
   private static final Object[] EMPTY_ARGS = {};
-  private static final List<Object> EMPTY_ARGS_LIST = new ArrayList<>();
   @Mock ConnectionProxy proxy;
   @Mock JdbcConnection connection;
   @Mock Statement statement;
@@ -149,9 +145,6 @@ class NodeMonitoringConnectionPluginTest {
         anyString(),
         Mockito.any(Callable.class),
         eq(EMPTY_ARGS))).thenReturn("done");
-    when(mockPlugin.executeOnConnection(
-        any(Method.class),
-        eq(EMPTY_ARGS_LIST))).thenReturn("done");
 
     when(proxy.getCurrentConnection()).thenReturn(connection);
     when(proxy.getCurrentHostInfo()).thenReturn(hostInfo);
@@ -193,23 +186,7 @@ class NodeMonitoringConnectionPluginTest {
   }
 
   @Test
-  void test_2_executeOnConnectionWithFailoverDisabled() throws Exception {
-    when(failureDetectionEnabledProperty.getValue())
-        .thenReturn(Boolean.FALSE);
-    Method method = Mockito.mock(Method.class);
-    when(method.getName()).thenReturn("setReadOnly");
-
-    initializePlugin();
-    plugin.executeOnConnection(method, EMPTY_ARGS_LIST);
-
-    verify(supplier, never()).get();
-    verify(mockPlugin).executeOnConnection(
-        any(Method.class),
-        eq(EMPTY_ARGS_LIST));
-  }
-
-  @Test
-  void test_3_executeOnConnectionBoundObjectWithFailoverDisabled() throws Exception {
+  void test_2_executeWithFailoverDisabled() throws Exception {
     when(failureDetectionEnabledProperty.getValue())
         .thenReturn(Boolean.FALSE);
 
@@ -229,23 +206,7 @@ class NodeMonitoringConnectionPluginTest {
   }
 
   @Test
-  void test_4_executeOnConnectionWithNoNeedToMonitor() throws Exception {
-    when(failureDetectionEnabledProperty.getValue())
-        .thenReturn(Boolean.TRUE);
-    Method method = Mockito.mock(Method.class);
-    when(method.getName()).thenReturn("setReadOnly");
-
-    initializePlugin();
-    plugin.executeOnConnection(method, EMPTY_ARGS_LIST);
-
-    verify(supplier, atMostOnce()).get();
-    verify(mockPlugin).executeOnConnection(
-        any(Method.class),
-        eq(EMPTY_ARGS_LIST));
-  }
-
-  @Test
-  void test_5_executeOnConnectionBoundObjectWithNoNeedToMonitor() throws Exception {
+  void test_3_executeWithNoNeedToMonitor() throws Exception {
     when(failureDetectionEnabledProperty.getValue())
         .thenReturn(Boolean.TRUE);
 
