@@ -1,29 +1,83 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: ''
+name: "\U0001F41B Bug Report"
+description: Report a bug
+title: "(short issue description)"
+labels: [bug, needs-triage]
+assignees: []
+body:
+- type: textarea
+  id: description
+  attributes:
+  label: Describe the bug
+  description: What is the problem? A clear and concise description of the bug.
+  validations:
+  required: true
+- type: textarea
+  id: expected
+  attributes:
+  label: Expected Behavior
+  description: |
+  What did you expect to happen?
+  validations:
+  required: true
+- type: textarea
+  id: current
+  attributes:
+  label: Current Behavior
+  description: |
+  What actually happened?
 
----
+      Please include full errors, uncaught exceptions, stack traces, and relevant logs.
+      To turn on driver logging, see here: https://github.com/awslabs/aws-mysql-jdbc#enable-logging.
+  validations:
+  required: true
+- type: textarea
+  id: reproduction
+  attributes:
+  label: Reproduction Steps
+  description: |
+  Provide a self-contained, concise snippet of code that can be used to reproduce the issue.
+  For more complex issues provide a repo with the smallest sample that reproduces the bug.
 
-**Describe the issue**
-A clear and concise description of what the issue is.
+      Avoid including business logic or unrelated code, it makes diagnosis more difficult.
+      The code sample should be an SSCCE. See http://sscce.org/ for details. In short, please provide a code sample that we can copy/paste, run and reproduce.
+  validations:
+  required: true
+- type: textarea
+  id: solution
+  attributes:
+  label: Possible Solution
+  description: |
+  Suggest a fix/reason for the bug
+  validations:
+  required: false
+- type: textarea
+  id: context
+  attributes:
+  label: Additional Information/Context
+  description: |
+  Anything else that might be relevant for troubleshooting this bug. Providing context helps us come up with a solution that is most useful in the real world.
+  validations:
+  required: false
 
-**Driver Version?** 
+- type: input
+  id: driver-version
+  attributes:
+  label: The AWS JDBC Driver for MySQL version used
+  validations:
+  required: true
 
-**Java Version?**
+- type: input
+  id: jdk-version
+  attributes:
+  label: JDK version used
+  description: Output of `java -version`
+  validations:
+  required: true
 
-**OS Version?**
-
-**MySQL Version?**
-
-**To Reproduce**
-Steps to reproduce the behaviour:
-
-**Expected behaviour**
-A clear and concise description of what you expected to happen.
-And what actually happens
-
-**Logs**
-If possible MySQL logs surrounding the occurrence of the issue
+- type: input
+  id: operating-system
+  attributes:
+  label: Operating System and version
+  validations:
+  required: true
