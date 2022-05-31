@@ -26,13 +26,11 @@
 
 package testsuite.integration.container;
 
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.services.rds.AmazonRDS;
-import com.amazonaws.services.rds.AmazonRDSClientBuilder;
-import com.amazonaws.services.rds.model.DBCluster;
-import com.amazonaws.services.rds.model.DBClusterMember;
-import com.amazonaws.services.rds.model.DescribeDBClustersRequest;
-import com.amazonaws.services.rds.model.DescribeDBClustersResult;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.rds.RdsClient;
+import software.amazon.awssdk.services.rds.model.DBCluster;
+import software.amazon.awssdk.services.rds.model.DBClusterMember;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.log.NullLogger;
 import com.mysql.cj.util.StringUtils;
@@ -62,7 +60,9 @@ import java.util.stream.Collectors;
 
 import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersResponse;
 import software.aws.rds.jdbc.mysql.Driver;
+import testsuite.integration.utility.AuroraTestUtility;
 import testsuite.integration.utility.ContainerHelper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -132,10 +132,11 @@ public abstract class AuroraMysqlIntegrationBaseTest {
   protected int clusterSize = 0;
 
   protected final ContainerHelper containerHelper = new ContainerHelper();
-  protected static final AmazonRDS rdsClient = AmazonRDSClientBuilder
-      .standard()
-      .withRegion(DB_REGION)
-      .withCredentials(new DefaultAWSCredentialsProviderChain())
+  protected final AuroraTestUtility auroraUtil = new AuroraTestUtility(DB_REGION);
+
+  protected final RdsClient rdsClient = RdsClient.builder()
+      .region(auroraUtil.getRegion(DB_REGION))
+      .credentialsProvider(DefaultCredentialsProvider.create())
       .build();
 
   private static final int CP_MIN_IDLE = 5;
@@ -331,22 +332,21 @@ public abstract class AuroraMysqlIntegrationBaseTest {
   }
 
   protected DBCluster getDBCluster() {
-    final DescribeDBClustersRequest dbClustersRequest =
-        new DescribeDBClustersRequest().withDBClusterIdentifier(DB_CLUSTER_IDENTIFIER);
-    final DescribeDBClustersResult dbClustersResult = rdsClient.describeDBClusters(dbClustersRequest);
-    final List<DBCluster> dbClusterList = dbClustersResult.getDBClusters();
+    final DescribeDbClustersResponse dbClustersResult = rdsClient.describeDBClusters(
+            (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER));
+    final List<DBCluster> dbClusterList = dbClustersResult.dbClusters();
     return dbClusterList.get(0);
   }
 
   protected List<DBClusterMember> getDBClusterMemberList() {
     final DBCluster dbCluster = getDBCluster();
-    return dbCluster.getDBClusterMembers();
+    return dbCluster.dbClusterMembers();
   }
 
   protected DBClusterMember getMatchedDBClusterMember(String instanceId) {
     final List<DBClusterMember> matchedMemberList =
         getDBClusterMemberList().stream()
-            .filter(dbClusterMember -> dbClusterMember.getDBInstanceIdentifier().equals(instanceId))
+            .filter(dbClusterMember -> dbClusterMember.dbInstanceIdentifier().equals(instanceId))
             .collect(Collectors.toList());
     if (matchedMemberList.isEmpty()) {
       throw new RuntimeException(NO_SUCH_CLUSTER_MEMBER + instanceId);
@@ -363,7 +363,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
       throw new RuntimeException(NO_WRITER_AVAILABLE);
     }
     // Should be only one writer at index 0.
-    return matchedMemberList.get(0).getDBInstanceIdentifier();
+    return matchedMemberList.get(0).dbInstanceIdentifier();
   }
 
   protected Boolean isDBInstanceWriter(String instanceId) {
@@ -401,8 +401,8 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     executorService.awaitTermination(5, TimeUnit.MINUTES);
 
     if (finalCheck) {
-      assertTrue(remainingInstances.isEmpty(), "The following instances are still down: \n"
-          + String.join("\n", remainingInstances));
+      assertTrue(remainingInstances.isEmpty(),
+        "The following instances are still down: \n" + String.join("\n", remainingInstances));
     }
 
   }

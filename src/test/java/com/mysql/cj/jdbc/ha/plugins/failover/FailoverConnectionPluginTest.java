@@ -62,6 +62,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 class FailoverConnectionPluginTest {
@@ -598,6 +599,43 @@ class FailoverConnectionPluginTest {
     assertEquals(connectionHostIndex, failoverPlugin.currentHostIndex);
     assertTrue(failoverPlugin.explicitlyReadOnly);
     assertTrue(failoverPlugin.isCurrentConnectionReadOnly());
+  }
+
+  @Test
+  void testInitialConnectionPropertiesWithNoValues() throws SQLException {
+    final List<HostInfo> emptyTopology = new ArrayList<>();
+    when(mockTopologyService.getTopology(eq(mockConnection), any(Boolean.class)))
+        .thenReturn(emptyTopology);
+
+    final Properties properties = new Properties();
+
+    final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
+
+    assertEquals(0, failoverPlugin.initialConnectionProps.size());
+    assertFalse(failoverPlugin.isRds());
+    assertFalse(failoverPlugin.isRdsProxy());
+    assertFalse(failoverPlugin.isClusterTopologyAvailable);
+    assertFalse(failoverPlugin.isFailoverEnabled());
+  }
+
+  @Test
+  void testInitialConnectionPropertiesWithExplicitlySetValues() throws SQLException {
+    final List<HostInfo> emptyTopology = new ArrayList<>();
+    when(mockTopologyService.getTopology(eq(mockConnection), any(Boolean.class)))
+        .thenReturn(emptyTopology);
+
+    final Properties properties = new Properties();
+    properties.setProperty("maxAllowedPacket", "10");
+
+    final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
+    final Map<String, String> initialConnectionProperties = failoverPlugin.initialConnectionProps;
+
+    assertEquals(1, initialConnectionProperties.size());
+    assertEquals("10", initialConnectionProperties.get("maxAllowedPacket"));
+    assertFalse(failoverPlugin.isRds());
+    assertFalse(failoverPlugin.isRdsProxy());
+    assertFalse(failoverPlugin.isClusterTopologyAvailable);
+    assertFalse(failoverPlugin.isFailoverEnabled());
   }
 
   @AfterEach

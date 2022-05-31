@@ -33,8 +33,8 @@ import org.apache.tools.ant.filters.ReplaceTokens
 // Driver version numbers
 val versionMajor = project.property("com.mysql.cj.build.driver.version.major")
 val versionMinor = project.property("com.mysql.cj.build.driver.version.minor")
-val versionSubminor = project.property("com.mysql.cj.build.driver.version.subminor")
-version = "$versionMajor.$versionMinor.$versionSubminor"
+val versionSubminor = Integer.parseInt(project.property("com.mysql.cj.build.driver.version.subminor").toString()) + if (project.property("snapshot") == "true") 1 else 0
+version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
 
 plugins {
     base
@@ -213,8 +213,8 @@ tasks.withType<Checkstyle>().configureEach {
 
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.8.0")
-    testImplementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
-    testImplementation("com.amazonaws:aws-java-sdk-ec2:1.12.148")
+    testImplementation("software.amazon.awssdk:rds:2.17.165")
+    testImplementation("software.amazon.awssdk:ec2:2.17.165")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
@@ -231,7 +231,7 @@ dependencies {
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
 
-    implementation("com.amazonaws:aws-java-sdk-rds:1.12.128")
+    implementation("software.amazon.awssdk:rds:2.17.165")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
@@ -294,7 +294,7 @@ publishing {
 
             pom {
                 name.set("Amazon Web Services (AWS) JDBC Driver for MySQL")
-                description.set("Public preview of the Amazon Web Services (AWS) JDBC Driver for MySQL.")
+                description.set("Amazon Web Services (AWS) JDBC Driver for MySQL.")
                 url.set("https://github.com/awslabs/aws-mysql-jdbc")
 
                 licenses {
@@ -325,7 +325,13 @@ publishing {
     repositories {
         maven {
             name = "OSSRH"
-            url = uri("https://aws.oss.sonatype.org/service/local/staging/deploy/maven2/")
+
+            url = if(project.property("snapshot") == "true") {
+                uri("https://aws.oss.sonatype.org/content/repositories/snapshots/")
+            } else {
+                uri("https://aws.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            }
+
             credentials {
                 username = System.getenv("MAVEN_USERNAME")
                 password = System.getenv("MAVEN_PASSWORD")

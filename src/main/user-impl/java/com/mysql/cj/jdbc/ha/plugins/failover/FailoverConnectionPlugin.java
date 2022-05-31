@@ -52,7 +52,6 @@ import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
-import javax.net.ssl.SSLException;
 import java.io.EOFException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -65,6 +64,8 @@ import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.SSLException;
 
 /**
  * A {@link IConnectionPlugin} implementation that provides cluster-aware failover
@@ -82,6 +83,10 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   private static final String METHOD_GET_CATALOG = "getCatalog";
   private static final String METHOD_GET_SCHEMA = "getSchema";
   private static final String METHOD_GET_DATABASE = "getDatabase";
+  static final String METHOD_ABORT = "abort";
+  static final String METHOD_CLOSE = "close";
+  static final String METHOD_IS_CLOSED = "isClosed";
+
   private static final String METHOD_GET_TRANSACTION_ISOLATION =
       "getTransactionIsolation";
   private static final String METHOD_GET_SESSION_MAX_ROWS = "getSessionMaxRows";
@@ -171,12 +176,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.metricsContainer = metricsContainerSupplier.get();
 
     this.initialConnectionProps = new HashMap<>();
-    Properties originalProperties = this.propertySet.exposeAsProperties();
-    if (originalProperties != null) {
-      for (String p : originalProperties.stringPropertyNames()) {
-        this.initialConnectionProps.put(p, originalProperties.getProperty(p));
-      }
-    }
+    this.initialConnectionProps = getInitialConnectionProps(this.propertySet);
 
     initSettings();
 
@@ -226,7 +226,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       Object[] args)
       throws Exception {
 
-    if (!this.enableFailoverSetting) {
+    if (!this.enableFailoverSetting || canDirectExecute(methodName)) {
       return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
     }
 
@@ -237,7 +237,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.invokeStartTimeMs = System.currentTimeMillis();
 
     Object result = null;
-
 
     try {
       updateTopologyAndConnectIfNeeded(false);
@@ -792,8 +791,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
           hostInfo.getDatabase());
     }
 
+    final Properties connectionProperties = new Properties();
+    connectionProperties.putAll(this.initialConnectionProps);
+
     final ConnectionUrl connectionUrl = ConnectionUrl.getConnectionUrlInstance(
-            hostInfo.getDatabaseUrl(), this.propertySet.exposeAsProperties());
+        hostInfo.getDatabaseUrl(),
+        connectionProperties);
 
     return new HostInfo(
         connectionUrl,
@@ -1281,5 +1284,28 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       this.logger.logError(Messages.getString("ClusterAwareConnectionProxy.18"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.18"));
     }
+  }
+
+  private Map<String, String> getInitialConnectionProps(final PropertySet propertySet) {
+    final Map<String, String> initialConnectionProperties = new HashMap<>();
+    final Properties originalProperties = propertySet.exposeAsProperties();
+    originalProperties.stringPropertyNames()
+        .stream()
+        .filter(x -> this.propertySet.getProperty(x).isExplicitlySet())
+        .forEach(x -> initialConnectionProperties.put(x, originalProperties.getProperty(x)));
+
+    return initialConnectionProperties;
+  }
+
+  /**
+   * Check whether the method provided can be executed directly without the failover functionality.
+   *
+   * @param methodName The name of the method that is being called
+   * @return true if the method can be executed directly; false otherwise.
+   */
+  private boolean canDirectExecute(String methodName) {
+    return (METHOD_CLOSE.equals(methodName)
+        || METHOD_IS_CLOSED.equals(methodName)
+        || METHOD_ABORT.equals(methodName));
   }
 }
