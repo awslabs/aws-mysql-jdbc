@@ -495,6 +495,50 @@ You can include additional monitoring configurations by adding the prefix `monit
 > 
 > It is suggested to turn off Enhanced Failure Monitoring plugin, or to avoid using RDS Proxy endpoints when the plugin is active. 
 
+## AWS Secrets Manager Plugin
+
+The AWS JDBC Driver for MySQL supports usage of database credentials stored in the [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) through the AWS Secrets Manager Plugin. This plugin is optional and can be enabled with the `connectionPluginFactories` parameter as seen in the [connection plugin manager parameters table](#connection-plugin-manager-parameters). When a user creates a new connection with this plugin enabled, the plugin will retrieve the secret and the connection will be created using those credentials.
+
+The following properties are required for the AWS Secrets Manager Plugin to retrieve secrets.
+
+| Parameter                | Value  | Required | Description                                             | Example          |
+|--------------------------|:------:|:--------:|:--------------------------------------------------------|:-----------------|
+| `secretsManagerSecretId` | String |   Yes    | Set this value to be the secret name or the secret ARN. | `test-secret-id` |
+| `secretsManagerRegion`   | String |   Yes    | Set this value to be the region your secret is in.      | `us-east-1`      |
+
+### Example
+```java
+import java.sql.*;
+import java.util.Properties;
+import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPlugin;
+
+public class AwsIamAuthenticationSample {
+
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String SECRET_ID = "secretId";
+   private static final String REGION = "us-east-1";
+
+   public static void main(String[] args) throws SQLException {
+      final Properties properties = new Properties();
+      // Enable the AWS Secrets Manager Plugin
+      properties.setProperty("connectionPluginFactories", AWSSecretsManagerPluginFactory.class.getName());
+      
+      // Set these properties so secrets can be retrieved
+      properties.setProperty("secretsManagerSecretId", SECRET_ID);
+      properties.setProperty("secretsManagerRegion", REGION);
+
+      // Try and make a connection
+      try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
+           final Statement statement = conn.createStatement();
+           final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
+         while (rs.next()) {
+            System.out.println(rs.getString(1));
+         }
+      }
+   }
+}
+```
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
@@ -546,11 +590,10 @@ public class AwsIamAuthenticationSample {
 
       // Try and make a connection
       try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
-              final Statement myQuery = conn.createStatement()) {
-         try (final ResultSet rs = myQuery.executeQuery("SELECT * FROM employees")) {
-            while (rs.next()) {
-               System.out.println(rs.getString(1));
-            }
+           final Statement statement = conn.createStatement();
+           final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
+         while (rs.next()) {
+            System.out.println(rs.getString(1));
          }
       }
    }
