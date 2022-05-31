@@ -33,8 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,10 +47,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
@@ -66,7 +62,6 @@ public class ConnectionProxyTest {
   @Mock private ConnectionImpl mockConnection;
   @Mock private ConnectionImpl mockConnection2;
   @Mock private Statement mockStatement;
-  @Mock private ResultSet mockResultSet;
   @Mock private HostInfo mockHostInfo;
   @Mock private ConnectionPluginManager mockPluginManager;
   private AutoCloseable closeable;
@@ -74,12 +69,8 @@ public class ConnectionProxyTest {
   @Test
   public void testInvokeReturnJdbcInterfaceProxy()
       throws Throwable {
-    Method createStatementMethod = Connection.class.getMethod("createStatement");
-    Object[] executeArgs = new Object[] { "SELECT 1" };
-    when(mockPluginManager.executeOnConnection(eq(createStatementMethod), eq(null)))
+    when(mockPluginManager.execute(any(), eq("createStatement"), any(), any()))
         .thenReturn(mockStatement);
-    when(mockPluginManager.executeOnConnectionBoundObject(any(), eq("executeQuery"), any(), eq(executeArgs)))
-        .thenReturn(mockResultSet);
     doThrow(new SQLException()).when(mockConnection).close();
 
     final ConnectionUrl conStr =
@@ -87,26 +78,16 @@ public class ConnectionProxyTest {
     final ConnectionProxy proxy = getConnectionProxy(conStr);
     assertSame(mockConnection, proxy.getCurrentConnection());
 
-    final Object statementObject =
-        proxy.invoke(null, createStatementMethod, null);
-    assertTrue(statementObject instanceof Proxy);
-    assertTrue(statementObject instanceof Statement);
-    verify(mockPluginManager, times(1)).executeOnConnection(eq(createStatementMethod), eq(null));
-    verify(mockPluginManager, never()).executeOnConnectionBoundObject(any(), any(), any(), any());
-
-    final ResultSet resultSet = ((Statement) statementObject).executeQuery("SELECT 1");
-    assertTrue(resultSet instanceof Proxy);
-    verify(mockPluginManager, times(1)).executeOnConnection(eq(createStatementMethod), eq(null));
-    verify(mockPluginManager, times(1)).executeOnConnectionBoundObject(any(),
-        eq("executeQuery"), any(), eq(executeArgs));
+    final Object result =
+        proxy.invoke(null, Connection.class.getMethod("createStatement"), null);
+    assertTrue(result instanceof Proxy);
   }
 
   @Test
   public void testInvokeThrowsException() throws Throwable {
-    Method createStatementMethod = Connection.class.getMethod("createStatement");
     doThrow(new SQLException())
         .when(mockPluginManager)
-        .executeOnConnection(eq(createStatementMethod), any());
+        .execute(any(), eq("createStatement"), any(), any());
 
     final ConnectionUrl conStr =
         ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
@@ -115,7 +96,7 @@ public class ConnectionProxyTest {
 
     assertThrows(
         SQLException.class,
-        () -> proxy.invoke(null, createStatementMethod, null));
+        () -> proxy.invoke(null, Connection.class.getMethod("createStatement"), null));
   }
 
   @Test

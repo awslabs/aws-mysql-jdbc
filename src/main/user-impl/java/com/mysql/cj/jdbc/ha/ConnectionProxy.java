@@ -187,7 +187,7 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
     List<Object> argsCopy = args == null ?  null : Collections.unmodifiableList(Arrays.asList(args));
 
     try {
-      Object result = this.pluginManager.executeOnConnection(method, argsCopy);
+      Object result = this.pluginManager.execute(method, argsCopy);
       return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (Exception e) {
       // Check if the captured exception must be wrapped by an unchecked exception.
@@ -310,7 +310,7 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
       synchronized(ConnectionProxy.this) {
         Object result =
-            ConnectionProxy.this.pluginManager.executeOnConnectionBoundObject(
+            ConnectionProxy.this.pluginManager.execute(
                 this.invokeOn.getClass(),
                 methodName,
                 () -> method.invoke(this.invokeOn, args),
