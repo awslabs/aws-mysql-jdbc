@@ -230,6 +230,7 @@ dependencies {
     testImplementation("org.testcontainers:toxiproxy:1.16.2")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
+    testImplementation("software.amazon.awssdk:secretsmanager:2.17.191")
 
     implementation("software.amazon.awssdk:rds:2.17.165")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
