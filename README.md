@@ -512,7 +512,7 @@ import java.sql.*;
 import java.util.Properties;
 import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPlugin;
 
-public class AwsIamAuthenticationSample {
+public class AWSSecretsManagerPluginSample {
 
    private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
    private static final String SECRET_ID = "secretId";
@@ -520,14 +520,14 @@ public class AwsIamAuthenticationSample {
 
    public static void main(String[] args) throws SQLException {
       final Properties properties = new Properties();
-      // Enable the AWS Secrets Manager Plugin
+      // Enable the AWS Secrets Manager Plugin:
       properties.setProperty("connectionPluginFactories", AWSSecretsManagerPluginFactory.class.getName());
       
-      // Set these properties so secrets can be retrieved
+      // Set these properties so secrets can be retrieved:
       properties.setProperty("secretsManagerSecretId", SECRET_ID);
       properties.setProperty("secretsManagerRegion", REGION);
 
-      // Try and make a connection
+      // Try and make a connection:
       try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
            final Statement statement = conn.createStatement();
            final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
@@ -677,6 +677,12 @@ To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection prop
 ### Read-Write Splitting
 The driver does not support read-write splitting yet. A possible solution for now is to utilize multiple connection pools.
 One can send write traffic to a connection pool connected to the writer cluster endpoint, and send read-only traffic to another pool connected to the reader cluster endpoint.
+
+### Password Expiration With AWS Secrets Manager
+When using the driver with AWS Secrets Manager, the driver does not automatically update expired credentials **during failover**.
+The driver only handles expired credentials when opening new connections.
+If the credentials expire during failover, the driver raises a SQLException with SQLState 28000 to the client application.
+A possible solution to handle password expiration during failover is to catch SQLException with SQLState 28000 and create a new connection.
 
 ## Getting Help and Opening Issues
 

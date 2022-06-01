@@ -155,12 +155,13 @@ public class AWSSecretsManagerPluginTest {
   }
 
   /**
-   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error. In
-   * this case, the plugin will fetch the secret and will retry the connection.
+   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error.
+   * In this case, the plugin will fetch the secret and will retry the connection.
    */
   @Test
   public void testConnectWithNewSecrets() throws SQLException {
-    // Fail initial connection attempt so secrets will be retrieved. Second attempt should be successful
+    // Fail initial connection attempt so secrets will be retrieved.
+    // Second attempt should be successful.
     final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
     doThrow(failedFirstConnectionAccessException).doNothing().when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(VALID_GET_SECRET_VALUE_RESPONSE);
@@ -170,7 +171,7 @@ public class AWSSecretsManagerPluginTest {
     assertEquals(1, AWSSecretsManagerPlugin.SECRET_CACHE.size());
     verify(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
 
-    // Verify the openInitialConnection method was called using different ConnectionUrl arguments
+    // Verify the openInitialConnection method was called using different ConnectionUrl arguments.
     verify(this.nextPlugin, times(2)).openInitialConnection(this.captor.capture());
     final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
     Map<String, String> connectionPropsWithCachedSecret = connectionUrls.get(0).getOriginalProperties();
@@ -182,13 +183,13 @@ public class AWSSecretsManagerPluginTest {
   }
 
   /**
-   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error. In
-   * this case, the plugin will attempt to fetch the secret and retry the connection, but it will fail because the
-   * returned secret could not be parsed.
+   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error.
+   * In this case, the plugin will attempt to fetch the secret and retry the connection,
+   * but it will fail because the returned secret could not be parsed.
    */
   @Test
   public void testFailedToReadSecrets() throws SQLException {
-    // Fail initial connection attempt so secrets will be retrieved
+    // Fail initial connection attempt so secrets will be retrieved.
     final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
     doThrow(failedFirstConnectionAccessException).doNothing().when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(INVALID_GET_SECRET_VALUE_RESPONSE);
@@ -206,13 +207,13 @@ public class AWSSecretsManagerPluginTest {
   }
 
   /**
-   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error. In
-   * this case, the plugin will attempt to fetch the secret and retry the connection, but it will fail because an
-   * exception was thrown by the AWS Secrets Manager.
+   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error.
+   * In this case, the plugin will attempt to fetch the secret and retry the connection,
+   * but it will fail because an exception was thrown by the AWS Secrets Manager.
    */
   @Test
   public void testFailedToGetSecrets() throws SQLException {
-    // Fail initial connection attempt so secrets will be retrieved
+    // Fail initial connection attempt so secrets will be retrieved.
     final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
     doThrow(failedFirstConnectionAccessException).doNothing().when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     doThrow(SecretsManagerException.class).when(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);

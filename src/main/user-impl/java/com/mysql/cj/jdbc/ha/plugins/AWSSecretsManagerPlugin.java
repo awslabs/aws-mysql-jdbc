@@ -122,11 +122,12 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     Secret secret = SECRET_CACHE.get(secretKey);
 
     try {
-      // Attempt to open initial connection with cached secret
+      // Attempt to open initial connection with cached secret.
       attemptConnectionWithSecrets(updatedProperties, secret, connectionUrl);
 
     } catch (SQLException connectionFailedException) {
-      // Rethrow the exception unless it was because user access was denied. In that case, retry with new credentials
+      // Rethrow the exception unless it was because user access was denied.
+      // In that case, retry with new credentials.
       if (!SQLSTATE_ACCESS_ERROR.equals(connectionFailedException.getSQLState())) {
         throw connectionFailedException;
 
