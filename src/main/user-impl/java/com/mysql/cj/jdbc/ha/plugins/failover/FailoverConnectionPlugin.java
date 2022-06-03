@@ -47,7 +47,7 @@ import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.RdsHost;
-import com.mysql.cj.jdbc.ha.plugins.ConnectionStringTopologyProvider;
+import com.mysql.cj.jdbc.ha.plugins.RdsConnectionStringUtils;
 import com.mysql.cj.jdbc.ha.plugins.RdsUrlType;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
@@ -60,7 +60,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
@@ -95,7 +94,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected final IConnectionProvider connectionProvider;
   protected final IClusterAwareMetricsContainer metricsContainer;
   private final ICurrentConnectionProvider currentConnectionProvider;
-  private final ConnectionStringTopologyProvider connectionStringTopologyProvider;
+  private final RdsConnectionStringUtils rdsConnectionStringUtils;
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
@@ -142,7 +141,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       Log logger) throws SQLException {
     this(
         currentConnectionProvider,
-        new ConnectionStringTopologyProvider(propertySet, logger),
+        new RdsConnectionStringUtils(logger),
         propertySet,
         nextPlugin,
         logger,
@@ -153,7 +152,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   FailoverConnectionPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
-      ConnectionStringTopologyProvider connectionStringTopologyProvider,
+      RdsConnectionStringUtils rdsConnectionStringUtils,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger,
@@ -161,7 +160,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       Supplier<ITopologyService> topologyServiceSupplier,
       Supplier<IClusterAwareMetricsContainer> metricsContainerSupplier) throws SQLException {
     this.currentConnectionProvider = currentConnectionProvider;
-    this.connectionStringTopologyProvider = connectionStringTopologyProvider;
+    this.rdsConnectionStringUtils = rdsConnectionStringUtils;
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
@@ -169,8 +168,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.metricsContainer = metricsContainerSupplier.get();
 
     this.initialConnectionProps = new HashMap<>();
-    this.initialConnectionProps = getInitialConnectionProps(this.propertySet);
-    this.connectionStringTopologyProvider.setInitialConnectionProps(this.initialConnectionProps);
+    this.initialConnectionProps = this.rdsConnectionStringUtils.getExplicitlySetProperties(this.propertySet);
 
     initSettings();
 
@@ -821,9 +819,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     final RdsHost rdsHost;
 
     if (!StringUtils.isNullOrEmpty(this.clusterInstanceHostPatternSetting)) {
-      rdsHost = this.connectionStringTopologyProvider.parseHostPatternSetting(hostInfo, this.clusterInstanceHostPatternSetting);
+      rdsHost = this.rdsConnectionStringUtils.getRdsHostFromHostPattern(this.propertySet, hostInfo, this.clusterInstanceHostPatternSetting);
     } else {
-      rdsHost = this.connectionStringTopologyProvider.getRdsHost(hostInfo);
+      rdsHost = this.rdsConnectionStringUtils.getRdsHost(this.propertySet, hostInfo);
     }
     this.rdsUrlType = rdsHost.getUrlType();
     this.logger.logTrace(
@@ -885,7 +883,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     if (this.enableFailoverSetting) {
       // Connection isn't created - try to use cached topology to create it
       if (this.currentConnectionProvider.getCurrentConnection() == null) {
-        final RdsUrlType rdsUrlType = this.connectionStringTopologyProvider.getUrlType(connectionUrl);
+        final RdsUrlType rdsUrlType = this.rdsConnectionStringUtils.getUrlType(connectionUrl);
         if (rdsUrlType.isRdsCluster()) {
           this.explicitlyReadOnly = RDS_READER_CLUSTER.equals(rdsUrlType);
           this.logger.logTrace(
@@ -1078,17 +1076,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       // adjust current index only; connection is still valid
       this.currentHostIndex = latestHostIndex;
     }
-  }
-
-  private Map<String, String> getInitialConnectionProps(final PropertySet propertySet) {
-    final Map<String, String> initialConnectionProperties = new HashMap<>();
-    final Properties originalProperties = propertySet.exposeAsProperties();
-    originalProperties.stringPropertyNames()
-        .stream()
-        .filter(x -> this.propertySet.getProperty(x).isExplicitlySet())
-        .forEach(x -> initialConnectionProperties.put(x, originalProperties.getProperty(x)));
-
-    return initialConnectionProperties;
   }
 
   /**

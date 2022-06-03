@@ -50,7 +50,7 @@ import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
-import com.mysql.cj.jdbc.ha.plugins.ConnectionStringTopologyProvider;
+import com.mysql.cj.jdbc.ha.plugins.RdsConnectionStringUtils;
 import com.mysql.cj.jdbc.ha.plugins.RdsUrlType;
 import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.AfterEach;
@@ -660,7 +660,7 @@ class FailoverConnectionPluginTest {
     when(mockConnection.getPropertySet()).thenReturn(propertySet);
     return new FailoverConnectionPlugin(
         mockCurrentConnectionProvider,
-        new ConnectionStringTopologyProvider(propertySet, mockLogger),
+        new RdsConnectionStringUtils(mockLogger),
         propertySet,
         mockNextPlugin,
         mockLogger,
