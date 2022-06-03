@@ -119,7 +119,7 @@ public class AWSSecretsManagerPluginTest {
    */
   @Test
   public void testConnectWithCachedSecrets() throws SQLException {
-    // Add initial cached secret to be used for a connection
+    // Add initial cached secret to be used for a connection.
     AWSSecretsManagerPlugin.SECRET_CACHE.put(SECRET_CACHE_KEY, SECRET);
 
     this.plugin.openInitialConnection(this.connectionUrl);
