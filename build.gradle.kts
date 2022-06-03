@@ -222,7 +222,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-engine:1.8.2")
     testImplementation("org.junit.platform:junit-platform-launcher:1.8.2")
     testImplementation("org.junit.platform:junit-platform-suite-engine:1.8.2")
-    testImplementation("org.mockito:mockito-inline:4.1.0")
+    testImplementation("org.mockito:mockito-inline:4.6.1")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.testcontainers:testcontainers:1.16.2")
     testImplementation("org.testcontainers:mysql:1.16.2")
@@ -230,6 +230,7 @@ dependencies {
     testImplementation("org.testcontainers:toxiproxy:1.16.2")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
+    testImplementation("software.amazon.awssdk:secretsmanager:2.17.191")
 
     implementation("software.amazon.awssdk:rds:2.17.165")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
@@ -237,6 +238,7 @@ dependencies {
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:1.7.30")
     implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.13.0")
+    compileOnly("software.amazon.awssdk:secretsmanager:2.17.191")
 
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }
