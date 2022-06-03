@@ -52,7 +52,7 @@ import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.RDS_PROXY;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.RDS_READER_CLUSTER;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.RDS_WRITER_CLUSTER;
 
-public class ConnectionStringTopologyProvider {
+public class RdsConnectionStringUtils {
   private final Pattern auroraDnsPattern =
       Pattern.compile(
           "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?([a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
@@ -70,23 +70,9 @@ public class ConnectionStringTopologyProvider {
           "(.+)\\.(proxy-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
           Pattern.CASE_INSENSITIVE);
   private final Log logger;
-  private final int failoverConnectTimeoutMs;
-  private final int failoverSocketTimeoutMs;
-  private final String clusterIdSetting;
-  private Map<String, String> initialConnectionProps = null;
 
-  public ConnectionStringTopologyProvider(PropertySet propertySet, Log logger) {
+  public RdsConnectionStringUtils(Log logger) {
     this.logger = logger;
-    this.failoverConnectTimeoutMs =
-        propertySet.getIntegerProperty(PropertyKey.connectTimeout).getValue();
-    this.failoverSocketTimeoutMs =
-        propertySet.getIntegerProperty(PropertyKey.socketTimeout).getValue();
-    this.clusterIdSetting =
-        propertySet.getStringProperty(PropertyKey.clusterId).getValue();
-  }
-
-  public void setInitialConnectionProps(Map<String, String> connectionProps) {
-    this.initialConnectionProps = connectionProps;
   }
 
   public RdsUrlType getUrlType(ConnectionUrl connectionUrl) {
@@ -111,11 +97,11 @@ public class ConnectionStringTopologyProvider {
     }
   }
 
-  public RdsHost getRdsHost(HostInfo hostInfo) throws SQLException {
+  public RdsHost getRdsHost(PropertySet propertySet, HostInfo hostInfo) throws SQLException {
     final String hostName = hostInfo.getHost();
     final int hostPort = hostInfo.getPort();
     final RdsUrlType rdsUrlType = getUrlType(hostName);
-    final String clusterId = getClusterId(rdsUrlType, hostName, hostPort);
+    final String clusterId = getClusterId(propertySet, rdsUrlType, hostName, hostPort);
 
     String clusterInstanceTemplateHost = hostName;
     if (rdsUrlType.isRds()) {
@@ -126,11 +112,11 @@ public class ConnectionStringTopologyProvider {
       }
     }
 
-    final HostInfo clusterInstanceTemplate = getClusterInstanceTemplate(hostInfo, clusterInstanceTemplateHost, hostPort);
+    final HostInfo clusterInstanceTemplate = getClusterInstanceTemplate(propertySet, hostInfo, clusterInstanceTemplateHost, hostPort);
     return new RdsHost(rdsUrlType, clusterId, clusterInstanceTemplate, hostName, hostInfo.getPort());
   }
 
-  public RdsHost parseHostPatternSetting(HostInfo hostInfo, String pattern) throws SQLException {
+  public RdsHost getRdsHostFromHostPattern(PropertySet propertySet, HostInfo hostInfo, String pattern) throws SQLException {
     final ConnectionUrlParser.Pair<String, Integer> pair = ConnectionUrlParser.parseHostPortPair(pattern);
     if (pair == null) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the value could not be parsed"
@@ -144,8 +130,8 @@ public class ConnectionStringTopologyProvider {
     final int hostPort =
         pair.right != RdsHost.NO_PORT ? pair.right : hostInfo.getPort();
 
-    final String clusterId = getClusterId(rdsUrlType, hostName, hostPort);
-    final HostInfo clusterInstanceTemplate = getClusterInstanceTemplate(hostInfo, hostName, hostPort);
+    final String clusterId = getClusterId(propertySet, rdsUrlType, hostName, hostPort);
+    final HostInfo clusterInstanceTemplate = getClusterInstanceTemplate(propertySet, hostInfo, hostName, hostPort);
     return new RdsHost(rdsUrlType, clusterId, clusterInstanceTemplate, hostName, hostPort);
   }
 
@@ -170,35 +156,42 @@ public class ConnectionStringTopologyProvider {
     }
   }
 
-  private String getClusterId(RdsUrlType rdsUrlType, String hostName, int hostPort) {
-    String clusterId = null;
-    if (!StringUtils.isNullOrEmpty(this.clusterIdSetting)) {
-      clusterId = this.clusterIdSetting;
+  private String getClusterId(PropertySet propertySet, RdsUrlType rdsUrlType, String hostName, int hostPort) {
+    String clusterIdSetting = propertySet.getStringProperty(PropertyKey.clusterId).getValue();
+    if (!StringUtils.isNullOrEmpty(clusterIdSetting)) {
+      return clusterIdSetting;
     } else if (RDS_PROXY.equals(rdsUrlType)) {
       // Each proxy is associated with a single cluster, so it's safe to use RDS Proxy Url as cluster identification
-      clusterId = hostName + RdsHost.HOST_PORT_SEPARATOR + hostPort;
+      return hostName + RdsHost.HOST_PORT_SEPARATOR + hostPort;
     } else if (rdsUrlType.isRds()) {
       // If it's a cluster endpoint, or a reader cluster endpoint, then let's use it as the cluster ID
       String clusterRdsHostUrl = getRdsClusterHostUrl(hostName);
       if (!StringUtils.isNullOrEmpty(clusterRdsHostUrl)) {
-        clusterId = clusterRdsHostUrl + RdsHost.HOST_PORT_SEPARATOR + hostPort;
+        return clusterRdsHostUrl + RdsHost.HOST_PORT_SEPARATOR + hostPort;
       }
     }
-    return clusterId;
+    return null;
   }
 
   private HostInfo getClusterInstanceTemplate(
+      PropertySet propertySet,
       HostInfo hostInfo,
       String host,
       int port) {
     // TODO: review whether we still need this method
-    final Map<String, String> properties = new HashMap<>(this.initialConnectionProps);
+    Map<String, String> explicitlySetProperties = getExplicitlySetProperties(propertySet);
+    final Map<String, String> properties = new HashMap<>(explicitlySetProperties);
+
+    final int failoverConnectTimeoutMs =
+        propertySet.getIntegerProperty(PropertyKey.connectTimeout).getValue();
+    final int failoverSocketTimeoutMs =
+        propertySet.getIntegerProperty(PropertyKey.socketTimeout).getValue();
     properties.put(
         PropertyKey.connectTimeout.getKeyName(),
-        String.valueOf(this.failoverConnectTimeoutMs));
+        String.valueOf(failoverConnectTimeoutMs));
     properties.put(
         PropertyKey.socketTimeout.getKeyName(),
-        String.valueOf(this.failoverSocketTimeoutMs));
+        String.valueOf(failoverSocketTimeoutMs));
 
     if (!Objects.equals(hostInfo.getDatabase(), "")) {
       properties.put(
@@ -207,7 +200,7 @@ public class ConnectionStringTopologyProvider {
     }
 
     final Properties connectionProperties = new Properties();
-    connectionProperties.putAll(this.initialConnectionProps);
+    connectionProperties.putAll(explicitlySetProperties);
 
     final ConnectionUrl connectionUrl = ConnectionUrl.getConnectionUrlInstance(
         hostInfo.getDatabaseUrl(),
@@ -221,6 +214,17 @@ public class ConnectionStringTopologyProvider {
         hostInfo.getPassword(),
         hostInfo.isPasswordless(),
         properties);
+  }
+
+  public Map<String, String> getExplicitlySetProperties(final PropertySet propertySet) {
+    final Map<String, String> explicitlySetProperties = new HashMap<>();
+    final Properties originalProperties = propertySet.exposeAsProperties();
+    originalProperties.stringPropertyNames()
+        .stream()
+        .filter(x -> propertySet.getProperty(x).isExplicitlySet())
+        .forEach(x -> explicitlySetProperties.put(x, originalProperties.getProperty(x)));
+
+    return explicitlySetProperties;
   }
 
   private boolean isDnsPatternValid(String pattern) {
