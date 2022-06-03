@@ -593,7 +593,7 @@ public class AwsIamAuthenticationSample {
            final Statement statement = conn.createStatement();
            final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
          while (rs.next()) {
-            System.out.println(rs.getString(1));
+            System.out.println(rs.getString("first_name"));
          }
       }
    }
@@ -683,6 +683,86 @@ When using the driver with AWS Secrets Manager, the driver does not automaticall
 The driver only handles expired credentials when opening new connections.
 If the credentials expire during failover, the driver raises a SQLException with SQLState 28000 to the client application.
 A possible solution to handle password expiration during failover is to catch SQLException with SQLState 28000 and create a new connection.
+
+```java
+import java.sql.*;
+import java.util.Properties;
+import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory;
+import com.mysql.cj.log.StandardLogger;
+
+public class AWSSecretsManagerPluginSample2 {
+
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String SECRET_ID = "secretId";
+   private static final String REGION = "us-east-1";
+   private static final int MAX_RETRIES = 5;
+
+   public static void main(String[] args) throws SQLException {
+      final Properties properties = new Properties();
+      properties.setProperty("logger", StandardLogger.class.getName());
+
+      // Enable the AWS Secrets Manager Plugin:
+      properties.setProperty(
+              "connectionPluginFactories",
+              String.format("%s,%s,%s",
+                      AWSSecretsManagerPluginFactory.class.getName(),
+                      FailoverConnectionPluginFactory.class.getName(),
+                      NodeMonitoringConnectionPluginFactory.class.getName())
+      );
+
+      // Set these properties so secrets can be retrieved:
+      properties.setProperty("secretsManagerSecretId", SECRET_ID);
+      properties.setProperty("secretsManagerRegion", REGION);
+
+      try (ResultSet rs = executeQueryWithPasswordExpirationHandling("SELECT * FROM employees", properties)) {
+         while (rs.next()) {
+            System.out.println(rs.getString("first_name"));
+         }
+      }
+   }
+
+   private static ResultSet executeQueryWithPasswordExpirationHandling(
+           String query,
+           Properties properties) throws SQLException {
+      int retries = 0;
+      boolean reconnect = false;
+      Connection connection = null;
+
+      while (true) {
+         try {
+            if (connection == null || reconnect) {
+               connection = DriverManager.getConnection(CONNECTION_STRING, properties);
+            }
+            Statement statement = connection.createStatement();
+            return statement.executeQuery(query);
+         } catch (SQLException e) {
+            // If the attempt to connect has failed MAX_RETRIES times,
+            // throw the exception to inform users of the failed connection.
+            if (retries > MAX_RETRIES) {
+               throw e;
+            }
+
+            if ("28000".equalsIgnoreCase(e.getSQLState())) {
+               // Failover has occurred and failed due to access denied error.
+               // Create a new connection and re-execute the query.
+               reconnect = true;
+               retries++;
+            } else if ("08S02".equalsIgnoreCase(e.getSQLState())) {
+               // Failover has occurred and the driver has failed over to another instance successfully.
+               // Re-execute the query.
+               retries++;
+            } else {
+               throw e;
+            }
+         }
+      }
+   }
+}
+
+```
+
 
 ## Getting Help and Opening Issues
 
