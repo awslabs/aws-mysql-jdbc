@@ -31,22 +31,22 @@ import com.mysql.cj.conf.HostInfo;
 public class RdsHost {
   static final int NO_PORT = -1;
   static final String HOST_PORT_SEPARATOR = ":";
-  private final UrlType urlType;
+  private final RdsUrl rdsUrl;
   private final String clusterId;
   private final HostInfo clusterInstanceTemplate;
   private final String host;
   private final int port;
 
-  public RdsHost(UrlType urlType, String clusterId, HostInfo clusterInstanceTemplate, String host, int port) {
-    this.urlType = urlType;
+  public RdsHost(RdsUrl rdsUrl, String clusterId, HostInfo clusterInstanceTemplate, String host, int port) {
+    this.rdsUrl = rdsUrl;
     this.clusterId = clusterId;
     this.clusterInstanceTemplate = clusterInstanceTemplate;
     this.host = host;
     this.port = port;
   }
 
-  public UrlType getUrlType() {
-    return this.urlType;
+  public RdsUrl getUrlType() {
+    return this.rdsUrl;
   }
 
   public String getClusterId() {

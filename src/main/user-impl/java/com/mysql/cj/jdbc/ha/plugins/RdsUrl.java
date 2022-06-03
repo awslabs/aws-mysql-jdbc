@@ -26,23 +26,21 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-public enum UrlType {
-  IP_ADDRESS(false, false, false),
-  RDS_WRITER_CLUSTER(true, true, true),
-  RDS_READER_CLUSTER(true, true, true),
-  RDS_CUSTOM_CLUSTER(true, true, false),
-  RDS_PROXY(true, false, false),
-  RDS_INSTANCE(true, false, false),
-  OTHER(false, false, false);
+public enum RdsUrl {
+  IP_ADDRESS(false, false),
+  RDS_WRITER_CLUSTER(true, true),
+  RDS_READER_CLUSTER(true, true),
+  RDS_CUSTOM_CLUSTER(true, true),
+  RDS_PROXY(true, false),
+  RDS_INSTANCE(true, false),
+  OTHER(false, false);
 
   private final boolean isRds;
   private final boolean isRdsCluster;
-  private final boolean isStandardRdsCluster;
 
-  UrlType(boolean isRds, boolean isRdsCluster, boolean isStandardRdsCluster) {
+  RdsUrl(boolean isRds, boolean isRdsCluster) {
     this.isRds = isRds;
     this.isRdsCluster = isRdsCluster;
-    this.isStandardRdsCluster = isStandardRdsCluster;
   }
 
   public boolean isRds() {
@@ -51,9 +49,5 @@ public enum UrlType {
 
   public boolean isRdsCluster() {
     return this.isRdsCluster;
-  }
-
-  public boolean isStandardRdsCluster() {
-    return this.isStandardRdsCluster;
   }
 }

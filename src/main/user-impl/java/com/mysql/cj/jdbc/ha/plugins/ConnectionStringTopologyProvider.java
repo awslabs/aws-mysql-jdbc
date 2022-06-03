@@ -44,13 +44,13 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.IP_ADDRESS;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.OTHER;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_CUSTOM_CLUSTER;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_INSTANCE;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_PROXY;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_READER_CLUSTER;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_WRITER_CLUSTER;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.IP_ADDRESS;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.OTHER;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_CUSTOM_CLUSTER;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_INSTANCE;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_PROXY;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_READER_CLUSTER;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_WRITER_CLUSTER;
 
 public class ConnectionStringTopologyProvider {
   private final Pattern auroraDnsPattern =
@@ -89,11 +89,11 @@ public class ConnectionStringTopologyProvider {
     this.initialConnectionProps = connectionProps;
   }
 
-  public UrlType getUrlType(ConnectionUrl connectionUrl) {
+  public RdsUrl getUrlType(ConnectionUrl connectionUrl) {
     return getUrlType(connectionUrl.getMainHost().getHost());
   }
 
-  public UrlType getUrlType(String url) {
+  public RdsUrl getUrlType(String url) {
     if (IpAddressUtils.isIPv4(url) || IpAddressUtils.isIPv6(url)) {
       return IP_ADDRESS;
     } else if (isWriterClusterDns(url)) {
@@ -114,11 +114,11 @@ public class ConnectionStringTopologyProvider {
   public RdsHost getRdsHost(HostInfo hostInfo) throws SQLException {
     final String hostName = hostInfo.getHost();
     final int hostPort = hostInfo.getPort();
-    final UrlType urlType = getUrlType(hostName);
-    final String clusterId = getClusterId(urlType, hostName, hostPort);
+    final RdsUrl rdsUrl = getUrlType(hostName);
+    final String clusterId = getClusterId(rdsUrl, hostName, hostPort);
 
     String clusterInstanceTemplateHost = hostName;
-    if (urlType.isRds()) {
+    if (rdsUrl.isRds()) {
       clusterInstanceTemplateHost = getRdsInstanceHostPattern(hostName);
       if (clusterInstanceTemplateHost == null) {
         this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.5"));
@@ -127,7 +127,7 @@ public class ConnectionStringTopologyProvider {
     }
 
     final HostInfo clusterInstanceTemplate = getClusterInstanceTemplate(hostInfo, clusterInstanceTemplateHost, hostPort);
-    return new RdsHost(urlType, clusterId, clusterInstanceTemplate, hostName, hostInfo.getPort());
+    return new RdsHost(rdsUrl, clusterId, clusterInstanceTemplate, hostName, hostInfo.getPort());
   }
 
   public RdsHost parseHostPatternSetting(HostInfo hostInfo, String pattern) throws SQLException {
@@ -138,18 +138,18 @@ public class ConnectionStringTopologyProvider {
     }
 
     final String hostName = pair.left;
-    final UrlType urlType = getUrlType(hostName);
-    validateHostPatternSetting(hostName, urlType);
+    final RdsUrl rdsUrl = getUrlType(hostName);
+    validateHostPatternSetting(hostName, rdsUrl);
 
     final int hostPort =
         pair.right != RdsHost.NO_PORT ? pair.right : hostInfo.getPort();
 
-    final String clusterId = getClusterId(urlType, hostName, hostPort);
+    final String clusterId = getClusterId(rdsUrl, hostName, hostPort);
     final HostInfo clusterInstanceTemplate = getClusterInstanceTemplate(hostInfo, hostName, hostPort);
-    return new RdsHost(urlType, clusterId, clusterInstanceTemplate, hostName, hostPort);
+    return new RdsHost(rdsUrl, clusterId, clusterInstanceTemplate, hostName, hostPort);
   }
 
-  private void validateHostPatternSetting(String hostName, UrlType urlType) throws SQLException {
+  private void validateHostPatternSetting(String hostName, RdsUrl rdsUrl) throws SQLException {
     if (!isDnsPatternValid(hostName)) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the host pattern must contain a '?'
       // character as a placeholder for the DB instance identifiers of the instances in the cluster"
@@ -157,27 +157,27 @@ public class ConnectionStringTopologyProvider {
       throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.2"));
     }
 
-    if (RDS_PROXY.equals(urlType)) {
+    if (RDS_PROXY.equals(rdsUrl)) {
       // "An RDS Proxy url can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.3"));
       throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.3"));
     }
 
-    if (RDS_CUSTOM_CLUSTER.equals(urlType)) {
+    if (RDS_CUSTOM_CLUSTER.equals(rdsUrl)) {
       // "An RDS Custom Cluster endpoint can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.4"));
       throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.4"));
     }
   }
 
-  private String getClusterId(UrlType urlType, String hostName, int hostPort) {
+  private String getClusterId(RdsUrl rdsUrl, String hostName, int hostPort) {
     String clusterId = null;
     if (!StringUtils.isNullOrEmpty(this.clusterIdSetting)) {
       clusterId = this.clusterIdSetting;
-    } else if (RDS_PROXY.equals(urlType)) {
+    } else if (RDS_PROXY.equals(rdsUrl)) {
       // Each proxy is associated with a single cluster, so it's safe to use RDS Proxy Url as cluster identification
       clusterId = hostName + RdsHost.HOST_PORT_SEPARATOR + hostPort;
-    } else if (urlType.isRds()) {
+    } else if (rdsUrl.isRds()) {
       // If it's a cluster endpoint, or a reader cluster endpoint, then let's use it as the cluster ID
       String clusterRdsHostUrl = getRdsClusterHostUrl(hostName);
       if (!StringUtils.isNullOrEmpty(clusterRdsHostUrl)) {

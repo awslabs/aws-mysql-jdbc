@@ -48,7 +48,7 @@ import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.RdsHost;
 import com.mysql.cj.jdbc.ha.plugins.ConnectionStringTopologyProvider;
-import com.mysql.cj.jdbc.ha.plugins.UrlType;
+import com.mysql.cj.jdbc.ha.plugins.RdsUrl;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
@@ -64,10 +64,10 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.IP_ADDRESS;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.OTHER;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_PROXY;
-import static com.mysql.cj.jdbc.ha.plugins.UrlType.RDS_READER_CLUSTER;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.IP_ADDRESS;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.OTHER;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_PROXY;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrl.RDS_READER_CLUSTER;
 
 /**
  * A {@link IConnectionPlugin} implementation that provides cluster-aware failover
@@ -109,7 +109,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected boolean explicitlyAutoCommit = true;
   protected boolean isClusterTopologyAvailable = false;
   protected boolean isMultiWriterCluster = false;
-  protected UrlType connectionType;
+  protected RdsUrl connectionType;
   protected ITopologyService topologyService;
   protected List<HostInfo> hosts = new ArrayList<>();
 
@@ -271,7 +271,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         && (this.hosts == null || this.hosts.size() > 1);
   }
 
-  public UrlType getConnectionType() {
+  public RdsUrl getConnectionType() {
     return this.connectionType;
   }
 
@@ -873,9 +873,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     if (this.enableFailoverSetting) {
       // Connection isn't created - try to use cached topology to create it
       if (this.currentConnectionProvider.getCurrentConnection() == null) {
-        final UrlType urlType = this.connectionStringTopologyProvider.getUrlType(connectionUrl);
-        if (urlType.isRdsCluster()) {
-          this.explicitlyReadOnly = RDS_READER_CLUSTER.equals(urlType);
+        final RdsUrl rdsUrl = this.connectionStringTopologyProvider.getUrlType(connectionUrl);
+        if (rdsUrl.isRdsCluster()) {
+          this.explicitlyReadOnly = RDS_READER_CLUSTER.equals(rdsUrl);
           this.logger.logTrace(
               Messages.getString(
                   "ClusterAwareConnectionProxy.6",
