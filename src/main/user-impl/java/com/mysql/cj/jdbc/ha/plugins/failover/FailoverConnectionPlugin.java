@@ -109,7 +109,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected boolean explicitlyAutoCommit = true;
   protected boolean isClusterTopologyAvailable = false;
   protected boolean isMultiWriterCluster = false;
-  protected RdsUrlType connectionType;
+  protected RdsUrlType rdsUrlType;
   protected ITopologyService topologyService;
   protected List<HostInfo> hosts = new ArrayList<>();
 
@@ -265,14 +265,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   public boolean isFailoverEnabled() {
     return this.enableFailoverSetting
-        && !RDS_PROXY.equals(this.connectionType)
+        && !RDS_PROXY.equals(this.rdsUrlType)
         && this.isClusterTopologyAvailable
         && !this.isMultiWriterCluster
         && (this.hosts == null || this.hosts.size() > 1);
   }
 
-  public RdsUrlType getConnectionType() {
-    return this.connectionType;
+  public RdsUrlType getRdsUrlType() {
+    return this.rdsUrlType;
   }
 
   void initSettings() {
@@ -813,11 +813,11 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     } else {
       rdsHost = this.connectionStringTopologyProvider.getRdsHost(hostInfo);
     }
-    this.connectionType = rdsHost.getUrlType();
+    this.rdsUrlType = rdsHost.getUrlType();
     this.logger.logTrace(
         Messages.getString(
             "ClusterAwareConnectionProxy.14",
-            new Object[] {this.connectionType.toString()}));
+            new Object[] {this.rdsUrlType.toString()}));
 
     String clusterId = rdsHost.getClusterId();
     if (clusterId != null) {
@@ -829,7 +829,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     initializeTopology();
 
     if (StringUtils.isNullOrEmpty(this.clusterInstanceHostPatternSetting) && this.isClusterTopologyAvailable &&
-        (IP_ADDRESS.equals(this.connectionType) || OTHER.equals(this.connectionType))) {
+        (IP_ADDRESS.equals(this.rdsUrlType) || OTHER.equals(this.rdsUrlType))) {
       // "The 'clusterInstanceHostPattern' configuration property is required when an IP address or custom domain is used
       // to connect to a cluster that provides topology information. If you would instead like to connect without failover
       // functionality, set the 'enableClusterAwareFailover' configuration property to false."
@@ -837,8 +837,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
     }
 
-    if (this.connectionType.isRdsCluster()) {
-      this.explicitlyReadOnly = RDS_READER_CLUSTER.equals(this.connectionType);
+    if (this.rdsUrlType.isRdsCluster()) {
+      this.explicitlyReadOnly = RDS_READER_CLUSTER.equals(this.rdsUrlType);
       this.logger.logTrace(
               Messages.getString(
                   "ClusterAwareConnectionProxy.6",
