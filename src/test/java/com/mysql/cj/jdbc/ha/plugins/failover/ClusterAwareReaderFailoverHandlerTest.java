@@ -106,7 +106,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final int successHostIndex = 4;
     for (int i = 0; i < hosts.size(); i++) {
       if (i != successHostIndex) {
-        when(mockConnProvider.connect(refEq(hosts.get(i)))).thenThrow(new SQLException());
+        when(mockConnProvider.connect(refEq(hosts.get(i)))).thenThrow(new SQLException("exception", "08S01", null));
       } else {
         when(mockConnProvider.connect(refEq(hosts.get(i)))).thenReturn(mockConnection);
       }
@@ -269,7 +269,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final IConnectionProvider mockConnProvider = Mockito.mock(IConnectionProvider.class);
     final List<HostInfo> hosts =
         getHostsFromTestUrls(4); // 3 connection attempts (writer not attempted)
-    when(mockConnProvider.connect(any())).thenThrow(new SQLException());
+    when(mockConnProvider.connect(any())).thenThrow(new SQLException("exception", "08S01", null));
 
     final int currentHostIndex = 2;
 

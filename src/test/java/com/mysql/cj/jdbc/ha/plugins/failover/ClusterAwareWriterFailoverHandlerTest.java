@@ -486,7 +486,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(refEq(writerHost))).thenThrow(SQLException.class);
+    when(mockConnectionProvider.connect(refEq(writerHost))).thenThrow(new SQLException("exception", "08S01", null));
     when(mockConnectionProvider.connect(refEq(readerA_Host))).thenReturn(mockReaderA_Connection);
     when(mockConnectionProvider.connect(refEq(readerB_Host))).thenReturn(mockReaderB_Connection);
     when(mockConnectionProvider.connect(refEq(newWriterHost))).thenThrow(SQLException.class);
