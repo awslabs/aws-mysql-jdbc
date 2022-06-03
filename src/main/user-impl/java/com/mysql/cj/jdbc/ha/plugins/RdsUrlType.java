@@ -26,7 +26,7 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-public enum RdsUrl {
+public enum RdsUrlType {
   IP_ADDRESS(false, false),
   RDS_WRITER_CLUSTER(true, true),
   RDS_READER_CLUSTER(true, true),
@@ -38,7 +38,7 @@ public enum RdsUrl {
   private final boolean isRds;
   private final boolean isRdsCluster;
 
-  RdsUrl(boolean isRds, boolean isRdsCluster) {
+  RdsUrlType(boolean isRds, boolean isRdsCluster) {
     this.isRds = isRds;
     this.isRdsCluster = isRdsCluster;
   }
