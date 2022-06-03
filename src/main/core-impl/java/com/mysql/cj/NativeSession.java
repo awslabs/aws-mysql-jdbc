@@ -58,6 +58,7 @@ import com.mysql.cj.exceptions.ExceptionInterceptorChain;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.exceptions.OperationCancelledException;
 import com.mysql.cj.interceptors.QueryInterceptor;
+import com.mysql.cj.jdbc.ha.ConnectionUtils;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.protocol.ColumnDefinition;
 import com.mysql.cj.protocol.NetworkResources;
@@ -346,8 +347,7 @@ public class NativeSession extends CoreSession implements Serializable {
 
                     @SuppressWarnings("synthetic-access")
                     public Exception interceptException(Exception sqlEx) {
-                        if (sqlEx instanceof SQLException && ((SQLException) sqlEx).getSQLState() != null
-                                && ((SQLException) sqlEx).getSQLState().startsWith("08")) {
+                        if (sqlEx instanceof SQLException && ConnectionUtils.isNetworkException((SQLException) sqlEx)) {
                             NativeSession.this.serverConfigCache.invalidate(NativeSession.this.hostInfo.getDatabaseUrl());
                         }
                         return null;

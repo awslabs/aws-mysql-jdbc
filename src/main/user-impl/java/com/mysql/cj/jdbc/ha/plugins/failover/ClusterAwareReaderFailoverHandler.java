@@ -436,7 +436,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
                 new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
 
         // Propagate exceptions that are not caused by network errors.
-        if (!e.getSQLState().startsWith("08")) {
+        if (!ConnectionUtils.isNetworkException(e)) {
           return new ReaderFailoverResult(
               null,
               FailoverConnectionPlugin.NO_CONNECTION_INDEX,

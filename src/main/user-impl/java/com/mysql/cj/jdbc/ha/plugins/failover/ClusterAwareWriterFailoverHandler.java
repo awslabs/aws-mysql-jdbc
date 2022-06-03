@@ -256,7 +256,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
             }
           } catch (SQLException exception) {
             // Propagate exceptions that are not caused by network errors.
-            if (!exception.getSQLState().startsWith("08")) {
+            if (!ConnectionUtils.isNetworkException(exception)) {
               return new WriterFailoverResult(false, false, null, null, "TaskA", exception);
             }
           }

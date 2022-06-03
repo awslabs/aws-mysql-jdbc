@@ -635,24 +635,22 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return false;
     }
 
-    String sqlState = null;
     if (t instanceof CommunicationsException || t instanceof CJCommunicationsException) {
       return true;
-    } else if (t instanceof SQLException) {
-      sqlState = ((SQLException) t).getSQLState();
-    } else if (t instanceof CJException) {
+    }
+
+    if (t instanceof SQLException) {
+      return ConnectionUtils.isNetworkException((SQLException) t);
+    }
+
+    if (t instanceof CJException) {
       if (t.getCause() instanceof EOFException) { // Can not read response from server
         return true;
       }
       if (t.getCause() instanceof SSLException) { // Incomplete packets from server may cause SSL communication issues
         return true;
       }
-      sqlState = ((CJException) t).getSQLState();
-    }
-
-    if (sqlState != null) {
-      // connection error
-      return sqlState.startsWith("08");
+      return ConnectionUtils.isNetworkException(((CJException) t).getSQLState());
     }
 
     return false;

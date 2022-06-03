@@ -39,6 +39,7 @@ import com.mchange.v2.c3p0.QueryConnectionTester;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
+import com.mysql.cj.jdbc.ha.ConnectionUtils;
 
 /**
  * ConnectionTester for C3P0 connection pool that uses the more efficient COM_PING method of testing connection 'liveness' for MySQL, and 'sorts' exceptions
@@ -100,7 +101,7 @@ public final class MysqlConnectionTester implements QueryConnectionTester {
         if (throwable instanceof SQLException) {
             String sqlState = ((SQLException) throwable).getSQLState();
 
-            if (sqlState != null && sqlState.startsWith("08")) {
+            if (ConnectionUtils.isNetworkException(sqlState)) {
                 return CONNECTION_IS_INVALID;
             }
 
