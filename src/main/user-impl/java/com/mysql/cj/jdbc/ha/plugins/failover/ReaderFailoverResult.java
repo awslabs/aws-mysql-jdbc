@@ -28,20 +28,32 @@ package com.mysql.cj.jdbc.ha.plugins.failover;
 
 import com.mysql.cj.jdbc.JdbcConnection;
 
+import java.sql.SQLException;
+
 /** This class holds results of Reader Failover Process. */
 public class ReaderFailoverResult {
   private final JdbcConnection newConnection;
   private final int newConnectionIndex;
   private final boolean isConnected;
+  private final SQLException exception;
 
   /**
-   * ConnectionAttemptResult constructor.
+   * ReaderFailoverResult constructor.
    */
   public ReaderFailoverResult(
       JdbcConnection newConnection, int newConnectionIndex, boolean isConnected) {
+    this(newConnection, newConnectionIndex, isConnected, null);
+  }
+
+  public ReaderFailoverResult(
+      JdbcConnection newConnection,
+      int newConnectionIndex,
+      boolean isConnected,
+      SQLException exception) {
     this.newConnection = newConnection;
     this.newConnectionIndex = newConnectionIndex;
     this.isConnected = isConnected;
+    this.exception = exception;
   }
 
   /**
@@ -71,5 +83,14 @@ public class ReaderFailoverResult {
    */
   public boolean isConnected() {
     return isConnected;
+  }
+
+  /**
+   * Get the exception raised during failover.
+   *
+   * @return a {@link SQLException}.
+   */
+  public SQLException getException() {
+    return exception;
   }
 }

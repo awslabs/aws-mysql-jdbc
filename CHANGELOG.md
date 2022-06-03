@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+
+## [1.1.0] - 2022-06-03
+
+### Added
+* Secrets Manager Plugin and corresponding unit tests have been added.
+
+### Fixed
+* Resolved an issue where non-network errors were not propagated during failover.
+
 ## [1.0.0] - 2022-03-01
 
 ### Added
@@ -53,6 +62,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.4.0...1.0.0
 [0.4.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/0.2.0...0.3.0

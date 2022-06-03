@@ -30,6 +30,7 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -111,5 +112,26 @@ public class ConnectionUtils {
     return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(),
         newHostInfo.getUser(), newHostInfo.getPassword(),
         mergedProps);
+  }
+
+  /**
+   * Check whether the given exception is caused by network errors.
+   *
+   * @param exception The {@link SQLException} raised by the driver.
+   * @return true if the exception is caused by network errors; false otherwise.
+   */
+  public static boolean isNetworkException(final SQLException exception) {
+    final String sqlState = exception.getSQLState();
+    return isNetworkException(sqlState);
+  }
+
+  /**
+   * Check whether the given SQLState is caused by network errors.
+   *
+   * @param sqlState The SQLState of an exception raised by the driver.
+   * @return true if the exception is caused by network errors; false otherwise.
+   */
+  public static boolean isNetworkException(final String sqlState) {
+    return sqlState != null && sqlState.startsWith("08");
   }
 }

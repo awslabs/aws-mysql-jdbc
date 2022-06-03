@@ -29,6 +29,7 @@ package com.mysql.cj.jdbc.ha.plugins.failover;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
 
+import java.sql.SQLException;
 import java.util.List;
 
 /** This class holds results of Writer Failover Process. */
@@ -38,9 +39,10 @@ public class WriterFailoverResult {
   private final List<HostInfo> topology;
   private final JdbcConnection newConnection;
   private final String taskName;
+  private final SQLException exception;
 
   /**
-   * ResolvedHostInfo constructor.
+   * WriterFailoverResult constructor.
    * */
   public WriterFailoverResult(
       boolean isConnected,
@@ -48,11 +50,22 @@ public class WriterFailoverResult {
       List<HostInfo> topology,
       JdbcConnection newConnection,
       String taskName) {
+    this(isConnected, isNewHost, topology, newConnection, taskName, null);
+  }
+
+   public WriterFailoverResult(
+      boolean isConnected,
+      boolean isNewHost,
+      List<HostInfo> topology,
+      JdbcConnection newConnection,
+      String taskName,
+      SQLException exception) {
     this.isConnected = isConnected;
     this.isNewHost = isNewHost;
     this.topology = topology;
     this.newConnection = newConnection;
     this.taskName = taskName;
+    this.exception = exception;
   }
 
   /**
@@ -75,7 +88,7 @@ public class WriterFailoverResult {
   }
 
   /**
-   * Get latest topology.
+   * Get the latest topology.
    *
    * @return List of hosts that represent the latest topology. Returns null if no connection is
    *     established.
@@ -87,7 +100,7 @@ public class WriterFailoverResult {
   /**
    * Get the new connection established by the failover procedure if successful.
    *
-   * @return {@link JdbcConnection} New connection to a host. Returns null if the failover pocedure
+   * @return {@link JdbcConnection} New connection to a host. Returns null if the failover procedure
    *     was unsuccessful.
    */
   public JdbcConnection getNewConnection() {
@@ -101,5 +114,14 @@ public class WriterFailoverResult {
    */
   public String getTaskName() {
     return this.taskName;
+  }
+
+  /**
+   * Get the exception raised during failover.
+   *
+   * @return a {@link SQLException}.
+   */
+  public SQLException getException() {
+    return exception;
   }
 }

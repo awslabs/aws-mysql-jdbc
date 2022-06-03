@@ -9,7 +9,6 @@
 
 The AWS JDBC Driver for MySQL supports fast failover for Amazon Aurora with MySQL compatibility. Support for additional features of clustered databases, including features of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
 
-
 ## What is Failover?
 
 An Amazon Aurora DB cluster uses failover to automatically repairs the DB cluster status when a primary DB instance becomes unavailable. During failover, Aurora promotes a replica to become the new primary DB instance, so that the DB cluster can provide maximum availability to a primary read-write DB instance. The AWS JDBC Driver for MySQL is designed to coordinate with this behavior in order to provide minimal downtime in the event of a DB instance failure.
@@ -496,6 +495,50 @@ You can include additional monitoring configurations by adding the prefix `monit
 > 
 > It is suggested to turn off Enhanced Failure Monitoring plugin, or to avoid using RDS Proxy endpoints when the plugin is active. 
 
+## AWS Secrets Manager Plugin
+
+The AWS JDBC Driver for MySQL supports usage of database credentials stored in the [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) through the AWS Secrets Manager Plugin. This plugin is optional and can be enabled with the `connectionPluginFactories` parameter as seen in the [connection plugin manager parameters table](#connection-plugin-manager-parameters). When a user creates a new connection with this plugin enabled, the plugin will retrieve the secret and the connection will be created using those credentials.
+
+The following properties are required for the AWS Secrets Manager Plugin to retrieve secrets.
+
+| Parameter                | Value  | Required | Description                                             | Example          |
+|--------------------------|:------:|:--------:|:--------------------------------------------------------|:-----------------|
+| `secretsManagerSecretId` | String |   Yes    | Set this value to be the secret name or the secret ARN. | `test-secret-id` |
+| `secretsManagerRegion`   | String |   Yes    | Set this value to be the region your secret is in.      | `us-east-1`      |
+
+### Example
+```java
+import java.sql.*;
+import java.util.Properties;
+import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
+
+public class AWSSecretsManagerPluginSample {
+
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String SECRET_ID = "secretId";
+   private static final String REGION = "us-east-1";
+
+   public static void main(String[] args) throws SQLException {
+      final Properties properties = new Properties();
+      // Enable the AWS Secrets Manager Plugin:
+      properties.setProperty("connectionPluginFactories", AWSSecretsManagerPluginFactory.class.getName());
+      
+      // Set these properties so secrets can be retrieved:
+      properties.setProperty("secretsManagerSecretId", SECRET_ID);
+      properties.setProperty("secretsManagerRegion", REGION);
+
+      // Try and make a connection:
+      try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
+           final Statement statement = conn.createStatement();
+           final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
+         while (rs.next()) {
+            System.out.println(rs.getString("first_name"));
+         }
+      }
+   }
+}
+```
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
@@ -547,11 +590,10 @@ public class AwsIamAuthenticationSample {
 
       // Try and make a connection
       try (final Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties);
-              final Statement myQuery = conn.createStatement()) {
-         try (final ResultSet rs = myQuery.executeQuery("SELECT * FROM employees")) {
-            while (rs.next()) {
-               System.out.println(rs.getString(1));
-            }
+           final Statement statement = conn.createStatement();
+           final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
+         while (rs.next()) {
+            System.out.println(rs.getString("first_name"));
          }
       }
    }
@@ -635,6 +677,92 @@ To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection prop
 ### Read-Write Splitting
 The driver does not support read-write splitting yet. A possible solution for now is to utilize multiple connection pools.
 One can send write traffic to a connection pool connected to the writer cluster endpoint, and send read-only traffic to another pool connected to the reader cluster endpoint.
+
+### Password Expiration With AWS Secrets Manager
+When using the driver with AWS Secrets Manager, the driver does not automatically update expired credentials **during failover**.
+The driver only handles expired credentials when opening new connections.
+If the credentials expire during failover, the driver raises a SQLException with SQLState 28000 to the client application.
+A possible solution to handle password expiration during failover is to catch SQLException with SQLState 28000 and create a new connection.
+
+```java
+import java.sql.*;
+import java.util.Properties;
+import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory;
+import com.mysql.cj.log.StandardLogger;
+
+public class AWSSecretsManagerPluginSample2 {
+
+   private static final String CONNECTION_STRING = "jdbc:mysql:aws://db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/employees";
+   private static final String SECRET_ID = "secretId";
+   private static final String REGION = "us-east-1";
+   private static final int MAX_RETRIES = 5;
+
+   public static void main(String[] args) throws SQLException {
+      final Properties properties = new Properties();
+      properties.setProperty("logger", StandardLogger.class.getName());
+
+      // Enable the AWS Secrets Manager Plugin:
+      properties.setProperty(
+              "connectionPluginFactories",
+              String.format("%s,%s,%s",
+                      AWSSecretsManagerPluginFactory.class.getName(),
+                      FailoverConnectionPluginFactory.class.getName(),
+                      NodeMonitoringConnectionPluginFactory.class.getName())
+      );
+
+      // Set these properties so secrets can be retrieved:
+      properties.setProperty("secretsManagerSecretId", SECRET_ID);
+      properties.setProperty("secretsManagerRegion", REGION);
+
+      try (ResultSet rs = executeQueryWithPasswordExpirationHandling("SELECT * FROM employees", properties)) {
+         while (rs.next()) {
+            System.out.println(rs.getString("first_name"));
+         }
+      }
+   }
+
+   private static ResultSet executeQueryWithPasswordExpirationHandling(
+           String query,
+           Properties properties) throws SQLException {
+      int retries = 0;
+      boolean reconnect = false;
+      Connection connection = null;
+
+      while (true) {
+         try {
+            if (connection == null || reconnect) {
+               connection = DriverManager.getConnection(CONNECTION_STRING, properties);
+            }
+            Statement statement = connection.createStatement();
+            return statement.executeQuery(query);
+         } catch (SQLException e) {
+            // If the attempt to connect has failed MAX_RETRIES times,
+            // throw the exception to inform users of the failed connection.
+            if (retries > MAX_RETRIES) {
+               throw e;
+            }
+
+            if ("28000".equalsIgnoreCase(e.getSQLState())) {
+               // Failover has occurred and failed due to access denied error.
+               // Create a new connection and re-execute the query.
+               reconnect = true;
+               retries++;
+            } else if ("08S02".equalsIgnoreCase(e.getSQLState())) {
+               // Failover has occurred and the driver has failed over to another instance successfully.
+               // Re-execute the query.
+               retries++;
+            } else {
+               throw e;
+            }
+         }
+      }
+   }
+}
+
+```
+
 
 ## Getting Help and Opening Issues
 

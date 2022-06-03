@@ -163,14 +163,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
             sqlState = ((CJException) t).getSQLState();
         }
 
-        if (sqlState != null) {
-            if (sqlState.startsWith("08")) {
-                // connection error
-                return true;
-            }
-        }
-
-        return false;
+        return ConnectionUtils.isNetworkException(sqlState);
     }
 
     /**

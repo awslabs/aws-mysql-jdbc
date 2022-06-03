@@ -137,11 +137,12 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
 
     try {
       WriterFailoverResult result = getNextResult(executorService, completionService);
-      if (result.isConnected()) {
+      if (result.isConnected() || result.getException() != null) {
         return result;
       }
+
       result = getNextResult(executorService, completionService);
-      if (result.isConnected()) {
+      if (result.isConnected() || result.getException() != null) {
         return result;
       }
 
@@ -183,6 +184,11 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
       if (result.isConnected()) {
         executorService.shutdownNow();
         logTaskSuccess(result);
+        return result;
+      }
+
+      if (result.getException() != null) {
+        executorService.shutdownNow();
         return result;
       }
     } catch (InterruptedException e) {
@@ -249,7 +255,10 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               return new WriterFailoverResult(true, false, latestTopology, conn, "TaskA");
             }
           } catch (SQLException exception) {
-            // ignore
+            // Propagate exceptions that are not caused by network errors.
+            if (!ConnectionUtils.isNetworkException(exception)) {
+              return new WriterFailoverResult(false, false, null, null, "TaskA", exception);
+            }
           }
 
           TimeUnit.MILLISECONDS.sleep(reconnectWriterIntervalMs);
