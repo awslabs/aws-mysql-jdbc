@@ -322,7 +322,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
         // submit connection attempt tasks in batches of 2
         ReaderFailoverResult result =
             getResultFromNextTaskBatch(hostGroup, executor, completionService, i);
-        if (result.isConnected()) {
+        if (result.isConnected() || result.getException() != null) {
           return result;
         }
 
@@ -363,6 +363,10 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.2",
                 new Object[] {result.getConnectionIndex()}));
+        return result;
+      }
+      if (result.getException() != null) {
+        executor.shutdownNow();
         return result;
       }
     }
@@ -430,6 +434,16 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
             Messages.getString(
                 "ClusterAwareReaderFailoverHandler.5",
                 new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
+
+        // Propagate exceptions that are not caused by network errors.
+        if (!e.getSQLState().startsWith("08")) {
+          return new ReaderFailoverResult(
+              null,
+              FailoverConnectionPlugin.NO_CONNECTION_INDEX,
+              false,
+              e);
+        }
+
         return new ReaderFailoverResult(
             null,
             FailoverConnectionPlugin.NO_CONNECTION_INDEX,

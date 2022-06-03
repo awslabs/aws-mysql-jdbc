@@ -514,6 +514,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     metricsContainer.registerReaderFailoverProcedureTime(currentTimeMs - this.failoverStartTimeMs);
     this.failoverStartTimeMs = 0;
 
+    if (result != null) {
+      final SQLException exception = result.getException();
+      if (exception != null) {
+        throw exception;
+      }
+    }
+
     if (result == null || !result.isConnected()) {
       // "Unable to establish SQL connection to reader node"
       processFailoverFailure(Messages.getString("ClusterAwareConnectionProxy.4"));
@@ -544,6 +551,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     long currentTimeMs = System.currentTimeMillis();
     metricsContainer.registerWriterFailoverProcedureTime(currentTimeMs - this.failoverStartTimeMs);
     this.failoverStartTimeMs = 0;
+
+    if (failoverResult != null) {
+      final SQLException exception = failoverResult.getException();
+      if (exception != null) {
+        throw exception;
+      }
+    }
 
     if (failoverResult == null || !failoverResult.isConnected()) {
       // "Unable to establish SQL connection to writer node"

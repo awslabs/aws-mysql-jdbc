@@ -510,7 +510,7 @@ The following properties are required for the AWS Secrets Manager Plugin to retr
 ```java
 import java.sql.*;
 import java.util.Properties;
-import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPlugin;
+import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
 
 public class AWSSecretsManagerPluginSample {
 
@@ -532,7 +532,7 @@ public class AWSSecretsManagerPluginSample {
            final Statement statement = conn.createStatement();
            final ResultSet rs = statement.executeQuery("SELECT * FROM employees")) {
          while (rs.next()) {
-            System.out.println(rs.getString(1));
+            System.out.println(rs.getString("first_name"));
          }
       }
    }
