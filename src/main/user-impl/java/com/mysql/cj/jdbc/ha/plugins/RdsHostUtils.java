@@ -35,9 +35,11 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.Util;
 
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -52,7 +54,8 @@ import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.RDS_PROXY;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.RDS_READER_CLUSTER;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.RDS_WRITER_CLUSTER;
 
-public class RdsConnectionStringUtils {
+public class RdsHostUtils {
+  public static final int NO_CONNECTION_INDEX = -1;
   private final Pattern auroraDnsPattern =
       Pattern.compile(
           "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?([a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
@@ -71,7 +74,7 @@ public class RdsConnectionStringUtils {
           Pattern.CASE_INSENSITIVE);
   private final Log logger;
 
-  public RdsConnectionStringUtils(Log logger) {
+  public RdsHostUtils(Log logger) {
     this.logger = logger;
   }
 
@@ -225,6 +228,20 @@ public class RdsConnectionStringUtils {
         .forEach(x -> explicitlySetProperties.put(x, originalProperties.getProperty(x)));
 
     return explicitlySetProperties;
+  }
+
+  public int getHostIndex(List<HostInfo> hostList, HostInfo host) {
+    if (host == null || Util.isNullOrEmpty(hostList)) {
+      return NO_CONNECTION_INDEX;
+    }
+
+    for (int i = 0; i < hostList.size(); i++) {
+      HostInfo potentialMatch = hostList.get(i);
+      if (potentialMatch != null && potentialMatch.equalHostPortPair(host)) {
+        return i;
+      }
+    }
+    return NO_CONNECTION_INDEX;
   }
 
   private boolean isDnsPatternValid(String pattern) {
