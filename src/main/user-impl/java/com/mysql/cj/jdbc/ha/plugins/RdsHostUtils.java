@@ -110,8 +110,7 @@ public class RdsHostUtils {
     if (rdsUrlType.isRds()) {
       clusterInstanceTemplateHost = getRdsInstanceHostPattern(hostName);
       if (clusterInstanceTemplateHost == null) {
-        this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.5"));
-        throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.5"));
+        logAndThrow(Messages.getString("RdsHostUtils.5"));
       }
     }
 
@@ -123,7 +122,7 @@ public class RdsHostUtils {
     final ConnectionUrlParser.Pair<String, Integer> pair = ConnectionUrlParser.parseHostPortPair(pattern);
     if (pair == null) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the value could not be parsed"
-      throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.1"));
+      logAndThrow(Messages.getString("RdsHostUtils.1"));
     }
 
     final String hostName = pair.left;
@@ -142,20 +141,17 @@ public class RdsHostUtils {
     if (!isDnsPatternValid(hostName)) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the host pattern must contain a '?'
       // character as a placeholder for the DB instance identifiers of the instances in the cluster"
-      this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.2"));
-      throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.2"));
+      logAndThrow(Messages.getString("RdsHostUtils.2"));
     }
 
     if (RDS_PROXY.equals(rdsUrlType)) {
       // "An RDS Proxy url can't be used as the 'clusterInstanceHostPattern' configuration setting."
-      this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.3"));
-      throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.3"));
+      logAndThrow(Messages.getString("RdsHostUtils.3"));
     }
 
     if (RDS_CUSTOM_CLUSTER.equals(rdsUrlType)) {
       // "An RDS Custom Cluster endpoint can't be used as the 'clusterInstanceHostPattern' configuration setting."
-      this.logger.logError(Messages.getString("ConnectionStringTopologyProvider.4"));
-      throw new SQLException(Messages.getString("ConnectionStringTopologyProvider.4"));
+      logAndThrow(Messages.getString("RdsHostUtils.4"));
     }
   }
 
@@ -242,6 +238,11 @@ public class RdsHostUtils {
       }
     }
     return NO_CONNECTION_INDEX;
+  }
+
+  private void logAndThrow(String msg) throws SQLException {
+    this.logger.logError(msg);
+    throw new SQLException(msg);
   }
 
   private boolean isDnsPatternValid(String pattern) {
