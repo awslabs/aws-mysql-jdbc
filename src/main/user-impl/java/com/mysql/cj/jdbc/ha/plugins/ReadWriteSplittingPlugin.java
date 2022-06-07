@@ -149,23 +149,20 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   @Override
   public void releaseResources() {
     JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    if (this.readerConnection != currentConnection) {
-      try {
-        this.readerConnection.close();
-      } catch (SQLException e) {
-        // ignore
-      }
-    }
-
-    if (this.writerConnection != currentConnection) {
-      try {
-        this.writerConnection.close();
-      } catch (SQLException e) {
-        // ignore
-      }
-    }
+    closeInternalConnection(this.readerConnection, currentConnection);
+    closeInternalConnection(this.writerConnection, currentConnection);
 
     this.nextPlugin.releaseResources();
+  }
+
+  private void closeInternalConnection(JdbcConnection internalConnection, JdbcConnection currentConnection) {
+    try {
+      if (internalConnection != currentConnection && !internalConnection.isClosed()) {
+        internalConnection.close();
+      }
+    } catch (SQLException e) {
+      // ignore
+    }
   }
 
   @Override
