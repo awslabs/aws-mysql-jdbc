@@ -50,6 +50,8 @@ import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
+import com.mysql.cj.jdbc.ha.plugins.RdsHostUtils;
+import com.mysql.cj.jdbc.ha.plugins.RdsUrlType;
 import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -151,8 +153,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
 
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
@@ -291,8 +292,7 @@ class FailoverConnectionPluginTest {
         "=?.somehost");
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
 
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     verify(mockTopologyService, never()).setClusterId(any());
     verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
@@ -313,8 +313,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertFalse(failoverPlugin.isClusterTopologyAvailable);
     assertFalse(failoverPlugin.isFailoverEnabled());
   }
@@ -344,8 +343,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.IP_ADDRESS, failoverPlugin.getRdsUrlType());
     assertFalse(failoverPlugin.isClusterTopologyAvailable);
     assertFalse(failoverPlugin.isFailoverEnabled());
   }
@@ -364,8 +362,7 @@ class FailoverConnectionPluginTest {
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
 
 
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
@@ -389,8 +386,7 @@ class FailoverConnectionPluginTest {
         "test-cluster-id");
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
 
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
@@ -449,8 +445,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertFalse(failoverPlugin.isRdsProxy());
-    assertTrue(failoverPlugin.isRds());
+    assertEquals(RdsUrlType.RDS_WRITER_CLUSTER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
@@ -470,8 +465,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertTrue(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.RDS_CUSTOM_CLUSTER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
@@ -488,8 +482,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertTrue(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.RDS_INSTANCE, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, never()).setClusterId(any());
@@ -506,8 +499,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertTrue(failoverPlugin.isRds());
-    assertTrue(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.RDS_PROXY, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertFalse(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
@@ -520,14 +512,13 @@ class FailoverConnectionPluginTest {
   public void testRdsReaderCluster() throws SQLException {
     final ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
     final String url =
-        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
     final String host = url.split(PREFIX)[1];
     when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
     when(mockHostInfo.getHost()).thenReturn(host);
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
 
-    assertTrue(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.RDS_READER_CLUSTER, failoverPlugin.getRdsUrlType());
     assertTrue(failoverPlugin.isClusterTopologyAvailable);
     assertTrue(failoverPlugin.isFailoverEnabled());
     verify(mockTopologyService, atLeastOnce()).setClusterInstanceTemplate(any());
@@ -612,8 +603,7 @@ class FailoverConnectionPluginTest {
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
 
     assertEquals(0, failoverPlugin.initialConnectionProps.size());
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertFalse(failoverPlugin.isClusterTopologyAvailable);
     assertFalse(failoverPlugin.isFailoverEnabled());
   }
@@ -632,8 +622,7 @@ class FailoverConnectionPluginTest {
 
     assertEquals(1, initialConnectionProperties.size());
     assertEquals("10", initialConnectionProperties.get("maxAllowedPacket"));
-    assertFalse(failoverPlugin.isRds());
-    assertFalse(failoverPlugin.isRdsProxy());
+    assertEquals(RdsUrlType.OTHER, failoverPlugin.getRdsUrlType());
     assertFalse(failoverPlugin.isClusterTopologyAvailable);
     assertFalse(failoverPlugin.isFailoverEnabled());
   }
@@ -671,6 +660,7 @@ class FailoverConnectionPluginTest {
     when(mockConnection.getPropertySet()).thenReturn(propertySet);
     return new FailoverConnectionPlugin(
         mockCurrentConnectionProvider,
+        new RdsHostUtils(mockLogger),
         propertySet,
         mockNextPlugin,
         mockLogger,
