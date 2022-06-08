@@ -173,4 +173,13 @@ public class NonRegisteringDriverTest {
         Connection conn = driver.connect("jdbc:mysql:replication://host-1:1234,host-2:1234/test?acceptAwsProtocolOnly=true", new Properties());
         assertNull(conn);
     }
+
+    @Test
+    public void testAwsProtocol_acceptsMultiHostConnection() throws SQLException {
+        String url = "jdbc:mysql:aws://host1,host2,host3/test";
+        software.aws.rds.jdbc.mysql.Driver drv = new software.aws.rds.jdbc.mysql.Driver();
+
+        assertNotNull(drv);
+        assertTrue(drv.acceptsURL(url));
+    }
 }

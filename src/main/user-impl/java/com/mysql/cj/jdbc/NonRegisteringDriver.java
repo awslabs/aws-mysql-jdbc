@@ -148,7 +148,9 @@ public class NonRegisteringDriver implements java.sql.Driver {
      */
     @Override
     public boolean acceptsURL(String url) {
-        if (isAcceptAwsProtocolOnly(url) && !url.startsWith(Type.SINGLE_CONNECTION_AWS.getScheme())) {
+        if (isAcceptAwsProtocolOnly(url)
+                && !url.startsWith(Type.SINGLE_CONNECTION_AWS.getScheme() )
+                && !url.startsWith(Type.MULTI_HOST_CONNECTION_AWS.getScheme())) {
             return false;
         }
         return (ConnectionUrl.acceptsUrl(url));
@@ -218,6 +220,7 @@ public class NonRegisteringDriver implements java.sql.Driver {
                     return isAcceptAwsProtocolOnly(url) ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
 
                 case SINGLE_CONNECTION_AWS:
+                case MULTI_HOST_CONNECTION_AWS:
                     return ConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
 
                 case FAILOVER_CONNECTION:

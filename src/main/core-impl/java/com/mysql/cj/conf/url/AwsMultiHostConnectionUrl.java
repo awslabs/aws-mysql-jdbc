@@ -26,22 +26,15 @@
 
 package com.mysql.cj.conf.url;
 
-import java.util.Properties;
-
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.ConnectionUrlParser;
 
-public class AwsSingleConnectionUrl extends ConnectionUrl {
-    /**
-     * Constructs an instance of {@link FailoverConnectionUrl}, performing all the required initializations.
-     *
-     * @param connStrParser
-     *            a {@link ConnectionUrlParser} instance containing the parsed version of the original connection string
-     * @param info
-     *            the connection arguments map
-     */
-    public AwsSingleConnectionUrl(ConnectionUrlParser connStrParser, Properties info) {
-        super(connStrParser, info);
-        this.type = Type.SINGLE_CONNECTION_AWS;
-    }
+import java.util.Properties;
+
+public class AwsMultiHostConnectionUrl extends ConnectionUrl {
+
+  public AwsMultiHostConnectionUrl(ConnectionUrlParser connStrParser, Properties info) {
+    super(connStrParser, info);
+    this.type = ConnectionUrl.Type.MULTI_HOST_CONNECTION_AWS;
+  }
 }
