@@ -321,7 +321,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void validateConnection() throws SQLException {
     this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
+        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()).getHostPortPair());
     if (!isConnected()) {
       pickNewConnection();
       return;
@@ -381,7 +381,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private int getCandidateReaderForInitialConnection() {
     int lastUsedReaderIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getLastUsedReaderHost());
+        topologyService.getLastUsedReaderHost().getHostPortPair());
     if (lastUsedReaderIndex != NO_CONNECTION_INDEX) {
       metricsContainer.registerUseLastConnectedReader(true);
       return lastUsedReaderIndex;
@@ -858,7 +858,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
                 this.isClusterTopologyAvailable}));
     this.isMultiWriterCluster = this.topologyService.isMultiWriterCluster();
     this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
+        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()).getHostPortPair());
 
     if (this.isFailoverEnabled()) {
       logTopology();

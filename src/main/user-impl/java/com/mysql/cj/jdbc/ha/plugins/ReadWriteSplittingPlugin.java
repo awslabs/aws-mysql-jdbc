@@ -38,19 +38,29 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.conf.RuntimeProperty;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.jdbc.ha.plugins.failover.AuroraTopologyService;
+import com.mysql.cj.jdbc.ha.plugins.failover.ITopologyService;
 import com.mysql.cj.log.Log;
+import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.Util;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import static com.mysql.cj.conf.ConnectionUrl.Type.MULTI_HOST_CONNECTION_AWS;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.IP_ADDRESS;
+import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.OTHER;
+
 public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   public static final int WRITER_INDEX = 0;
   public static final String METHOD_SET_READ_ONLY = "setReadOnly";
 
   private final ICurrentConnectionProvider currentConnectionProvider;
+  private final ITopologyService topologyService;
   private final IConnectionProvider connectionProvider;
+  private final RdsHostUtils rdsHostUtils;
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
@@ -66,24 +76,40 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
-    this(currentConnectionProvider, new BasicConnectionProvider(), propertySet, nextPlugin, logger);
+    this(
+        currentConnectionProvider,
+        new AuroraTopologyService(logger),
+        new BasicConnectionProvider(),
+        new RdsHostUtils(logger),
+        propertySet,
+        nextPlugin,
+        logger);
   }
 
   ReadWriteSplittingPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
+      ITopologyService topologyService,
       IConnectionProvider connectionProvider,
+      RdsHostUtils rdsHostUtils,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
     this.currentConnectionProvider = currentConnectionProvider;
+    this.topologyService = topologyService;
     this.connectionProvider = connectionProvider;
+    this.rdsHostUtils = rdsHostUtils;
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
   }
 
   @Override
-  public Object execute(Class<?> methodInvokeOn, String methodName, Callable<?> executeSqlFunc, Object[] args) throws Exception {
+  public Object execute(
+      Class<?> methodInvokeOn,
+      String methodName,
+      Callable<?> executeSqlFunc,
+      Object[] args) throws Exception {
+
     if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
     }
@@ -141,9 +167,58 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   @Override
   public void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException {
-    this.hosts.addAll(connectionUrl.getHostsList());
     this.nextPlugin.openInitialConnection(connectionUrl);
-    this.writerConnection = this.currentConnectionProvider.getCurrentConnection();
+    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    if (currentConnection == null) {
+      return;
+    }
+
+    if (MULTI_HOST_CONNECTION_AWS.equals(connectionUrl.getType())) {
+      this.hosts.addAll(connectionUrl.getHostsList());
+      HostInfo currentHost = this.rdsHostUtils.getHostInfo(this.hosts, currentConnection.getHostPortPair());
+      updateInternalConnections(currentConnection, currentHost);
+      return;
+    }
+
+    final HostInfo hostInfo = this.currentConnectionProvider.getCurrentHostInfo();
+    final String hostPattern = this.propertySet.getStringProperty(PropertyKey.clusterInstanceHostPattern).getValue();
+    final RdsHost rdsHost;
+
+    if (!StringUtils.isNullOrEmpty(hostPattern)) {
+      rdsHost = this.rdsHostUtils.getRdsHostFromHostPattern(this.propertySet, hostInfo, hostPattern);
+    } else {
+      rdsHost = this.rdsHostUtils.getRdsHost(this.propertySet, hostInfo);
+    }
+
+    final RdsUrlType rdsUrlType = rdsHost.getUrlType();
+    final String clusterId = rdsHost.getClusterId();
+    if (clusterId != null) {
+      this.topologyService.setClusterId(clusterId);
+    }
+    this.topologyService.setClusterInstanceTemplate(rdsHost.getClusterInstanceTemplate());
+
+    final List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
+    if (Util.isNullOrEmpty(topology)) {
+      this.hosts.addAll(connectionUrl.getHostsList());
+      return;
+    }
+    this.hosts = topology;
+
+    if (StringUtils.isNullOrEmpty(hostPattern) &&
+        (IP_ADDRESS.equals(rdsUrlType) || OTHER.equals(rdsUrlType))) {
+      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
+    }
+
+    updateInternalConnections(currentConnection, topologyService.getHostByName(currentConnection));
+  }
+
+  private void updateInternalConnections(JdbcConnection currentConnection, HostInfo currentHost) {
+    final int currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost.getHostPortPair());
+    if (currentHostIndex == 0) {
+      this.writerConnection = currentConnection;
+    } else if (currentHostIndex != -1) {
+      this.readerConnection = currentConnection;
+    }
   }
 
   @Override
@@ -229,7 +304,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         return;
       }
 
-      final RuntimeProperty<Boolean> sourceUseLocalSessionState = source.getPropertySet().getBooleanProperty(PropertyKey.useLocalSessionState);
+      final RuntimeProperty<Boolean> sourceUseLocalSessionState =
+          source.getPropertySet().getBooleanProperty(PropertyKey.useLocalSessionState);
       final boolean prevUseLocalSessionState = sourceUseLocalSessionState.getValue();
       sourceUseLocalSessionState.setValue(true);
 
@@ -256,7 +332,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    final HostInfo readerHostInfo = getReaderHostInfo();
+    final HostInfo readerHostInfo = this.rdsHostUtils.getHostInfo(this.hosts, this.readerConnection.getHostPortPair());
     if (readerHostInfo == null) {
       if (!isConnectionUsable(currentConnection)) {
         throw new SQLException(
@@ -296,16 +372,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       int randomReaderIndex = (int) (Math.random() * ((maxReaderIndex - minReaderIndex) + 1)) + minReaderIndex;
       this.readerConnection = this.connectionProvider.connect(this.hosts.get(randomReaderIndex));
     }
-  }
-
-  private HostInfo getReaderHostInfo() {
-    final String connAddress = this.readerConnection.getHostPortPair();
-    for (HostInfo host : this.hosts) {
-      if (host.getHostPortPair().equals(connAddress)) {
-        return host;
-      }
-    }
-    return null;
   }
 
   private boolean isConnectionUsable(JdbcConnection connection) throws SQLException {
