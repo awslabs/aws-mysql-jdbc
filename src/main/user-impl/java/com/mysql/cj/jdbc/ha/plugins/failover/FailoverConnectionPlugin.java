@@ -320,8 +320,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private void validateConnection() throws SQLException {
-    this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()).getHostPortPair());
+    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    if (currentConnection == null) {
+      this.currentHostIndex = NO_CONNECTION_INDEX;
+    } else {
+      final HostInfo currentHost = topologyService.getHostByName(currentConnection);
+      this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
+    }
+
     if (!isConnected()) {
       pickNewConnection();
       return;
@@ -381,7 +387,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private int getCandidateReaderForInitialConnection() {
     int lastUsedReaderIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getLastUsedReaderHost().getHostPortPair());
+        topologyService.getLastUsedReaderHost());
     if (lastUsedReaderIndex != NO_CONNECTION_INDEX) {
       metricsContainer.registerUseLastConnectedReader(true);
       return lastUsedReaderIndex;
@@ -845,9 +851,11 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void fetchTopology() throws SQLException {
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
-    if (!Util.isNullOrEmpty(topology)) {
-      this.hosts = topology;
+    if (currentConnection != null) {
+      List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
+      if (!Util.isNullOrEmpty(topology)) {
+        this.hosts = topology;
+      }
     }
 
     this.isClusterTopologyAvailable = !Util.isNullOrEmpty(this.hosts);
@@ -857,8 +865,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
             new Object[] {"isClusterTopologyAvailable",
                 this.isClusterTopologyAvailable}));
     this.isMultiWriterCluster = this.topologyService.isMultiWriterCluster();
-    this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()).getHostPortPair());
+
+    if (currentConnection == null) {
+      this.currentHostIndex = NO_CONNECTION_INDEX;
+    } else {
+      final HostInfo currentHost = topologyService.getHostByName(currentConnection);
+      this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
+    }
 
     if (this.isFailoverEnabled()) {
       logTopology();
