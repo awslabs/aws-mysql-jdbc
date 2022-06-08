@@ -522,7 +522,7 @@ You can include additional monitoring configurations by adding the prefix `monit
 
 The AWS JDBC Driver for MySQL supports usage of database credentials stored in the [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) through the AWS Secrets Manager Plugin. This plugin is optional and can be enabled with the `connectionPluginFactories` parameter as seen in the [connection plugin manager parameters table](#connection-plugin-manager-parameters). When a user creates a new connection with this plugin enabled, the plugin will retrieve the secret and the connection will be created using those credentials.
 
-> **Note:** To use this plugin, you must include the [Jackson Databind](https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind) and the [AWS SDK for Java](https://mvnrepository.com/artifact/software.amazon.awssdk/aws-sdk-java) dependencies in your project.
+> **Note:** To use this plugin, you must include the runtime dependencies [Jackson Databind](https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind) and [AWS Secrets Manager](https://mvnrepository.com/artifact/software.amazon.awssdk/secretsmanager) in your project.
 
 The following properties are required for the AWS Secrets Manager Plugin to retrieve secrets.
 
