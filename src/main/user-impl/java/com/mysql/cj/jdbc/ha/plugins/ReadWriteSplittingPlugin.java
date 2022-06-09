@@ -46,6 +46,7 @@ import com.mysql.cj.util.Util;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -53,6 +54,7 @@ import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.IP_ADDRESS;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.OTHER;
 
 public class ReadWriteSplittingPlugin implements IConnectionPlugin {
+  public static final int NO_CONNECTION_INDEX = -1;
   public static final int WRITER_INDEX = 0;
   public static final String METHOD_SET_READ_ONLY = "setReadOnly";
 
@@ -65,10 +67,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   private final Log logger;
 
   private boolean inTransaction = false;
-  private boolean readOnly = false;
   private List<HostInfo> hosts = new ArrayList<>();
   private JdbcConnection writerConnection;
   private JdbcConnection readerConnection;
+  private int currentHostIndex = NO_CONNECTION_INDEX;
 
   public ReadWriteSplittingPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
@@ -112,7 +114,35 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
     }
-    return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+    try {
+      return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+    } catch (SQLException e) {
+      final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+      final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
+      updateTopology(currentConnection, currentHost);
+      updateInternalConnections(currentConnection, currentHost);
+      throw e;
+    }
+  }
+
+  private void updateTopology(JdbcConnection currentConnection, HostInfo currentHost) {
+    try {
+      final List<HostInfo> hosts = this.topologyService.getTopology(currentConnection, false);
+      if (!Util.isNullOrEmpty(hosts)) {
+        this.hosts = hosts;
+        return;
+      }
+    } catch (SQLException e) {
+      // do nothing
+    }
+
+    final int oldHostIndex = this.currentHostIndex;
+    final int newHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
+    if (oldHostIndex == WRITER_INDEX && newHostIndex > WRITER_INDEX) {
+      // The old host was a writer; we have failed over to a new writer.
+      // Update the host list with the new writer at the beginning.
+      Collections.swap(this.hosts, oldHostIndex, newHostIndex);
+    }
   }
 
   void switchConnectionIfRequired(Boolean readOnly) throws SQLException {
@@ -154,13 +184,15 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         }
       }
     }
-    this.readOnly = readOnly;
   }
 
-  private void changeReaderConnectionTo(JdbcConnection newConnection) throws SQLException {
-    if (this.readerConnection != newConnection && this.readerConnection != null) {
-      this.readerConnection.close();
-    }
+  private void changeWriterConnectionTo(JdbcConnection newConnection) {
+    closeInternalConnection(this.writerConnection, newConnection);
+    this.writerConnection = newConnection;
+  }
+
+  private void changeReaderConnectionTo(JdbcConnection newConnection) {
+    closeInternalConnection(this.readerConnection, newConnection);
     this.readerConnection = newConnection;
   }
 
@@ -210,20 +242,20 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    final int currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
-    if (currentHostIndex == 0) {
-      this.writerConnection = currentConnection;
+    this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
+    if (this.currentHostIndex == 0) {
+      changeWriterConnectionTo(currentConnection);
       if (this.hosts.size() == 1) {
-        this.readerConnection = currentConnection;
+        changeReaderConnectionTo(currentConnection);
       }
-    } else if (currentHostIndex != RdsHostUtils.NO_CONNECTION_INDEX) {
-      this.readerConnection = currentConnection;
+    } else if (this.currentHostIndex != NO_CONNECTION_INDEX) {
+      changeReaderConnectionTo(currentConnection);
     }
   }
 
   @Override
   public void releaseResources() {
-    JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     closeInternalConnection(this.readerConnection, currentConnection);
     closeInternalConnection(this.writerConnection, currentConnection);
 
@@ -232,7 +264,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   private void closeInternalConnection(JdbcConnection internalConnection, JdbcConnection currentConnection) {
     try {
-      if (internalConnection != currentConnection && !internalConnection.isClosed()) {
+      if (internalConnection != null && internalConnection != currentConnection && !internalConnection.isClosed()) {
         internalConnection.close();
       }
     } catch (SQLException e) {
@@ -256,8 +288,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     return this.hosts;
   }
 
-  boolean getReadOnly() { return this.readOnly; }
-
   private boolean isWriterConnection() {
     final JdbcConnection conn = this.currentConnectionProvider.getCurrentConnection();
     return conn != null && conn == this.writerConnection;
@@ -276,6 +306,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       syncSessionStateOnReadWriteSplit(currentConnection, this.writerConnection);
       final HostInfo writerHostInfo = this.hosts.get(WRITER_INDEX);
       this.currentConnectionProvider.setCurrentConnection(this.writerConnection, writerHostInfo);
+      this.currentHostIndex = WRITER_INDEX;
     }
   }
 
@@ -332,8 +363,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    final HostInfo readerHostInfo = this.rdsHostUtils.getHostInfo(this.hosts, this.readerConnection.getHostPortPair());
-    if (readerHostInfo == null) {
+    final int readerHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, this.readerConnection.getHostPortPair());
+    if (readerHostIndex == NO_CONNECTION_INDEX) {
       if (!isConnectionUsable(currentConnection)) {
         throw new SQLException(
             Messages.getString("ReadWriteSplittingPlugin.5"),
@@ -346,7 +377,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     syncSessionStateOnReadWriteSplit(currentConnection, this.readerConnection);
+    final HostInfo readerHostInfo = this.hosts.get(readerHostIndex);
     this.currentConnectionProvider.setCurrentConnection(this.readerConnection, readerHostInfo);
+    this.currentHostIndex = readerHostIndex;
   }
 
   private void initializeReaderConnection(JdbcConnection currentConnection) throws SQLException {
