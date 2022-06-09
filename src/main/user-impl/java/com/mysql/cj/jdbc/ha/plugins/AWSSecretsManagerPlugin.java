@@ -49,8 +49,10 @@ import java.util.concurrent.Callable;
 public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   static final String SECRET_ID_PROPERTY = "secretsManagerSecretId";
   static final String REGION_PROPERTY = "secretsManagerRegion";
-  private static final String ERROR_MISSING_DEPENDENCY =
+  private static final String ERROR_MISSING_DEPENDENCY_SECRETS =
       "[AWSSecretsManagerPlugin] Required dependency 'AWS Java SDK for AWS Secrets Manager' is not on the classpath";
+  private static final String ERROR_MISSING_DEPENDENCY_JACKSON =
+      "[AWSSecretsManagerPlugin] Required dependency 'Jackson Databind' is not on the classpath";
   static final String ERROR_GET_SECRETS_FAILED =
       "[AWSSecretsManagerPlugin] Was not able to either fetch or read the database credentials from AWS Secrets Manager. Ensure the correct secretId and region properties have been provided";
   static final String SQLSTATE_ACCESS_ERROR = "28000";
@@ -91,8 +93,15 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     try {
       Class.forName("software.amazon.awssdk.services.secretsmanager.SecretsManagerClient");
     } catch (ClassNotFoundException e) {
-      logger.logError(ERROR_MISSING_DEPENDENCY);
-      throw new SQLException(ERROR_MISSING_DEPENDENCY);
+      logger.logError(ERROR_MISSING_DEPENDENCY_SECRETS);
+      throw new SQLException(ERROR_MISSING_DEPENDENCY_SECRETS);
+    }
+
+    try {
+      Class.forName("com.fasterxml.jackson.databind.ObjectMapper");
+    } catch (ClassNotFoundException e) {
+      logger.logError(ERROR_MISSING_DEPENDENCY_JACKSON);
+      throw new SQLException(ERROR_MISSING_DEPENDENCY_JACKSON);
     }
 
     this.nextPlugin = nextPlugin;
@@ -117,13 +126,13 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   @Override
   public void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException {
     final Pair<String, Region> secretKey = Pair.of(secretId, region);
-    final Properties updatedProperties = new Properties();
-    updatedProperties.putAll(connectionUrl.getOriginalProperties());
+    final Properties properties = new Properties();
+    properties.putAll(connectionUrl.getOriginalProperties());
     Secret secret = SECRET_CACHE.get(secretKey);
 
     try {
       // Attempt to open initial connection with cached secret.
-      attemptConnectionWithSecrets(updatedProperties, secret, connectionUrl);
+      attemptConnectionWithSecrets(properties, secret, connectionUrl);
 
     } catch (SQLException connectionFailedException) {
       // Rethrow the exception unless it was because user access was denied.
@@ -141,22 +150,19 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
         }
 
         SECRET_CACHE.put(secretKey, secret);
-        attemptConnectionWithSecrets(updatedProperties, secret, connectionUrl);
+        attemptConnectionWithSecrets(properties, secret, connectionUrl);
       }
     }
   }
 
   private void attemptConnectionWithSecrets(Properties props, Secret secret, ConnectionUrl connectionUrl) throws SQLException {
-    updateConnectionProperties(props, secret);
-    final ConnectionUrl newConnectionUrl = ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(), props);
-    this.nextPlugin.openInitialConnection(newConnectionUrl);
-  }
-
-  private void updateConnectionProperties(Properties props, Secret secret) {
     if (secret != null) {
       props.put("user", secret.getUsername());
       props.put("password", secret.getPassword());
     }
+
+    final ConnectionUrl newConnectionUrl = ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(), props);
+    this.nextPlugin.openInitialConnection(newConnectionUrl);
   }
 
   Secret getCurrentCredentials() throws SecretsManagerException, JsonProcessingException {
