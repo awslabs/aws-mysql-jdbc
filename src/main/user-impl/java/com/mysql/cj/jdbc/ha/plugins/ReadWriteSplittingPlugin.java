@@ -220,7 +220,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     final int currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost.getHostPortPair());
     if (currentHostIndex == 0) {
       this.writerConnection = currentConnection;
-    } else if (currentHostIndex != -1) {
+    } else if (currentHostIndex != RdsHostUtils.NO_CONNECTION_INDEX) {
       this.readerConnection = currentConnection;
     }
   }

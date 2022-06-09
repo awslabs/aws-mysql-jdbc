@@ -227,7 +227,7 @@ public class RdsHostUtils {
   }
 
   public int getHostIndex(List<HostInfo> hostList, HostInfo host) {
-    if (host == null) {
+    if (Util.isNullOrEmpty(hostList) || host == null) {
       return NO_CONNECTION_INDEX;
     }
     return getHostIndex(hostList, host.getHostPortPair());
@@ -248,7 +248,7 @@ public class RdsHostUtils {
   }
 
   public HostInfo getHostInfo(List<HostInfo> hostList, HostInfo host) {
-    if (host == null) {
+    if (Util.isNullOrEmpty(hostList) || host == null) {
       return null;
     }
     return getHostInfo(hostList, host.getHostPortPair());
@@ -259,9 +259,9 @@ public class RdsHostUtils {
       return null;
     }
 
-    for (HostInfo host : hostList) {
-      if (host.getHostPortPair().equals(hostPortPair)) {
-        return host;
+    for (HostInfo potentialMatch : hostList) {
+      if (potentialMatch.getHostPortPair().equals(hostPortPair)) {
+        return potentialMatch;
       }
     }
     return null;
