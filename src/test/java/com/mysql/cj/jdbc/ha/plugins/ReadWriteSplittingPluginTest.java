@@ -120,6 +120,7 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_trueFalse_threeHosts() throws SQLException {
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn,
@@ -153,6 +154,7 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_falseInTransaction() throws SQLException {
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn,
@@ -180,6 +182,7 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_trueTrue() throws SQLException {
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn,
@@ -316,6 +319,7 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_true() throws SQLException {
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn);
@@ -334,6 +338,7 @@ public class ReadWriteSplittingPluginTest {
   @Test
   public void testSetReadOnly_true_readerConnectionFailed() throws SQLException {
     when(mockConnectionProvider.connect(eq(defaultReaderHost))).thenThrow(SQLException.class);
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn);
@@ -409,6 +414,7 @@ public class ReadWriteSplittingPluginTest {
   @Test
   public void testSetReadOnly_trueFalse_zeroHosts() throws SQLException {
     when(mockWriterConn.isClosed()).thenReturn(true);
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn,
@@ -439,6 +445,7 @@ public class ReadWriteSplittingPluginTest {
   public void testSetReadOnly_false_writerConnectionFails() throws SQLException {
     when(mockConnectionProvider.connect(eq(defaultWriterHost))).thenThrow(SQLException.class);
     when(mockWriterConn.isClosed()).thenReturn(true);
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn,
@@ -467,6 +474,7 @@ public class ReadWriteSplittingPluginTest {
   public void testSetReadOnly_true_readerConnectionFails_writerClosed() throws SQLException {
     when(mockConnectionProvider.connect(eq(defaultReaderHost))).thenThrow(SQLException.class);
     when(mockWriterConn.isClosed()).thenReturn(true);
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn);

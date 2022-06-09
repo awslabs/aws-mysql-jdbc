@@ -175,7 +175,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if (MULTI_HOST_CONNECTION_AWS.equals(connectionUrl.getType())) {
       this.hosts.addAll(connectionUrl.getHostsList());
-      final HostInfo currentHost = this.rdsHostUtils.getHostInfo(this.hosts, currentConnection.getHostPortPair());
+      final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
       updateInternalConnections(currentConnection, currentHost);
       return;
     }
@@ -213,11 +213,11 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   private void updateInternalConnections(JdbcConnection currentConnection, HostInfo currentHost) {
-    if (currentHost == null) {
+    if (currentConnection == null || currentHost == null) {
       return;
     }
 
-    final int currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost.getHostPortPair());
+    final int currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
     if (currentHostIndex == 0) {
       this.writerConnection = currentConnection;
     } else if (currentHostIndex != RdsHostUtils.NO_CONNECTION_INDEX) {
