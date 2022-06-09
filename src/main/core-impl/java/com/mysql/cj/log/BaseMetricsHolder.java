@@ -94,9 +94,9 @@ public class BaseMetricsHolder {
         if (histogramCounts == null) {
             createInitialHistogram(histogramBreakpoints, currentLowerBound, currentUpperBound);
         } else {
-            for (int i = 0; i < HISTOGRAM_BUCKETS; i++) {
+            for (int i = 1; i < HISTOGRAM_BUCKETS; i++) {
                 if (histogramBreakpoints[i] >= value) {
-                    histogramCounts[i] += numberOfTimes;
+                    histogramCounts[i - 1] += numberOfTimes;
 
                     break;
                 }
