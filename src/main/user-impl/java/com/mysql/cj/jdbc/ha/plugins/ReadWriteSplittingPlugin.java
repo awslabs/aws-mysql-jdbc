@@ -43,6 +43,7 @@ import com.mysql.cj.jdbc.ha.plugins.failover.ITopologyService;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
+import org.apache.commons.lang3.ObjectUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -199,7 +200,12 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     final List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
     if (Util.isNullOrEmpty(topology)) {
-      this.hosts.addAll(connectionUrl.getHostsList());
+      HostInfo currentHost =
+          ObjectUtils.firstNonNull(this.currentConnectionProvider.getCurrentHostInfo(), connectionUrl.getMainHost());
+      if (currentHost != null) {
+        this.hosts.add(currentHost);
+      }
+      updateInternalConnections(currentConnection, currentHost);
       return;
     }
     this.hosts = topology;
@@ -220,6 +226,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     final int currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
     if (currentHostIndex == 0) {
       this.writerConnection = currentConnection;
+      if (this.hosts.size() == 1) {
+        this.readerConnection = currentConnection;
+      }
     } else if (currentHostIndex != RdsHostUtils.NO_CONNECTION_INDEX) {
       this.readerConnection = currentConnection;
     }
