@@ -224,48 +224,40 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_true_zeroHosts() throws SQLException {
-    final String url = "jdbc:mysql:aws:///test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-
-    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost());
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
-    plugin.openInitialConnection(connUrl);
+    plugin.openInitialConnection(defaultConnUrl);
     final List<HostInfo> hosts = plugin.getHosts();
     hosts.clear();
 
     plugin.switchConnectionIfRequired(true);
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
-    assertNull(plugin.getWriterConnection());
+    assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertEquals(mockWriterConn, plugin.getReaderConnection());
     assertTrue(plugin.getReadOnly());
   }
 
   @Test
   public void testSetReadOnly_true_zeroHosts_writerClosed() throws SQLException {
-    final String url = "jdbc:mysql:aws:///test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-
-    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost());
+    when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(defaultWriterHost);
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
         mockWriterConn,
         mockWriterConn, mockWriterConn, mockWriterConn);
     when(mockWriterConn.isClosed()).thenReturn(true);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
-    plugin.openInitialConnection(connUrl);
+    plugin.openInitialConnection(defaultConnUrl);
     final List<HostInfo> hosts = plugin.getHosts();
     hosts.clear();
 
     final SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(true));
     assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
-    assertNull(plugin.getWriterConnection());
+    assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertNull(plugin.getReaderConnection());
     assertFalse(plugin.getReadOnly());
   }
