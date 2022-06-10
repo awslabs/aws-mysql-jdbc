@@ -58,7 +58,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ReadWriteSplittingPluginTest {
-  private static final int WRITER_INDEX = 0;
   @Mock private ICurrentConnectionProvider mockCurrentConnectionProvider;
   @Mock private ITopologyService mockTopologyService;
   @Mock private IConnectionProvider mockConnectionProvider;
@@ -67,14 +66,16 @@ public class ReadWriteSplittingPluginTest {
   @Mock private ConnectionImpl mockReaderConn;
   @Mock private Log mockLog;
   @Mock private ConnectionImpl mockClosedWriterConn;
-  private final RdsHostUtils rdsHostUtils = new RdsHostUtils(mockLog); 
+
+  private static final int WRITER_INDEX = 0;
   private static final String defaultUrl = "jdbc:mysql:aws://writer,reader1/test?" +
       "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-  private static final ConnectionUrl defaultConnUrl =
+  private final RdsHostUtils rdsHostUtils = new RdsHostUtils(mockLog);
+  private final ConnectionUrl defaultConnUrl =
       ConnectionUrl.getConnectionUrlInstance(defaultUrl, new Properties());
-  private static final List<HostInfo> defaultHosts = defaultConnUrl.getHostsList();
-  private static final HostInfo defaultWriterHost = defaultHosts.get(WRITER_INDEX);
-  private static final HostInfo defaultReaderHost = defaultHosts.get(WRITER_INDEX + 1);
+  private final List<HostInfo> defaultHosts = defaultConnUrl.getHostsList();
+  private final HostInfo defaultWriterHost = defaultHosts.get(WRITER_INDEX);
+  private final HostInfo defaultReaderHost = defaultHosts.get(WRITER_INDEX + 1);
   private final JdbcPropertySet defaultProps = new JdbcPropertySetImpl();
   private AutoCloseable closeable;
 
