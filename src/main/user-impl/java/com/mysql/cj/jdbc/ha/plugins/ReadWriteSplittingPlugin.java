@@ -43,14 +43,12 @@ import com.mysql.cj.jdbc.ha.plugins.failover.ITopologyService;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
-import org.apache.commons.lang3.ObjectUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import static com.mysql.cj.conf.ConnectionUrl.Type.MULTI_HOST_CONNECTION_AWS;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.IP_ADDRESS;
 import static com.mysql.cj.jdbc.ha.plugins.RdsUrlType.OTHER;
 
@@ -174,21 +172,14 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    if (MULTI_HOST_CONNECTION_AWS.equals(connectionUrl.getType())) {
-      this.hosts.addAll(connectionUrl.getHostsList());
-      final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-      updateInternalConnections(currentConnection, currentHost);
-      return;
-    }
-
-    final HostInfo hostInfo = this.currentConnectionProvider.getCurrentHostInfo();
+    final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
     final String hostPattern = this.propertySet.getStringProperty(PropertyKey.clusterInstanceHostPattern).getValue();
     final RdsHost rdsHost;
 
     if (!StringUtils.isNullOrEmpty(hostPattern)) {
-      rdsHost = this.rdsHostUtils.getRdsHostFromHostPattern(this.propertySet, hostInfo, hostPattern);
+      rdsHost = this.rdsHostUtils.getRdsHostFromHostPattern(this.propertySet, currentHost, hostPattern);
     } else {
-      rdsHost = this.rdsHostUtils.getRdsHost(this.propertySet, hostInfo);
+      rdsHost = this.rdsHostUtils.getRdsHost(this.propertySet, currentHost);
     }
 
     final RdsUrlType rdsUrlType = rdsHost.getUrlType();
@@ -200,11 +191,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     final List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
     if (Util.isNullOrEmpty(topology)) {
-      HostInfo currentHost =
-          ObjectUtils.firstNonNull(this.currentConnectionProvider.getCurrentHostInfo(), connectionUrl.getMainHost());
-      if (currentHost != null) {
-        this.hosts.add(currentHost);
-      }
+      this.hosts.addAll(connectionUrl.getHostsList());
       updateInternalConnections(currentConnection, currentHost);
       return;
     }
