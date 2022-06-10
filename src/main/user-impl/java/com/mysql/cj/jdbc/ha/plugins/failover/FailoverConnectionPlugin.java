@@ -320,8 +320,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private void validateConnection() throws SQLException {
-    this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
+    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    if (currentConnection == null) {
+      this.currentHostIndex = NO_CONNECTION_INDEX;
+    } else {
+      final HostInfo currentHost = topologyService.getHostByName(currentConnection);
+      this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
+    }
+
     if (!isConnected()) {
       pickNewConnection();
       return;
@@ -845,9 +851,11 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void fetchTopology() throws SQLException {
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
-    if (!Util.isNullOrEmpty(topology)) {
-      this.hosts = topology;
+    if (currentConnection != null) {
+      List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
+      if (!Util.isNullOrEmpty(topology)) {
+        this.hosts = topology;
+      }
     }
 
     this.isClusterTopologyAvailable = !Util.isNullOrEmpty(this.hosts);
@@ -857,8 +865,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
             new Object[] {"isClusterTopologyAvailable",
                 this.isClusterTopologyAvailable}));
     this.isMultiWriterCluster = this.topologyService.isMultiWriterCluster();
-    this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts,
-        topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
+
+    if (currentConnection == null) {
+      this.currentHostIndex = NO_CONNECTION_INDEX;
+    } else {
+      final HostInfo currentHost = topologyService.getHostByName(currentConnection);
+      this.currentHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
+    }
 
     if (this.isFailoverEnabled()) {
       logTopology();

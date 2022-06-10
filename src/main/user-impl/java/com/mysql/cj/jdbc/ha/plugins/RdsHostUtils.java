@@ -227,17 +227,44 @@ public class RdsHostUtils {
   }
 
   public int getHostIndex(List<HostInfo> hostList, HostInfo host) {
-    if (host == null || Util.isNullOrEmpty(hostList)) {
+    if (Util.isNullOrEmpty(hostList) || host == null) {
+      return NO_CONNECTION_INDEX;
+    }
+    return getHostIndex(hostList, host.getHostPortPair());
+  }
+
+  public int getHostIndex(List<HostInfo> hostList, String hostPortPair) {
+    if (Util.isNullOrEmpty(hostList) || StringUtils.isNullOrEmpty(hostPortPair)) {
       return NO_CONNECTION_INDEX;
     }
 
     for (int i = 0; i < hostList.size(); i++) {
       HostInfo potentialMatch = hostList.get(i);
-      if (potentialMatch != null && potentialMatch.equalHostPortPair(host)) {
+      if (hostPortPair.equals(potentialMatch.getHostPortPair())) {
         return i;
       }
     }
     return NO_CONNECTION_INDEX;
+  }
+
+  public HostInfo getHostInfo(List<HostInfo> hostList, HostInfo host) {
+    if (Util.isNullOrEmpty(hostList) || host == null) {
+      return null;
+    }
+    return getHostInfo(hostList, host.getHostPortPair());
+  }
+
+  public HostInfo getHostInfo(List<HostInfo> hostList, String hostPortPair) {
+    if (Util.isNullOrEmpty(hostList) || StringUtils.isNullOrEmpty(hostPortPair)) {
+      return null;
+    }
+
+    for (HostInfo potentialMatch : hostList) {
+      if (potentialMatch.getHostPortPair().equals(hostPortPair)) {
+        return potentialMatch;
+      }
+    }
+    return null;
   }
 
   private void logAndThrow(String msg) throws SQLException {
