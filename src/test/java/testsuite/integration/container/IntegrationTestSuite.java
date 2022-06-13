@@ -26,6 +26,7 @@
 
 package testsuite.integration.container;
 
+import com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPlugin;
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 
@@ -37,6 +38,7 @@ import org.junit.platform.suite.api.Suite;
     AuroraMysqlFailoverIntegrationTest.class,
     AuroraMysqlHardFailureIntegrationTest.class,
     ReplicationFailoverIntegrationTest.class,
-    HikariCPIntegrationTest.class
+    HikariCPIntegrationTest.class,
+    ReadWriteSplittingIntegrationTest.class
 })
 public class IntegrationTestSuite {}
