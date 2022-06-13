@@ -175,6 +175,29 @@ export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.0.0.jar
 ```
 Then, follow the steps listed above to update your DBeaver client settings.
 
+### Using a Snapshot of the Driver
+If there is an unreleased feature you would like to try, it may be available in a snapshot build of the driver. Snapshot builds can be found [here](https://aws.oss.sonatype.org/content/repositories/snapshots/software/aws/rds/aws-mysql-jdbc/). To use a snapshot, find the desired `.jar` file, which will be named `aws-mysql-jdbc-<version>-<date>-<time>-<snapshot-number>.jar`, and add it to your project as a dependency.
+
+#### As a Maven dependency
+```xml
+<dependencies>
+  <dependency>
+    <groupId>software.aws.rds</groupId>
+    <artifactId>aws-mysql-jdbc</artifactId>
+    <version>1.0.0</version>
+    <scope>system</scope>
+    <systemPath>path-to-snapshot-jar</systemPath>
+  </dependency>
+</dependencies>
+```
+
+#### As a Gradle dependency
+```gradle
+dependencies {
+    implementation(files("path-to-snapshot-jar"))
+}
+```
+
 
 ### Using the AWS JDBC Driver for MySQL
 The AWS JDBC Driver for MySQL is drop-in compatible, so usage is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight driver usage specific to failover.
@@ -498,6 +521,8 @@ You can include additional monitoring configurations by adding the prefix `monit
 ## AWS Secrets Manager Plugin
 
 The AWS JDBC Driver for MySQL supports usage of database credentials stored in the [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) through the AWS Secrets Manager Plugin. This plugin is optional and can be enabled with the `connectionPluginFactories` parameter as seen in the [connection plugin manager parameters table](#connection-plugin-manager-parameters). When a user creates a new connection with this plugin enabled, the plugin will retrieve the secret and the connection will be created using those credentials.
+
+> **Note:** To use this plugin, you must include the runtime dependencies [Jackson Databind](https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind) and [AWS Secrets Manager](https://mvnrepository.com/artifact/software.amazon.awssdk/secretsmanager) in your project.
 
 The following properties are required for the AWS Secrets Manager Plugin to retrieve secrets.
 
