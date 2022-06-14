@@ -26,16 +26,6 @@
 
 package com.mysql.cj.jdbc.ha;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
@@ -44,6 +34,7 @@ import com.mysql.cj.jdbc.ha.plugins.ConnectionPluginManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -52,6 +43,17 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * ClusterAwareConnectionProxyTest class.
@@ -100,6 +102,21 @@ public class ConnectionProxyTest {
   }
 
   @Test
+  public void testInvokeClose()
+      throws Throwable {
+    final ConnectionUrl conStr =
+        ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
+    final ConnectionProxy proxy = getConnectionProxy(conStr);
+    assertSame(mockConnection, proxy.getCurrentConnection());
+
+    proxy.invoke(mockConnection, Connection.class.getMethod("close"), null);
+
+    InOrder inOrder = inOrder(mockPluginManager);
+    inOrder.verify(mockPluginManager, times(1)).execute(eq(mockConnection.getClass()), eq("close"), any(), isNull());
+    inOrder.verify(mockPluginManager, times(1)).releaseResources();
+  }
+
+  @Test
   public void testPluginDisabled() throws SQLException {
     final String url =
         "jdbc:mysql:aws://somehost:1234/test?"
@@ -114,26 +131,7 @@ public class ConnectionProxyTest {
   }
 
   @Test
-  public void testSetCurrentConnectionDoesNotThrowSQLException() throws SQLException {
-    when(mockConnection.isClosed()).thenReturn(false);
-    doThrow(new SQLException()).when(mockConnection).close();
-
-    final ConnectionUrl conStr =
-        ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
-    final ConnectionProxy proxy = getConnectionProxy(conStr);
-
-    assertSame(mockConnection, proxy.getCurrentConnection());
-
-    assertDoesNotThrow(() -> proxy.setCurrentConnection(mockConnection2, mockHostInfo));
-
-    assertSame(mockConnection2, proxy.getCurrentConnection());
-    assertSame(mockHostInfo, proxy.getCurrentHostInfo());
-  }
-
-  @Test
-  public void testSetCurrentConnectionWithClosedConnection() throws SQLException {
-    when(mockConnection.isClosed()).thenReturn(false);
-
+  public void testSetCurrentConnection() throws SQLException {
     final ConnectionUrl conStr =
         ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
     final ConnectionProxy proxy = getConnectionProxy(conStr);
@@ -142,7 +140,6 @@ public class ConnectionProxyTest {
 
     proxy.setCurrentConnection(mockConnection2, mockHostInfo);
 
-    verify(mockConnection).close();
     assertSame(mockConnection2, proxy.getCurrentConnection());
     assertSame(mockHostInfo, proxy.getCurrentHostInfo());
   }
