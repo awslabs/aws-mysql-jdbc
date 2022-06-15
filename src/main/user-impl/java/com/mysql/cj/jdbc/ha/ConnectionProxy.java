@@ -59,7 +59,8 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
   /** Null logger shared by all connections at startup. */
   protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
-  static final String METHOD_EQUALS = "equals";
+  private static final String METHOD_CLOSE = "close";
+  private static final String METHOD_EQUALS = "equals";
   private static final String METHOD_HASH_CODE = "hashCode";
   private final JdbcPropertySetImpl connProps = new JdbcPropertySetImpl();
   /** The logger we're going to use. */
@@ -161,14 +162,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
   @Override
   public void setCurrentConnection(JdbcConnection connection, HostInfo info) {
-    try {
-      if (this.currentConnection != null && !this.currentConnection.isClosed()) {
-        this.currentConnection.close();
-      }
-    } catch (SQLException sqlEx) {
-      // ignore
-    }
-
     this.currentConnection = connection;
     this.currentHostInfo = info;
   }
@@ -190,6 +183,11 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
           methodName,
           () -> method.invoke(currentConnection, args),
           argsCopy);
+
+      if (METHOD_CLOSE.equals(methodName)) {
+        pluginManager.releaseResources();
+      }
+
       return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (Exception e) {
       // Check if the captured exception must be wrapped by an unchecked exception.
