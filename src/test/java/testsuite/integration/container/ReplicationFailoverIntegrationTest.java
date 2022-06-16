@@ -108,42 +108,6 @@ public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBa
     rdsClient.rebootDBInstance((builder) -> builder.dbInstanceIdentifier(instance));
   }
 
-  private void failoverClusterWithATargetInstance(String targetInstanceId)
-      throws InterruptedException {
-    waitUntilClusterHasRightState();
-
-    while (true) {
-      try {
-        rdsClient.failoverDBCluster(
-          (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER)
-            .targetDBInstanceIdentifier(targetInstanceId));
-        break;
-      } catch (Exception e) {
-        Thread.sleep(3000);
-      }
-    }
-  }
-
-  private void waitUntilClusterHasRightState() throws InterruptedException {
-    String status = getDBCluster().status();
-    while (!"available".equalsIgnoreCase(status)) {
-      Thread.sleep(3000);
-      status = getDBCluster().status();
-    }
-  }
-
-  private void waitUntilFirstInstanceIsWriter() throws InterruptedException {
-    final String firstInstance = instanceIDs[0];
-    failoverClusterWithATargetInstance(firstInstance);
-    String clusterWriterId = getDBClusterWriterInstanceId();
-
-    while (!firstInstance.equals(clusterWriterId)) {
-      clusterWriterId = getDBClusterWriterInstanceId();
-      System.out.println("Writer is still " + clusterWriterId);
-      Thread.sleep(3000);
-    }
-  }
-
   @BeforeEach
   private void resetCluster() throws InterruptedException {
     waitUntilFirstInstanceIsWriter();

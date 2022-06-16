@@ -406,4 +406,75 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     }
 
   }
+
+  // Failover helpers
+  protected void failoverClusterAndWaitUntilWriterChanged(String clusterWriterId)
+      throws InterruptedException {
+    failoverCluster();
+    waitUntilWriterInstanceChanged(clusterWriterId);
+  }
+
+  protected void failoverCluster() throws InterruptedException {
+    waitUntilClusterHasRightState();
+    while (true) {
+      try {
+        rdsClient.failoverDBCluster((builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER));
+        break;
+      } catch (final Exception e) {
+        TimeUnit.MILLISECONDS.sleep(3000);
+      }
+    }
+  }
+
+  protected void failoverClusterToATargetAndWaitUntilWriterChanged(
+      String clusterWriterId, String targetInstanceId) throws InterruptedException {
+    failoverClusterWithATargetInstance(targetInstanceId);
+    waitUntilWriterInstanceChanged(clusterWriterId);
+  }
+
+  protected void failoverClusterWithATargetInstance(String targetInstanceId)
+      throws InterruptedException {
+    waitUntilClusterHasRightState();
+
+    while (true) {
+      try {
+        rdsClient.failoverDBCluster(
+            (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER)
+                .targetDBInstanceIdentifier(targetInstanceId));
+        break;
+      } catch (final Exception e) {
+        TimeUnit.MILLISECONDS.sleep(3000);
+      }
+    }
+  }
+
+  protected void waitUntilWriterInstanceChanged(String initialWriterInstanceId)
+      throws InterruptedException {
+    String nextClusterWriterId = getDBClusterWriterInstanceId();
+    while (initialWriterInstanceId.equals(nextClusterWriterId)) {
+      TimeUnit.MILLISECONDS.sleep(3000);
+      // Calling the RDS API to get writer Id.
+      nextClusterWriterId = getDBClusterWriterInstanceId();
+    }
+  }
+
+  protected void waitUntilClusterHasRightState() throws InterruptedException {
+    String status = getDBCluster().status();
+    while (!"available".equalsIgnoreCase(status)) {
+      TimeUnit.MILLISECONDS.sleep(3000);
+      status = getDBCluster().status();
+    }
+  }
+
+  protected void waitUntilFirstInstanceIsWriter() throws InterruptedException {
+    final String firstInstance = instanceIDs[0];
+    failoverClusterWithATargetInstance(firstInstance);
+    String clusterWriterId = getDBClusterWriterInstanceId();
+
+    while (!firstInstance.equals(clusterWriterId)) {
+      clusterWriterId = getDBClusterWriterInstanceId();
+      System.out.println("Writer is still " + clusterWriterId);
+      Thread.sleep(3000);
+    }
+  }
 }
