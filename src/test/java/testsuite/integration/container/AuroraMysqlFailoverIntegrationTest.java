@@ -31,6 +31,7 @@
 package testsuite.integration.container;
 
 import com.mysql.cj.conf.PropertyKey;
+import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -40,9 +41,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
-import eu.rekawek.toxiproxy.Proxy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

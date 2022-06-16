@@ -31,7 +31,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -107,7 +106,7 @@ public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegratio
     }
 
     @BeforeEach
-    private void validateCluster() throws InterruptedException, SQLException, IOException {
+    private void validateCluster() throws InterruptedException, SQLException {
         crashInstancesExecutorService = Executors.newFixedThreadPool(clusterSize);
         instancesToCrash.clear();
         for (final String id : instanceIDs) {
