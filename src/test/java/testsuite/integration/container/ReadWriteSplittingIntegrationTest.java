@@ -29,6 +29,7 @@
 
 package testsuite.integration.container;
 
+import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Test;
@@ -36,8 +37,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -100,7 +103,7 @@ public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBas
   public void test_failoverToNewWriter_setReadOnlyTrueFalse() throws SQLException, InterruptedException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
       // Kill all reader instances
       for (int i = 1; i < clusterSize; i++) {
         final String instanceId = instanceIDs[i];
@@ -148,7 +151,7 @@ public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBas
   public void test_failoverToNewReader_setReadOnlyFalseTrue() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PORT, initDefaultProxiedProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -212,7 +215,7 @@ public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBas
   public void test_failoverReaderToWriter_setReadOnlyTrueFalse() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PORT, initDefaultProxiedProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -258,67 +261,151 @@ public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBas
   }
 
   @Test
-  public void test_setReadOnlyFalseInTransaction_setAutocommitZeroSql() throws SQLException{
-    final String initialReaderId = instanceIDs[1];
+  public void test_setReadOnlyFalseInReadOnlyTransaction() throws SQLException{
+    final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt1 = conn.createStatement();
+      stmt1.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
+      stmt1.executeUpdate("CREATE TABLE test_splitting_readonly_transaction (id int not null primary key, text_field varchar(255) not null)");
+      stmt1.executeUpdate("INSERT INTO test_splitting_readonly_transaction VALUES (1, 'test_field value 1')");
+
+      conn.setReadOnly(true);
       String readerConnectionId = queryInstanceId(conn);
       assertTrue(isDBInstanceReader(readerConnectionId));
 
-      final Statement testStmt1 = conn.createStatement();
-      testStmt1.executeUpdate("SET autocommit = 0");
+      final Statement stmt2 = conn.createStatement();
+      stmt2.execute("START TRANSACTION READ ONLY");
+      stmt2.executeQuery("SELECT count(*) from test_splitting_readonly_transaction");
 
       final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
       assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, exception.getSQLState());
+
+      stmt2.execute("COMMIT");
+
+      conn.setReadOnly(false);
+      writerConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt3 = conn.createStatement();
+      stmt3.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
     }
   }
 
   @Test
   public void test_setReadOnlyFalseInTransaction_setAutocommitFalse() throws SQLException{
-    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL, MYSQL_PORT, initDefaultProps())) {
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt1 = conn.createStatement();
+      stmt1.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
+      stmt1.executeUpdate("CREATE TABLE test_splitting_readonly_transaction (id int not null primary key, text_field varchar(255) not null)");
+      stmt1.executeUpdate("INSERT INTO test_splitting_readonly_transaction VALUES (1, 'test_field value 1')");
+
+      conn.setReadOnly(true);
       String readerConnectionId = queryInstanceId(conn);
       assertTrue(isDBInstanceReader(readerConnectionId));
 
+      final Statement stmt2 = conn.createStatement();
       conn.setAutoCommit(false);
+      stmt2.executeQuery("SELECT count(*) from test_splitting_readonly_transaction");
 
       final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
       assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, exception.getSQLState());
+
+      stmt2.execute("COMMIT");
+
+      conn.setReadOnly(false);
+      writerConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt3 = conn.createStatement();
+      stmt3.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
     }
   }
 
   @Test
-  public void test_setReadOnlyFalseInTransaction_startTransaction() throws SQLException{
-    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL, MYSQL_PORT, initDefaultProps())) {
+  public void test_setReadOnlyFalseInTransaction_setAutocommitZero() throws SQLException{
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt1 = conn.createStatement();
+      stmt1.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
+      stmt1.executeUpdate("CREATE TABLE test_splitting_readonly_transaction (id int not null primary key, text_field varchar(255) not null)");
+      stmt1.executeUpdate("INSERT INTO test_splitting_readonly_transaction VALUES (1, 'test_field value 1')");
+
+      conn.setReadOnly(true);
       String readerConnectionId = queryInstanceId(conn);
       assertTrue(isDBInstanceReader(readerConnectionId));
 
-      final Statement testStmt1 = conn.createStatement();
-      testStmt1.executeUpdate("START TRANSACTION");
+      final Statement stmt2 = conn.createStatement();
+      stmt2.execute("SET autocommit = 0");
+      stmt2.executeQuery("SELECT count(*) from test_splitting_readonly_transaction");
 
       final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
       assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, exception.getSQLState());
+
+      stmt2.execute("COMMIT");
+
+      conn.setReadOnly(false);
+      writerConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt3 = conn.createStatement();
+      stmt3.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
     }
   }
 
   @Test
   public void test_setReadOnlyTrueInTransaction() throws SQLException{
-    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, initDefaultProps())) {
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
       String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
 
-      final Statement testStmt1 = conn.createStatement();
-      testStmt1.executeUpdate("SET autocommit = 0");
+      final Statement stmt1 = conn.createStatement();
+      stmt1.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
+      stmt1.executeUpdate("CREATE TABLE test_splitting_readonly_transaction (id int not null primary key, text_field varchar(255) not null)");
+      stmt1.execute("SET autocommit = 0");
+
+      final Statement stmt2 = conn.createStatement();
+      stmt2.executeUpdate("INSERT INTO test_splitting_readonly_transaction VALUES (1, 'test_field value 1')");
 
       assertDoesNotThrow(() -> conn.setReadOnly(true));
       writerConnectionId = queryInstanceId(conn);
       assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      stmt2.execute("COMMIT");
+      final ResultSet rs = stmt2.executeQuery("SELECT count(*) from test_splitting_readonly_transaction");
+      rs.next();
+      assertEquals(1, rs.getInt(1));
+
+      conn.setReadOnly(false);
+      stmt2.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
     }
   }
 
   @Test
   public void test_setReadOnlyTrue_allReadersDown() throws SQLException, IOException {
-    try (Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    String initialWriterId = instanceIDs[0];
+
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
       String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
       assertTrue(isDBInstanceWriter(currentConnectionId));
 
       // Kill all reader instances
@@ -346,7 +433,9 @@ public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyTrue_allInstancesDown() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    Properties props = initDefaultProxiedProps();
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10");
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
       String currentConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, currentConnectionId);
       assertTrue(isDBInstanceWriter(currentConnectionId));
@@ -362,8 +451,7 @@ public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBas
         }
       }
 
-      assertDoesNotThrow(() -> conn.setReadOnly(true));
-      final SQLException exception = assertThrows(SQLException.class, () -> queryInstanceId(conn));
+      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
       assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
     }
   }

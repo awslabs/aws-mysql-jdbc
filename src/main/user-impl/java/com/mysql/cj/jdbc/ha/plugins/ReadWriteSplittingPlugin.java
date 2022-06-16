@@ -117,12 +117,19 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     try {
       return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
     } catch (SQLException e) {
-      final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-      final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-      updateTopology(currentConnection, currentHost);
-      updateInternalConnections(currentConnection, currentHost);
+      if (isFailoverException(e)) {
+        final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+        final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
+        updateTopology(currentConnection, currentHost);
+        updateInternalConnections(currentConnection, currentHost);
+      }
       throw e;
     }
+  }
+
+  private boolean isFailoverException(SQLException e) {
+    return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(e.getSQLState())
+        || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(e.getSQLState());
   }
 
   private void updateTopology(JdbcConnection currentConnection, HostInfo currentHost) {
