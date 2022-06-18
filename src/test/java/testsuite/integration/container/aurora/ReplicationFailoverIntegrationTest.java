@@ -28,7 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Integration testing with Aurora MySQL replica failover logic.
  */
-public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest{
+public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /*
    * Before running these tests we need to initialize the test cluster as the following.
    *

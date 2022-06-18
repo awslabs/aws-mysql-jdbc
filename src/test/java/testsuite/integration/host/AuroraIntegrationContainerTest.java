@@ -173,7 +173,7 @@ public class AuroraIntegrationContainerTest {
     try {
       integrationTestContainer.execInContainer("dos2unix", "gradlew");
     } catch (InterruptedException | UnsupportedOperationException | IOException e) {
-      fail("Integration test container initialised incorrectly");
+      fail("Aurora integration test container initialised incorrectly");
     }
   }
 

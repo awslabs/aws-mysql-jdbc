@@ -24,7 +24,7 @@
  *
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

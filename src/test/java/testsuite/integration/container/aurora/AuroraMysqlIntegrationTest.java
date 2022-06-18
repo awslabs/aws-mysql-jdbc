@@ -24,7 +24,7 @@
  *
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ha.plugins.failover.IClusterAwareMetricsReporter;

@@ -670,12 +670,12 @@ Descriptions of the necessary environment variables is in the table below.
 
 To run the integration tests on macOS, use the following command (replace the variables with the appropriate values):
 ```bash
-AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY AWS_SESSION_TOKEN=AQoDYXdzEJr...<remainder of session token> ./gradlew test-integration-docker
+AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY AWS_SESSION_TOKEN=AQoDYXdzEJr...<remainder of session token> ./gradlew test-aurora-integration-docker
 ```
 
 To run the integration tests on Windows, use the following command (replace the variables with the appropriate values):
 ```bash
-cmd /c "SET AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE & SET AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY & SET AWS_SESSION_TOKEN=AQoDYXdzEJr...<remainder of session token> .\gradlew test-integration-docker
+cmd /c "SET AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE & SET AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY & SET AWS_SESSION_TOKEN=AQoDYXdzEJr...<remainder of session token> .\gradlew test-aurora-integration-docker
 ```
 
 #### Environment Variables

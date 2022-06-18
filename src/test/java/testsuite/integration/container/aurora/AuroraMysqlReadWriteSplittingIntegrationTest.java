@@ -27,7 +27,7 @@
 // along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
@@ -51,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class ReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBaseTest {
+public class AuroraMysqlReadWriteSplittingIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   @Test
   public void test_connectToWriter_setReadOnlyTrueFalseTrue() throws SQLException {

@@ -45,7 +45,7 @@ jobs:
           echo "TEMP_AWS_SESSION_TOKEN=${creds[2]}" >> $GITHUB_ENV
       - name: 'Run Integration Tests'
         run: |
-          ./gradlew --no-parallel --no-daemon test-integration-docker
+          ./gradlew --no-parallel --no-daemon test-aurora-integration-docker
         env:
           TEST_DB_CLUSTER_IDENTIFIER: ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
