@@ -149,7 +149,7 @@ public class AuroraIntegrationContainerTest {
     for (ToxiproxyContainer container : proxyContainers) {
       container.start();
     }
-    mySQLProxyPort = containerHelper.createAuroraInstanceProxies(mySqlInstances, proxyContainers, MYSQL_PORT);
+    mySQLProxyPort = containerHelper.createMysqlInstanceProxies(mySqlInstances, proxyContainers, MYSQL_PORT);
 
     proxyContainers.add(containerHelper.createAndStartProxyContainer(
             network,

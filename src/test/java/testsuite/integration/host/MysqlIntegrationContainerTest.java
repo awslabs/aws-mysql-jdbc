@@ -29,16 +29,19 @@
 
 package testsuite.integration.host;
 
-import com.mysql.cj.util.StringUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.ToxiproxyContainer;
 import testsuite.integration.utility.ContainerHelper;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -46,14 +49,18 @@ public class MysqlIntegrationContainerTest {
   private static final String TEST_CONTAINER_NAME = "test-container";
   private static final String MYSQL_WRITER_CONTAINER_NAME = "mysql-writer";
   private static final String MYSQL_READER_CONTAINER_NAME = "mysql-reader";
+  private static final List<String> mySqlInstances = Arrays.asList(MYSQL_WRITER_CONTAINER_NAME, MYSQL_READER_CONTAINER_NAME);
   private static final int MYSQL_PORT = 3306;
   private static final String TEST_DB = "test";
   private static final String MYSQL_USERNAME = "root";
   private static final String MYSQL_PASSWORD = "root";
+  private static final String PROXIED_DOMAIN_NAME_SUFFIX = ".proxied";
 
   private static MySQLContainer<?> mysqlWriterContainer;
   private static MySQLContainer<?> mysqlReaderContainer;
   private static GenericContainer<?> integrationTestContainer;
+  private static List<ToxiproxyContainer> proxyContainers = new ArrayList<>();
+  private static int mySQLProxyPort;
   private static Network network;
   private static final ContainerHelper containerHelper = new ContainerHelper();
 
@@ -67,6 +74,12 @@ public class MysqlIntegrationContainerTest {
     mysqlReaderContainer = containerHelper.createMysqlContainer(network, MYSQL_READER_CONTAINER_NAME, TEST_DB);
     mysqlReaderContainer.start();
 
+    proxyContainers = containerHelper.createProxyContainers(network, mySqlInstances, PROXIED_DOMAIN_NAME_SUFFIX);
+    for (ToxiproxyContainer container : proxyContainers) {
+      container.start();
+    }
+    mySQLProxyPort = containerHelper.createMysqlInstanceProxies(mySqlInstances, proxyContainers, MYSQL_PORT);
+
     integrationTestContainer = createTestContainer();
     integrationTestContainer.start();
 
@@ -79,6 +92,10 @@ public class MysqlIntegrationContainerTest {
 
   @AfterAll
   static void tearDown() {
+    for (ToxiproxyContainer proxy : proxyContainers) {
+      proxy.stop();
+    }
+
     mysqlWriterContainer.stop();
     mysqlReaderContainer.stop();
     integrationTestContainer.stop();
@@ -99,17 +116,18 @@ public class MysqlIntegrationContainerTest {
   }
 
   protected static GenericContainer<?> createTestContainer() {
-    final GenericContainer<?> container =
-        containerHelper.createTestContainer("aws/rds-test-container")
-            .withNetworkAliases(TEST_CONTAINER_NAME)
-            .withNetwork(network)
-            .withEnv("TEST_WRITER_HOST", MYSQL_WRITER_CONTAINER_NAME)
-            .withEnv("TEST_READER_HOST", MYSQL_READER_CONTAINER_NAME)
-            .withEnv("TEST_PORT", String.valueOf(MYSQL_PORT))
-            .withEnv("TEST_DB", TEST_DB)
-            .withEnv("TEST_USERNAME", MYSQL_USERNAME)
-            .withEnv("TEST_PASSWORD", MYSQL_PASSWORD);
-
-    return container;
+    return containerHelper.createTestContainer("aws/rds-test-container")
+        .withNetworkAliases(TEST_CONTAINER_NAME)
+        .withNetwork(network)
+        .withEnv("TEST_WRITER_HOST", MYSQL_WRITER_CONTAINER_NAME)
+        .withEnv("TEST_READER_HOST", MYSQL_READER_CONTAINER_NAME)
+        .withEnv("TEST_PORT", String.valueOf(MYSQL_PORT))
+        .withEnv("TEST_DB", TEST_DB)
+        .withEnv("TEST_USERNAME", MYSQL_USERNAME)
+        .withEnv("TEST_PASSWORD", MYSQL_PASSWORD)
+        .withEnv("PROXY_PORT", Integer.toString(mySQLProxyPort))
+        .withEnv("PROXIED_DOMAIN_NAME_SUFFIX", PROXIED_DOMAIN_NAME_SUFFIX)
+        .withEnv("TOXIPROXY_WRITER", "toxiproxy-instance-1")
+        .withEnv("TOXIPROXY_READER", "toxiproxy-instance-2");
   }
 }

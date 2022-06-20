@@ -239,7 +239,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if (StringUtils.isNullOrEmpty(hostPattern) &&
         (IP_ADDRESS.equals(rdsUrlType) || OTHER.equals(rdsUrlType))) {
-      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
+      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.8"));
     }
 
     updateInternalConnections(currentConnection, topologyService.getHostByName(currentConnection));
@@ -337,7 +337,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
    * @param target
    *            The connection where to set state.
    */
-  void syncSessionStateOnReadWriteSplit(JdbcConnection source, JdbcConnection target) {
+  void syncSessionStateOnReadWriteSplit(JdbcConnection source, JdbcConnection target) throws SQLException {
     try {
       if (source == null || target == null) {
         return;
@@ -358,7 +358,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
       sourceUseLocalSessionState.setValue(prevUseLocalSessionState);
     } catch (SQLException e) {
-      // Do nothing. Reader connections must continue to "work" after swapping between writers and readers.
+      throw new SQLException(
+          Messages.getString("ReadWriteSplittingPlugin.7"),
+          MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e);
     }
   }
 
