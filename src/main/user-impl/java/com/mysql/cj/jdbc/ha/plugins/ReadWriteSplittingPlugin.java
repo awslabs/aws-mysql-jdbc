@@ -121,6 +121,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       if (isFailoverException(e)) {
         final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
         final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
+        closeInternalConnection(this.readerConnection, currentConnection);
+        closeInternalConnection(this.writerConnection, currentConnection);
         updateTopology(currentConnection, currentHost);
         updateInternalConnections(currentConnection, currentHost);
       }
