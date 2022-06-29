@@ -84,6 +84,8 @@ public class ReadWriteSplittingPluginTest {
   private final HostInfo defaultWriterHost = defaultHosts.get(WRITER_INDEX);
   private final HostInfo defaultReaderHost = defaultHosts.get(WRITER_INDEX + 1);
   private final JdbcPropertySet defaultProps = new JdbcPropertySetImpl();
+  private final SQLException failoverException =
+          new SQLException("A mock failover exception was thrown", MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED);
   private final List<HostInfo> newTopology;
   {
     List<HostInfo> defaultHostCopy = new ArrayList<>(defaultHosts);
@@ -500,7 +502,7 @@ public class ReadWriteSplittingPluginTest {
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertNull(plugin.getReaderConnection());
 
-    when(mockNextPlugin.execute(any(), any(), any(), any())).thenThrow(SQLException.class);
+    when(mockNextPlugin.execute(any(), any(), any(), any())).thenThrow(failoverException);
     when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(newTopology.get(WRITER_INDEX));
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(mockNewWriterConn);
     when(mockTopologyService.getTopology(eq(mockNewWriterConn), eq(false))).thenReturn(newTopology);
@@ -528,7 +530,7 @@ public class ReadWriteSplittingPluginTest {
     assertEquals(mockWriterConn, plugin.getWriterConnection());
     assertNull(plugin.getReaderConnection());
 
-    when(mockNextPlugin.execute(any(), any(), any(), any())).thenThrow(SQLException.class);
+    when(mockNextPlugin.execute(any(), any(), any(), any())).thenThrow(failoverException);
     when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(newTopology.get(WRITER_INDEX));
     when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(mockNewWriterConn);
     when(mockTopologyService.getTopology(eq(mockNewWriterConn), eq(false))).thenThrow(SQLException.class);
