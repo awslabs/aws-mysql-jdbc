@@ -7,9 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.1.0] - 2022-06-29
 
 ### Added
-* Secrets Manager Plugin and corresponding unit tests have been added.
+* [Secrets Manager Support](https://github.com/awslabs/aws-mysql-jdbc#aws-secrets-manager-plugin).
+
+### Changed
+* Upgraded the driver to use AWS Java SDK v.2.17.165.
 
 ### Fixed
+* Resolved an issue related to `abort`, `close`, and `isClosed` by filtering out methods that do not require failover. [Issue 206](https://github.com/awslabs/aws-mysql-jdbc/issues/206).
+* Resolved an issue where `max_allowed_packet` on the server wasn't being respected by the driver. [Issue 191](https://github.com/awslabs/aws-mysql-jdbc/issues/191).
+* Resolved an concurrency issue with the Aurora toplogy cache. [Issue 188](https://github.com/awslabs/aws-mysql-jdbc/discussions/188).
 * Resolved an issue where non-network errors were not propagated during failover.
 
 ## [1.0.0] - 2022-03-01
