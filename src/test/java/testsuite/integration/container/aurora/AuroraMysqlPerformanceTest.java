@@ -58,7 +58,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegrationBaseTest {
+public class AuroraMysqlPerformanceTest extends AuroraMysqlBaseTest {
 
   private static final int REPEAT_TIMES = 5;
   private static final int FAILOVER_TIMEOUT_MS = 40000;
@@ -68,7 +68,7 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
 
   @BeforeAll
   public static void setUp() throws IOException, SQLException {
-    AuroraMysqlIntegrationBaseTest.setUp();
+    AuroraMysqlBaseTest.setUp();
   }
 
   @AfterAll

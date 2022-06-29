@@ -27,7 +27,7 @@
 // along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
-package testsuite.integration.container.mysql;
+package testsuite.integration.container.standard;
 
 import com.mysql.cj.conf.PropertyKey;
 import eu.rekawek.toxiproxy.Proxy;
@@ -47,7 +47,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-public class MysqlIntegrationBaseTest {
+public class StandardMysqlBaseTest {
 
   protected static final String DB_CONN_STR_PREFIX = "jdbc:mysql:aws://";
   protected static final String TEST_WRITER_HOST = System.getenv("TEST_WRITER_HOST");

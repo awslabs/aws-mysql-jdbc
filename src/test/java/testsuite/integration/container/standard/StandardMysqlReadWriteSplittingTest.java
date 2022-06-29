@@ -27,7 +27,7 @@
 // along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
-package testsuite.integration.container.mysql;
+package testsuite.integration.container.standard;
 
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import eu.rekawek.toxiproxy.Proxy;
@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class MysqlReadWriteSplittingIntegrationTest extends MysqlIntegrationBaseTest {
+public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_connectToWriter_setReadOnlyTrueTrueFalseFalseTrue() throws SQLException {

@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ubuntu-latest-aurora-run-integration-tests:
+  ubuntu-latest-run-aurora-integration-tests:
     concurrency: IntegrationTests
     name: 'Run Integration Tests'
     runs-on: ubuntu-latest
@@ -46,7 +46,7 @@ jobs:
           echo "TEMP_AWS_SESSION_TOKEN=${creds[2]}" >> $GITHUB_ENV
       - name: 'Run Integration Tests'
         run: |
-          ./gradlew --no-parallel --no-daemon test-aurora-integration-docker
+          ./gradlew --no-parallel --no-daemon test-integration-aurora
         env:
           TEST_DB_CLUSTER_IDENTIFIER: ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
@@ -62,7 +62,38 @@ jobs:
           path: build/reports/tests/
           retention-days: 5
 
-  ubuntu-latest-aurora-run-community-tests:
+  ubuntu-latest-run-standard-mysql-integration-tests:
+    concurrency: IntegrationTests
+    name: 'Run Integration Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Clone Repository'
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 50
+      - name: 'Set up JDK 8'
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: 'Run Integration Tests'
+        run: |
+          ./gradlew --no-parallel --no-daemon test-integration-standard-mysql
+        env:
+          TEST_DB_CLUSTER_IDENTIFIER: ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}
+          TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ env.TEMP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.TEMP_AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ env.TEMP_AWS_SESSION_TOKEN }}
+      - name: 'Archive junit results'
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'junit-report'
+          path: build/reports/tests/
+          retention-days: 5
+
+  ubuntu-latest-run-community-tests:
     name: 'Run Community Tests'
     runs-on: ubuntu-latest
     steps:

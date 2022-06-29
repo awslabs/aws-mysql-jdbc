@@ -27,7 +27,7 @@
 // along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
-package testsuite.integration.container.mysql;
+package testsuite.integration.container.standard;
 
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
@@ -36,7 +36,7 @@ import org.junit.platform.suite.api.Suite;
 // To add additional tests, append it inside SelectClasses, comma-separated
 @Suite
 @SelectClasses({
-    MysqlReadWriteSplittingIntegrationTest.class
+    StandardMysqlReadWriteSplittingTest.class
 })
 
-public class MysqlIntegrationTestSuite {}
+public class StandardMysqlTestSuite {}

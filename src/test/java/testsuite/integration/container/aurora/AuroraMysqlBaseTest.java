@@ -72,7 +72,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public abstract class AuroraMysqlIntegrationBaseTest {
+public abstract class AuroraMysqlBaseTest {
 
   protected static final String TEST_USERNAME = System.getenv("TEST_USERNAME");
   protected static final String TEST_DB_USER = System.getenv("TEST_DB_USER");

@@ -45,7 +45,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class MysqlIntegrationContainerTest {
+public class StandardMysqlContainerTest {
   private static final String TEST_CONTAINER_NAME = "test-container";
   private static final String MYSQL_WRITER_CONTAINER_NAME = "mysql-writer";
   private static final String MYSQL_READER_CONTAINER_NAME = "mysql-reader";
@@ -102,14 +102,14 @@ public class MysqlIntegrationContainerTest {
   }
 
   @Test
-  public void testRunMysqlTestInContainer()
+  public void runTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.runTest(integrationTestContainer, "in-container-mysql");
   }
 
   @Test
-  public void testDebugMysqlTestInContainer()
+  public void debugTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.debugTest(integrationTestContainer, "in-container-mysql");

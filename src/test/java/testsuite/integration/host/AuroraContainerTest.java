@@ -70,7 +70,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * TEST_USERNAME=user-name
  * TEST_PASSWORD=user-secret-password
  */
-public class AuroraIntegrationContainerTest {
+public class AuroraContainerTest {
 
   private static final int MYSQL_PORT = 3306;
   private static final String TEST_CONTAINER_NAME = "test-container";
@@ -199,28 +199,28 @@ public class AuroraIntegrationContainerTest {
   }
 
   @Test
-  public void testRunTestInContainer()
+  public void runTestInContainer()
     throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.runTest(integrationTestContainer, "in-container-aurora");
   }
 
   @Test
-  public void testRunPerformanceTestInContainer()
+  public void runPerformanceTestInContainer()
           throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.runTest(integrationTestContainer, "in-container-aurora-performance");
   }
 
   @Test
-  public void testDebugTestInContainer()
+  public void debugTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.debugTest(integrationTestContainer, "in-container-aurora");
   }
 
   @Test
-  public void testDebugPerformanceTestInContainer()
+  public void debugPerformanceTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.debugTest(integrationTestContainer, "in-container-aurora-performance");
