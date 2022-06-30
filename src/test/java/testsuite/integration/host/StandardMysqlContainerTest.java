@@ -105,14 +105,14 @@ public class StandardMysqlContainerTest {
   public void runTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
-    containerHelper.runTest(integrationTestContainer, "in-container-mysql");
+    containerHelper.runTest(integrationTestContainer, "in-container-standard-mysql");
   }
 
   @Test
   public void debugTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
-    containerHelper.debugTest(integrationTestContainer, "in-container-mysql");
+    containerHelper.debugTest(integrationTestContainer, "in-container-standard-mysql");
   }
 
   protected static GenericContainer<?> createTestContainer() {

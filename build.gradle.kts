@@ -225,10 +225,10 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-suite-engine:1.8.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
-    testImplementation("org.testcontainers:testcontainers:1.16.2")
-    testImplementation("org.testcontainers:mysql:1.16.2")
-    testImplementation("org.testcontainers:junit-jupiter:1.16.2")
-    testImplementation("org.testcontainers:toxiproxy:1.16.2")
+    testImplementation("org.testcontainers:testcontainers:1.17.2")
+    testImplementation("org.testcontainers:mysql:1.17.2")
+    testImplementation("org.testcontainers:junit-jupiter:1.17.2")
+    testImplementation("org.testcontainers:toxiproxy:1.17.2")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
     testImplementation("software.amazon.awssdk:secretsmanager:2.17.191")
@@ -420,7 +420,7 @@ tasks.register<Test>("in-container-aurora-performance") {
 
 // Integration tests are run in a specific order.
 // To add more tests, see testsuite.integration.container.standard.StandardMysqlTestSuite.java
-tasks.register<Test>("in-container-mysql") {
+tasks.register<Test>("in-container-standard-mysql") {
     filter.includeTestsMatching("testsuite.integration.container.standard.StandardMysqlTestSuite")
 }
 
