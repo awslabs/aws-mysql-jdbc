@@ -666,19 +666,19 @@ public class PropertyDefinitions {
                         Messages.getString("ConnectionProperties.clusterTopologyRefreshRateMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
-                new IntegerPropertyDefinition(PropertyKey.failoverTimeoutMs, 300_000, RUNTIME_NOT_MODIFIABLE,
+                new IntegerPropertyDefinition(PropertyKey.failoverTimeoutMs, 60_000, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.failoverTimeoutMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
-                new IntegerPropertyDefinition(PropertyKey.failoverClusterTopologyRefreshRateMs, 2000, RUNTIME_NOT_MODIFIABLE,
+                new IntegerPropertyDefinition(PropertyKey.failoverClusterTopologyRefreshRateMs, 5_000, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.failoverClusterTopologyRefreshRateMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
-                new IntegerPropertyDefinition(PropertyKey.failoverWriterReconnectIntervalMs, 2000, RUNTIME_NOT_MODIFIABLE,
+                new IntegerPropertyDefinition(PropertyKey.failoverWriterReconnectIntervalMs, 5_000, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.failoverWriterReconnectIntervalMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
-                new IntegerPropertyDefinition(PropertyKey.failoverReaderConnectTimeoutMs, 30_000, RUNTIME_NOT_MODIFIABLE,
+                new IntegerPropertyDefinition(PropertyKey.failoverReaderConnectTimeoutMs, 5_000, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.failoverReaderConnectTimeoutMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
                         Integer.MAX_VALUE),
 
