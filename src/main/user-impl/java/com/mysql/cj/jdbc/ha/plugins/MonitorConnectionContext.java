@@ -153,7 +153,7 @@ public class MonitorConnectionContext {
     } catch (SQLException sqlEx) {
       // ignore
       this.log.logTrace(String.format(
-          "Exception during aborting connection: %s",
+          "[MonitorConnectionContext] Exception during aborting connection: %s",
           sqlEx.getMessage()));
     }
   }
