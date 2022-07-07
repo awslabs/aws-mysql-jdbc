@@ -135,16 +135,9 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     properties.putAll(connectionUrl.getOriginalProperties());
     Secret secret = SECRET_CACHE.get(secretKey);
 
-    try {
       // Attempt to open initial connection with cached secret.
-      attemptConnectionWithSecrets(properties, secret, connectionUrl);
-
-    } catch (SQLException connectionFailedException) {
-      // Rethrow the exception unless it was because user access was denied.
-      // In that case, retry with new credentials.
-      if (!SQLSTATE_ACCESS_ERROR.equals(connectionFailedException.getSQLState())) {
-        throw connectionFailedException;
-
+      if ( secret != null ) {
+        attemptConnectionWithSecrets(properties, secret, connectionUrl);
       } else {
         try {
           secret = getCurrentCredentials();
@@ -157,7 +150,6 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
         SECRET_CACHE.put(secretKey, secret);
         attemptConnectionWithSecrets(properties, secret, connectionUrl);
       }
-    }
   }
 
   private void attemptConnectionWithSecrets(Properties props, Secret secret, ConnectionUrl connectionUrl) throws SQLException {
