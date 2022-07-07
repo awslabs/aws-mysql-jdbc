@@ -136,19 +136,22 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     Secret secret = SECRET_CACHE.get(secretKey);
 
       // Attempt to open initial connection with cached secret.
-      if ( secret != null ) {
+      if (secret != null) {
         attemptConnectionWithSecrets(properties, secret, connectionUrl);
       } else {
         try {
           secret = getCurrentCredentials();
-
         } catch (SecretsManagerException | JsonProcessingException getSecretsFailedException) {
           this.logger.logError(ERROR_GET_SECRETS_FAILED);
           throw new SQLException(ERROR_GET_SECRETS_FAILED);
         }
-
-        SECRET_CACHE.put(secretKey, secret);
-        attemptConnectionWithSecrets(properties, secret, connectionUrl);
+        if (secret != null) {
+          SECRET_CACHE.put(secretKey, secret);
+          attemptConnectionWithSecrets(properties, secret, connectionUrl);
+        } else {
+          this.logger.logError(ERROR_GET_SECRETS_FAILED);
+          throw new SQLException(ERROR_GET_SECRETS_FAILED);
+        }
       }
   }
 
