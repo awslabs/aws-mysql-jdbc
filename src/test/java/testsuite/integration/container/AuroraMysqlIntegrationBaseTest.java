@@ -54,10 +54,10 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -385,7 +385,8 @@ public abstract class AuroraMysqlIntegrationBaseTest {
 
   protected void makeSureInstancesUp(String[] instances, boolean finalCheck) throws InterruptedException {
     final ExecutorService executorService = Executors.newFixedThreadPool(instances.length);
-    final HashSet<String> remainingInstances = new HashSet<>(Arrays.asList(instances));
+    final ConcurrentHashMap<String, Boolean> remainingInstances = new ConcurrentHashMap<String, Boolean>();
+    Arrays.asList(instances).forEach((k) -> remainingInstances.put(k, true));
 
     for (final String id : instances) {
       executorService.submit(() -> {
@@ -396,8 +397,11 @@ public abstract class AuroraMysqlIntegrationBaseTest {
             break;
           } catch (final SQLException ex) {
             // Continue waiting until instance is up.
+          } catch(final Exception ex) {
+            System.out.println("Exception: " + ex);
+            break;
           }
-          TimeUnit.MILLISECONDS.sleep(500);
+          TimeUnit.MILLISECONDS.sleep(1000);
         }
         return null;
       });
@@ -407,7 +411,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
 
     if (finalCheck) {
       assertTrue(remainingInstances.isEmpty(),
-        "The following instances are still down: \n" + String.join("\n", remainingInstances));
+        "The following instances are still down: \n" + String.join("\n", remainingInstances.keySet()));
     }
 
   }
