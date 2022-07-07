@@ -232,7 +232,6 @@ public class StandardLogger implements Log {
         StringBuilder msgBuf = new StringBuilder();
         msgBuf.append(new Date().toString());
         msgBuf.append(" - [");
-
         msgBuf.append(Thread.currentThread().getId());
         msgBuf.append("] - ");
 
