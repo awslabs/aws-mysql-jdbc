@@ -535,7 +535,7 @@ The following properties are required for the AWS Secrets Manager Plugin to retr
 ```java
 import java.sql.*;
 import java.util.Properties;
-import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
+import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
 
 public class AWSSecretsManagerPluginSample {
 
