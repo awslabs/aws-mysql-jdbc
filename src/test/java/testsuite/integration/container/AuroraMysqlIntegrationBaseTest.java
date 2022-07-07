@@ -397,7 +397,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
             break;
           } catch (final SQLException ex) {
             // Continue waiting until instance is up.
-          } catch(final Exception ex) {
+          } catch (final Exception ex) {
             System.out.println("Exception: " + ex);
             break;
           }
