@@ -70,6 +70,8 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   private final Region region;
   private final SecretsManagerClient secretsManagerClient;
   private final GetSecretValueRequest getSecretValueRequest;
+  private final Pair<String, Region> secretKey;
+  private Secret secret;
 
   public AWSSecretsManagerPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
@@ -113,6 +115,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     this.logger = logger;
     this.secretId = propertySet.getStringProperty(SECRET_ID_PROPERTY).getValue();
     this.region = Region.of(propertySet.getStringProperty(REGION_PROPERTY).getValue());
+    this.secretKey = Pair.of(secretId, region);
 
     if (secretsManagerClient != null && getSecretValueRequest != null) {
       this.secretsManagerClient = secretsManagerClient;
@@ -130,47 +133,75 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
 
   @Override
   public void openInitialConnection(ConnectionUrl connectionUrl) throws SQLException {
-    final Pair<String, Region> secretKey = Pair.of(secretId, region);
+
     final Properties properties = new Properties();
     properties.putAll(connectionUrl.getOriginalProperties());
-    Secret secret = SECRET_CACHE.get(secretKey);
+
+    boolean secretWasFetched = updateSecret(false);
 
     try {
-      // Attempt to open initial connection with cached secret.
-      attemptConnectionWithSecrets(properties, secret, connectionUrl);
+      applySecretToProperties(properties);
+      attemptToLogin(properties, connectionUrl);
 
-    } catch (SQLException connectionFailedException) {
-      // Rethrow the exception unless it was because user access was denied.
-      // In that case, retry with new credentials.
-      if (!SQLSTATE_ACCESS_ERROR.equals(connectionFailedException.getSQLState())) {
-        throw connectionFailedException;
+    } catch (SQLException exception) {
+      if (isLoginUnsuccessful(exception) && !secretWasFetched) {
+        // Login unsuccessful with cached credentials
+        // Try to re-fetch credentials and try again
 
-      } else {
-        try {
-          secret = getCurrentCredentials();
-
-        } catch (SecretsManagerException | JsonProcessingException getSecretsFailedException) {
-          this.logger.logError(ERROR_GET_SECRETS_FAILED);
-          throw new SQLException(ERROR_GET_SECRETS_FAILED);
+        secretWasFetched = updateSecret(true);
+        if (secretWasFetched) {
+          applySecretToProperties(properties);
+          attemptToLogin(properties, connectionUrl);
+          return;
         }
-
-        SECRET_CACHE.put(secretKey, secret);
-        attemptConnectionWithSecrets(properties, secret, connectionUrl);
       }
+      throw exception;
+    } catch (Exception exception) {
+      this.logger.logError("Unhandled exception:", exception);
+      throw new SQLException(exception);
     }
   }
 
-  private void attemptConnectionWithSecrets(Properties props, Secret secret, ConnectionUrl connectionUrl) throws SQLException {
-    if (secret != null) {
-      props.put("user", secret.getUsername());
-      props.put("password", secret.getPassword());
+  private boolean isLoginUnsuccessful(SQLException exception) {
+    this.logger.logDebug("Login failed. SQLState=" + exception.getSQLState(), exception);
+    return SQLSTATE_ACCESS_ERROR.equals(exception.getSQLState());
+  }
+
+  private void applySecretToProperties(Properties properties) {
+    if (this.secret != null) {
+      properties.put("user", secret.getUsername());
+      properties.put("password", secret.getPassword());
     }
+  }
+
+  private boolean updateSecret(boolean forceReFetch) throws SQLException {
+
+    boolean fetched = false;
+    this.secret = SECRET_CACHE.get(this.secretKey);
+
+    if (secret == null || forceReFetch) {
+      try {
+        this.secret = fetchLatestCredentials();
+        if (this.secret != null) {
+          fetched = true;
+          SECRET_CACHE.put(this.secretKey, this.secret);
+        }
+      } catch (SecretsManagerException | JsonProcessingException exception) {
+        this.logger.logError(ERROR_GET_SECRETS_FAILED, exception);
+        throw new SQLException(ERROR_GET_SECRETS_FAILED, exception);
+      }
+    }
+    return fetched;
+  }
+
+  private void attemptToLogin(Properties props, ConnectionUrl connectionUrl)
+      throws SQLException {
 
     final ConnectionUrl newConnectionUrl = ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(), props);
     this.nextPlugin.openInitialConnection(newConnectionUrl);
   }
 
-  Secret getCurrentCredentials() throws SecretsManagerException, JsonProcessingException {
+  Secret fetchLatestCredentials() throws SecretsManagerException, JsonProcessingException {
     final GetSecretValueResponse valueResponse = this.secretsManagerClient.getSecretValue(this.getSecretValueRequest);
     final ObjectMapper mapper = new ObjectMapper();
     return mapper.readValue(valueResponse.secretString(), Secret.class);
