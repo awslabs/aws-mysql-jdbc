@@ -360,12 +360,12 @@ signing {
 // Environment is being configured and started
 tasks.register<Test>("test-integration-aurora") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraContainerTest.runTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.runTestInContainer")
 }
 
 tasks.register<Test>("test-performance-aurora") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraContainerTest.runPerformanceTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.runPerformanceTestInContainer")
 }
 
 // Run MySQL integration tests in container
@@ -386,12 +386,12 @@ tasks.register<Test>("test-community-docker") {
 // Environment is being configured and started
 tasks.register<Test>("debug-integration-aurora") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraContainerTest.debugTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.debugTestInContainer")
 }
 
 tasks.register<Test>("debug-performance-aurora") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraContainerTest.debugPerformanceTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.debugPerformanceTestInContainer")
 }
 
 // Run MySQL integration tests in container with debugger
