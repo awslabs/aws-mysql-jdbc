@@ -70,7 +70,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * TEST_USERNAME=user-name
  * TEST_PASSWORD=user-secret-password
  */
-public class AuroraContainerTest {
+public class AuroraMysqlContainerTest {
 
   private static final int MYSQL_PORT = 3306;
   private static final String TEST_CONTAINER_NAME = "test-container";
