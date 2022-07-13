@@ -40,6 +40,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mysql.cj.util.StringUtils;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
@@ -111,6 +112,14 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
       throw new SQLException(ERROR_MISSING_DEPENDENCY_JACKSON);
     }
 
+    if (StringUtils.isNullOrEmpty(propertySet.getStringProperty(SECRET_ID_PROPERTY).getValue())) {
+      throw new SQLException(String.format("Configuration parameter '%s' is required.", SECRET_ID_PROPERTY));
+    }
+
+    if (StringUtils.isNullOrEmpty(propertySet.getStringProperty(REGION_PROPERTY).getValue())) {
+      throw new SQLException(String.format("Configuration parameter '%s' is required.", REGION_PROPERTY));
+    }
+
     this.nextPlugin = nextPlugin;
     this.logger = logger;
     this.secretId = propertySet.getStringProperty(SECRET_ID_PROPERTY).getValue();
@@ -162,18 +171,39 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     }
   }
 
+  /**
+   * Called to analyse a thrown exception.
+   *
+   * @param exception Login attempt exception.
+   * @return true, if specified exception is caused by unsuccessful login attempt
+   */
   private boolean isLoginUnsuccessful(SQLException exception) {
-    this.logger.logDebug("Login failed. SQLState=" + exception.getSQLState(), exception);
+    this.logger.logTrace("Login failed. SQLState=" + exception.getSQLState(), exception);
     return SQLSTATE_ACCESS_ERROR.equals(exception.getSQLState());
   }
 
+  /**
+   * Updates credentials to provided properties.
+   *
+   * @param properties Properties to store credentials.
+   */
   private void applySecretToProperties(Properties properties) {
     if (this.secret != null) {
+      /** Updated credentials are stored in properties. Other plugins in the plugin chain may
+      * change them if needed. Eventually, credentials will be used to open a new connection in
+      * {@link DefaultConnectionPlugin#openInitialConnection}
+      */
       properties.put("user", secret.getUsername());
       properties.put("password", secret.getPassword());
     }
   }
 
+  /**
+   * Called to update credentials from the cache, or from AWS Secret Manager service.
+   *
+   * @param forceReFetch Allows ignoring cached credentials and force to fetch the latest credentials from the service.
+   * @return true, if credentials were fetched from the service.
+   */
   private boolean updateSecret(boolean forceReFetch) throws SQLException {
 
     boolean fetched = false;
@@ -194,6 +224,14 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     return fetched;
   }
 
+  /**
+   * Called to open a new connection. This plugin is responsible to providing a recent credentials and
+   * delegate actual opening a new connection to other plugins in the plugin chain. Eventually
+   * a new connection is handled either by some plugin, or by {@link DefaultConnectionPlugin#openInitialConnection}
+   *
+   * @param props Properties with updated credentials.
+   * @param connectionUrl Original instance of ConnectionUrl
+   */
   private void attemptToLogin(Properties props, ConnectionUrl connectionUrl)
       throws SQLException {
 
