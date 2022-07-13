@@ -14,8 +14,7 @@ body:
   id: expected
   attributes:
     label: Expected Behavior
-    description: |
-    What did you expect to happen?
+    description: What did you expect to happen?
   validations:
     required: true
 - type: textarea
@@ -23,7 +22,7 @@ body:
   attributes:
     label: Current Behavior
     description: |
-  What actually happened?
+      What actually happened?
 
       Please include full errors, uncaught exceptions, stack traces, and relevant logs.
       To turn on driver logging, see here: https://github.com/awslabs/aws-mysql-jdbc#enable-logging.
@@ -34,8 +33,8 @@ body:
   attributes:
     label: Reproduction Steps
     description: |
-  Provide a self-contained, concise snippet of code that can be used to reproduce the issue.
-  For more complex issues provide a repo with the smallest sample that reproduces the bug.
+      Provide a self-contained, concise snippet of code that can be used to reproduce the issue.
+      For more complex issues provide a repo with the smallest sample that reproduces the bug.
 
       Avoid including business logic or unrelated code, it makes diagnosis more difficult.
       The code sample should be an SSCCE. See http://sscce.org/ for details. In short, please provide a code sample that we can copy/paste, run and reproduce.
@@ -46,7 +45,7 @@ body:
   attributes:
     label: Possible Solution
     description: |
-  Suggest a fix/reason for the bug
+      Suggest a fix/reason for the bug
   validations:
     required: false
 - type: textarea
