@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Disabled
-public class AuroraMysqlHardFailureTest extends AuroraMysqlBaseTest {
+public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     protected final HashSet<String> instancesToCrash = new HashSet<>();
     protected ExecutorService crashInstancesExecutorService;
 

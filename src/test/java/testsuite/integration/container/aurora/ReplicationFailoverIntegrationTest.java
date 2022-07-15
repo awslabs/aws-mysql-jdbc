@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Integration testing with Aurora MySQL replica failover logic.
  */
-public class ReplicationFailoverTest extends AuroraMysqlBaseTest {
+public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /*
    * Before running these tests we need to initialize the test cluster as the following.
    *

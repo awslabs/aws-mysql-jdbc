@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class HikariCPTest extends AuroraMysqlBaseTest {
+public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   private static Log log = null;
   private static final String URL_SUFFIX = PROXIED_DOMAIN_NAME_SUFFIX + ":" + MYSQL_PROXY_PORT;

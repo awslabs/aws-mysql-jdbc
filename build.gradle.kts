@@ -358,14 +358,14 @@ signing {
 
 // Run Aurora integration tests in container
 // Environment is being configured and started
-tasks.register<Test>("test-integration-aurora") {
+tasks.register<Test>("test-integration-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.runTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunTestInContainer")
 }
 
-tasks.register<Test>("test-performance-aurora") {
+tasks.register<Test>("test-integration-performance-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.runPerformanceTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunPerformanceTestInContainer")
 }
 
 // Run MySQL integration tests in container
@@ -379,19 +379,19 @@ tasks.register<Test>("test-integration-standard-mysql") {
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("test-community-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.runTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testRunTestInContainer")
 }
 
 // Run Aurora integration tests in container with debugger
 // Environment is being configured and started
-tasks.register<Test>("debug-integration-aurora") {
+tasks.register<Test>("debug-integration-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.debugTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugTestInContainer")
 }
 
-tasks.register<Test>("debug-performance-aurora") {
+tasks.register<Test>("debug-integration-performance-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraMysqlContainerTest.debugPerformanceTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugPerformanceTestInContainer")
 }
 
 // Run MySQL integration tests in container with debugger
@@ -405,17 +405,17 @@ tasks.register<Test>("debug-integration-standard-mysql") {
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("debug-community-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.debugTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testDebugTestInContainer")
 }
 
 // Integration tests are run in a specific order.
-// To add more tests, see testsuite.integration.container.aurora.AuroraMysqlTestSuite.java
+// To add more tests, see testsuite.integration.container.aurora.IntegrationTestSuite.java
 tasks.register<Test>("in-container-aurora") {
-    filter.includeTestsMatching("testsuite.integration.container.aurora.AuroraMysqlTestSuite")
+    filter.includeTestsMatching("testsuite.integration.container.aurora.IntegrationTestSuite")
 }
 
 tasks.register<Test>("in-container-aurora-performance") {
-    filter.includeTestsMatching("testsuite.integration.container.aurora.AuroraMysqlPerformanceTest")
+    filter.includeTestsMatching("testsuite.integration.container.aurora.AuroraMysqlPerformanceIntegrationTest")
 }
 
 // Integration tests are run in a specific order.

@@ -79,14 +79,14 @@ public class CommunityContainerTest {
   }
 
   @Test
-  public void runTestInContainer()
+  public void testRunTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.runTest(communityTestContainer, "in-container-community");
   }
 
   @Test
-  public void debugTestInContainer()
+  public void testDebugTestInContainer()
       throws UnsupportedOperationException, IOException, InterruptedException {
 
     containerHelper.debugTest(communityTestContainer, "in-container-community");

@@ -11,12 +11,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ubuntu-latest-run-aurora-integration-tests:
+  ubuntu-latest-aurora-run-integration-tests:
     concurrency: IntegrationTests
-    name: 'Run Aurora integration tests'
+    name: 'Run Aurora Integration Tests'
     runs-on: ubuntu-latest
     steps:
-      - name: 'Clone repository'
+      - name: 'Clone Repository'
         uses: actions/checkout@v2
         with:
           fetch-depth: 50
@@ -24,13 +24,13 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 8
-      - name: 'Configure AWS credentials'
+      - name: 'Configure AWS Credentials'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-      - name: 'Set up temp AWS credentials'
+      - name: 'Set up Temp AWS Credentials'
         run: |
           creds=($(aws sts get-session-token \
             --duration-seconds 3600 \
@@ -43,9 +43,9 @@ jobs:
           echo "TEMP_AWS_ACCESS_KEY_ID=${creds[0]}" >> $GITHUB_ENV
           echo "TEMP_AWS_SECRET_ACCESS_KEY=${creds[1]}" >> $GITHUB_ENV
           echo "TEMP_AWS_SESSION_TOKEN=${creds[2]}" >> $GITHUB_ENV
-      - name: 'Run integration tests'
+      - name: 'Run Integration Tests'
         run: |
-          ./gradlew --no-parallel --no-daemon test-integration-aurora
+          ./gradlew --no-parallel --no-daemon test-integration-docker
         env:
           TEST_DB_CLUSTER_IDENTIFIER: ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
@@ -63,10 +63,10 @@ jobs:
 
   ubuntu-latest-run-standard-mysql-integration-tests:
     concurrency: IntegrationTests
-    name: 'Run standard Mysql integration tests'
+    name: 'Run Standard Mysql Integration Tests'
     runs-on: ubuntu-latest
     steps:
-      - name: 'Clone repository'
+      - name: 'Clone Repository'
         uses: actions/checkout@v2
         with:
           fetch-depth: 50
@@ -74,7 +74,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 8
-      - name: 'Run integration tests'
+      - name: 'Run Integration Tests'
         run: |
           ./gradlew --no-parallel --no-daemon test-integration-standard-mysql
         env:
@@ -92,7 +92,7 @@ jobs:
     name: 'Run community tests'
     runs-on: ubuntu-latest
     steps:
-      - name: 'Clone repository'
+      - name: 'Clone Repository'
         uses: actions/checkout@v2
         with:
           fetch-depth: 50
@@ -100,7 +100,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 8
-      - name: 'Run community tests'
+      - name: 'Run Community Tests'
         run: |
           ./gradlew --no-parallel --no-daemon test-community-docker
       - name: 'Archive junit results'

@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ubuntu-latest-run-aurora-integration-tests:
+  ubuntu-latest-aurora-run-integration-tests:
     concurrency: IntegrationTests
     name: 'Run Aurora Integration Tests'
     runs-on: ubuntu-latest

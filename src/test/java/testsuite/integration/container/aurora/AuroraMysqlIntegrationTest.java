@@ -62,7 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class AuroraMysqlTest extends AuroraMysqlBaseTest {
+public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   protected String currWriter;
   protected String currReader;
