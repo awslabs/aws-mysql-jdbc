@@ -386,7 +386,7 @@ tasks.register<Test>("test-community-docker") {
 // Environment is being configured and started
 tasks.register<Test>("debug-integration-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugCommunityTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugTestInContainer")
 }
 
 tasks.register<Test>("debug-integration-performance-docker") {
@@ -405,7 +405,7 @@ tasks.register<Test>("debug-integration-standard-mysql") {
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("debug-community-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testDebugTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testDebugCommunityTestInContainer")
 }
 
 // Integration tests are run in a specific order.
