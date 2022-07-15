@@ -57,7 +57,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_connectToWriter_setReadOnlyTrueFalseTrue() throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -81,7 +81,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_connectToReader_setReadOnlyTrueFalse() throws SQLException {
     final String initialReaderId = instanceIDs[1];
 
-    try (final Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
       String readerConnectionId = queryInstanceId(conn);
       assertEquals(initialReaderId, readerConnectionId);
       assertTrue(isDBInstanceReader(readerConnectionId));
@@ -103,7 +103,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_failoverToNewWriter_setReadOnlyTrueFalse() throws SQLException, InterruptedException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
       // Kill all reader instances
       for (int i = 1; i < clusterSize; i++) {
         final String instanceId = instanceIDs[i];
@@ -151,7 +151,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_failoverToNewReader_setReadOnlyFalseTrue() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -215,7 +215,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_failoverReaderToWriter_setReadOnlyTrueFalse() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -264,7 +264,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyFalseInReadOnlyTransaction() throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -300,7 +300,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyFalseInTransaction_setAutocommitFalse() throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -336,7 +336,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyFalseInTransaction_setAutocommitZero() throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -372,7 +372,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyTrueInTransaction() throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -403,7 +403,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyTrue_allReadersDown() throws SQLException, IOException {
     String initialWriterId = instanceIDs[0];
 
-    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
       String currentConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, currentConnectionId);
       assertTrue(isDBInstanceWriter(currentConnectionId));
@@ -433,7 +433,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyTrue_allInstancesDown() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    Properties props = initDefaultProxiedProps();
+    Properties props = getProxiedPropsWithReadWritePlugin();
     props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10");
     try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
       String currentConnectionId = queryInstanceId(conn);
@@ -460,7 +460,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyTrue_allInstancesDown_writerClosed() throws SQLException, IOException {
     final String initialWriterId = instanceIDs[0];
 
-    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
       String currentConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, currentConnectionId);
       assertTrue(isDBInstanceWriter(currentConnectionId));
@@ -486,7 +486,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyFalse_allInstancesDown() throws SQLException, IOException {
     final String initialReaderId = instanceIDs[1];
 
-    try (Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, initDefaultProxiedProps())) {
+    try (Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
       String currentConnectionId = queryInstanceId(conn);
       assertEquals(initialReaderId, currentConnectionId);
       assertTrue(isDBInstanceReader(currentConnectionId));
@@ -511,7 +511,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_multiHostUrl_topologyOverridesHostList() throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
-    try (Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + initialWriterId + DB_CONN_STR_SUFFIX + ",non-existent-host", initDefaultProps())) {
+    try (Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + initialWriterId + DB_CONN_STR_SUFFIX + ",non-existent-host", getPropsWithReadWritePlugin())) {
       String currentConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, currentConnectionId);
       assertTrue(isDBInstanceWriter(currentConnectionId));
@@ -521,5 +521,24 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       assertNotEquals(initialWriterId, currentConnectionId);
       assertTrue(isDBInstanceReader(currentConnectionId));
     }
+  }
+
+  private Properties getPropsWithReadWritePlugin() {
+    Properties props = initDefaultProps();
+    addReadWriteSplittingPlugin(props);
+    return props;
+  }
+
+  private Properties getProxiedPropsWithReadWritePlugin() {
+    Properties props = initDefaultProxiedProps();
+    addReadWriteSplittingPlugin(props);
+    return props;
+  }
+
+  private void addReadWriteSplittingPlugin(Properties props) {
+    props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
+            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
+                    "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
+                    "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
   }
 }

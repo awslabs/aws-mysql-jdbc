@@ -29,6 +29,7 @@
 
 package testsuite.integration.container.standard;
 
+import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Disabled;
@@ -39,6 +40,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,7 +52,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_connectToWriter_setReadOnlyTrueTrueFalseFalseTrue() throws SQLException {
-    try (final Connection conn = connect()) {
+    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -77,7 +79,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyFalseInReadOnlyTransaction() throws SQLException{
-    try (final Connection conn = connect()) {
+    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -103,7 +105,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyFalseInTransaction_setAutocommitFalse() throws SQLException{
-    try (final Connection conn = connect()) {
+    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -129,7 +131,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyFalseInTransaction_setAutocommitZero() throws SQLException{
-    try (final Connection conn = connect()) {
+    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -155,7 +157,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyTrueInTransaction() throws SQLException{
-    try (final Connection conn = connect()) {
+    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       final Statement stmt1 = conn.createStatement();
@@ -182,7 +184,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyTrue_allReadersDown() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy()) {
+    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       // Kill all reader instances
@@ -217,7 +219,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
   @Disabled
   @Test
   public void test_setReadOnlyTrue_allInstancesDown() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy()) {
+    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
       // Kill all instances
       for (int i = 0; i < clusterSize; i++) {
         final String instanceId = instanceIDs[i];
@@ -237,7 +239,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyTrue_allInstancesDown_writerClosed() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy()) {
+    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
       conn.close();
 
       // Kill all instances
@@ -258,7 +260,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_setReadOnlyFalse_allInstancesDown() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy()) {
+    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -279,5 +281,14 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
       final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
       assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
     }
+  }
+
+  private Properties getPropsWithReadWritePlugin() {
+    Properties props = initDefaultProps();
+    props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
+            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
+                    "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
+                    "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
+    return props;
   }
 }

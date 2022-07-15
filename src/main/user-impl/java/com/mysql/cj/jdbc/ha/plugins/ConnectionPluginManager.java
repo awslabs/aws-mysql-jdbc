@@ -50,8 +50,7 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
   /* THIS CLASS IS NOT MULTI-THREADING SAFE */
   /* IT'S EXPECTED TO HAVE ONE INSTANCE OF THIS MANAGER PER JDBC CONNECTION */
 
-  protected static final String DEFAULT_PLUGIN_FACTORIES = String.format("%s,%s,%s",
-      ReadWriteSplittingPluginFactory.class.getName(),
+  protected static final String DEFAULT_PLUGIN_FACTORIES = String.format("%s,%s",
       FailoverConnectionPluginFactory.class.getName(),
       NodeMonitoringConnectionPluginFactory.class.getName());
 

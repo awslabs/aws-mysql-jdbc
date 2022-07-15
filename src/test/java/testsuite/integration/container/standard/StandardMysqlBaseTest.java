@@ -99,15 +99,23 @@ public class StandardMysqlBaseTest {
   }
 
   protected Connection connect() throws SQLException {
+    return connect(initDefaultProps());
+  }
+
+  protected Connection connect(Properties props) throws SQLException {
     String url = DB_CONN_STR_PREFIX + TEST_WRITER_HOST + ":" + TEST_PORT + ","
         + TEST_READER_HOST + ":" + TEST_PORT + "/" + TEST_DB;
-    return DriverManager.getConnection(url, initDefaultProps());
+    return DriverManager.getConnection(url, props);
   }
 
   protected Connection connectWithProxy() throws SQLException {
+    return connectWithProxy(initDefaultProps());
+  }
+
+  protected Connection connectWithProxy(Properties props) throws SQLException {
     String url = DB_CONN_STR_PREFIX + TEST_WRITER_HOST + PROXIED_DOMAIN_NAME_SUFFIX + ":" + PROXY_PORT + ","
         + TEST_READER_HOST + PROXIED_DOMAIN_NAME_SUFFIX + ":" + PROXY_PORT + "/" + TEST_DB;
-    return DriverManager.getConnection(url, initDefaultProps());
+    return DriverManager.getConnection(url, props);
   }
 
   protected String queryInstanceId(Connection conn) throws SQLException {
