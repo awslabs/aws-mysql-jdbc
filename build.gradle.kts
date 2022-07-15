@@ -379,14 +379,14 @@ tasks.register<Test>("test-integration-standard-mysql") {
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("test-community-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testRunTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testRunCommunityTestInContainer")
 }
 
 // Run Aurora integration tests in container with debugger
 // Environment is being configured and started
 tasks.register<Test>("debug-integration-docker") {
     group = "verification"
-    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugTestInContainer")
+    filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugCommunityTestInContainer")
 }
 
 tasks.register<Test>("debug-integration-performance-docker") {

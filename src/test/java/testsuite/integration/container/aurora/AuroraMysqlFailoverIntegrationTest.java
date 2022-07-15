@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
-public class AuroraMysqlIntegrationFailoverTest extends AuroraMysqlIntegrationBaseTest {
+public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   /* Writer connection failover tests. */
 
