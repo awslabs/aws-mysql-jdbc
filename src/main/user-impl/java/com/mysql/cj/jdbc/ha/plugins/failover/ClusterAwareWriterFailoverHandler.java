@@ -33,6 +33,7 @@ package com.mysql.cj.jdbc.ha.plugins.failover;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.ha.ConnectionUtils;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
@@ -248,33 +249,53 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
           Messages.getString(
               "ClusterAwareWriterFailoverHandler.6",
               new Object[] {this.originalWriterHost.getHostPortPair()}));
-      try {
-        while (true) {
-          try {
-            JdbcConnection conn = connectionProvider.connect(this.originalWriterHost);
 
-            List<HostInfo> latestTopology = topologyService.getTopology(conn, true);
-            if (!Util.isNullOrEmpty(latestTopology)
-                && isCurrentHostWriter(latestTopology)) {
-              topologyService.removeFromDownHostList(this.originalWriterHost);
-              return new WriterFailoverResult(true, false, latestTopology, conn, "TaskA");
+      JdbcConnection conn = null;
+      List<HostInfo> latestTopology = null;
+      boolean success = false;
+
+      try {
+        while (latestTopology == null || Util.isNullOrEmpty(latestTopology)) {
+          try {
+
+            if (conn != null && !conn.isClosed()) {
+              conn.close();
             }
+
+            conn = connectionProvider.connect(this.originalWriterHost);
+            latestTopology = topologyService.getTopology(conn, true);
+
+          } catch (CJCommunicationsException exception) {
+            // do nothing
           } catch (SQLException exception) {
             // Propagate exceptions that are not caused by network errors.
             if (!ConnectionUtils.isNetworkException(exception)) {
+              log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.16"), exception);
               return new WriterFailoverResult(false, false, null, null, "TaskA", exception);
             }
           }
 
           TimeUnit.MILLISECONDS.sleep(reconnectWriterIntervalMs);
         }
+
+        success = isCurrentHostWriter(latestTopology);
+        topologyService.removeFromDownHostList(this.originalWriterHost);
+        return new WriterFailoverResult(success, false, latestTopology, success ? conn : null, "TaskA");
+
       } catch (InterruptedException exception) {
         Thread.currentThread().interrupt();
-        return new WriterFailoverResult(false, false, null, null, "TaskA");
+        return new WriterFailoverResult(success, false, latestTopology, success ? conn : null, "TaskA");
       } catch (Exception ex) {
         log.logError(ex);
-        throw ex;
+        return new WriterFailoverResult(false, false, null, null, "TaskA");
       } finally {
+        try {
+          if (conn != null && !success && !conn.isClosed()) {
+            conn.close();
+          }
+        } catch (Exception ex) {
+          // ignore
+        }
         log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.8"));
       }
     }
@@ -334,12 +355,11 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
         Thread.currentThread().interrupt();
         return new WriterFailoverResult(false, false, null, null, "TaskB");
       } catch (Exception ex) {
-        log.logError(Messages.getString(
-            "ClusterAwareWriterFailoverHandler.15",
-            new Object[] {ex.getMessage()}));
-        throw ex;
+        log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.15"), ex);
+        return new WriterFailoverResult(false, false, null, null, "TaskB");
       } finally {
         performFinalCleanup();
+        log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.10"));
       }
     }
 
@@ -400,8 +420,9 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               }
             }
           }
-        } catch (SQLException e) {
-          // ignore
+        } catch (CJCommunicationsException | SQLException ex) {
+          log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.15"), ex);
+          return false;
         }
 
         TimeUnit.MILLISECONDS.sleep(readTopologyIntervalMs);
@@ -473,7 +494,6 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
           // ignore
         }
       }
-      log.logTrace(Messages.getString("ClusterAwareWriterFailoverHandler.10"));
     }
 
     private void logTopology() {

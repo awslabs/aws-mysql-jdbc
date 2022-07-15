@@ -231,7 +231,9 @@ public class StandardLogger implements Log {
     protected String logInternal(int level, Object msg, Throwable exception) {
         StringBuilder msgBuf = new StringBuilder();
         msgBuf.append(new Date().toString());
-        msgBuf.append(" ");
+        msgBuf.append(" - [");
+        msgBuf.append(Thread.currentThread().getId());
+        msgBuf.append("] - ");
 
         switch (level) {
             case FATAL:
