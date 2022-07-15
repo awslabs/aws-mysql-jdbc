@@ -43,6 +43,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
@@ -75,11 +76,8 @@ public class ReadWriteSplittingPluginTest {
   @Mock private Callable<?> mockCallable;
 
   private static final int WRITER_INDEX = 0;
-  private static final String defaultUrl = "jdbc:mysql:aws://instance-1,instance-2/test?" +
-      "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
   private final RdsHostUtils rdsHostUtils = new RdsHostUtils(mockLog);
-  private final ConnectionUrl defaultConnUrl =
-      ConnectionUrl.getConnectionUrlInstance(defaultUrl, new Properties());
+  private final ConnectionUrl defaultConnUrl = getConnectionUrl(2);
   private final List<HostInfo> defaultHosts = new ArrayList<>(defaultConnUrl.getHostsList());
   private final HostInfo defaultWriterHost = defaultHosts.get(WRITER_INDEX);
   private final HostInfo defaultReaderHost = defaultHosts.get(WRITER_INDEX + 1);
@@ -140,14 +138,10 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_trueFalse_threeHosts() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockWriterConn,
-        mockWriterConn, mockWriterConn, mockWriterConn,
-        mockReaderConn, mockReaderConn, mockReaderConn);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+            .thenReturn(mockWriterConn, mockWriterConn, mockReaderConn);
 
-    final String url = "jdbc:mysql:aws://instance-1,instance-2,instance-3/test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final ConnectionUrl connUrl = getConnectionUrl(3);
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(connUrl);
     final HostInfo writerHost = plugin.getHosts().get(WRITER_INDEX);
@@ -171,10 +165,8 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_falseInTransaction() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockWriterConn,
-        mockWriterConn, mockWriterConn, mockWriterConn,
-        mockReaderConn, mockReaderConn, mockReaderConn);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+            .thenReturn(mockWriterConn, mockWriterConn, mockReaderConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(defaultConnUrl);
@@ -196,10 +188,8 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_trueTrue() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockWriterConn,
-        mockWriterConn, mockWriterConn, mockWriterConn,
-        mockReaderConn, mockReaderConn);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+            .thenReturn(mockWriterConn, mockWriterConn, mockReaderConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(defaultConnUrl);
@@ -229,39 +219,8 @@ public class ReadWriteSplittingPluginTest {
   }
 
   @Test
-  public void testSetReadOnly_true_zeroHosts() throws SQLException {
-    final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
-    plugin.openInitialConnection(defaultConnUrl);
-    final List<HostInfo> hosts = plugin.getHosts();
-    hosts.clear();
-
-    plugin.switchConnectionIfRequired(true);
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
-    assertEquals(mockWriterConn, plugin.getWriterConnection());
-    assertEquals(mockWriterConn, plugin.getReaderConnection());
-  }
-
-  @Test
-  public void testSetReadOnly_true_zeroHosts_writerClosed() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(mockClosedWriterConn);
-
-    final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
-    plugin.openInitialConnection(defaultConnUrl);
-    final List<HostInfo> hosts = plugin.getHosts();
-    hosts.clear();
-
-    final SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(true));
-    assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(any(ConnectionImpl.class), any(HostInfo.class));
-    assertEquals(mockClosedWriterConn, plugin.getWriterConnection());
-    assertNull(plugin.getReaderConnection());
-  }
-
-  @Test
   public void testSetReadOnly_true_oneHost() throws SQLException {
-    final String url = "jdbc:mysql:aws://instance-1/test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final ConnectionUrl connUrl = getConnectionUrl(1);
     final HostInfo writerHost = connUrl.getMainHost();
 
     when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(writerHost);
@@ -278,9 +237,7 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_true_oneHost_writerClosed() throws SQLException {
-    final String url = "jdbc:mysql:aws://instance-1/test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final ConnectionUrl connUrl = getConnectionUrl(1);
     final HostInfo writerHost = connUrl.getMainHost();
 
     when(mockConnectionProvider.connect(writerHost)).thenReturn(mockWriterConn);
@@ -324,11 +281,8 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_true_noReaderHostMatch() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockWriterConn,
-        mockWriterConn, mockWriterConn, mockWriterConn,
-        mockReaderConn, mockReaderConn, mockReaderConn,
-        mockWriterConn, mockWriterConn, mockWriterConn);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+            .thenReturn(mockWriterConn, mockWriterConn, mockReaderConn, mockWriterConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(defaultConnUrl);
@@ -351,11 +305,8 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testSetReadOnly_true_noReaderHostMatch_writerClosed() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockClosedWriterConn,
-        mockClosedWriterConn, mockClosedWriterConn, mockClosedWriterConn,
-        mockReaderConn, mockReaderConn, mockReaderConn,
-        mockClosedWriterConn, mockClosedWriterConn, mockClosedWriterConn);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+            .thenReturn(mockClosedWriterConn, mockClosedWriterConn, mockReaderConn, mockClosedWriterConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(defaultConnUrl);
@@ -378,38 +329,10 @@ public class ReadWriteSplittingPluginTest {
   }
 
   @Test
-  public void testSetReadOnly_trueFalse_zeroHosts() throws SQLException {
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockClosedWriterConn,
-        mockClosedWriterConn, mockClosedWriterConn, mockClosedWriterConn,
-        mockReaderConn, mockReaderConn);
-
-    final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
-    plugin.openInitialConnection(defaultConnUrl);
-    final List<HostInfo> hosts = plugin.getHosts();
-
-    plugin.switchConnectionIfRequired(true);
-    verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(defaultReaderHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockClosedWriterConn), any(HostInfo.class));
-    assertEquals(mockReaderConn, plugin.getReaderConnection());
-    assertEquals(mockClosedWriterConn, plugin.getWriterConnection());
-
-    hosts.clear();
-    final SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(false));
-    assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
-    verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), eq(defaultReaderHost));
-    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockClosedWriterConn), any(HostInfo.class));
-    assertEquals(mockReaderConn, plugin.getReaderConnection());
-    assertEquals(mockClosedWriterConn, plugin.getWriterConnection());
-  }
-
-  @Test
   public void testSetReadOnly_false_writerConnectionFails() throws SQLException {
     when(mockConnectionProvider.connect(eq(defaultWriterHost))).thenThrow(SQLException.class);
-    when(mockCurrentConnectionProvider.getCurrentConnection()).thenReturn(
-        mockClosedWriterConn,
-        mockClosedWriterConn, mockClosedWriterConn, mockClosedWriterConn,
-        mockReaderConn, mockReaderConn);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+            .thenReturn(mockClosedWriterConn, mockClosedWriterConn, mockReaderConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(defaultConnUrl);
@@ -445,10 +368,9 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testClusterSettings() throws SQLException {
-    final String url = "jdbc:mysql:aws://10.10.10.10/test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
+    final String url = "jdbc:mysql:aws://10.10.10.10/test";
     String clusterId = "test-cluster-id";
-    final Properties properties = new Properties();
+    final Properties properties = getDefaultProperties();
     properties.setProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), "?.my-custom-domain.com:3306");
     properties.setProperty(PropertyKey.clusterId.getKeyName(), clusterId);
     final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, properties);
@@ -470,9 +392,8 @@ public class ReadWriteSplittingPluginTest {
 
   @Test
   public void testHostPatternRequired() throws SQLException {
-    final String url = "jdbc:mysql:aws://10.10.10.10/test?" +
-        "connectionPluginFactories=com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final String url = "jdbc:mysql:aws://10.10.10.10/test";
+    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, getDefaultProperties());
 
     when(mockTopologyService.getTopology(eq(mockWriterConn), eq(false))).thenReturn(defaultHosts);
 
@@ -487,7 +408,7 @@ public class ReadWriteSplittingPluginTest {
   @Test
   public void testExecute_failoverToNewWriter() throws Exception {
     final String url = "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, getDefaultProperties());
     final HostInfo mainHost = connUrl.getMainHost();
 
     when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(mainHost);
@@ -517,7 +438,7 @@ public class ReadWriteSplittingPluginTest {
   @Test
   public void testExecute_failoverToNewWriter_getTopologyFails() throws Exception {
     final String url = "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
-    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, getDefaultProperties());
     final HostInfo mainHost = connUrl.getMainHost();
 
     when(mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(mainHost);
@@ -541,6 +462,39 @@ public class ReadWriteSplittingPluginTest {
     assertEquals(mockNewWriterConn, plugin.getWriterConnection());
     assertNull(plugin.getReaderConnection());
   }
+
+  @Test
+  public void testReaderLoadBalancing() throws Exception {
+    final String url = "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com";
+    final ConnectionUrl connUrl = ConnectionUrl.getConnectionUrlInstance(url, getDefaultProperties());
+    final List<HostInfo> hosts = getConnectionUrl(5).getHostsList();
+    final HostInfo writerHost = hosts.get(WRITER_INDEX);
+
+    when(mockTopologyService.getTopology(eq(mockWriterConn), eq(false))).thenReturn(hosts);
+    when(this.mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost());
+    mockConnectToReaderHosts(hosts);
+
+    final ReadWriteSplittingPlugin plugin = Mockito.spy(initReadWriteSplittingPlugin(defaultProps));
+    plugin.openInitialConnection(connUrl);
+
+    verify(mockTopologyService, times(1)).getTopology(eq(mockWriterConn), eq(false));
+    assertEquals(mockWriterConn, plugin.getWriterConnection());
+    assertNull(plugin.getReaderConnection());
+
+    plugin.switchConnectionIfRequired(true);
+    verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(writerHost)));
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+    assertEquals(mockReaderConn, plugin.getReaderConnection());
+    assertEquals(mockWriterConn, plugin.getWriterConnection());
+
+    plugin.execute(JdbcConnection.class, "commit", mockCallable, new Object[] {});
+    verify(plugin, times(1)).pickNewReaderConnection();
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+
+    plugin.execute(JdbcConnection.class, "commit", mockCallable, new Object[] {});
+    verify(plugin, times(2)).pickNewReaderConnection();
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+  }
   
   private ReadWriteSplittingPlugin initReadWriteSplittingPlugin(JdbcPropertySet props) {
     return new ReadWriteSplittingPlugin(
@@ -551,5 +505,30 @@ public class ReadWriteSplittingPluginTest {
         props,
         mockNextPlugin,
         mockLog);
+  }
+
+  private Properties getDefaultProperties() {
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
+            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory");
+    return props;
+  }
+
+  private ConnectionUrl getConnectionUrl(int numHosts) {
+    String hosts = "";
+    for (int hostNum = 1; hostNum <= numHosts; hostNum++) {
+      hosts += "instance-" + hostNum;
+      if(hostNum != numHosts) {
+        hosts += ",";
+      }
+    }
+    String url = "jdbc:mysql:aws://" + hosts + "/test";
+    return ConnectionUrl.getConnectionUrlInstance(url, getDefaultProperties());
+  }
+
+  private void mockConnectToReaderHosts(List<HostInfo> hosts) throws SQLException {
+    for (int i = 1; i < hosts.size(); i++) {
+      when(mockConnectionProvider.connect(eq(hosts.get(i)))).thenReturn(mockReaderConn);
+    }
   }
 }
