@@ -124,8 +124,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * After getting successful connections from the pool, the cluster becomes unavailable
    */
-  @Disabled
-  @Test
+  @Disabled @Test
   public void test_1_1_hikariCP_lost_connection() throws SQLException {
     try (Connection conn = data_source.getConnection()) {
       assertTrue(conn.isValid(5));
