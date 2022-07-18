@@ -44,9 +44,11 @@ jobs:
           echo "TEMP_AWS_ACCESS_KEY_ID=${creds[0]}" >> $GITHUB_ENV
           echo "TEMP_AWS_SECRET_ACCESS_KEY=${creds[1]}" >> $GITHUB_ENV
           echo "TEMP_AWS_SESSION_TOKEN=${creds[2]}" >> $GITHUB_ENV
-      - name: 'Run Integration Tests'
-        run: |
-          ./gradlew --no-parallel --no-daemon test-integration-docker
+#      - name: 'Run Integration Tests'
+#        run: |
+#          ./gradlew --no-parallel --no-daemon test-integration-docker
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
         env:
           TEST_DB_CLUSTER_IDENTIFIER: ${{ secrets.TEST_DB_CLUSTER_IDENTIFIER }}-${{ github.run_id }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
