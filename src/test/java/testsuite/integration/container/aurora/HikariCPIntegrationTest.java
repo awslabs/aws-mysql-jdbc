@@ -39,12 +39,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import eu.rekawek.toxiproxy.Proxy;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -129,6 +124,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * After getting successful connections from the pool, the cluster becomes unavailable
    */
+  @Disabled
   @Test
   public void test_1_1_hikariCP_lost_connection() throws SQLException {
     try (Connection conn = data_source.getConnection()) {
