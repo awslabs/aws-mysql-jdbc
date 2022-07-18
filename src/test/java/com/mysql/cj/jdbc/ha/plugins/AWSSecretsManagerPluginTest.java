@@ -146,17 +146,16 @@ public class AWSSecretsManagerPluginTest {
   public void testFailedInitialConnectionWithGenericError() throws SQLException {
     final SQLException failedFirstConnectionGenericException = new SQLException(TEST_SQL_ERROR, SQL_STATE_FAIL_GENERIC);
     doThrow(failedFirstConnectionGenericException).when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
+    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(VALID_GET_SECRET_VALUE_RESPONSE);
 
     final SQLException connectionFailedException = assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
 
     assertEquals(TEST_SQL_ERROR, connectionFailedException.getMessage());
-    assertEquals(0, AWSSecretsManagerPlugin.SECRET_CACHE.size());
-    verify(this.mockSecretsManagerClient, never()).getSecretValue(this.mockGetValueRequest);
     verify(this.nextPlugin).openInitialConnection(this.captor.capture());
     final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
     final Map<String, String> connectionProperties = connectionUrls.get(0).getOriginalProperties();
-    assertNull(connectionProperties.get("user"));
-    assertNull(connectionProperties.get("password"));
+    assertEquals(TEST_USERNAME, connectionProperties.get("user"));
+    assertEquals(TEST_PASSWORD, connectionProperties.get("password"));
   }
 
   /**
@@ -168,21 +167,18 @@ public class AWSSecretsManagerPluginTest {
     // Fail initial connection attempt so secrets will be retrieved.
     // Second attempt should be successful.
     final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
-    doThrow(failedFirstConnectionAccessException).doNothing().when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
+    doThrow(failedFirstConnectionAccessException).when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(VALID_GET_SECRET_VALUE_RESPONSE);
 
-    this.plugin.openInitialConnection(this.connectionUrl);
+    assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
 
     assertEquals(1, AWSSecretsManagerPlugin.SECRET_CACHE.size());
     verify(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
 
     // Verify the openInitialConnection method was called using different ConnectionUrl arguments.
-    verify(this.nextPlugin, times(2)).openInitialConnection(this.captor.capture());
+    verify(this.nextPlugin, times(1)).openInitialConnection(this.captor.capture());
     final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
-    Map<String, String> connectionPropsWithCachedSecret = connectionUrls.get(0).getOriginalProperties();
-    Map<String, String> connectionPropsWithNewSecret = connectionUrls.get(1).getOriginalProperties();
-    assertNotEquals(TEST_USERNAME, connectionPropsWithCachedSecret.get("user"));
-    assertNotEquals(TEST_PASSWORD, connectionPropsWithCachedSecret.get("password"));
+    Map<String, String> connectionPropsWithNewSecret = connectionUrls.get(0).getOriginalProperties();
     assertEquals(TEST_USERNAME, connectionPropsWithNewSecret.get("user"));
     assertEquals(TEST_PASSWORD, connectionPropsWithNewSecret.get("password"));
   }
@@ -196,7 +192,7 @@ public class AWSSecretsManagerPluginTest {
   public void testFailedToReadSecrets() throws SQLException {
     // Fail initial connection attempt so secrets will be retrieved.
     final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
-    doThrow(failedFirstConnectionAccessException).doNothing().when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
+    doThrow(failedFirstConnectionAccessException).when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(INVALID_GET_SECRET_VALUE_RESPONSE);
 
     final SQLException readSecretsFailedException = assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
@@ -204,11 +200,7 @@ public class AWSSecretsManagerPluginTest {
     assertEquals(readSecretsFailedException.getMessage(), AWSSecretsManagerPlugin.ERROR_GET_SECRETS_FAILED);
     assertEquals(0, AWSSecretsManagerPlugin.SECRET_CACHE.size());
     verify(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
-    verify(this.nextPlugin).openInitialConnection(this.captor.capture());
-    final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
-    final Map<String, String> connectionProperties = connectionUrls.get(0).getOriginalProperties();
-    assertNull(connectionProperties.get("user"));
-    assertNull(connectionProperties.get("password"));
+    verify(this.nextPlugin, never()).openInitialConnection(this.captor.capture());
   }
 
   /**
@@ -220,7 +212,7 @@ public class AWSSecretsManagerPluginTest {
   public void testFailedToGetSecrets() throws SQLException {
     // Fail initial connection attempt so secrets will be retrieved.
     final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
-    doThrow(failedFirstConnectionAccessException).doNothing().when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
+    doThrow(failedFirstConnectionAccessException).when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     doThrow(SecretsManagerException.class).when(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
 
     final SQLException getSecretsFailedException = assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
@@ -228,10 +220,6 @@ public class AWSSecretsManagerPluginTest {
     assertEquals(getSecretsFailedException.getMessage(), AWSSecretsManagerPlugin.ERROR_GET_SECRETS_FAILED);
     assertEquals(0, AWSSecretsManagerPlugin.SECRET_CACHE.size());
     verify(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
-    verify(this.nextPlugin).openInitialConnection(this.captor.capture());
-    final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
-    final Map<String, String> connectionProperties = connectionUrls.get(0).getOriginalProperties();
-    assertNull(connectionProperties.get("user"));
-    assertNull(connectionProperties.get("password"));
+    verify(this.nextPlugin, never()).openInitialConnection(this.captor.capture());
   }
 }

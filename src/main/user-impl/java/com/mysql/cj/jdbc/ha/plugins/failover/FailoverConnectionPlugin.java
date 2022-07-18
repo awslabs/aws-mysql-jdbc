@@ -423,11 +423,10 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       validateConnection();
 
       if (this.currentHostIndex != NO_CONNECTION_INDEX
+          && this.currentHostIndex != WRITER_CONNECTION_INDEX
           && !Util.isNullOrEmpty(this.hosts)) {
         HostInfo currentHost = this.hosts.get(this.currentHostIndex);
-        if (isExplicitlyReadOnly()) {
-          topologyService.setLastUsedReaderHost(currentHost);
-        }
+        topologyService.setLastUsedReaderHost(currentHost);
       }
 
       final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
@@ -524,7 +523,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         result.getConnectionIndex());
     updateTopologyAndConnectIfNeeded(true);
 
-    if (this.currentHostIndex != NO_CONNECTION_INDEX && !Util.isNullOrEmpty(this.hosts)) {
+    if (this.currentHostIndex != NO_CONNECTION_INDEX
+        && this.currentHostIndex != WRITER_CONNECTION_INDEX
+        && !Util.isNullOrEmpty(this.hosts)) {
       HostInfo currentHost = this.hosts.get(this.currentHostIndex);
       topologyService.setLastUsedReaderHost(currentHost);
       this.logger.logDebug(
@@ -610,7 +611,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     try {
       connectTo(WRITER_CONNECTION_INDEX);
-      if (isExplicitlyReadOnly() && this.currentHostIndex != NO_CONNECTION_INDEX) {
+      if (this.currentHostIndex != NO_CONNECTION_INDEX
+          && this.currentHostIndex != WRITER_CONNECTION_INDEX) {
         topologyService.setLastUsedReaderHost(this.hosts.get(this.currentHostIndex));
       }
     } catch (SQLException e) {

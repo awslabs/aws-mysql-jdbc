@@ -58,7 +58,6 @@ public class Driver extends NonRegisteringDriver {
   static {
     try {
       DriverManager.registerDriver(new Driver());
-      System.out.println("You are using Amazon Web Services (AWS) JDBC Driver for MySQL.");
     } catch (SQLException E) {
       throw new RuntimeException("Can't register driver!");
     }

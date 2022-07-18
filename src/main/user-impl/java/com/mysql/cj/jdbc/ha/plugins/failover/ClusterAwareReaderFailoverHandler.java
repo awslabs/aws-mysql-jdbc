@@ -158,7 +158,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
   public ReaderFailoverResult failover(List<HostInfo> hosts, HostInfo currentHost)
       throws SQLException {
     if (Util.isNullOrEmpty(hosts)) {
-      this.log.logDebug(Messages.getString("ClusterAwareReaderFailover.6", new Object[] {"failover"}));
+      this.log.logDebug(Messages.getString("ClusterAwareReaderFailoverHandler.6", new Object[] {"failover"}));
       return new ReaderFailoverResult(
           null,
           FailoverConnectionPlugin.NO_CONNECTION_INDEX,
@@ -280,7 +280,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
   public ReaderFailoverResult getReaderConnection(List<HostInfo> hostList)
       throws SQLException {
     if (Util.isNullOrEmpty(hostList)) {
-      this.log.logDebug(Messages.getString("ClusterAwareReaderFailover.6", new Object[] {"getReaderConnection"}));
+      this.log.logDebug(Messages.getString("ClusterAwareReaderFailoverHandler.6", new Object[] {"getReaderConnection"}));
       return new ReaderFailoverResult(
           null,
           FailoverConnectionPlugin.NO_CONNECTION_INDEX,
