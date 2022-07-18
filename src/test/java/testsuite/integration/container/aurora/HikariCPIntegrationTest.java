@@ -64,7 +64,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   private static Log log = null;
   private static final String URL_SUFFIX = PROXIED_DOMAIN_NAME_SUFFIX + ":" + MYSQL_PROXY_PORT;
   private static HikariDataSource data_source = null;
-  private final HikariConfig config = new HikariConfig();
   private final List<String> clusterTopology = fetchTopology();
 
   private List<String> fetchTopology() {
@@ -102,6 +101,8 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     String jdbcUrl = DB_CONN_STR_PREFIX + writerEndpoint + URL_SUFFIX;
     log.logDebug("Writer endpoint: " + jdbcUrl);
 
+    final HikariConfig config = new HikariConfig();
+
     config.setJdbcUrl(jdbcUrl);
     config.setUsername(TEST_USERNAME);
     config.setPassword(TEST_PASSWORD);
@@ -115,6 +116,14 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     config.addDataSourceProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
     config.addDataSourceProperty(PropertyKey.failureDetectionTime.getKeyName(), "3000");
     config.addDataSourceProperty(PropertyKey.failureDetectionInterval.getKeyName(), "1500");
+
+    data_source = new HikariDataSource(config);
+
+    final HikariPoolMXBean hikariPoolMXBean = data_source.getHikariPoolMXBean();
+
+    log.logDebug("Starting idle connections: " + hikariPoolMXBean.getIdleConnections());
+    log.logDebug("Starting active connections: " + hikariPoolMXBean.getActiveConnections());
+    log.logDebug("Starting total connections: " + hikariPoolMXBean.getTotalConnections());
   }
 
   /**
@@ -122,8 +131,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    */
   @Test
   public void test_1_1_hikariCP_lost_connection() throws SQLException {
-    createDataSource();
-
     try (Connection conn = data_source.getConnection()) {
       assertTrue(conn.isValid(5));
 
@@ -154,7 +161,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     log.logDebug("Instance to fail over to: " + readerIdentifier);
 
     bringUpInstance(writerIdentifier);
-    createDataSource();
 
     // Get a valid connection, then make it fail over to a different instance
     try (Connection conn = data_source.getConnection()) {
@@ -194,7 +200,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     log.logDebug("Instance to fail over to: " + readerIdentifier);
 
     bringUpInstance(writerIdentifier);
-    createDataSource();
 
     // Get a valid connection, then make it fail over to a different instance
     try (Connection conn = data_source.getConnection()) {
@@ -215,17 +220,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
       log.logDebug("Connected to instance: " + currentInstance);
       assertTrue(currentInstance.equalsIgnoreCase(readerIdentifier));
     }
-  }
-
-  private HikariDataSource createDataSource() {
-    data_source = new HikariDataSource(config);
-
-    final HikariPoolMXBean hikariPoolMXBean = data_source.getHikariPoolMXBean();
-    log.logDebug("Starting idle connections: " + hikariPoolMXBean.getIdleConnections());
-    log.logDebug("Starting active connections: " + hikariPoolMXBean.getActiveConnections());
-    log.logDebug("Starting total connections: " + hikariPoolMXBean.getTotalConnections());
-
-    return data_source;
   }
 
   private void putDownInstance(String targetInstance) {
