@@ -39,12 +39,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import eu.rekawek.toxiproxy.Proxy;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -149,6 +144,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    * connection fails over to another instance. A connection is then retrieved to check that connections
    * to failed instances are not returned
    */
+  @Disabled
   @Test
   public void test_1_2_hikariCP_get_dead_connection() throws SQLException {
     putDownAllInstances(false);
@@ -188,6 +184,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    * After getting a successful connection from the pool, the connected instance becomes unavailable and the
    * connection fails over to another instance through the Enhanced Failure Monitor
    */
+  @Disabled
   @Test
   public void test_2_1_hikariCP_efm_failover() throws SQLException {
     putDownAllInstances(false);

@@ -167,6 +167,14 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
   @Override
   public void setCurrentConnection(JdbcConnection connection, HostInfo info) {
+    try {
+      if (this.currentConnection != null && !this.currentConnection.isClosed()) {
+        this.currentConnection.close();
+      }
+    } catch (SQLException sqlEx) {
+      // ignore
+    }
+
     this.currentConnection = connection;
     this.currentHostInfo = info;
   }
@@ -189,9 +197,9 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
           () -> method.invoke(currentConnection, args),
           argsCopy);
 
-      if (METHOD_CLOSE.equals(methodName)) {
-        pluginManager.releaseResources();
-      }
+//      if (METHOD_CLOSE.equals(methodName)) {
+//        pluginManager.releaseResources();
+//      }
 
       return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (Exception e) {
