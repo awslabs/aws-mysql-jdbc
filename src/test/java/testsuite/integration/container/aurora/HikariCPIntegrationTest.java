@@ -53,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@Disabled
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
@@ -124,7 +125,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * After getting successful connections from the pool, the cluster becomes unavailable
    */
-  @Disabled
   @Test
   public void test_1_1_hikariCP_lost_connection() throws SQLException {
     try (Connection conn = data_source.getConnection()) {
