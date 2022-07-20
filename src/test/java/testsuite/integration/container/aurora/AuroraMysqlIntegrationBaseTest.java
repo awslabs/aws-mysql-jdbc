@@ -29,19 +29,24 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.rds.RdsClient;
-import software.amazon.awssdk.services.rds.model.DBCluster;
-import software.amazon.awssdk.services.rds.model.DBClusterMember;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.log.NullLogger;
 import com.mysql.cj.util.StringUtils;
+import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.ToxiproxyClient;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.services.rds.RdsClient;
+import software.amazon.awssdk.services.rds.model.DBCluster;
+import software.amazon.awssdk.services.rds.model.DBClusterMember;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersResponse;
+import software.aws.rds.jdbc.mysql.Driver;
+import testsuite.integration.utility.AuroraTestUtility;
+import testsuite.integration.utility.ContainerHelper;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -63,12 +68,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import eu.rekawek.toxiproxy.Proxy;
-import eu.rekawek.toxiproxy.ToxiproxyClient;
-import software.amazon.awssdk.services.rds.model.DescribeDbClustersResponse;
-import software.aws.rds.jdbc.mysql.Driver;
-import testsuite.integration.utility.AuroraTestUtility;
-import testsuite.integration.utility.ContainerHelper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -414,5 +413,76 @@ public abstract class AuroraMysqlIntegrationBaseTest {
         "The following instances are still down: \n" + String.join("\n", remainingInstances.keySet()));
     }
 
+  }
+
+  // Failover helpers
+  protected void failoverClusterAndWaitUntilWriterChanged(String clusterWriterId)
+      throws InterruptedException {
+    failoverCluster();
+    waitUntilWriterInstanceChanged(clusterWriterId);
+  }
+
+  protected void failoverCluster() throws InterruptedException {
+    waitUntilClusterHasRightState();
+    while (true) {
+      try {
+        rdsClient.failoverDBCluster((builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER));
+        break;
+      } catch (final Exception e) {
+        TimeUnit.MILLISECONDS.sleep(3000);
+      }
+    }
+  }
+
+  protected void failoverClusterToATargetAndWaitUntilWriterChanged(
+      String clusterWriterId, String targetInstanceId) throws InterruptedException {
+    failoverClusterWithATargetInstance(targetInstanceId);
+    waitUntilWriterInstanceChanged(clusterWriterId);
+  }
+
+  protected void failoverClusterWithATargetInstance(String targetInstanceId)
+      throws InterruptedException {
+    waitUntilClusterHasRightState();
+
+    while (true) {
+      try {
+        rdsClient.failoverDBCluster(
+            (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER)
+                .targetDBInstanceIdentifier(targetInstanceId));
+        break;
+      } catch (final Exception e) {
+        TimeUnit.MILLISECONDS.sleep(3000);
+      }
+    }
+  }
+
+  protected void waitUntilWriterInstanceChanged(String initialWriterInstanceId)
+      throws InterruptedException {
+    String nextClusterWriterId = getDBClusterWriterInstanceId();
+    while (initialWriterInstanceId.equals(nextClusterWriterId)) {
+      TimeUnit.MILLISECONDS.sleep(3000);
+      // Calling the RDS API to get writer Id.
+      nextClusterWriterId = getDBClusterWriterInstanceId();
+    }
+  }
+
+  protected void waitUntilClusterHasRightState() throws InterruptedException {
+    String status = getDBCluster().status();
+    while (!"available".equalsIgnoreCase(status)) {
+      TimeUnit.MILLISECONDS.sleep(3000);
+      status = getDBCluster().status();
+    }
+  }
+
+  protected void waitUntilFirstInstanceIsWriter() throws InterruptedException {
+    final String firstInstance = instanceIDs[0];
+    failoverClusterWithATargetInstance(firstInstance);
+    String clusterWriterId = getDBClusterWriterInstanceId();
+
+    while (!firstInstance.equals(clusterWriterId)) {
+      clusterWriterId = getDBClusterWriterInstanceId();
+      System.out.println("Writer is still " + clusterWriterId);
+      Thread.sleep(3000);
+    }
   }
 }

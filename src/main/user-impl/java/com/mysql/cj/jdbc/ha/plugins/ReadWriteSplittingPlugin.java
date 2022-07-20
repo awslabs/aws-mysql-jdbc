@@ -1,6 +1,7 @@
 /*
- * AWS JDBC Driver for MySQL
- * Copyright Amazon.com Inc. or affiliates.
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Copyright (c) 2015, 2020, 2021 Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -9,12 +10,12 @@
  * This program is also distributed with certain software (including but not
  * limited to OpenSSL) that is licensed under separate terms, as designated in a
  * particular file or component or in included license documentation. The
- * authors of this program hereby grant you an additional permission to link the
+ * authors of MySQL hereby grant you an additional permission to link the
  * program and your derivative works with the separately licensed software that
  * they have included with MySQL.
  *
  * Without limiting anything contained in the foregoing, this file, which is
- * part of this connector, is also subject to the Universal FOSS Exception,
+ * part of MySQL Connector/J, is also subject to the Universal FOSS Exception,
  * version 1.0, a copy of which can be found at
  * http://oss.oracle.com/licenses/universal-foss-exception.
  *
@@ -117,12 +118,21 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     try {
       return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
     } catch (SQLException e) {
-      final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-      final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-      updateTopology(currentConnection, currentHost);
-      updateInternalConnections(currentConnection, currentHost);
+      if (isCommunicationException(e)) {
+        final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+        final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
+        closeInternalConnection(this.readerConnection, currentConnection);
+        closeInternalConnection(this.writerConnection, currentConnection);
+        updateTopology(currentConnection, currentHost);
+        updateInternalConnections(currentConnection, currentHost);
+      }
       throw e;
     }
+  }
+
+  private boolean isCommunicationException(SQLException e) {
+    return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(e.getSQLState())
+        || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(e.getSQLState());
   }
 
   private void updateTopology(JdbcConnection currentConnection, HostInfo currentHost) {
@@ -231,7 +241,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if (StringUtils.isNullOrEmpty(hostPattern) &&
         (IP_ADDRESS.equals(rdsUrlType) || OTHER.equals(rdsUrlType))) {
-      throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.5"));
+      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.8"));
     }
 
     updateInternalConnections(currentConnection, topologyService.getHostByName(currentConnection));
@@ -329,7 +339,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
    * @param target
    *            The connection where to set state.
    */
-  void syncSessionStateOnReadWriteSplit(JdbcConnection source, JdbcConnection target) {
+  void syncSessionStateOnReadWriteSplit(JdbcConnection source, JdbcConnection target) throws SQLException {
     try {
       if (source == null || target == null) {
         return;
@@ -350,7 +360,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
       sourceUseLocalSessionState.setValue(prevUseLocalSessionState);
     } catch (SQLException e) {
-      // Do nothing. Reader connections must continue to "work" after swapping between writers and readers.
+      throw new SQLException(
+          Messages.getString("ReadWriteSplittingPlugin.7"),
+          MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e);
     }
   }
 

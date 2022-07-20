@@ -29,7 +29,7 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Integration testing with Aurora MySQL replica failover logic.
  */
-public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest{
+public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /*
    * Before running these tests we need to initialize the test cluster as the following.
    *
@@ -107,42 +107,6 @@ public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBa
 
   private void rebootInstance(String instance) {
     rdsClient.rebootDBInstance((builder) -> builder.dbInstanceIdentifier(instance));
-  }
-
-  private void failoverClusterWithATargetInstance(String targetInstanceId)
-      throws InterruptedException {
-    waitUntilClusterHasRightState();
-
-    while (true) {
-      try {
-        rdsClient.failoverDBCluster(
-          (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER)
-            .targetDBInstanceIdentifier(targetInstanceId));
-        break;
-      } catch (Exception e) {
-        Thread.sleep(3000);
-      }
-    }
-  }
-
-  private void waitUntilClusterHasRightState() throws InterruptedException {
-    String status = getDBCluster().status();
-    while (!"available".equalsIgnoreCase(status)) {
-      Thread.sleep(3000);
-      status = getDBCluster().status();
-    }
-  }
-
-  private void waitUntilFirstInstanceIsWriter() throws InterruptedException {
-    final String firstInstance = instanceIDs[0];
-    failoverClusterWithATargetInstance(firstInstance);
-    String clusterWriterId = getDBClusterWriterInstanceId();
-
-    while (!firstInstance.equals(clusterWriterId)) {
-      clusterWriterId = getDBClusterWriterInstanceId();
-      System.out.println("Writer is still " + clusterWriterId);
-      Thread.sleep(3000);
-    }
   }
 
   @BeforeEach

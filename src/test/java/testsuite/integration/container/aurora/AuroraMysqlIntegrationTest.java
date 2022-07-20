@@ -29,12 +29,12 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ha.plugins.failover.IClusterAwareMetricsReporter;
+import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -53,7 +53,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Stream;
 
-import eu.rekawek.toxiproxy.Proxy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;

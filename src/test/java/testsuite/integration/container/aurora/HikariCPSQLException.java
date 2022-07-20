@@ -1,4 +1,4 @@
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import com.zaxxer.hikari.SQLExceptionOverride;
 
