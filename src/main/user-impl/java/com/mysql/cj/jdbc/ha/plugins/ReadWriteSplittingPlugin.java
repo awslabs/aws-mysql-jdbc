@@ -118,7 +118,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     try {
       return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
     } catch (SQLException e) {
-      if (isFailoverException(e)) {
+      if (isCommunicationException(e)) {
         final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
         final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
         closeInternalConnection(this.readerConnection, currentConnection);
@@ -130,7 +130,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
   }
 
-  private boolean isFailoverException(SQLException e) {
+  private boolean isCommunicationException(SQLException e) {
     return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(e.getSQLState())
         || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(e.getSQLState());
   }
