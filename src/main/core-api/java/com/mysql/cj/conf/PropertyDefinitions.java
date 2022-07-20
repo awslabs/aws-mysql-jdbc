@@ -645,7 +645,7 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.serverAffinityOrder, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.serverAffinityOrder"), "8.0.8", CATEGORY_HA, Integer.MIN_VALUE),
 
-                // Cluster-aware failover settings
+                // Connection plugin settings
 
                 new StringPropertyDefinition(PropertyKey.clusterId, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.clusterId"), "0.1.0", CATEGORY_HA, Integer.MIN_VALUE),
@@ -712,6 +712,9 @@ public class PropertyDefinitions {
 
                 new BooleanPropertyDefinition(PropertyKey.useAwsIam, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.useAwsIam"), "0.3.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.loadBalanceReadOnlyTraffic, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.loadBalanceReadOnlyTraffic"), "1.2.0", CATEGORY_HA, Integer.MAX_VALUE),
 
                 //
                 // CATEGORY_PERFORMANCE

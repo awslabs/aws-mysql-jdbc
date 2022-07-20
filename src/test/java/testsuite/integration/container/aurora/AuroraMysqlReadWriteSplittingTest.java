@@ -523,6 +523,73 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
+  @Test
+  public void test_readerLoadBalancing_autocommitTrue() throws SQLException {
+    final String initialWriterId = instanceIDs[0];
+
+    Properties props = getPropsWithReadWritePlugin();
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      for (int i = 0; i < 10; i++) {
+        Statement stmt = conn.createStatement();
+        stmt.executeQuery("SELECT " + i);
+        readerConnectionId = queryInstanceId(conn);
+        assertTrue(isDBInstanceReader(readerConnectionId));
+
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        assertEquals(i, rs.getInt(1));
+      }
+    }
+  }
+
+  @Test
+  public void test_readerLoadBalancing_autocommitFalse() throws SQLException {
+    final String initialWriterId = instanceIDs[0];
+
+    Properties props = getPropsWithReadWritePlugin();
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      conn.setAutoCommit(false);
+      Statement stmt = conn.createStatement();
+
+      for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
+        stmt.executeQuery("SELECT " + (i + 1));
+        conn.commit();
+        readerConnectionId = queryInstanceId(conn);
+        assertTrue(isDBInstanceReader(readerConnectionId));
+
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        assertEquals(i + 1, rs.getInt(1));
+
+        stmt.executeQuery("SELECT " + i);
+        conn.rollback();
+        readerConnectionId = queryInstanceId(conn);
+        assertTrue(isDBInstanceReader(readerConnectionId));
+      }
+    }
+  }
+
   private Properties getPropsWithReadWritePlugin() {
     Properties props = initDefaultProps();
     addReadWriteSplittingPlugin(props);

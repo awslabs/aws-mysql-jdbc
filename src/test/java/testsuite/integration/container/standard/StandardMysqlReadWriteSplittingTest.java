@@ -42,11 +42,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
@@ -280,6 +277,63 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
       final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
       assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
+    }
+  }
+
+  @Test
+  public void test_readerLoadBalancing_autocommitTrue() throws SQLException {
+    Properties props = getPropsWithReadWritePlugin();
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connect(props)) {
+      String writerConnectionId = queryInstanceId(conn);
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+
+      for (int i = 0; i < 10; i++) {
+        Statement stmt = conn.createStatement();
+        stmt.executeQuery("SELECT " + i);
+        readerConnectionId = queryInstanceId(conn);
+        assertNotEquals(writerConnectionId, readerConnectionId);
+
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        assertEquals(i, rs.getInt(1));
+      }
+    }
+  }
+
+  @Test
+  public void test_readerLoadBalancing_autocommitFalse() throws SQLException {
+    Properties props = getPropsWithReadWritePlugin();
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connect(props)) {
+      String writerConnectionId = queryInstanceId(conn);
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+
+      conn.setAutoCommit(false);
+      Statement stmt = conn.createStatement();
+
+      for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
+        stmt.executeQuery("SELECT " + (i + 1));
+        conn.commit();
+        readerConnectionId = queryInstanceId(conn);
+        assertNotEquals(writerConnectionId, readerConnectionId);
+
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        assertEquals(i + 1, rs.getInt(1));
+
+        stmt.executeQuery("SELECT " + i);
+        conn.rollback();
+        readerConnectionId = queryInstanceId(conn);
+        assertNotEquals(writerConnectionId, readerConnectionId);
+      }
     }
   }
 
