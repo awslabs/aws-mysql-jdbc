@@ -197,9 +197,11 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
           () -> method.invoke(currentConnection, args),
           argsCopy);
 
-//      if (METHOD_CLOSE.equals(methodName)) {
-//        pluginManager.releaseResources();
-//      }
+      if (METHOD_CLOSE.equals(methodName)) {
+        System.out.println("Calling releaseResources on the plugin manager");
+        pluginManager.releaseResources();
+        System.out.println("Done calling releaseResources on plugin manager");
+      }
 
       return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
     } catch (Exception e) {

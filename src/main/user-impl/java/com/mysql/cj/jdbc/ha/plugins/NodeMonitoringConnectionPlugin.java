@@ -262,7 +262,9 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
   @Override
   public void releaseResources() {
     if (this.monitorService != null) {
+      System.out.println("Calling release resources on monitor service");
       this.monitorService.releaseResources();
+      System.out.println("Monitor service resources released");
     }
 
     this.monitorService = null;
