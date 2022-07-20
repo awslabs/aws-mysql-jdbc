@@ -95,6 +95,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
+    System.out.println("Initializing ReadWriteSplittingPlugin");
     this.currentConnectionProvider = currentConnectionProvider;
     this.topologyService = topologyService;
     this.connectionProvider = connectionProvider;
