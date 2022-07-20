@@ -138,19 +138,23 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
         closeAllConnections(currentConnection);
         updateTopology(currentConnection, currentHost);
-        updateInternalConnections(currentConnection, currentHost);
+        updateInternalConnectionInfo(currentConnection, currentHost);
       }
       throw e;
     }
   }
 
   private boolean isTransactionBoundary(String methodName) throws SQLException {
-    boolean isAutoCommit = this.currentConnectionProvider.getCurrentConnection().getAutoCommit();
-    if (isAutoCommit) {
-      return "execute".equals(methodName) || "executeQuery".equals(methodName);
-    } else {
-      return "commit".equals(methodName) || "rollback".equals(methodName);
+    JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+    if (currentConnection == null) {
+      return false;
     }
+
+    final boolean isAutoCommit = currentConnection.getAutoCommit();
+    if (isAutoCommit && "execute".equals(methodName) || "executeQuery".equals(methodName)) {
+      return true;
+    }
+    return "commit".equals(methodName) || "rollback".equals(methodName);
   }
 
   private boolean isCommunicationException(SQLException e) {
@@ -183,7 +187,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    ArrayDeque<Integer> readerIndexes = getRandomReaderIndexes();
+    final ArrayDeque<Integer> readerIndexes = getRandomReaderIndexes();
     while (!readerIndexes.isEmpty()) {
       final int index = readerIndexes.poll();
 
@@ -230,7 +234,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (readOnly) {
-      if (!this.inTransaction && (isWriterConnection() || currentConnection.isClosed())) {
+      if (!this.inTransaction && (!isCurrentConnectionReader() || currentConnection.isClosed())) {
         try {
           switchToReaderConnection(currentConnection);
         } catch (SQLException e) {
@@ -245,7 +249,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         }
       }
     } else {
-      if (!isWriterConnection() || currentConnection.isClosed()) {
+      if (!isCurrentConnectionWriter() || currentConnection.isClosed()) {
         if (this.inTransaction) {
           throw new SQLException(
               Messages.getString("ReadWriteSplittingPlugin.6"),
@@ -296,7 +300,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.3"));
       }
 
-      updateInternalConnections(currentConnection, currentHost);
+      updateInternalConnectionInfo(currentConnection, currentHost);
       return;
     }
     this.hosts = topology;
@@ -306,10 +310,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.8"));
     }
 
-    updateInternalConnections(currentConnection, topologyService.getHostByName(currentConnection));
+    updateInternalConnectionInfo(currentConnection, topologyService.getHostByName(currentConnection));
   }
 
-  private void updateInternalConnections(JdbcConnection currentConnection, HostInfo currentHost) {
+  private void updateInternalConnectionInfo(JdbcConnection currentConnection, HostInfo currentHost) {
     if (currentConnection == null || currentHost == null) {
       return;
     }
@@ -371,33 +375,35 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     return this.hosts;
   }
 
-  private boolean isWriterConnection() {
+  private boolean isCurrentConnectionWriter() {
     return this.currentHostIndex == WRITER_INDEX;
   }
 
+  private boolean isCurrentConnectionReader() {
+    // If there is only one host in the list we will consider it to be both a writer and a reader
+    return (this.hosts.size() == 1 && this.currentHostIndex == WRITER_INDEX) || this.currentHostIndex > WRITER_INDEX;
+  }
+
   private synchronized void switchToWriterConnection(JdbcConnection currentConnection) throws SQLException {
-    if (isWriterConnection()) {
+    if (isCurrentConnectionWriter() && isConnectionUsable(currentConnection)) {
       return;
     }
 
     if (!isConnectionUsable(this.writerConnection)) {
-      initializeWriterConnection();
+      this.writerConnection = getConnectionToHost(WRITER_INDEX);
     }
-
-    if (!isWriterConnection() && this.writerConnection != null) {
-      switchCurrentConnectionTo(currentConnection, this.writerConnection, WRITER_INDEX);
-    }
+    switchCurrentConnectionTo(currentConnection, this.writerConnection, WRITER_INDEX);
   }
 
   private void switchCurrentConnectionTo(JdbcConnection oldConn, JdbcConnection newConn, int newConnIndex) throws SQLException {
+    if (oldConn == newConn) {
+      return;
+    }
+
     syncSessionStateOnReadWriteSplit(oldConn, newConn);
     final HostInfo hostInfo = this.hosts.get(newConnIndex);
     this.currentConnectionProvider.setCurrentConnection(newConn, hostInfo);
     this.currentHostIndex = newConnIndex;
-  }
-
-  private void initializeWriterConnection() throws SQLException {
-    this.writerConnection = getConnectionToHost(WRITER_INDEX);
   }
 
   /**
@@ -438,12 +444,13 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   private synchronized void switchToReaderConnection(JdbcConnection currentConnection) throws SQLException {
-    if (!isWriterConnection()) {
+    if (isCurrentConnectionReader() && isConnectionUsable(currentConnection)) {
       return;
     }
 
     if (!isConnectionUsable(this.readerConnection)) {
       initializeReaderConnection(currentConnection);
+      currentConnection = this.currentConnectionProvider.getCurrentConnection();
     }
 
     final int readerHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, this.readerConnection.getHostPortPair());
@@ -456,8 +463,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
       // Reader connection host wasn't in our host list - stick with current connection
       this.readerConnection = currentConnection;
-      return;
-    } else if (readerHostIndex == this.currentHostIndex) {
       return;
     }
 
@@ -474,7 +479,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     } else if (this.hosts.size() == 2) {
       this.readerConnection = getConnectionToHost(1);
     } else {
-      int randomReaderIndex = getRandomReaderIndex();
+      final int randomReaderIndex = getRandomReaderIndex();
       this.readerConnection = getConnectionToHost(randomReaderIndex);
     }
   }
