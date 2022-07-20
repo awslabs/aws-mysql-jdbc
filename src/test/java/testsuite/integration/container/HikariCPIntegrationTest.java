@@ -86,7 +86,9 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   @AfterEach
   public void teardown() {
+    System.out.println("Closing data source");
     data_source.close();
+    System.out.println("Closed data source successfully");
   }
 
   @BeforeEach
@@ -129,14 +131,20 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     try (Connection conn = data_source.getConnection()) {
       assertTrue(conn.isValid(5));
 
+      System.out.println("Putting down all instances");
       putDownAllInstances(true);
+      System.out.println("All instances are down");
 
       final SQLException exception = assertThrows(SQLException.class, () -> queryInstanceId(conn));
+      System.out.println("Successfully queried instance ID");
       assertEquals("08001", exception.getSQLState());
+      System.out.println("Checking if conn is valid");
       assertFalse(conn.isValid(5));
+      System.out.println("Successfully checked if conn is valid");
     }
 
     assertThrows(SQLTransientConnectionException.class, () -> data_source.getConnection());
+    System.out.println("Successfully called getConnection");
   }
 
   /**
