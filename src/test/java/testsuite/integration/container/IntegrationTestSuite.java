@@ -39,9 +39,9 @@ import org.junit.platform.suite.api.Suite;
 @Suite
 @SelectClasses({
 //    AuroraMysqlIntegrationTest.class,
-//    AuroraMysqlFailoverIntegrationTest.class,
+    AuroraMysqlFailoverIntegrationTest.class,
 //    AuroraMysqlHardFailureIntegrationTest.class,
-    ReplicationFailoverIntegrationTest.class,
+//    ReplicationFailoverIntegrationTest.class,
     HikariCPIntegrationTest.class
 //    AuroraMysqlReadWriteSplittingTest.class
 })
