@@ -35,6 +35,7 @@ import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ha.plugins.failover.IClusterAwareMetricsReporter;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -61,7 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@TestMethodOrder(MethodOrderer.MethodName.class)
+@Disabled @TestMethodOrder(MethodOrderer.MethodName.class)
 public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
   protected String currWriter;
@@ -86,7 +87,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     );
   }
 
-  @Test
+  @Disabled @Test
   public void test_ValidateConnectionWhenNetworkDown() throws SQLException, IOException {
     final Connection conn = connectToInstance(MYSQL_INSTANCE_1_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT);
     assertTrue(conn.isValid(5));
@@ -100,7 +101,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     conn.close();
   }
 
-  @Test
+  @Disabled @Test
   public void test_ConnectWhenNetworkDown() throws SQLException, IOException {
     containerHelper.disableConnectivity(proxyInstance_1);
 
@@ -115,7 +116,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     conn.close();
   }
 
-  @Test
+  @Disabled @Test
   public void test_LostConnectionToWriter() throws SQLException, IOException {
 
     final String initialWriterId = instanceIDs[0];
@@ -147,7 +148,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     }
   }
 
-  @Test
+  @Disabled @Test
   public void test_LostConnectionToAllReaders() throws SQLException {
 
     String currentWriterId = instanceIDs[0];
@@ -187,7 +188,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     }
   }
 
-  @Test
+  @Disabled @Test
   public void test_LostConnectionToReaderInstance() throws SQLException, IOException {
 
     String currentWriterId = instanceIDs[0];
@@ -224,7 +225,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     }
   }
 
-  @Test
+  @Disabled @Test
   public void test_LostConnectionReadOnly() throws SQLException, IOException {
 
     String currentWriterId = instanceIDs[0];
@@ -261,7 +262,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     }
   }
 
-  @Test
+  @Disabled @Test
   void test_ValidInvalidValidConnections() throws SQLException {
     final Properties validProp = initDefaultProps();
     validProp.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
@@ -284,7 +285,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * Attempt to connect using the wrong database username.
    */
-  @Test
+  @Disabled @Test
   public void test_AwsIam_WrongDatabaseUsername() {
     final Properties props = initAwsIamProps("WRONG_" + TEST_DB_USER + "_USER", TEST_PASSWORD);
 
@@ -310,7 +311,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * Attempt to connect using IP address instead of a hostname.
    */
-  @Test
+  @Disabled @Test
   public void test_AwsIam_UsingIPAddress() throws UnknownHostException {
     final Properties props = initAwsIamProps(TEST_DB_USER, TEST_PASSWORD);
 
@@ -324,7 +325,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * Attempt to connect using valid database username/password & valid Amazon RDS hostname.
    */
-  @Test
+  @Disabled @Test
   public void test_AwsIam_ValidConnectionProperties() throws SQLException {
     final Properties props = initAwsIamProps(TEST_DB_USER, TEST_PASSWORD);
 
@@ -335,7 +336,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * Attempt to connect using valid database username, valid Amazon RDS hostname, but no password.
    */
-  @Test
+  @Disabled @Test
   public void test_AwsIam_ValidConnectionPropertiesNoPassword() throws SQLException {
     final Properties props = initAwsIamProps(TEST_DB_USER, "");
     final Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + MYSQL_CLUSTER_URL, props);
@@ -346,7 +347,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    * Attempts a valid connection followed by invalid connection
    * without the AWS protocol in Connection URL.
    */
-  @Test
+  @Disabled @Test
   void test_AwsIam_NoAwsProtocolConnection() throws SQLException {
     final String dbConn = "jdbc:mysql://" + MYSQL_CLUSTER_URL;
     final Properties validProp = initAwsIamProps(TEST_DB_USER, TEST_PASSWORD);
@@ -364,7 +365,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    * Attempts a valid connection followed by an invalid connection
    * with Username in Connection URL.
    */
-  @Test
+  @Disabled @Test
   void test_AwsIam_UserInConnStr() throws SQLException {
     final String dbConn = "jdbc:mysql://" + MYSQL_CLUSTER_URL;
     final Properties awsIamProp = initDefaultProps();
@@ -382,7 +383,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * Test collecting performance metrics for cluster
    */
-  @Test
+  @Disabled @Test
   public void test_CollectClusterMetrics() throws SQLException {
 
     final Properties props = initDefaultProps();
@@ -411,7 +412,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   /**
    * Test collecting performance metrics for instances as well
    */
-  @Test
+  @Disabled @Test
   public void test_CollectInstanceMetrics() throws SQLException {
     String anyReaderId = instanceIDs[1];
 
@@ -431,7 +432,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   }
 
   /** Current writer dies, no available reader instance, connection fails. */
-  @Test
+  @Disabled @Test
   public void test_writerConnectionFailsDueToNoReader()
       throws SQLException, IOException {
 
@@ -474,7 +475,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    * Current reader dies, after failing to connect to several reader instances, failover to another
    * reader.
    */
-  @Test
+  @Disabled @Test
   public void test_failFromReaderToReaderWithSomeReadersAreDown()
       throws SQLException, IOException {
     assertTrue(clusterSize >= 3, "Minimal cluster configuration: 1 writer + 2 readers");
@@ -508,7 +509,7 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    * Current reader dies, failover to another reader repeat to loop through instances in the cluster
    * testing ability to revive previously down reader instance.
    */
-  @Test
+  @Disabled @Test
   public void test_failoverBackToThePreviouslyDownReader()
       throws Exception {
 

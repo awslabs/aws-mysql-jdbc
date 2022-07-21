@@ -33,6 +33,7 @@ package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
 import eu.rekawek.toxiproxy.Proxy;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -57,7 +58,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
    * Current writer dies, a reader instance is nominated to be a new writer, failover to the new
    * writer. Driver failover occurs when executing a method against the connection
    */
-  @Test
+  @Disabled @Test
   public void test_failFromWriterToNewWriter_failOnConnectionInvocation()
       throws SQLException, InterruptedException {
 
@@ -108,7 +109,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
    * Current reader dies, no other reader instance, failover to writer, then writer dies, failover
    * to another available reader instance.
    */
-  @Test
+  @Disabled @Test
   public void test_failFromReaderToWriterToAnyAvailableInstance()
       throws SQLException, IOException, InterruptedException {
 
@@ -160,7 +161,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   /* Failure when within a transaction tests. */
 
   /** Writer fails within a transaction. Open transaction with "SET autocommit = 0" */
-  @Test
+  @Disabled @Test
   public void test_writerFailWithinTransaction_setAutocommitSqlZero()
       throws SQLException, InterruptedException {
 
@@ -206,7 +207,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   /** Writer fails within a transaction. Open transaction with setAutoCommit(false) */
-  @Test
+  @Disabled @Test
   public void test_writerFailWithinTransaction_setAutoCommitFalse()
       throws SQLException, InterruptedException {
 
@@ -252,7 +253,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   /** Writer fails within a transaction. Open transaction with "START TRANSACTION". */
-  @Test
+  @Disabled @Test
   public void test_writerFailWithinTransaction_startTransaction()
       throws SQLException, InterruptedException {
 
@@ -298,7 +299,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   /** Writer fails within NO transaction. */
-  @Test
+  @Disabled @Test
   public void test_writerFailWithNoTransaction() throws SQLException, InterruptedException {
 
     final String initialWriterId = instanceIDs[0];
@@ -347,7 +348,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   /* Pooled connection tests. */
 
   /** Writer connection failover within the connection pool. */
-  @Test
+  @Disabled @Test
   public void test_pooledWriterConnection_BasicFailover()
       throws SQLException, InterruptedException {
 
@@ -374,7 +375,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
     }
   }
 
-  @Test
+  @Disabled @Test
   public void test_takeOverConnectionProperties() throws SQLException, InterruptedException {
 
     final String initialWriterId = instanceIDs[0];
