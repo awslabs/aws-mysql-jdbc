@@ -151,7 +151,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     final boolean isAutoCommit = currentConnection.getAutoCommit();
-    if (isAutoCommit && "execute".equals(methodName) || "executeQuery".equals(methodName)) {
+    if (isAutoCommit && ("execute".equals(methodName) || "executeQuery".equals(methodName))) {
       return true;
     }
     return "commit".equals(methodName) || "rollback".equals(methodName);
@@ -459,6 +459,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if (!isConnectionUsable(this.readerConnection)) {
       initializeReaderConnection(currentConnection);
+      // The current connection may have changed; update it here in case it did.
       currentConnection = this.currentConnectionProvider.getCurrentConnection();
     }
 
