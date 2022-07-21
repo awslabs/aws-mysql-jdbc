@@ -154,7 +154,7 @@ public class AuroraIntegrationContainerTest {
     for (ToxiproxyContainer container : proxyContainers) {
       container.start();
     }
-    mySQLProxyPort = containerHelper.createAuroraInstanceProxies(mySqlInstances, proxyContainers, MYSQL_PORT);
+    mySQLProxyPort = containerHelper.createMysqlInstanceProxies(mySqlInstances, proxyContainers, MYSQL_PORT);
 
     proxyContainers.add(containerHelper.createAndStartProxyContainer(
             network,
@@ -178,7 +178,7 @@ public class AuroraIntegrationContainerTest {
     try {
       integrationTestContainer.execInContainer("dos2unix", "gradlew");
     } catch (InterruptedException | UnsupportedOperationException | IOException e) {
-      fail("Integration test container initialised incorrectly");
+      fail("Aurora integration test container initialised incorrectly");
     }
   }
 

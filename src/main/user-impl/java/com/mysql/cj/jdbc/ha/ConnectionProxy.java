@@ -73,6 +73,7 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   // writer host is always stored at index 0
   protected Map<String, String> initialConnectionProps;
   protected ConnectionPluginManager pluginManager = null;
+  protected ConnectionProxyLifecycleInterceptor interceptor;
   private HostInfo currentHostInfo;
   private JdbcConnection currentConnection;
 
@@ -104,8 +105,8 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
     initSettings(connectionUrl);
     initPluginManager(connectionPluginManagerInitializer, connectionUrl);
 
-    this.currentConnection.setConnectionLifecycleInterceptor(
-        new ConnectionProxyLifecycleInterceptor(this.pluginManager));
+    this.interceptor = new ConnectionProxyLifecycleInterceptor(this.pluginManager);
+    this.currentConnection.setConnectionLifecycleInterceptor(this.interceptor);
   }
 
   /**
@@ -167,8 +168,11 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
   @Override
   public void setCurrentConnection(JdbcConnection connection, HostInfo info) {
-    this.currentConnection = connection;
-    this.currentHostInfo = info;
+    if (this.currentConnection != connection) {
+      this.currentConnection = connection;
+      this.currentConnection.setConnectionLifecycleInterceptor(this.interceptor);
+      this.currentHostInfo = info;
+    }
   }
 
   @Override

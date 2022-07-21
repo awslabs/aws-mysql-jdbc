@@ -299,7 +299,7 @@ public class ContainerHelper {
   }
 
   // return db cluster instance proxy port
-  public int createAuroraInstanceProxies(List<String> clusterInstances, List<ToxiproxyContainer> containers, int port) {
+  public int createMysqlInstanceProxies(List<String> clusterInstances, List<ToxiproxyContainer> containers, int port) {
     Set<Integer> proxyPorts = new HashSet<>();
 
     for (int i = 0; i < clusterInstances.size(); i++) {

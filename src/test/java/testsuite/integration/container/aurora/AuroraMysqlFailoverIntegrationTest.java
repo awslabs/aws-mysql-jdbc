@@ -29,9 +29,10 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
+import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -41,9 +42,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
-import eu.rekawek.toxiproxy.Proxy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -402,65 +401,6 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
       // Verify that connection still accepts multi-statement sql
       final Statement myStmt1 = conn.createStatement();
       myStmt1.executeQuery("select @@aurora_server_id; select 1; select 2;");
-    }
-  }
-
-  // Helpers
-  private void failoverClusterAndWaitUntilWriterChanged(String clusterWriterId)
-      throws InterruptedException {
-    failoverCluster();
-    waitUntilWriterInstanceChanged(clusterWriterId);
-  }
-
-  private void failoverCluster() throws InterruptedException {
-    waitUntilClusterHasRightState();
-    while (true) {
-      try {
-        rdsClient.failoverDBCluster((builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER));
-        break;
-      } catch (final Exception e) {
-        TimeUnit.MILLISECONDS.sleep(1000);
-      }
-    }
-  }
-
-  private void failoverClusterToATargetAndWaitUntilWriterChanged(
-      String clusterWriterId, String targetInstanceId) throws InterruptedException {
-    failoverClusterWithATargetInstance(targetInstanceId);
-    waitUntilWriterInstanceChanged(clusterWriterId);
-  }
-
-  private void failoverClusterWithATargetInstance(String targetInstanceId)
-      throws InterruptedException {
-    waitUntilClusterHasRightState();
-
-    while (true) {
-      try {
-        rdsClient.failoverDBCluster(
-            (builder) -> builder.dbClusterIdentifier(DB_CLUSTER_IDENTIFIER)
-              .targetDBInstanceIdentifier(targetInstanceId));
-        break;
-      } catch (final Exception e) {
-        TimeUnit.MILLISECONDS.sleep(1000);
-      }
-    }
-  }
-
-  private void waitUntilWriterInstanceChanged(String initialWriterInstanceId)
-      throws InterruptedException {
-    String nextClusterWriterId = getDBClusterWriterInstanceId();
-    while (initialWriterInstanceId.equals(nextClusterWriterId)) {
-      TimeUnit.MILLISECONDS.sleep(3000);
-      // Calling the RDS API to get writer Id.
-      nextClusterWriterId = getDBClusterWriterInstanceId();
-    }
-  }
-
-  private void waitUntilClusterHasRightState() throws InterruptedException {
-    String status = getDBCluster().status();
-    while (!"available".equalsIgnoreCase(status)) {
-      TimeUnit.MILLISECONDS.sleep(1000);
-      status = getDBCluster().status();
     }
   }
 }

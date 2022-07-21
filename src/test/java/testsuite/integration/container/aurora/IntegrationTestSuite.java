@@ -29,7 +29,7 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-package testsuite.integration.container;
+package testsuite.integration.container.aurora;
 
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;

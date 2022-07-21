@@ -225,10 +225,10 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-suite-engine:1.8.2")
     testImplementation("org.mockito:mockito-inline:4.1.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
-    testImplementation("org.testcontainers:testcontainers:1.16.2")
-    testImplementation("org.testcontainers:mysql:1.16.2")
-    testImplementation("org.testcontainers:junit-jupiter:1.16.2")
-    testImplementation("org.testcontainers:toxiproxy:1.16.2")
+    testImplementation("org.testcontainers:testcontainers:1.17.+")
+    testImplementation("org.testcontainers:mysql:1.17.+")
+    testImplementation("org.testcontainers:junit-jupiter:1.17.+")
+    testImplementation("org.testcontainers:toxiproxy:1.17.+")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
     testImplementation("software.amazon.awssdk:secretsmanager:2.17.191")
@@ -356,7 +356,7 @@ signing {
     }
 }
 
-// Run integrations tests in container
+// Run Aurora integration tests in container
 // Environment is being configured and started
 tasks.register<Test>("test-integration-docker") {
     group = "verification"
@@ -368,6 +368,13 @@ tasks.register<Test>("test-integration-performance-docker") {
     filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testRunPerformanceTestInContainer")
 }
 
+// Run MySQL integration tests in container
+// Environment is being configured and started
+tasks.register<Test>("test-integration-standard-mysql") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.StandardMysqlContainerTest.runTestInContainer")
+}
+
 // Run community tests in container
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("test-community-docker") {
@@ -375,7 +382,7 @@ tasks.register<Test>("test-community-docker") {
     filter.includeTestsMatching("testsuite.integration.host.CommunityContainerTest.testRunCommunityTestInContainer")
 }
 
-// Run integrations tests in container with debugger
+// Run Aurora integration tests in container with debugger
 // Environment is being configured and started
 tasks.register<Test>("debug-integration-docker") {
     group = "verification"
@@ -387,6 +394,13 @@ tasks.register<Test>("debug-integration-performance-docker") {
     filter.includeTestsMatching("testsuite.integration.host.AuroraIntegrationContainerTest.testDebugPerformanceTestInContainer")
 }
 
+// Run MySQL integration tests in container with debugger
+// Environment is being configured and started
+tasks.register<Test>("debug-integration-standard-mysql") {
+    group = "verification"
+    filter.includeTestsMatching("testsuite.integration.host.StandardMysqlContainerTest.debugTestInContainer")
+}
+
 // Run community tests in container with debugger
 // Environment (like supplementary containers) should be up and running!
 tasks.register<Test>("debug-community-docker") {
@@ -395,13 +409,19 @@ tasks.register<Test>("debug-community-docker") {
 }
 
 // Integration tests are run in a specific order.
-// To add more tests, see testsuite.integration.container.IntegrationTestSuite.java
+// To add more tests, see testsuite.integration.container.aurora.IntegrationTestSuite.java
 tasks.register<Test>("in-container-aurora") {
-    filter.includeTestsMatching("testsuite.integration.container.IntegrationTestSuite")
+    filter.includeTestsMatching("testsuite.integration.container.aurora.IntegrationTestSuite")
 }
 
 tasks.register<Test>("in-container-aurora-performance") {
-    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlPerformanceIntegrationTest")
+    filter.includeTestsMatching("testsuite.integration.container.aurora.AuroraMysqlPerformanceIntegrationTest")
+}
+
+// Integration tests are run in a specific order.
+// To add more tests, see testsuite.integration.container.standard.StandardMysqlTestSuite.java
+tasks.register<Test>("in-container-standard-mysql") {
+    filter.includeTestsMatching("testsuite.integration.container.standard.StandardMysqlTestSuite")
 }
 
 // Run all tests excluding integration tests
