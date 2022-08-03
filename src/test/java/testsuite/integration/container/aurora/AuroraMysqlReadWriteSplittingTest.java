@@ -535,15 +535,20 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       assertTrue(isDBInstanceWriter(writerConnectionId));
 
       conn.setReadOnly(true);
-      String readerConnectionId = queryInstanceId(conn);
-      assertNotEquals(writerConnectionId, readerConnectionId);
-      assertTrue(isDBInstanceReader(readerConnectionId));
+      String previousReaderId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, previousReaderId);
+      assertTrue(isDBInstanceReader(previousReaderId));
 
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 5; i++) {
+        String nextReaderId = queryInstanceId(conn);
+        assertNotEquals(previousReaderId, nextReaderId);
+        assertTrue(isDBInstanceReader(previousReaderId));
+        previousReaderId = nextReaderId;
+      }
+
+      for (int i = 0; i < 5; i++) {
         Statement stmt = conn.createStatement();
         stmt.executeQuery("SELECT " + i);
-        readerConnectionId = queryInstanceId(conn);
-        assertTrue(isDBInstanceReader(readerConnectionId));
 
         ResultSet rs = stmt.getResultSet();
         rs.next();
@@ -564,28 +569,35 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       assertTrue(isDBInstanceWriter(writerConnectionId));
 
       conn.setReadOnly(true);
-      String readerConnectionId = queryInstanceId(conn);
-      assertNotEquals(writerConnectionId, readerConnectionId);
-      assertTrue(isDBInstanceReader(readerConnectionId));
-
       conn.setAutoCommit(false);
-      Statement stmt = conn.createStatement();
+      String previousReaderId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, previousReaderId);
+      assertTrue(isDBInstanceReader(previousReaderId));
 
       for (int i = 0; i < 5; i++) {
-        stmt.executeQuery("SELECT " + i);
-        stmt.executeQuery("SELECT " + (i + 1));
         conn.commit();
-        readerConnectionId = queryInstanceId(conn);
-        assertTrue(isDBInstanceReader(readerConnectionId));
+        String nextReaderId = queryInstanceId(conn);
+        assertNotEquals(previousReaderId, nextReaderId);
+        assertTrue(isDBInstanceReader(nextReaderId));
+        previousReaderId = nextReaderId;
+      }
+
+      for (int i = 0; i < 5; i++) {
+        conn.rollback();
+        String nextReaderId = queryInstanceId(conn);
+        assertNotEquals(previousReaderId, nextReaderId);
+        assertTrue(isDBInstanceReader(nextReaderId));
+        previousReaderId = nextReaderId;
+      }
+
+      Statement stmt = conn.createStatement();
+      for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
+        conn.commit();
 
         ResultSet rs = stmt.getResultSet();
         rs.next();
-        assertEquals(i + 1, rs.getInt(1));
-
-        stmt.executeQuery("SELECT " + i);
-        conn.rollback();
-        readerConnectionId = queryInstanceId(conn);
-        assertTrue(isDBInstanceReader(readerConnectionId));
+        assertEquals(i, rs.getInt(1));
       }
     }
   }
