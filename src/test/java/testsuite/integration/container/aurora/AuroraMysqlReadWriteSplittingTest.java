@@ -574,7 +574,9 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       assertNotEquals(writerConnectionId, previousReaderId);
       assertTrue(isDBInstanceReader(previousReaderId));
 
+      Statement stmt = conn.createStatement();
       for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
         conn.commit();
         String nextReaderId = queryInstanceId(conn);
         assertNotEquals(previousReaderId, nextReaderId);
@@ -583,6 +585,16 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       }
 
       for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
+        stmt.execute("COMMIT");
+        String nextReaderId = queryInstanceId(conn);
+        assertNotEquals(previousReaderId, nextReaderId);
+        assertTrue(isDBInstanceReader(nextReaderId));
+        previousReaderId = nextReaderId;
+      }
+
+      for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
         conn.rollback();
         String nextReaderId = queryInstanceId(conn);
         assertNotEquals(previousReaderId, nextReaderId);
@@ -590,7 +602,15 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
         previousReaderId = nextReaderId;
       }
 
-      Statement stmt = conn.createStatement();
+      for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
+        stmt.execute("ROLLBACK");
+        String nextReaderId = queryInstanceId(conn);
+        assertNotEquals(previousReaderId, nextReaderId);
+        assertTrue(isDBInstanceReader(nextReaderId));
+        previousReaderId = nextReaderId;
+      }
+
       for (int i = 0; i < 5; i++) {
         stmt.executeQuery("SELECT " + i);
         conn.commit();

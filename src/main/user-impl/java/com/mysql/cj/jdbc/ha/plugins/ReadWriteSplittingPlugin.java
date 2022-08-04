@@ -127,7 +127,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     try {
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
-      if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && isTransactionBoundary(methodName)) {
+      if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && isTransactionBoundary(methodName, args)) {
         this.inTransaction = false;
         pickNewReaderConnection();
       }
@@ -144,7 +144,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
   }
 
-  private boolean isTransactionBoundary(String methodName) throws SQLException {
+  private boolean isTransactionBoundary(String methodName, Object[] args) throws SQLException {
     JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (currentConnection == null) {
       return false;
@@ -154,6 +154,14 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     if (isAutoCommit && ("execute".equals(methodName) || "executeQuery".equals(methodName))) {
       return true;
     }
+
+    if ("execute".equals(methodName) && args != null && args.length > 0) {
+        String sql = (String) args[0];
+        if (sql != null && (sql.equalsIgnoreCase("commit") || sql.equalsIgnoreCase("rollback"))) {
+          return true;
+      }
+    }
+
     return "commit".equals(methodName) || "rollback".equals(methodName);
   }
 
@@ -351,6 +359,14 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   private void closeAllConnections(JdbcConnection currentConnection) {
     closeInternalConnection(this.readerConnection, currentConnection);
     closeInternalConnection(this.writerConnection, currentConnection);
+
+    if (this.readerConnection != currentConnection) {
+      this.readerConnection = null;
+    }
+
+    if (this.writerConnection != currentConnection) {
+      this.readerConnection = null;
+    }
 
     for (JdbcConnection connection : liveConnections.values()) {
       closeInternalConnection(connection, currentConnection);

@@ -320,14 +320,13 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
       for (int i = 0; i < 5; i++) {
         stmt.executeQuery("SELECT " + i);
-        stmt.executeQuery("SELECT " + (i + 1));
         conn.commit();
         readerConnectionId = queryInstanceId(conn);
         assertNotEquals(writerConnectionId, readerConnectionId);
 
         ResultSet rs = stmt.getResultSet();
         rs.next();
-        assertEquals(i + 1, rs.getInt(1));
+        assertEquals(i, rs.getInt(1));
 
         stmt.executeQuery("SELECT " + i);
         conn.rollback();
