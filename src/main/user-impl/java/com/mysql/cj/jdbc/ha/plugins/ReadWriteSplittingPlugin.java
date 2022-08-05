@@ -345,7 +345,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       this.readerConnection = currentConnection;
     }
 
-    liveConnections.put(currentHost.getHostPortPair(), currentConnection);
+    if (!currentConnection.isClosed()) {
+      liveConnections.put(currentHost.getHostPortPair(), currentConnection);
+    }
   }
 
   @Override

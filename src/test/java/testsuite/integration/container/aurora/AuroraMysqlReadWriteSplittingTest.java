@@ -33,6 +33,9 @@ import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -41,7 +44,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.stream.Stream;
 
+import static org.hamcrest.CoreMatchers.anyOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -53,11 +60,26 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTest {
 
-  @Test
-  public void test_connectToWriter_setReadOnlyTrueFalseTrue() throws SQLException {
+  private static Stream<Arguments> testParameters() {
+    return Stream.of(
+      Arguments.of(getProps_allPlugins()),
+      Arguments.of(getProps_readWritePlugin())
+    );
+  }
+
+  private static Stream<Arguments> proxiedTestParameters() {
+    return Stream.of(
+      Arguments.of(getProxiedProps_allPlugins()),
+      Arguments.of(getProxiedProps_readWritePlugin())
+    );
+  }
+
+  @ParameterizedTest(name = "test_connectToWriter_setReadOnlyTrueFalseTrue")
+  @MethodSource("testParameters")
+  public void test_connectToWriter_setReadOnlyTrueFalseTrue(Properties props) throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -77,11 +99,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_connectToReader_setReadOnlyTrueFalse() throws SQLException {
+  @ParameterizedTest(name = "test_connectToReader_setReadOnlyTrueFalse")
+  @MethodSource("testParameters")
+  public void test_connectToReader_setReadOnlyTrueFalse(Properties props) throws SQLException {
     final String initialReaderId = instanceIDs[1];
 
-    try (final Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
+    try (final Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String readerConnectionId = queryInstanceId(conn);
       assertEquals(initialReaderId, readerConnectionId);
       assertTrue(isDBInstanceReader(readerConnectionId));
@@ -99,172 +122,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_failoverToNewWriter_setReadOnlyTrueFalse() throws SQLException, InterruptedException, IOException {
+  @ParameterizedTest(name = "test_setReadOnlyFalseInReadOnlyTransaction")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInReadOnlyTransaction(Properties props) throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
-      // Kill all reader instances
-      for (int i = 1; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      // Force internal reader connection to the writer instance
-      conn.setReadOnly(true);
-      String currentConnectionId = queryInstanceId(conn);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-      conn.setReadOnly(false);
-
-      proxyMap.forEach((instance, proxy) -> {
-        assertNotNull(proxy, "Proxy isn't found for " + instance);
-        containerHelper.enableConnectivity(proxy);
-      });
-
-      // Crash Instance1 and nominate a new writer
-      failoverClusterAndWaitUntilWriterChanged(initialWriterId);
-
-      // Failure occurs on Connection invocation
-      assertFirstQueryThrows(conn, "08S02");
-
-      // Assert that we are connected to the new writer after failover happens.
-      currentConnectionId = queryInstanceId(conn);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-      assertNotEquals(currentConnectionId, initialWriterId);
-
-      conn.setReadOnly(true);
-      currentConnectionId = queryInstanceId(conn);
-      assertTrue(isDBInstanceReader(currentConnectionId));
-
-      conn.setReadOnly(false);
-      currentConnectionId = queryInstanceId(conn);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-    }
-  }
-
-  @Test
-  public void test_failoverToNewReader_setReadOnlyFalseTrue() throws SQLException, IOException {
-    final String initialWriterId = instanceIDs[0];
-
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
-      String writerConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, writerConnectionId);
-      assertTrue(isDBInstanceWriter(writerConnectionId));
-
-      conn.setReadOnly(true);
-      String readerConnectionId = queryInstanceId(conn);
-      assertNotEquals(writerConnectionId, readerConnectionId);
-      assertTrue(isDBInstanceReader(readerConnectionId));
-
-      String otherReaderId = "";
-      for (int i = 1; i < instanceIDs.length; i ++) {
-        if (!instanceIDs[i].equals(readerConnectionId)) {
-          otherReaderId = instanceIDs[i];
-          break;
-        }
-      }
-      if (otherReaderId.equals("")) {
-        fail("could not acquire new reader ID");
-      }
-
-      // Kill all instances except one other reader
-      for (int i = 0; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-        if (otherReaderId.equals(instanceId)) {
-          continue;
-        }
-
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      assertFirstQueryThrows(conn, "08S02");
-      assertFalse(conn.isClosed());
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(otherReaderId, currentConnectionId);
-      assertNotEquals(readerConnectionId, currentConnectionId);
-      assertTrue(isDBInstanceReader(currentConnectionId));
-
-      proxyMap.forEach((instance, proxy) -> {
-        assertNotNull(proxy, "Proxy isn't found for " + instance);
-        containerHelper.enableConnectivity(proxy);
-      });
-
-      conn.setReadOnly(false);
-      currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-
-      conn.setReadOnly(true);
-      currentConnectionId = queryInstanceId(conn);
-      assertEquals(otherReaderId, currentConnectionId);
-      assertTrue(isDBInstanceReader(currentConnectionId));
-    }
-  }
-
-  @Test
-  public void test_failoverReaderToWriter_setReadOnlyTrueFalse() throws SQLException, IOException {
-    final String initialWriterId = instanceIDs[0];
-
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
-      String writerConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, writerConnectionId);
-      assertTrue(isDBInstanceWriter(writerConnectionId));
-
-      conn.setReadOnly(true);
-      String readerConnectionId = queryInstanceId(conn);
-      assertNotEquals(writerConnectionId, readerConnectionId);
-      assertTrue(isDBInstanceReader(readerConnectionId));
-
-      // Kill all instances except the writer
-      for (int i = 1; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      assertFirstQueryThrows(conn, "08S02");
-      assertFalse(conn.isClosed());
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-
-      proxyMap.forEach((instance, proxy) -> {
-        assertNotNull(proxy, "Proxy isn't found for " + instance);
-        containerHelper.enableConnectivity(proxy);
-      });
-
-      conn.setReadOnly(true);
-      currentConnectionId = queryInstanceId(conn);
-      assertNotEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceReader(currentConnectionId));
-
-      conn.setReadOnly(false);
-      currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-    }
-  }
-
-  @Test
-  public void test_setReadOnlyFalseInReadOnlyTransaction() throws SQLException{
-    final String initialWriterId = instanceIDs[0];
-
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -296,11 +159,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_setReadOnlyFalseInTransaction_setAutocommitFalse() throws SQLException{
+  @ParameterizedTest(name = "test_setReadOnlyFalseInTransaction_setAutocommitFalse")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInTransaction_setAutocommitFalse(Properties props) throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -332,11 +196,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_setReadOnlyFalseInTransaction_setAutocommitZero() throws SQLException{
+  @ParameterizedTest(name = "test_setReadOnlyFalseInTransaction_setAutocommitZero")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInTransaction_setAutocommitZero(Properties props) throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -368,11 +233,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_setReadOnlyTrueInTransaction() throws SQLException{
+  @ParameterizedTest(name = "test_setReadOnlyTrueInTransaction")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyTrueInTransaction(Properties props) throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, getPropsWithReadWritePlugin())) {
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -399,135 +265,11 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_setReadOnlyTrue_allReadersDown() throws SQLException, IOException {
-    String initialWriterId = instanceIDs[0];
-
-    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-
-      // Kill all reader instances
-      for (int i = 1; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      assertDoesNotThrow(() -> conn.setReadOnly(true));
-      currentConnectionId = assertDoesNotThrow(() -> queryInstanceId(conn));
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-
-      assertDoesNotThrow(() -> conn.setReadOnly(false));
-      currentConnectionId = assertDoesNotThrow(() -> queryInstanceId(conn));
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-    }
-  }
-
-  @Test
-  public void test_setReadOnlyTrue_allInstancesDown() throws SQLException, IOException {
+  @ParameterizedTest(name = "test_readerLoadBalancing_autocommitTrue")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing_autocommitTrue(Properties props) throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
-    Properties props = getProxiedPropsWithReadWritePlugin();
-    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10");
-    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-
-      // Kill all instances
-      for (int i = 0; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
-      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
-    }
-  }
-
-  @Test
-  public void test_setReadOnlyTrue_allInstancesDown_writerClosed() throws SQLException, IOException {
-    final String initialWriterId = instanceIDs[0];
-
-    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-      conn.close();
-
-      // Kill all instances
-      for (int i = 0; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
-      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
-    }
-  }
-
-  @Test
-  public void test_setReadOnlyFalse_allInstancesDown() throws SQLException, IOException {
-    final String initialReaderId = instanceIDs[1];
-
-    try (Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedPropsWithReadWritePlugin())) {
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialReaderId, currentConnectionId);
-      assertTrue(isDBInstanceReader(currentConnectionId));
-
-      // Kill all instances
-      for (int i = 0; i < clusterSize; i++) {
-        final String instanceId = instanceIDs[i];
-        final Proxy proxyInstance = proxyMap.get(instanceId);
-        if (proxyInstance != null) {
-          containerHelper.disableConnectivity(proxyInstance);
-        } else {
-          fail(String.format("%s does not have a proxy setup.", instanceId));
-        }
-      }
-
-      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
-      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
-    }
-  }
-
-  @Test
-  public void test_multiHostUrl_topologyOverridesHostList() throws SQLException {
-    final String initialWriterId = instanceIDs[0];
-
-    try (Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + initialWriterId + DB_CONN_STR_SUFFIX + ",non-existent-host", getPropsWithReadWritePlugin())) {
-      String currentConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceWriter(currentConnectionId));
-
-      conn.setReadOnly(true);
-      currentConnectionId = queryInstanceId(conn);
-      assertNotEquals(initialWriterId, currentConnectionId);
-      assertTrue(isDBInstanceReader(currentConnectionId));
-    }
-  }
-
-  @Test
-  public void test_readerLoadBalancing_autocommitTrue() throws SQLException {
-    final String initialWriterId = instanceIDs[0];
-
-    Properties props = getPropsWithReadWritePlugin();
     props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
     try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
@@ -557,11 +299,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @Test
-  public void test_readerLoadBalancing_autocommitFalse() throws SQLException {
+
+  @ParameterizedTest(name = "test_readerLoadBalancing_autocommitFalse")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing_autocommitFalse(Properties props) throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
-    Properties props = getPropsWithReadWritePlugin();
     props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
     try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
@@ -622,22 +365,381 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  private Properties getPropsWithReadWritePlugin() {
-    Properties props = initDefaultProps();
-    addReadWriteSplittingPlugin(props);
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allReadersDown")
+  @MethodSource("proxiedTestParameters")
+  public void test_setReadOnlyTrue_allReadersDown(Properties props) throws SQLException, IOException {
+    String initialWriterId = instanceIDs[0];
+
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+
+      // Kill all reader instances
+      for (int i = 1; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      assertDoesNotThrow(() -> conn.setReadOnly(true));
+      currentConnectionId = assertDoesNotThrow(() -> queryInstanceId(conn));
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+
+      assertDoesNotThrow(() -> conn.setReadOnly(false));
+      currentConnectionId = assertDoesNotThrow(() -> queryInstanceId(conn));
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+    }
+  }
+
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown")
+  @MethodSource("proxiedTestParameters")
+  public void test_setReadOnlyTrue_allInstancesDown(Properties props) throws SQLException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "10");
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+
+      // Kill all instances
+      for (int i = 0; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
+      assertThat(exception.getSQLState(), anyOf(is(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE),
+              is(MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_FAILURE)));
+    }
+  }
+
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown_writerClosed")
+  @MethodSource("proxiedTestParameters")
+  public void test_setReadOnlyTrue_allInstancesDown_writerClosed(Properties props) throws SQLException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+      conn.close();
+
+      // Kill all instances
+      for (int i = 0; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
+      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
+    }
+  }
+
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown_writerClosed")
+  @MethodSource("proxiedTestParameters")
+  public void test_setReadOnlyFalse_allInstancesDown(Properties props) throws SQLException, IOException {
+    final String initialReaderId = instanceIDs[1];
+
+    try (Connection conn = connectToInstance(initialReaderId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialReaderId, currentConnectionId);
+      assertTrue(isDBInstanceReader(currentConnectionId));
+
+      // Kill all instances
+      for (int i = 0; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
+      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
+    }
+  }
+
+  @Test
+  public void test_failoverToNewWriter_setReadOnlyTrueFalse() throws SQLException, InterruptedException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedProps_allPlugins())) {
+      // Kill all reader instances
+      for (int i = 1; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      // Force internal reader connection to the writer instance
+      conn.setReadOnly(true);
+      String currentConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+      conn.setReadOnly(false);
+
+      enableAllProxies();
+
+      // Crash Instance1 and nominate a new writer
+      failoverClusterAndWaitUntilWriterChanged(initialWriterId);
+
+      // Failure occurs on Connection invocation
+      assertFirstQueryThrows(conn, "08S02");
+
+      // Assert that we are connected to the new writer after failover happens.
+      currentConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+      assertNotEquals(currentConnectionId, initialWriterId);
+
+      conn.setReadOnly(true);
+      currentConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(currentConnectionId));
+
+      conn.setReadOnly(false);
+      currentConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+    }
+  }
+
+  @Test
+  public void test_failoverToNewReader_setReadOnlyFalseTrue() throws SQLException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedProps_allPlugins())) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      String otherReaderId = "";
+      for (int i = 1; i < instanceIDs.length; i ++) {
+        if (!instanceIDs[i].equals(readerConnectionId)) {
+          otherReaderId = instanceIDs[i];
+          break;
+        }
+      }
+      if (otherReaderId.equals("")) {
+        fail("could not acquire new reader ID");
+      }
+
+      // Kill all instances except one other reader
+      for (int i = 0; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+        if (otherReaderId.equals(instanceId)) {
+          continue;
+        }
+
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      assertFirstQueryThrows(conn, "08S02");
+      assertFalse(conn.isClosed());
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(otherReaderId, currentConnectionId);
+      assertNotEquals(readerConnectionId, currentConnectionId);
+      assertTrue(isDBInstanceReader(currentConnectionId));
+
+      enableAllProxies();
+
+      conn.setReadOnly(false);
+      currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+
+      conn.setReadOnly(true);
+      currentConnectionId = queryInstanceId(conn);
+      assertEquals(otherReaderId, currentConnectionId);
+      assertTrue(isDBInstanceReader(currentConnectionId));
+    }
+  }
+
+  @Test
+  public void test_failoverReaderToWriter_setReadOnlyTrueFalse() throws SQLException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, getProxiedProps_allPlugins())) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      // Kill all instances except the writer
+      for (int i = 1; i < clusterSize; i++) {
+        final String instanceId = instanceIDs[i];
+
+        final Proxy proxyInstance = proxyMap.get(instanceId);
+        if (proxyInstance != null) {
+          containerHelper.disableConnectivity(proxyInstance);
+        } else {
+          fail(String.format("%s does not have a proxy setup.", instanceId));
+        }
+      }
+
+      assertFirstQueryThrows(conn, "08S02");
+      assertFalse(conn.isClosed());
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+
+      enableAllProxies();
+
+      conn.setReadOnly(true);
+      currentConnectionId = queryInstanceId(conn);
+      assertNotEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceReader(currentConnectionId));
+
+      conn.setReadOnly(false);
+      currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+    }
+  }
+
+  @Test
+  public void test_multiHostUrl_topologyOverridesHostList() throws SQLException {
+    final String initialWriterId = instanceIDs[0];
+
+    try (Connection conn = DriverManager.getConnection(DB_CONN_STR_PREFIX + initialWriterId + DB_CONN_STR_SUFFIX + ",non-existent-host", getProps_allPlugins())) {
+      String currentConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceWriter(currentConnectionId));
+
+      conn.setReadOnly(true);
+      currentConnectionId = queryInstanceId(conn);
+      assertNotEquals(initialWriterId, currentConnectionId);
+      assertTrue(isDBInstanceReader(currentConnectionId));
+    }
+  }
+
+  @Test
+  public void test_transactionResolutionUnknown_readWriteSplittingPluginOnly() throws SQLException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    Properties props = getProxiedProps_readWritePlugin();
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      conn.setAutoCommit(false);
+      String readerId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerId);
+      assertTrue(isDBInstanceReader(readerId));
+
+      final Statement stmt = conn.createStatement();
+      stmt.executeQuery("SELECT 1");
+      final Proxy proxyInstance = proxyMap.get(readerId);
+      if (proxyInstance != null) {
+        containerHelper.disableConnectivity(proxyInstance);
+      } else {
+        fail(String.format("%s does not have a proxy setup.", readerId));
+      }
+
+      SQLException e = assertThrows(SQLException.class, conn::rollback);
+      assertEquals(MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN, e.getSQLState());
+
+      try (final Connection newConn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+        newConn.setReadOnly(true);
+        Statement newStmt = newConn.createStatement();
+        ResultSet rs = newStmt.executeQuery("SELECT 1");
+        rs.next();
+        assertEquals(1, rs.getInt(1));
+      }
+    }
+  }
+
+  private static Properties getProps_allPlugins() {
+    Properties props = getDefaultProps();
+    addAllPlugins(props);
     return props;
   }
 
-  private Properties getProxiedPropsWithReadWritePlugin() {
-    Properties props = initDefaultProxiedProps();
-    addReadWriteSplittingPlugin(props);
+  private static Properties getProxiedProps_allPlugins() {
+    Properties props = getDefaultProxiedProps();
+    addAllPlugins(props);
     return props;
   }
 
-  private void addReadWriteSplittingPlugin(Properties props) {
+  private static Properties getProps_readWritePlugin() {
+    Properties props = getDefaultProps();
+    addReadWritePlugin(props);
+    return props;
+  }
+
+  private static Properties getProxiedProps_readWritePlugin() {
+    Properties props = getDefaultProxiedProps();
+    addReadWritePlugin(props);
+    return props;
+  }
+
+  private static Properties getDefaultProps() {
+    Properties props = new Properties();
+    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
+    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
+    props.setProperty(PropertyKey.tcpKeepAlive.getKeyName(), Boolean.FALSE.toString());
+    props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
+    props.setProperty(PropertyKey.socketTimeout.getKeyName(), "3000");
+    return props;
+  }
+
+  private static Properties getDefaultProxiedProps() {
+    final Properties props = getDefaultProps();
+    props.setProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
+    return props;
+  }
+
+  private static void addAllPlugins(Properties props) {
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
             "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
                     "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
                     "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
+  }
+
+  private static void addReadWritePlugin(Properties props) {
+    props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
+            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory");
+  }
+
+  private void enableAllProxies() {
+    proxyMap.forEach((instance, proxy) -> {
+      assertNotNull(proxy, "Proxy isn't found for " + instance);
+      containerHelper.enableConnectivity(proxy);
+    });
   }
 }
