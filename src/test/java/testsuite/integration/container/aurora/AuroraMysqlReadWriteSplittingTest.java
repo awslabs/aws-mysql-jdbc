@@ -685,42 +685,26 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   }
 
   private static Properties getProps_allPlugins() {
-    Properties props = getDefaultProps();
+    Properties props = initDefaultProps();
     addAllPlugins(props);
     return props;
   }
 
   private static Properties getProxiedProps_allPlugins() {
-    Properties props = getDefaultProxiedProps();
+    Properties props = initDefaultProxiedProps();
     addAllPlugins(props);
     return props;
   }
 
   private static Properties getProps_readWritePlugin() {
-    Properties props = getDefaultProps();
+    Properties props = initDefaultProps();
     addReadWritePlugin(props);
     return props;
   }
 
   private static Properties getProxiedProps_readWritePlugin() {
-    Properties props = getDefaultProxiedProps();
+    Properties props = initDefaultProxiedProps();
     addReadWritePlugin(props);
-    return props;
-  }
-
-  private static Properties getDefaultProps() {
-    Properties props = new Properties();
-    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
-    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
-    props.setProperty(PropertyKey.tcpKeepAlive.getKeyName(), Boolean.FALSE.toString());
-    props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
-    props.setProperty(PropertyKey.socketTimeout.getKeyName(), "3000");
-    return props;
-  }
-
-  private static Properties getDefaultProxiedProps() {
-    final Properties props = getDefaultProps();
-    props.setProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
     return props;
   }
 

@@ -357,13 +357,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
   @Test
   public void test_transactionResolutionUnknown_readWriteSplittingPluginOnly() throws SQLException, IOException {
-    final String initialWriterId = instanceIDs[0];
-
     Properties props = getProps_readWritePlugin();
     props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
     try (final Connection conn = connectWithProxy(props)) {
       String writerConnectionId = queryInstanceId(conn);
-      assertEquals(initialWriterId, writerConnectionId);
 
       conn.setReadOnly(true);
       conn.setAutoCommit(false);
@@ -372,7 +369,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
       final Statement stmt = conn.createStatement();
       stmt.executeQuery("SELECT 1");
-      final Proxy proxyInstance = proxyMap.get(readerId);
+      final Proxy proxyInstance = proxyMap.get(instanceIDs[1]);
       if (proxyInstance != null) {
         containerHelper.disableConnectivity(proxyInstance);
       } else {
@@ -393,7 +390,7 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
   }
 
   private static Properties getProps_allPlugins() {
-    Properties props = getDefaultProps();
+    Properties props = initDefaultProps();
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
             "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
                     "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
@@ -402,19 +399,9 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
   }
 
   private static Properties getProps_readWritePlugin() {
-    Properties props = getDefaultProps();
+    Properties props = initDefaultProps();
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
             "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory");
-    return props;
-  }
-
-  private static Properties getDefaultProps() {
-    Properties props = new Properties();
-    props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
-    props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
-    props.setProperty(PropertyKey.tcpKeepAlive.getKeyName(), Boolean.FALSE.toString());
-    props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
-    props.setProperty(PropertyKey.socketTimeout.getKeyName(), "3000");
     return props;
   }
 }
