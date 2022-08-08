@@ -481,7 +481,8 @@ public class ReadWriteSplittingPluginTest {
     when(mockCurrentConnectionProvider.getCurrentConnection())
             .thenReturn(mockWriterConn, mockWriterConn, mockWriterConn, mockReaderConn);
     when(mockTopologyService.getTopology(eq(mockWriterConn), eq(false))).thenReturn(hosts);
-    when(this.mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost());
+    when(mockTopologyService.getTopology(eq(mockReaderConn), eq(false))).thenReturn(hosts);
+    when(this.mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost(), hosts.get(1), hosts.get(1));
     when(mockReaderConn.getAutoCommit()).thenReturn(true);
     mockConnectToReaderHosts(hosts);
 
@@ -501,10 +502,18 @@ public class ReadWriteSplittingPluginTest {
     assertEquals(mockWriterConn, plugin.getWriterConnection());
 
     plugin.execute(Statement.class, "execute", mockCallable, new Object[] {});
-    verify(plugin, times(1)).pickNewReaderConnection();
+    verify(plugin, times(0)).pickNewReaderConnection();
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
 
     plugin.execute(Statement.class, "executeQuery", mockCallable, new Object[] {});
+    verify(plugin, times(1)).pickNewReaderConnection();
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+
+    plugin.execute(Statement.class, "getAutoCommit", mockCallable, new Object[] {});
+    verify(plugin, times(2)).pickNewReaderConnection();
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+
+    plugin.execute(Statement.class, "getAutoCommit", mockCallable, new Object[] {});
     verify(plugin, times(2)).pickNewReaderConnection();
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
   }
@@ -520,7 +529,8 @@ public class ReadWriteSplittingPluginTest {
     when(mockCurrentConnectionProvider.getCurrentConnection())
             .thenReturn(mockWriterConn, mockWriterConn, mockWriterConn, mockReaderConn);
     when(mockTopologyService.getTopology(eq(mockWriterConn), eq(false))).thenReturn(hosts);
-    when(this.mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost());
+    when(mockTopologyService.getTopology(eq(mockReaderConn), eq(false))).thenReturn(hosts);
+    when(this.mockCurrentConnectionProvider.getCurrentHostInfo()).thenReturn(connUrl.getMainHost(), hosts.get(1), hosts.get(1));
     when(mockReaderConn.getAutoCommit()).thenReturn(false);
     mockConnectToReaderHosts(hosts);
 
@@ -540,10 +550,18 @@ public class ReadWriteSplittingPluginTest {
     assertEquals(mockWriterConn, plugin.getWriterConnection());
 
     plugin.execute(JdbcConnection.class, "commit", mockCallable, new Object[] {});
-    verify(plugin, times(1)).pickNewReaderConnection();
+    verify(plugin, times(0)).pickNewReaderConnection();
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
 
     plugin.execute(JdbcConnection.class, "commit", mockCallable, new Object[] {});
+    verify(plugin, times(1)).pickNewReaderConnection();
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+
+    plugin.execute(Statement.class, "execute", mockCallable, new Object[] {});
+    verify(plugin, times(2)).pickNewReaderConnection();
+    verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
+
+    plugin.execute(Statement.class, "execute", mockCallable, new Object[] {});
     verify(plugin, times(2)).pickNewReaderConnection();
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
   }

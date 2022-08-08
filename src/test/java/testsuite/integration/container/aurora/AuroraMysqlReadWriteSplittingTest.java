@@ -79,7 +79,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_connectToWriter_setReadOnlyTrueFalseTrue(Properties props) throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -127,7 +127,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyFalseInReadOnlyTransaction(Properties props) throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -201,7 +201,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_setReadOnlyFalseInTransaction_setAutocommitZero(Properties props) throws SQLException{
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -271,7 +271,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     final String initialWriterId = instanceIDs[0];
 
     props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
       String writerConnectionId = queryInstanceId(conn);
       assertEquals(initialWriterId, writerConnectionId);
       assertTrue(isDBInstanceWriter(writerConnectionId));
@@ -674,7 +674,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       SQLException e = assertThrows(SQLException.class, conn::rollback);
       assertEquals(MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN, e.getSQLState());
 
-      try (final Connection newConn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+      try (final Connection newConn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
         newConn.setReadOnly(true);
         Statement newStmt = newConn.createStatement();
         ResultSet rs = newStmt.executeQuery("SELECT 1");

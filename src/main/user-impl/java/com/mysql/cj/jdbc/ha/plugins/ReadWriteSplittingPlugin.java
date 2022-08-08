@@ -74,6 +74,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   private boolean inTransaction = false;
   private boolean explicitlyReadOnly = false;
+  private boolean switchReaderOnNextExecute = false;
   private List<HostInfo> hosts = new ArrayList<>();
   private JdbcConnection writerConnection;
   private JdbcConnection readerConnection;
@@ -119,28 +120,37 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       String methodName,
       Callable<?> executeSqlFunc,
       Object[] args) throws Exception {
+    boolean switchedReader = false;
 
     if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
+      this.switchReaderOnNextExecute = false;
+    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && this.switchReaderOnNextExecute) {
+      pickNewReaderConnection();
+      this.switchReaderOnNextExecute = false;
+      switchedReader = true;
     }
 
     try {
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
-      if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && isTransactionBoundary(methodName, args)) {
-        this.inTransaction = false;
-        pickNewReaderConnection();
+      if (switchedReader) {
+        inTransaction = false;
       }
+      switchReaderOnNextExecute = isTransactionBoundary(methodName, args);
+
       return result;
     } catch (SQLException e) {
-      if (isCommunicationException(e)) {
-        final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-        final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-        closeAllConnections(currentConnection);
-        updateTopology(currentConnection, currentHost);
-        updateInternalConnectionInfo(currentConnection, currentHost);
+      if (isFailoverException(e)) {
+        closeAllConnections();
       }
       throw e;
+    } finally {
+        // Update connection/topology info in case the connection was changed
+        final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+        final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
+        updateTopology(currentConnection, currentHost);
+        updateInternalConnectionInfo(currentConnection, currentHost);
     }
   }
 
@@ -151,7 +161,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     final boolean isAutoCommit = currentConnection.getAutoCommit();
-    if (isAutoCommit && ("execute".equals(methodName) || "executeQuery".equals(methodName))) {
+    if (isAutoCommit && ("execute".equals(methodName) || "executeQuery".equals(methodName) || "executeUpdate".equals(methodName) || "executeLargeUpdate".equals(methodName) || "executeBatch".equals(methodName))) {
       return true;
     }
 
@@ -165,7 +175,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     return "commit".equals(methodName) || "rollback".equals(methodName);
   }
 
-  private boolean isCommunicationException(SQLException e) {
+  private boolean isFailoverException(SQLException e) {
     return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(e.getSQLState())
         || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(e.getSQLState());
   }
@@ -182,10 +192,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     final int oldHostIndex = this.currentHostIndex;
-    final int newHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
-    if (newHostIndex == NO_CONNECTION_INDEX) {
-      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.5"));
-    }
+    final int newHostIndex = getHostIndex(
+            currentConnection,
+            currentHost,
+            Messages.getString("ReadWriteSplittingPlugin.5"));
 
     if (oldHostIndex == WRITER_INDEX && newHostIndex > WRITER_INDEX) {
       // The old host was a writer; we have failed over to a new writer.
@@ -330,10 +340,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    final int currentIndex = this.rdsHostUtils.getHostIndex(this.hosts, currentHost);
-    if (currentIndex == NO_CONNECTION_INDEX) {
-      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.9"));
-    }
+    int currentIndex = getHostIndex(currentConnection, currentHost, Messages.getString("ReadWriteSplittingPlugin.9"));
 
     this.currentHostIndex = currentIndex;
     if (this.currentHostIndex == 0) {
@@ -350,15 +357,33 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
   }
 
+  private int getHostIndex(JdbcConnection connection, HostInfo host, String errorMessage) throws SQLException {
+    return getHostIndex(connection, host.getHostPortPair(), errorMessage);
+  }
+
+  private int getHostIndex(JdbcConnection connection, String hostPortPair, String errorMessage) throws SQLException {
+    int currentIndex = this.rdsHostUtils.getHostIndex(this.hosts, hostPortPair);
+    if (currentIndex != NO_CONNECTION_INDEX) {
+      return currentIndex;
+    }
+
+    currentIndex = this.rdsHostUtils.getHostIndex(this.hosts, this.topologyService.getHostByName(connection));
+    if (currentIndex != NO_CONNECTION_INDEX) {
+      return currentIndex;
+    }
+
+    throw new SQLException(errorMessage);
+  }
+
   @Override
   public void releaseResources() {
-    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    closeAllConnections(currentConnection);
+    closeAllConnections();
 
     this.nextPlugin.releaseResources();
   }
 
-  private void closeAllConnections(JdbcConnection currentConnection) {
+  private void closeAllConnections() {
+    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     closeInternalConnection(this.readerConnection, currentConnection);
     closeInternalConnection(this.writerConnection, currentConnection);
 
@@ -481,11 +506,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       currentConnection = this.currentConnectionProvider.getCurrentConnection();
     }
 
-    final int readerHostIndex = this.rdsHostUtils.getHostIndex(this.hosts, this.readerConnection.getHostPortPair());
-    if (readerHostIndex == NO_CONNECTION_INDEX) {
-      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.4"));
-    }
-
+    final int readerHostIndex = getHostIndex(
+            this.readerConnection,
+            this.readerConnection.getHostPortPair(),
+            Messages.getString("ReadWriteSplittingPlugin.4"));
     switchCurrentConnectionTo(currentConnection, this.readerConnection, readerHostIndex);
   }
 
