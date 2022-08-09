@@ -123,10 +123,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
-//      this.isTransactionBoundary = false;
     } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && isTransactionBoundary) {
       pickNewReaderConnection();
-//      this.isTransactionBoundary = false;
     }
 
     try {
