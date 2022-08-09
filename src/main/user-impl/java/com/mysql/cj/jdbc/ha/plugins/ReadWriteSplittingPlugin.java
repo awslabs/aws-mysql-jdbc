@@ -74,7 +74,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   private boolean inTransaction = false;
   private boolean explicitlyReadOnly = false;
-  private boolean switchReaderOnNextExecute = false;
+  private boolean isTransactionBoundary = false;
   private List<HostInfo> hosts = new ArrayList<>();
   private JdbcConnection writerConnection;
   private JdbcConnection readerConnection;
@@ -120,25 +120,26 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       String methodName,
       Callable<?> executeSqlFunc,
       Object[] args) throws Exception {
-    boolean switchedReader = false;
 
     if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
-      this.switchReaderOnNextExecute = false;
-    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && this.switchReaderOnNextExecute) {
+//      this.isTransactionBoundary = false;
+    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && isTransactionBoundary) {
       pickNewReaderConnection();
-      this.switchReaderOnNextExecute = false;
-      switchedReader = true;
+//      this.isTransactionBoundary = false;
     }
 
     try {
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
-      if (switchedReader) {
-        inTransaction = false;
+      if (isTransactionClosed(methodName, args)) {
+        this.inTransaction = false;
       }
-      switchReaderOnNextExecute = isTransactionBoundary(methodName, args);
+      if (isTransactionStarted(methodName, args)) {
+        this.inTransaction = true;
+      }
 
+      this.isTransactionBoundary = isTransactionBoundary(methodName, args);
       return result;
     } catch (SQLException e) {
       if (isFailoverException(e)) {
@@ -154,6 +155,55 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
   }
 
+  private boolean isTransactionStarted(String methodName, Object[] args) throws SQLException {
+    if (!this.currentConnectionProvider.getCurrentConnection().getAutoCommit()) {
+      return isExecuteMethod(methodName) && !isTransactionClosedViaExecute(methodName, args);
+    }
+
+    if ("execute".equals(methodName)
+            || "executeUpdate".equals(methodName)
+            || "executeLargeUpdate".equals(methodName)
+            || "executeBatch".equals(methodName)) {
+      if (args == null || args.length < 1) {
+        return false;
+      }
+
+      String sql = (String) args[0];
+      return "begin".equalsIgnoreCase(sql)
+              || "start transaction".equalsIgnoreCase(sql)
+              || "start transaction read only".equalsIgnoreCase(sql)
+              || "start transaction read write".equalsIgnoreCase(sql);
+    }
+    return false;
+  }
+
+  private boolean isTransactionClosed(String methodName, Object[] args) throws SQLException {
+    if (this.currentConnectionProvider.getCurrentConnection().getAutoCommit() && !this.inTransaction) {
+      return true;
+    }
+
+    if ("commit".equals(methodName) || "rollback".equals(methodName)) {
+      return true;
+    }
+
+    return isTransactionClosedViaExecute(methodName, args);
+  }
+
+  private boolean isTransactionClosedViaExecute(String methodName, Object[] args) {
+    if ("execute".equals(methodName)
+            || "executeUpdate".equals(methodName)
+            || "executeLargeUpdate".equals(methodName)
+            || "executeBatch".equals(methodName)) {
+      if (args == null || args.length < 1) {
+        return false;
+      }
+
+      String sql = (String) args[0];
+      return "commit".equalsIgnoreCase(sql) || "rollback".equalsIgnoreCase(sql);
+    }
+    return false;
+  }
+
   private boolean isTransactionBoundary(String methodName, Object[] args) throws SQLException {
     JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (currentConnection == null) {
@@ -161,18 +211,19 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     final boolean isAutoCommit = currentConnection.getAutoCommit();
-    if (isAutoCommit && ("execute".equals(methodName) || "executeQuery".equals(methodName) || "executeUpdate".equals(methodName) || "executeLargeUpdate".equals(methodName) || "executeBatch".equals(methodName))) {
-      return true;
+    if (isAutoCommit) {
+      return isExecuteMethod(methodName);
     }
 
-    if ("execute".equals(methodName) && args != null && args.length > 0) {
-        String sql = (String) args[0];
-        if (sql != null && (sql.equalsIgnoreCase("commit") || sql.equalsIgnoreCase("rollback"))) {
-          return true;
-      }
-    }
+    return isTransactionClosed(methodName, args);
+  }
 
-    return "commit".equals(methodName) || "rollback".equals(methodName);
+  private boolean isExecuteMethod(String methodName) {
+    return "execute".equals(methodName)
+            || "executeQuery".equals(methodName)
+            || "executeUpdate".equals(methodName)
+            || "executeLargeUpdate".equals(methodName)
+            || "executeBatch".equals(methodName);
   }
 
   private boolean isFailoverException(SQLException e) {
@@ -340,9 +391,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    int currentIndex = getHostIndex(currentConnection, currentHost, Messages.getString("ReadWriteSplittingPlugin.9"));
-
-    this.currentHostIndex = currentIndex;
+    this.currentHostIndex = getHostIndex(currentConnection, currentHost, Messages.getString("ReadWriteSplittingPlugin.9"));
     if (this.currentHostIndex == 0) {
       this.writerConnection = currentConnection;
       if (this.hosts.size() == 1) {
