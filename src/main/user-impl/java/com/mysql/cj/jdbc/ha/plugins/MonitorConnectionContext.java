@@ -36,6 +36,7 @@ import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Monitoring context for each connection. This contains each connection's criteria for
@@ -54,7 +55,7 @@ public class MonitorConnectionContext {
   private long invalidNodeStartTime;
   private int failureCount;
   private boolean nodeUnhealthy;
-  private boolean activeContext = true;
+  private AtomicBoolean activeContext = new AtomicBoolean(true);
 
   /**
    * Constructor.
@@ -136,15 +137,15 @@ public class MonitorConnectionContext {
   }
 
   public boolean isActiveContext() {
-    return this.activeContext;
+    return this.activeContext.get();
   }
 
   public void invalidate() {
-    this.activeContext = false;
+    this.activeContext.set(false);
   }
 
   synchronized void abortConnection() {
-    if (this.connectionToAbort == null || !this.activeContext) {
+    if (this.connectionToAbort == null || !this.activeContext.get()) {
       return;
     }
 
@@ -170,7 +171,7 @@ public class MonitorConnectionContext {
       long statusCheckStartTime,
       long currentTime,
       boolean isValid) {
-    if (!this.activeContext) {
+    if (!this.activeContext.get()) {
       return;
     }
 
