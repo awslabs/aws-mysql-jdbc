@@ -131,11 +131,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       boolean wasInTransactionBeforeExecution = this.inTransaction;
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
-      if (didMethodCloseTransaction(methodName, args, wasInTransactionBeforeExecution)) {
-        this.inTransaction = false;
-      }
       if (didMethodStartTransaction(methodName, args)) {
         this.inTransaction = true;
+      } else if (didMethodCloseTransaction(methodName, args, wasInTransactionBeforeExecution)) {
+        this.inTransaction = false;
       }
 
       this.isTransactionBoundary = isTransactionBoundary(methodName, args, wasInTransactionBeforeExecution);
@@ -146,11 +145,11 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       }
       throw e;
     } finally {
-        // Update connection/topology info in case the connection was changed
-        final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-        final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-        updateTopology(currentConnection, currentHost);
-        updateInternalConnectionInfo(currentConnection, currentHost);
+      // Update connection/topology info in case the connection was changed
+      final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+      final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
+      updateTopology(currentConnection, currentHost);
+      updateInternalConnectionInfo(currentConnection, currentHost);
     }
   }
 
@@ -159,6 +158,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return isExecuteMethod(methodName) && !didMethodCloseTransactionUsingSqlStatement(methodName, args);
     }
 
+    return didMethodStartTransactionUsingSqlStatement(methodName, args);
+  }
+
+  private boolean didMethodStartTransactionUsingSqlStatement(String methodName, Object[] args) {
     if ("execute".equals(methodName)
             || "executeUpdate".equals(methodName)
             || "executeLargeUpdate".equals(methodName)
@@ -177,7 +180,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   private boolean didMethodCloseTransaction(String methodName, Object[] args, boolean wasInTransactionBeforeExecution) throws SQLException {
-    if (this.currentConnectionProvider.getCurrentConnection().getAutoCommit() && isExecuteMethod(methodName) && !wasInTransactionBeforeExecution) {
+    if (this.currentConnectionProvider.getCurrentConnection().getAutoCommit()
+            && isExecuteMethod(methodName)
+            && !wasInTransactionBeforeExecution
+            && !didMethodStartTransactionUsingSqlStatement(methodName, args)) {
       return true;
     }
 
