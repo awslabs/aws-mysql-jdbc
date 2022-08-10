@@ -123,21 +123,23 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if (METHOD_SET_READ_ONLY.equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
-    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && isTransactionBoundary) {
+    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && this.isTransactionBoundary) {
       pickNewReaderConnection();
     }
 
+    this.isTransactionBoundary = false;
+    boolean wasInTransactionBeforeExecution = this.inTransaction;
+
     try {
-      boolean wasInTransactionBeforeExecution = this.inTransaction;
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
       if (didMethodStartTransaction(methodName, args)) {
         this.inTransaction = true;
       } else if (didMethodCloseTransaction(methodName, args, wasInTransactionBeforeExecution)) {
         this.inTransaction = false;
+        this.isTransactionBoundary = true;
       }
 
-      this.isTransactionBoundary = isTransactionBoundary(methodName, args, wasInTransactionBeforeExecution);
       return result;
     } catch (SQLException e) {
       if (isFailoverException(e)) {
@@ -207,20 +209,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return "commit".equalsIgnoreCase(sql) || "rollback".equalsIgnoreCase(sql);
     }
     return false;
-  }
-
-  private boolean isTransactionBoundary(String methodName, Object[] args, boolean wasInTransactionBeforeExecution) throws SQLException {
-    JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    if (currentConnection == null) {
-      return false;
-    }
-
-    final boolean isAutoCommit = currentConnection.getAutoCommit();
-    if (isAutoCommit) {
-      return isExecuteMethod(methodName);
-    }
-
-    return didMethodCloseTransaction(methodName, args, wasInTransactionBeforeExecution);
   }
 
   private boolean isExecuteMethod(String methodName) {
