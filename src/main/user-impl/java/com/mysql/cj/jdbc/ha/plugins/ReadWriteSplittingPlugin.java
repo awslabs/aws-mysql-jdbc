@@ -156,6 +156,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   private boolean didMethodStartTransaction(String methodName, Object[] args) throws SQLException {
+    // If autocommit is off, any execute will start a transaction, unless the execute is itself closing the transaction
     if (!this.currentConnectionProvider.getCurrentConnection().getAutoCommit()) {
       return isExecuteMethod(methodName) && !didMethodCloseTransactionUsingSqlStatement(methodName, args);
     }
@@ -182,6 +183,9 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   private boolean didMethodCloseTransaction(String methodName, Object[] args, boolean wasInTransactionBeforeExecution) throws SQLException {
+    // If autocommit is on, in most cases, any execute will start a transaction. The exceptions are:
+    // - We earlier started an implicit transaction via "START TRANSACTION" or "BEGIN"
+    // - The execute is itself starting a transaction via "START TRANSACTION" or "BEGIN"
     if (this.currentConnectionProvider.getCurrentConnection().getAutoCommit()
             && isExecuteMethod(methodName)
             && !wasInTransactionBeforeExecution

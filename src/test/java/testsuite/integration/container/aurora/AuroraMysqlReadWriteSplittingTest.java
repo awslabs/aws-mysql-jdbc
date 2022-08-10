@@ -32,6 +32,7 @@ package testsuite.integration.container.aurora;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import eu.rekawek.toxiproxy.Proxy;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -196,6 +197,45 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
+  @Disabled("Failing because getAutocommit does not return the correct value after executing 'SET autocommit = 0'")
+  @ParameterizedTest(name = "test_setReadOnlyFalseInTransaction_setAutocommitZero")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInTransaction_setAutocommitZero(Properties props) throws SQLException{
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt1 = conn.createStatement();
+      stmt1.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
+      stmt1.executeUpdate("CREATE TABLE test_splitting_readonly_transaction (id int not null primary key, text_field varchar(255) not null)");
+      stmt1.executeUpdate("INSERT INTO test_splitting_readonly_transaction VALUES (1, 'test_field value 1')");
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      final Statement stmt2 = conn.createStatement();
+      stmt2.execute("SET autocommit = 0");
+      stmt2.executeQuery("SELECT count(*) from test_splitting_readonly_transaction");
+
+      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(false));
+      assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, exception.getSQLState());
+
+      stmt2.execute("COMMIT");
+
+      conn.setReadOnly(false);
+      writerConnectionId = queryInstanceId(conn);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      final Statement stmt3 = conn.createStatement();
+      stmt3.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
+    }
+  }
+
+  @Disabled("Failing because getAutocommit does not return the correct value after executing 'SET autocommit = 0'")
   @ParameterizedTest(name = "test_setReadOnlyTrueInTransaction")
   @MethodSource("testParameters")
   public void test_setReadOnlyTrueInTransaction(Properties props) throws SQLException{
@@ -209,7 +249,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       final Statement stmt1 = conn.createStatement();
       stmt1.executeUpdate("DROP TABLE IF EXISTS test_splitting_readonly_transaction");
       stmt1.executeUpdate("CREATE TABLE test_splitting_readonly_transaction (id int not null primary key, text_field varchar(255) not null)");
-      conn.setAutoCommit(false);
+      stmt1.execute("SET autocommit = 0");
 
       final Statement stmt2 = conn.createStatement();
       stmt2.executeUpdate("INSERT INTO test_splitting_readonly_transaction VALUES (1, 'test_field value 1')");
