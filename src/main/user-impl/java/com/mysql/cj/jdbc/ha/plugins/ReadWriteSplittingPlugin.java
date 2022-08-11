@@ -133,7 +133,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     try {
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
-      if (didMethodStartTransaction(methodName, args)) {
+      if (didMethodStartTransaction(methodName, args, wasInTransactionBeforeExecution)) {
         this.inTransaction = true;
       } else if (didMethodCloseTransaction(methodName, args, wasInTransactionBeforeExecution)) {
         this.inTransaction = false;
@@ -155,10 +155,12 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
   }
 
-  private boolean didMethodStartTransaction(String methodName, Object[] args) throws SQLException {
-    // If autocommit is off, any execute will start a transaction, unless the execute is closing the transaction using a SQL statement
+  private boolean didMethodStartTransaction(String methodName, Object[] args, boolean wasInTransactionBeforeExecution) throws SQLException {
+    // If autocommit is off, any execute will start a transaction, except for the following cases:
+    // - A transaction was already started earlier and we are still in that transaction
+    // - The execute is closing the transaction using a SQL statement
     if (!this.currentConnectionProvider.getCurrentConnection().getAutoCommit()) {
-      return isExecuteMethod(methodName) && !didMethodCloseTransactionUsingSqlStatement(methodName, args);
+      return isExecuteMethod(methodName) && !wasInTransactionBeforeExecution && !didMethodCloseTransactionUsingSqlStatement(methodName, args);
     }
 
     return didMethodStartTransactionUsingSqlStatement(methodName, args);
