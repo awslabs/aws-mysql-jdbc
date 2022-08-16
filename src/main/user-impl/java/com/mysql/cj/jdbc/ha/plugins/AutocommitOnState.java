@@ -29,11 +29,11 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-public enum ReaderConnectionAutocommitOnState implements IState {
+public enum AutocommitOnState implements IState {
 
     INSTANCE;
 
-    ReaderConnectionAutocommitOnState() {
+    AutocommitOnState() {
         // singleton class - do not instantiate elsewhere
     }
 

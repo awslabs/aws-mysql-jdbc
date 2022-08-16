@@ -34,28 +34,28 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-public class ReaderConnectionAutocommitOnStateTest {
+public class AutocommitOnStateTest {
 
     @Test
     public void test_setReadOnly() {
-        IState nextState = ReaderConnectionAutocommitOnState.INSTANCE.getNextState("setReadOnly", new Object[]{ false });
+        IState nextState = AutocommitOnState.INSTANCE.getNextState("setReadOnly", new Object[]{ false });
         assertEquals(WriterConnectionState.INSTANCE, nextState);
 
-        nextState = ReaderConnectionAutocommitOnState.INSTANCE.getNextState("setReadOnly", new Object[]{ true });
-        assertEquals(ReaderConnectionAutocommitOnState.INSTANCE, nextState);
+        nextState = AutocommitOnState.INSTANCE.getNextState("setReadOnly", new Object[]{ true });
+        assertEquals(AutocommitOnState.INSTANCE, nextState);
     }
 
     @Test
     public void test_otherMethods() {
-        IState nextState = ReaderConnectionAutocommitOnState.INSTANCE.getNextState("getAutoCommit", new Object[]{});
-        assertEquals(ReaderConnectionAutocommitOnState.INSTANCE, nextState);
+        IState nextState = AutocommitOnState.INSTANCE.getNextState("getAutoCommit", new Object[]{});
+        assertEquals(AutocommitOnState.INSTANCE, nextState);
 
-        nextState = ReaderConnectionAutocommitOnState.INSTANCE.getNextState("execute", new Object[]{ "SELECT 1" });
-        assertEquals(ReaderConnectionAutocommitOnState.INSTANCE, nextState);
+        nextState = AutocommitOnState.INSTANCE.getNextState("execute", new Object[]{ "SELECT 1" });
+        assertEquals(AutocommitOnState.INSTANCE, nextState);
     }
 
     @Test
     public void test_shouldSwitchReader() {
-        assertFalse(ReaderConnectionAutocommitOnState.INSTANCE.shouldSwitchReader());
+        assertFalse(AutocommitOnState.INSTANCE.shouldSwitchReader());
     }
 }
