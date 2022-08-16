@@ -201,7 +201,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     makeSureInstancesUp(instanceIDs);
   }
 
-  protected Properties initDefaultPropsNoTimeouts() {
+  protected static Properties initDefaultPropsNoTimeouts() {
     final Properties props = new Properties();
     props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
     props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);
@@ -213,7 +213,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     return props;
   }
 
-  protected Properties initDefaultProps() {
+  protected static Properties initDefaultProps() {
     final Properties props = initDefaultPropsNoTimeouts();
     props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
     props.setProperty(PropertyKey.socketTimeout.getKeyName(), "3000");
@@ -221,7 +221,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     return props;
   }
 
-  protected Properties initDefaultProxiedProps() {
+  protected static Properties initDefaultProxiedProps() {
     final Properties props = initDefaultProps();
     props.setProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
 

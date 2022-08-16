@@ -125,7 +125,7 @@ public class StandardMysqlBaseTest {
     return rs.getString(1);
   }
 
-  protected Properties initDefaultProps() {
+  protected static Properties initDefaultProps() {
     final Properties props = initDefaultPropsNoTimeouts();
     props.setProperty(PropertyKey.connectTimeout.getKeyName(), "3000");
     props.setProperty(PropertyKey.socketTimeout.getKeyName(), "3000");
@@ -133,7 +133,7 @@ public class StandardMysqlBaseTest {
     return props;
   }
 
-  protected Properties initDefaultPropsNoTimeouts() {
+  protected static Properties initDefaultPropsNoTimeouts() {
     final Properties props = new Properties();
     props.setProperty(PropertyKey.USER.getKeyName(), TEST_USERNAME);
     props.setProperty(PropertyKey.PASSWORD.getKeyName(), TEST_PASSWORD);

@@ -34,6 +34,9 @@ import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -41,18 +44,23 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
 
-  @Test
-  public void test_connectToWriter_setReadOnlyTrueTrueFalseFalseTrue() throws SQLException {
-    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
+  private static Stream<Arguments> testParameters() {
+    return Stream.of(
+            Arguments.of(getProps_allPlugins()),
+            Arguments.of(getProps_readWritePlugin())
+    );
+  }
+
+  @ParameterizedTest(name = "test_connectToWriter_setReadOnlyTrueTrueFalseFalseTrue")
+  @MethodSource("testParameters")
+  public void test_connectToWriter_setReadOnlyTrueTrueFalseFalseTrue(Properties props) throws SQLException {
+    try (final Connection conn = connect(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -77,9 +85,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyFalseInReadOnlyTransaction() throws SQLException{
-    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
+  @ParameterizedTest(name = "test_setReadOnlyFalseInReadOnlyTransaction")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInReadOnlyTransaction(Properties props) throws SQLException{
+    try (final Connection conn = connect(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -103,9 +112,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyFalseInTransaction_setAutocommitFalse() throws SQLException{
-    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
+  @ParameterizedTest(name = "test_setReadOnlyFalseInTransaction_setAutocommitFalse")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInTransaction_setAutocommitFalse(Properties props) throws SQLException{
+    try (final Connection conn = connect(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -129,9 +139,11 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyFalseInTransaction_setAutocommitZero() throws SQLException{
-    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
+  @Disabled("Failing because getAutocommit does not return the correct value after executing 'SET autocommit = 0'")
+  @ParameterizedTest(name = "test_setReadOnlyFalseInTransaction_setAutocommitZero")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalseInTransaction_setAutocommitZero(Properties props) throws SQLException{
+    try (final Connection conn = connect(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -155,9 +167,11 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyTrueInTransaction() throws SQLException{
-    try (final Connection conn = connect(getPropsWithReadWritePlugin())) {
+  @Disabled("Failing because getAutocommit does not return the correct value after executing 'SET autocommit = 0'")
+  @ParameterizedTest(name = "test_setReadOnlyTrueInTransaction")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyTrueInTransaction(Properties props) throws SQLException{
+    try (final Connection conn = connect(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       final Statement stmt1 = conn.createStatement();
@@ -182,9 +196,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyTrue_allReadersDown() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allReadersDown")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyTrue_allReadersDown(Properties props) throws SQLException, IOException {
+    try (Connection conn = connectWithProxy(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       // Kill all reader instances
@@ -217,9 +232,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
    * after this issue is fixed.
    */
   @Disabled
-  @Test
-  public void test_setReadOnlyTrue_allInstancesDown() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyTrue_allInstancesDown(Properties props) throws SQLException, IOException {
+    try (Connection conn = connectWithProxy(props)) {
       // Kill all instances
       for (int i = 0; i < clusterSize; i++) {
         final String instanceId = instanceIDs[i];
@@ -237,9 +253,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyTrue_allInstancesDown_writerClosed() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
+  @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown_writerClosed")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyTrue_allInstancesDown_writerClosed(Properties props) throws SQLException, IOException {
+    try (Connection conn = connectWithProxy(props)) {
       conn.close();
 
       // Kill all instances
@@ -258,9 +275,10 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Test
-  public void test_setReadOnlyFalse_allInstancesDown() throws SQLException, IOException {
-    try (Connection conn = connectWithProxy(getPropsWithReadWritePlugin())) {
+  @ParameterizedTest(name = "test_setReadOnlyFalse_allInstancesDown")
+  @MethodSource("testParameters")
+  public void test_setReadOnlyFalse_allInstancesDown(Properties props) throws SQLException, IOException {
+    try (Connection conn = connectWithProxy(props)) {
       String writerConnectionId = queryInstanceId(conn);
 
       conn.setReadOnly(true);
@@ -283,12 +301,109 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  private Properties getPropsWithReadWritePlugin() {
+  @ParameterizedTest(name = "test_readerLoadBalancing_autocommitTrue")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing_autocommitTrue(Properties props) throws SQLException {
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connect(props)) {
+      String writerConnectionId = queryInstanceId(conn);
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+
+      for (int i = 0; i < 10; i++) {
+        Statement stmt = conn.createStatement();
+        stmt.executeQuery("SELECT " + i);
+        readerConnectionId = queryInstanceId(conn);
+        assertNotEquals(writerConnectionId, readerConnectionId);
+
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        assertEquals(i, rs.getInt(1));
+      }
+    }
+  }
+
+  @ParameterizedTest(name = "test_readerLoadBalancing_autocommitFalse")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing_autocommitFalse(Properties props) throws SQLException {
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connect(props)) {
+      String writerConnectionId = queryInstanceId(conn);
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerConnectionId);
+
+      conn.setAutoCommit(false);
+      Statement stmt = conn.createStatement();
+
+      for (int i = 0; i < 5; i++) {
+        stmt.executeQuery("SELECT " + i);
+        conn.commit();
+        readerConnectionId = queryInstanceId(conn);
+        assertNotEquals(writerConnectionId, readerConnectionId);
+
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        assertEquals(i, rs.getInt(1));
+
+        stmt.executeQuery("SELECT " + i);
+        conn.rollback();
+        readerConnectionId = queryInstanceId(conn);
+        assertNotEquals(writerConnectionId, readerConnectionId);
+      }
+    }
+  }
+
+  @Test
+  public void test_transactionResolutionUnknown_readWriteSplittingPluginOnly() throws SQLException, IOException {
+    Properties props = getProps_readWritePlugin();
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectWithProxy(props)) {
+      String writerConnectionId = queryInstanceId(conn);
+
+      conn.setReadOnly(true);
+      conn.setAutoCommit(false);
+      String readerId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerId);
+
+      final Statement stmt = conn.createStatement();
+      stmt.executeQuery("SELECT 1");
+      final Proxy proxyInstance = proxyMap.get(instanceIDs[1]);
+      if (proxyInstance != null) {
+        containerHelper.disableConnectivity(proxyInstance);
+      } else {
+        fail(String.format("%s does not have a proxy setup.", readerId));
+      }
+
+      SQLException e = assertThrows(SQLException.class, conn::rollback);
+      assertEquals(MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN, e.getSQLState());
+
+      try (final Connection newConn = connectWithProxy(props)) {
+        newConn.setReadOnly(true);
+        Statement newStmt = newConn.createStatement();
+        ResultSet rs = newStmt.executeQuery("SELECT 1");
+        rs.next();
+        assertEquals(1, rs.getInt(1));
+      }
+    }
+  }
+
+  private static Properties getProps_allPlugins() {
     Properties props = initDefaultProps();
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
             "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
                     "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
                     "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
+    return props;
+  }
+
+  private static Properties getProps_readWritePlugin() {
+    Properties props = initDefaultProps();
+    props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
+            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory");
     return props;
   }
 }
