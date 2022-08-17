@@ -126,11 +126,12 @@ public class AuroraIntegrationContainerTest {
     // Note: You will need to set it to the proper DB Conn Suffix
     // i.e. For "database-cluster-name.XYZ.us-east-2.rds.amazonaws.com"
     // dbConnStrSuffix = "XYZ.us-east-2.rds.amazonaws.com"
-    dbConnStrSuffix = auroraUtil.createCluster(TEST_USERNAME, TEST_PASSWORD, TEST_DB, TEST_DB_CLUSTER_IDENTIFIER);
+//    dbConnStrSuffix = auroraUtil.createCluster(TEST_USERNAME, TEST_PASSWORD, TEST_DB, TEST_DB_CLUSTER_IDENTIFIER);
+    dbConnStrSuffix = "czygpppufgy4.us-east-2.rds.amazonaws.com";
 
     // Comment out getting public IP to not add & remove from EC2 whitelist
-    runnerIP = auroraUtil.getPublicIPAddress();
-    auroraUtil.ec2AuthorizeIP(runnerIP);
+//    runnerIP = auroraUtil.getPublicIPAddress();
+//    auroraUtil.ec2AuthorizeIP(runnerIP);
 
     dbHostCluster = TEST_DB_CLUSTER_IDENTIFIER + ".cluster-" + dbConnStrSuffix;
     dbHostClusterRo = TEST_DB_CLUSTER_IDENTIFIER + ".cluster-ro-" + dbConnStrSuffix;
@@ -185,13 +186,13 @@ public class AuroraIntegrationContainerTest {
   @AfterAll
   static void tearDown() {
     // Comment below out if you don't want to delete cluster after tests finishes
-    if (StringUtils.isNullOrEmpty(TEST_DB_CLUSTER_IDENTIFIER)) {
-      auroraUtil.deleteCluster();
-    } else {
-      auroraUtil.deleteCluster(TEST_DB_CLUSTER_IDENTIFIER);
-    }
-
-    auroraUtil.ec2DeauthorizesIP(runnerIP);
+//    if (StringUtils.isNullOrEmpty(TEST_DB_CLUSTER_IDENTIFIER)) {
+//      auroraUtil.deleteCluster();
+//    } else {
+//      auroraUtil.deleteCluster(TEST_DB_CLUSTER_IDENTIFIER);
+//    }
+//
+//    auroraUtil.ec2DeauthorizesIP(runnerIP);
     for (ToxiproxyContainer proxy : proxyContainers) {
       proxy.stop();
     }

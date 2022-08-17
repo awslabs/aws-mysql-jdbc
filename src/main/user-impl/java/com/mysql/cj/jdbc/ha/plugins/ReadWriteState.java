@@ -24,16 +24,16 @@
 // See the GNU General Public License, version 2.0, for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program. If not, see
+// along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-public enum AutocommitOnState implements IState {
+public enum ReadWriteState implements IState {
 
     INSTANCE;
 
-    AutocommitOnState() {
+    ReadWriteState() {
         // singleton class - do not instantiate elsewhere
     }
 
@@ -41,8 +41,13 @@ public enum AutocommitOnState implements IState {
     public IState getNextState(String methodName, Object[] args) {
         if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
             Boolean readOnly = (Boolean) args[0];
-            return Boolean.TRUE.equals(readOnly) ? this.INSTANCE : WriterConnectionState.INSTANCE;
+            return Boolean.TRUE.equals(readOnly) ? AutoCommitOnState.INSTANCE : this.INSTANCE;
         }
+        return this.INSTANCE;
+    }
+
+    @Override
+    public IState getNextState(Exception e) {
         return this.INSTANCE;
     }
 

@@ -24,18 +24,59 @@
 // See the GNU General Public License, version 2.0, for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program. If not, see
+// along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.Messages;
+
 import java.sql.SQLException;
 
-public interface IState {
+public enum AutoCommitOnTransactionState implements IState {
 
-    IState getNextState(String methodName, Object[] args) throws SQLException;
+    INSTANCE;
 
-    IState getNextState(Exception e);
+    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
 
-    boolean shouldSwitchReader();
+    AutoCommitOnTransactionState() {
+        // singleton class - do not instantiate elsewhere
+    }
+
+    @Override
+    public IState getNextState(String methodName, Object[] args) throws SQLException  {
+        // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
+        // commit()/rollback() are called
+        if (analyzer.isExecuteClosingTransaction(methodName, args)) {
+            return AutoCommitOnTransactionBoundaryState.INSTANCE;
+        }
+
+        if (analyzer.isSetReadOnlyFalse(methodName, args)) {
+            throw new SQLException(Messages.getString("AutoCommitOnTransactionState.1"));
+        }
+
+        if (analyzer.isSetAutoCommitFalse(methodName, args)) {
+            return AutoCommitOffTransactionState.INSTANCE;
+        }
+
+        return this.INSTANCE;
+    }
+
+    @Override
+    public IState getNextState(Exception e) {
+        if (analyzer.isFailoverException(e)) {
+            return AutoCommitOnState.INSTANCE;
+        }
+
+        if (analyzer.isCommunicationsException(e)) {
+            return AutoCommitOnTransactionBoundaryState.INSTANCE;
+        }
+
+        return this.INSTANCE;
+    }
+
+    @Override
+    public boolean shouldSwitchReader() {
+        return false;
+    }
 }

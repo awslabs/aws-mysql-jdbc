@@ -135,6 +135,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       if (isFailoverException(e)) {
         closeAllConnections();
       }
+
+      this.currentState = currentState.getNextState(e);
       throw e;
     } finally {
       // Update connection/topology info in case the connection was changed
@@ -293,6 +295,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       }
 
       updateInternalConnectionInfo(currentConnection, currentHost);
+      this.currentState = ReadWriteState.INSTANCE;
       return;
     }
     this.hosts = topology;
@@ -303,6 +306,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     updateInternalConnectionInfo(currentConnection, topologyService.getHostByName(currentConnection));
+    this.currentState = ReadWriteState.INSTANCE;
   }
 
   private void updateInternalConnectionInfo(JdbcConnection currentConnection, HostInfo currentHost) throws SQLException {
@@ -313,12 +317,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     this.currentHostIndex = getHostIndex(currentConnection, currentHost, Messages.getString("ReadWriteSplittingPlugin.9"));
     if (this.currentHostIndex == 0) {
       this.writerConnection = currentConnection;
-      this.currentState = WriterConnectionState.INSTANCE;
       if (this.hosts.size() == 1) {
         this.readerConnection = currentConnection;
       }
     } else if (this.currentHostIndex != NO_CONNECTION_INDEX) {
-      this.currentState = ReaderConnectionAutocommitOnState.INSTANCE;
       this.readerConnection = currentConnection;
     }
 

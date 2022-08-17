@@ -29,33 +29,52 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import org.junit.jupiter.api.Test;
+public enum AutoCommitOnTransactionBoundaryState implements IState {
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+    INSTANCE;
 
-public class WriterConnectionStateTest {
+    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
 
-    @Test
-    public void test_setReadOnly() {
-        IState nextState = WriterConnectionState.INSTANCE.getNextState("setReadOnly", new Object[]{ true });
-        assertEquals(ReaderConnectionAutocommitOnState.INSTANCE, nextState);
-
-        nextState = WriterConnectionState.INSTANCE.getNextState("setReadOnly", new Object[]{ false });
-        assertEquals(WriterConnectionState.INSTANCE, nextState);
+    AutoCommitOnTransactionBoundaryState() {
+        // singleton class - do not instantiate elsewhere
     }
 
-    @Test
-    public void test_otherMethods() {
-        IState nextState = WriterConnectionState.INSTANCE.getNextState("getAutoCommit", new Object[]{});
-        assertEquals(WriterConnectionState.INSTANCE, nextState);
+    @Override
+    public IState getNextState(String methodName, Object[] args) {
+        if (analyzer.isSetReadOnlyFalse(methodName, args)) {
+            return ReadWriteState.INSTANCE;
+        }
 
-        nextState = WriterConnectionState.INSTANCE.getNextState("execute", new Object[]{ "SELECT 1" });
-        assertEquals(WriterConnectionState.INSTANCE, nextState);
+        if (analyzer.isSetAutoCommitFalse(methodName, args)) {
+            return AutoCommitOffState.INSTANCE;
+        }
+
+        if (analyzer.isExecuteStartingTransaction(methodName, args)) {
+            return AutoCommitOnTransactionState.INSTANCE;
+        }
+
+        if (analyzer.isSetReadOnlyTrue(methodName, args) || analyzer.isSetAutoCommitTrue(methodName, args)) {
+            return AutoCommitOnState.INSTANCE;
+        }
+
+        if (analyzer.isExecuteDml(methodName, args) || analyzer.isMethodClosingTransaction(methodName, args)) {
+            return this.INSTANCE;
+        }
+
+        return AutoCommitOnState.INSTANCE;
     }
 
-    @Test
-    public void test_shouldSwitchReader() {
-        assertFalse(WriterConnectionState.INSTANCE.shouldSwitchReader());
+    @Override
+    public IState getNextState(Exception e) {
+        if (analyzer.isFailoverException(e)) {
+            return AutoCommitOnState.INSTANCE;
+        }
+
+        return AutoCommitOnTransactionBoundaryState.INSTANCE;
+    }
+
+    @Override
+    public boolean shouldSwitchReader() {
+        return true;
     }
 }

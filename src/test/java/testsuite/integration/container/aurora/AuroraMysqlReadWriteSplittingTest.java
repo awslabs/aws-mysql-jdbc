@@ -265,6 +265,99 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
+  // TODO: edit state transitions to not accept executeUpdate/executeLargeUpdate
+  // TODO: edit sql parsing to account for whitespace between words
+  @ParameterizedTest(name = "test_readerLoadBalancing1")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing1(Properties props) throws SQLException {
+    final String initialWriterId = instanceIDs[0];
+
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      String readerId = queryInstanceId(conn);
+      assertNotEquals(writerConnectionId, readerId);
+      assertTrue(isDBInstanceReader(readerId));
+
+      for (int i = 0; i < 5; i++) {
+        String nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+        assertTrue(isDBInstanceReader(readerId));
+        readerId = nextReaderId;
+      }
+
+      Statement stmt = conn.createStatement();
+      stmt.execute("StarT TRanSACtion REad onLy");
+      stmt.execute("SELECT 1");
+      conn.setAutoCommit(false);
+      readerId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(readerId));
+      conn.commit();
+      stmt.execute("coMmIt");
+
+      assertFalse(conn.getAutoCommit());
+      String nextReaderId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(nextReaderId));
+      assertNotEquals(readerId, nextReaderId);
+      readerId = nextReaderId;
+      nextReaderId = queryInstanceId(conn);
+      assertEquals(readerId, nextReaderId);
+      assertThrows(SQLException.class, () -> conn.setReadOnly(false));
+      conn.commit();
+    }
+  }
+
+  @ParameterizedTest(name = "test_readerLoadBalancing2")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing2(Properties props) throws SQLException, IOException {
+    final String initialWriterId = instanceIDs[0];
+
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      conn.setReadOnly(false);
+      conn.setReadOnly(true);
+      final Statement stmt1 = conn.createStatement();
+      conn.setAutoCommit(false);
+      conn.setAutoCommit(true);
+      conn.setAutoCommit(false);
+      assertFalse(conn.getAutoCommit());
+      conn.commit();
+      stmt1.execute("SELECT 1");
+      queryInstanceId(conn);
+      conn.setAutoCommit(true);
+      assertTrue(conn.getAutoCommit());
+      conn.setAutoCommit(false);
+      conn.commit();
+      conn.commit();
+      conn.setAutoCommit(true);
+      stmt1.execute("COMMIT"); // error when conn.commit() called here
+      stmt1.execute("COMMIT");
+      stmt1.execute("bEgIn");
+      stmt1.execute("SELECT 1");
+      stmt1.execute("roLLbacK");
+      conn.setAutoCommit(false);
+      conn.setReadOnly(false);
+      conn.setAutoCommit(true);
+      conn.setReadOnly(true);
+      stmt1.execute("COMMIT");
+      conn.setReadOnly(false);
+      conn.setReadOnly(true);
+      conn.setAutoCommit(false);
+      stmt1.execute("COMMIT");
+      conn.setReadOnly(false);
+    }
+  }
+
+  // TODO: Add test for failover
   @ParameterizedTest(name = "test_readerLoadBalancing_autocommitTrue")
   @MethodSource("testParameters")
   public void test_readerLoadBalancing_autocommitTrue(Properties props) throws SQLException {
@@ -289,6 +382,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       }
     }
   }
+
 
   @ParameterizedTest(name = "test_readerLoadBalancing_autocommitFalse")
   @MethodSource("testParameters")

@@ -24,25 +24,53 @@
 // See the GNU General Public License, version 2.0, for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program. If not, see 
+// along with this program. If not, see
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-public enum WriterConnectionState implements IState {
+public enum AutoCommitOnState implements IState {
 
     INSTANCE;
 
-    WriterConnectionState() {
+    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+
+    AutoCommitOnState() {
         // singleton class - do not instantiate elsewhere
     }
 
     @Override
     public IState getNextState(String methodName, Object[] args) {
+        if (analyzer.isExecuteDml(methodName, args) || analyzer.isMethodClosingTransaction(methodName, args)) {
+            return AutoCommitOnTransactionBoundaryState.INSTANCE;
+        }
+
+        if (analyzer.isExecuteStartingTransaction(methodName, args)) {
+            return AutoCommitOnTransactionState.INSTANCE;
+        }
+
+        if (analyzer.isSetAutoCommitFalse(methodName, args)) {
+            return AutoCommitOffState.INSTANCE;
+        }
+
         if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
             Boolean readOnly = (Boolean) args[0];
-            return Boolean.TRUE.equals(readOnly) ? ReaderConnectionAutocommitOnState.INSTANCE : this.INSTANCE;
+            return Boolean.TRUE.equals(readOnly) ? this.INSTANCE : ReadWriteState.INSTANCE;
         }
+
+        return this.INSTANCE;
+    }
+
+    @Override
+    public IState getNextState(Exception e) {
+        if (analyzer.isFailoverException(e)) {
+            return this.INSTANCE;
+        }
+
+        if (analyzer.isCommunicationsException(e)) {
+            return AutoCommitOnTransactionBoundaryState.INSTANCE;
+        }
+
         return this.INSTANCE;
     }
 

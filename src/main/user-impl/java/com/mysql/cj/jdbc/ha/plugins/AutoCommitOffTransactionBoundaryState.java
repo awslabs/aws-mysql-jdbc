@@ -24,18 +24,53 @@
 // See the GNU General Public License, version 2.0, for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program. If not, see
+// along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import java.sql.SQLException;
+public enum AutoCommitOffTransactionBoundaryState implements IState {
 
-public interface IState {
+    INSTANCE;
 
-    IState getNextState(String methodName, Object[] args) throws SQLException;
+    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
 
-    IState getNextState(Exception e);
+    AutoCommitOffTransactionBoundaryState() {
+        // singleton class - do not instantiate elsewhere
+    }
 
-    boolean shouldSwitchReader();
+    @Override
+    public IState getNextState(String methodName, Object[] args) {
+        if (analyzer.isSetAutoCommitTrue(methodName, args)) {
+            return AutoCommitOnState.INSTANCE;
+        }
+
+        if (analyzer.isMethodClosingTransaction(methodName, args)) {
+            return this.INSTANCE;
+        }
+
+        if (analyzer.isSetReadOnlyFalse(methodName, args)) {
+            return ReadWriteState.INSTANCE;
+        }
+
+        if (analyzer.isExecuteDml(methodName, args) || analyzer.isExecuteStartingTransaction(methodName, args)) {
+            return AutoCommitOffTransactionState.INSTANCE;
+        }
+
+        return AutoCommitOffState.INSTANCE;
+    }
+
+    @Override
+    public IState getNextState(Exception e) {
+        if (analyzer.isFailoverException(e)) {
+            return AutoCommitOffState.INSTANCE;
+        }
+
+        return AutoCommitOffTransactionBoundaryState.INSTANCE;
+    }
+
+    @Override
+    public boolean shouldSwitchReader() {
+        return true;
+    }
 }
