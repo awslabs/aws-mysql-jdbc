@@ -29,6 +29,10 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.jdbc.JdbcConnection;
+
+import java.sql.SQLException;
+
 public enum ReadWriteState implements IState {
 
     INSTANCE;
@@ -38,10 +42,13 @@ public enum ReadWriteState implements IState {
     }
 
     @Override
-    public IState getNextState(String methodName, Object[] args) {
+    public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException {
         if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
             Boolean readOnly = (Boolean) args[0];
-            return Boolean.TRUE.equals(readOnly) ? AutoCommitOnState.INSTANCE : this.INSTANCE;
+            if (Boolean.FALSE.equals(readOnly)) {
+                return this.INSTANCE;
+            }
+            return currentConnection.getAutoCommit() ? AutoCommitOnState.INSTANCE : AutoCommitOffState.INSTANCE;
         }
         return this.INSTANCE;
     }

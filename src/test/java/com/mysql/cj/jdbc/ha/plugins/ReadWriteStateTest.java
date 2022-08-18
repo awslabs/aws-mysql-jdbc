@@ -30,6 +30,7 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
+import com.mysql.cj.jdbc.JdbcConnection;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,14 +45,11 @@ import static org.mockito.Mockito.when;
 
 public class ReadWriteStateTest {
 
-    @Mock
-    Exception exception;
-
-    @Mock
-    SQLException failoverException;
-
-    @Mock
-    SQLException communicationsException;
+    @Mock Exception exception;
+    @Mock SQLException failoverException;
+    @Mock SQLException communicationsException;
+    
+    @Mock JdbcConnection conn;
 
     private AutoCloseable closeable;
 
@@ -69,92 +67,97 @@ public class ReadWriteStateTest {
     }
 
     @Test
-    public void test_setReadOnly() {
-        IState nextState = ReadWriteState.INSTANCE.getNextState("setReadOnly", new Object[]{ false });
+    public void test_setReadOnly() throws SQLException {
+        IState nextState = ReadWriteState.INSTANCE.getNextState(conn, "setReadOnly", new Object[]{ false });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("setReadOnly", new Object[]{ true });
+        when(conn.getAutoCommit()).thenReturn(true);
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "setReadOnly", new Object[]{ true });
         assertEquals(AutoCommitOnState.INSTANCE, nextState);
+
+        when(conn.getAutoCommit()).thenReturn(false);
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "setReadOnly", new Object[]{ true });
+        assertEquals(AutoCommitOffState.INSTANCE, nextState);
     }
 
     @Test
-    public void test_setAutoCommit() {
-        IState nextState = ReadWriteState.INSTANCE.getNextState("setAutoCommit", new Object[]{ true });
+    public void test_setAutoCommit() throws SQLException {
+        IState nextState = ReadWriteState.INSTANCE.getNextState(conn, "setAutoCommit", new Object[]{ true });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("setAutoCommit", new Object[]{ false });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "setAutoCommit", new Object[]{ false });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "SeT aUtOcOmMiT = 1" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = 1" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "SeT aUtOcOmMiT = 0" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = 0" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "SeT aUtOcOmMiT = tRuE" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = tRuE" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "SeT aUtOcOmMiT = fAlSe" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-    }
-
-    @Test
-    public void test_execute() {
-        IState nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "SELECT 1" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("executeQuery", new Object[]{ "SELECT 1" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("executeUpdate", new Object[]{ "UPDATE employees SET name = 'John' WHERE id = 1" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("executeLargeUpdate", new Object[]{ "UPDATE employees SET name = 'John' WHERE id = 1" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = fAlSe" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
     }
 
     @Test
-    public void test_startTransaction() {
-        IState nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "bEgIn" });
+    public void test_execute() throws SQLException {
+        IState nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SELECT 1" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("executeUpdate", new Object[]{ "sTarT tRaNsAction" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeQuery", new Object[]{ "SELECT 1" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("executeLargeUpdate", new Object[]{ "StaRt TransActioN rEad Only" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeUpdate", new Object[]{ "UPDATE employees SET name = 'John' WHERE id = 1" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "stART tRanSACtion ReaD WRITe" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-    }
-
-    @Test
-    public void test_closeTransaction() {
-        IState nextState = ReadWriteState.INSTANCE.getNextState("execute", new Object[]{ "cOMmit" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("executeUpdate", new Object[]{ "rOllBACk" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("executeLargeUpdate", new Object[]{ "cOMmit" });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("commit", new Object[]{});
-        assertEquals(ReadWriteState.INSTANCE, nextState);
-
-        nextState = ReadWriteState.INSTANCE.getNextState("rollback", new Object[]{});
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeLargeUpdate", new Object[]{ "UPDATE employees SET name = 'John' WHERE id = 1" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
     }
 
     @Test
-    public void test_otherMethods() {
-        IState nextState = ReadWriteState.INSTANCE.getNextState("getAutoCommit", new Object[]{});
+    public void test_startTransaction() throws SQLException {
+        IState nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "bEgIn" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("isClosed", new Object[]{});
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeUpdate", new Object[]{ "sTarT tRaNsAction" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
 
-        nextState = ReadWriteState.INSTANCE.getNextState("setCatalog", new Object[]{ "catalog" });
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeLargeUpdate", new Object[]{ "StaRt TransActioN rEad Only" });
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "stART tRanSACtion ReaD WRITe" });
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+    }
+
+    @Test
+    public void test_closeTransaction() throws SQLException {
+        IState nextState = ReadWriteState.INSTANCE.getNextState(conn, "execute", new Object[]{ "cOMmit" });
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeUpdate", new Object[]{ "rOllBACk" });
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "executeLargeUpdate", new Object[]{ "cOMmit" });
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "commit", new Object[]{});
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "rollback", new Object[]{});
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+    }
+
+    @Test
+    public void test_otherMethods() throws SQLException {
+        IState nextState = ReadWriteState.INSTANCE.getNextState(conn, "getAutoCommit", new Object[]{});
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "isClosed", new Object[]{});
+        assertEquals(ReadWriteState.INSTANCE, nextState);
+
+        nextState = ReadWriteState.INSTANCE.getNextState(conn, "setCatalog", new Object[]{ "catalog" });
         assertEquals(ReadWriteState.INSTANCE, nextState);
     }
 

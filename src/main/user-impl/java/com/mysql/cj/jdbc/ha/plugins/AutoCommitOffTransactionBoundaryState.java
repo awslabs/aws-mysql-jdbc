@@ -29,6 +29,8 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.jdbc.JdbcConnection;
+
 public enum AutoCommitOffTransactionBoundaryState implements IState {
 
     INSTANCE;
@@ -40,7 +42,7 @@ public enum AutoCommitOffTransactionBoundaryState implements IState {
     }
 
     @Override
-    public IState getNextState(String methodName, Object[] args) {
+    public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {
         if (analyzer.isSetAutoCommitTrue(methodName, args)) {
             return AutoCommitOnState.INSTANCE;
         }

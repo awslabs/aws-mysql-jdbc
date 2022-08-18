@@ -128,7 +128,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     try {
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
-      this.currentState = currentState.getNextState(methodName, args);
+      JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+      this.currentState = currentState.getNextState(currentConnection, methodName, args);
 
       return result;
     } catch (SQLException e) {

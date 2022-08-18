@@ -30,6 +30,7 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.Messages;
+import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 
@@ -44,7 +45,7 @@ public enum AutoCommitOnTransactionState implements IState {
     }
 
     @Override
-    public IState getNextState(String methodName, Object[] args) throws SQLException  {
+    public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException  {
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
         // commit()/rollback() are called
         if (analyzer.isExecuteClosingTransaction(methodName, args)) {

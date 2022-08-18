@@ -29,11 +29,13 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.jdbc.JdbcConnection;
+
 import java.sql.SQLException;
 
 public interface IState {
 
-    IState getNextState(String methodName, Object[] args) throws SQLException;
+    IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException;
 
     IState getNextState(Exception e);
 
