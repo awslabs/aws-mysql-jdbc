@@ -43,7 +43,9 @@ public enum AutoCommitOnState implements IState {
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {
-        if (analyzer.isExecuteDml(methodName, args) || analyzer.isMethodClosingTransaction(methodName, args)) {
+        // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
+        // commit()/rollback() are called
+        if (analyzer.isExecuteDml(methodName, args) || analyzer.isExecuteClosingTransaction(methodName, args)) {
             return AutoCommitOnTransactionBoundaryState.INSTANCE;
         }
 
@@ -65,14 +67,6 @@ public enum AutoCommitOnState implements IState {
 
     @Override
     public IState getNextState(Exception e) {
-        if (analyzer.isFailoverException(e)) {
-            return this.INSTANCE;
-        }
-
-        if (analyzer.isCommunicationsException(e)) {
-            return AutoCommitOnTransactionBoundaryState.INSTANCE;
-        }
-
         return this.INSTANCE;
     }
 

@@ -85,16 +85,28 @@ public class AutoCommitOnTransactionStateTest {
         nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "setAutoCommit", new Object[]{ false });
         assertEquals(AutoCommitOffTransactionState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = 1" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "set autocommit = 1" });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = 0" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "set autocommit = 0;" });
         assertEquals(AutoCommitOffTransactionState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = tRuE" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SET AUTOCOMMIT = TRUE" });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = fAlSe" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SET AUTOCOMMIT = FALSE;" });
+        assertEquals(AutoCommitOffTransactionState.INSTANCE, nextState);
+
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "   SeT  aUtOcOmMiT = 1 ; " });
+        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ " SeT aUtOcOmMiT  = 0  ;" });
+        assertEquals(AutoCommitOffTransactionState.INSTANCE, nextState);
+
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = tRuE;" });
+        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ " SeT  aUtOcOmMiT  =  fAlSe  ;  " });
         assertEquals(AutoCommitOffTransactionState.INSTANCE, nextState);
     }
 
@@ -105,38 +117,44 @@ public class AutoCommitOnTransactionStateTest {
 
         nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeQuery", new Object[]{ "SELECT 1" });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
-
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeUpdate", new Object[]{ "UPDATE employees SET name = 'John' WHERE id = 1" });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
-
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeLargeUpdate", new Object[]{ "UPDATE employees SET name = 'John' WHERE id = 1" });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
     }
 
     @Test
     public void test_startTransaction() throws SQLException {
-        IState nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "bEgIn" });
+        IState nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "begin" });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeUpdate", new Object[]{ "sTarT tRaNsAction" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "START TRANSACTION;" });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeLargeUpdate", new Object[]{ "StaRt TransActioN rEad Only" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  bEgIn; " });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
-
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "stART tRanSACtion ReaD WRITe" });
+    
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  sTarT  tRaNsAction ; " });
+        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+    
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "StaRt  TransActioN  rEad Only;" });
+        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+    
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  stART tRanSACtion ReaD WRITe  ;" });
         assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
     }
 
     @Test
     public void test_closeTransaction() throws SQLException {
-        IState nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "cOMmit" });
+        IState nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "commit" });
         assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeUpdate", new Object[]{ "rOllBACk" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "ROLLBACK;" });
         assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
 
-        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "executeLargeUpdate", new Object[]{ "cOMmit" });
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  cOMmit   ;" });
+        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ " rOllBACk ;  " });
+        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+
+        nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(conn, "execute", new Object[]{ "cOMmit ; " });
         assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
 
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
@@ -169,7 +187,7 @@ public class AutoCommitOnTransactionStateTest {
         assertEquals(AutoCommitOnState.INSTANCE, nextState);
 
         nextState = AutoCommitOnTransactionState.INSTANCE.getNextState(communicationsException);
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
     }
 
     @Test

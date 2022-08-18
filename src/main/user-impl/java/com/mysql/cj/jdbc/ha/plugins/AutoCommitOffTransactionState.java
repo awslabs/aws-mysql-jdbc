@@ -67,10 +67,6 @@ public enum AutoCommitOffTransactionState implements IState {
             return AutoCommitOffState.INSTANCE;
         }
 
-        if (analyzer.isCommunicationsException(e)) {
-            return AutoCommitOffTransactionBoundaryState.INSTANCE;
-        }
-
         return this.INSTANCE;
     }
 

@@ -59,7 +59,9 @@ public enum AutoCommitOnTransactionBoundaryState implements IState {
             return AutoCommitOnState.INSTANCE;
         }
 
-        if (analyzer.isExecuteDml(methodName, args) || analyzer.isMethodClosingTransaction(methodName, args)) {
+        // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
+        // commit()/rollback() are called
+        if (analyzer.isExecuteDml(methodName, args) || analyzer.isExecuteClosingTransaction(methodName, args)) {
             return this.INSTANCE;
         }
 
@@ -72,7 +74,11 @@ public enum AutoCommitOnTransactionBoundaryState implements IState {
             return AutoCommitOnState.INSTANCE;
         }
 
-        return AutoCommitOnTransactionBoundaryState.INSTANCE;
+        if (analyzer.isCommunicationsException(e)) {
+            return this.INSTANCE;
+        }
+
+        return AutoCommitOnState.INSTANCE;
     }
 
     @Override

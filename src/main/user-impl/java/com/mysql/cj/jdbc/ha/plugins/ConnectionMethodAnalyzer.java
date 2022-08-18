@@ -42,31 +42,32 @@ import java.sql.SQLException;
 
 public class ConnectionMethodAnalyzer {
 
-    public boolean isExecuteMethod(String methodName) {
-        return "execute".equals(methodName)
-                || "executeQuery".equals(methodName)
-                || "executeUpdate".equals(methodName)
-                || "executeLargeUpdate".equals(methodName)
-                || "executeBatch".equals(methodName);
+    private static final String BEGIN_REGEX = "(?i) *begin.*";
+    private static final String COMMIT_REGEX = "(?i) *commit.*";
+    private static final String ROLLBACK_REGEX = "(?i) *rollback.*";
+    private static final String SET_AUTOCOMMIT_REGEX = "(?i) *set *autocommit .*";
+    private static final String START_TRANSACTION_REGEX = "(?i) *start *transaction.*";
+    private static final String SET_REGEX = "(?i) *set .*";
+
+    // executeUpdate, executeLargeUpdate, and executeBatch throw an error when setReadOnly(true) has been called
+    public boolean isReadOnlyExecuteMethod(String methodName) {
+        return "execute".equals(methodName) || "executeQuery".equals(methodName);
     }
 
     // SQL statements such as "SET autocommit = 0", "START TRANSACTION", and "COMMIT" cannot be executed with executeQuery
-    public boolean isExecuteMethodWithoutResultSet(String methodName) {
-        return "execute".equals(methodName)
-                || "executeUpdate".equals(methodName)
-                || "executeLargeUpdate".equals(methodName)
-                || "executeBatch".equals(methodName); // TODO: need to handle executeBatch parsing
+    public boolean isExecuteMethod(String methodName) {
+        return "execute".equals(methodName);
     }
 
     public boolean isExecuteDml(String methodName, Object[] args) {
-        return isExecuteMethod(methodName)
+        return isReadOnlyExecuteMethod(methodName)
                 && !isExecuteStartingTransaction(methodName, args)
                 && !isExecuteClosingTransaction(methodName, args)
                 && !isExecuteSettingState(methodName, args);
     }
 
     public boolean isExecuteSettingState(String methodName, Object[] args) {
-        if (!isExecuteMethodWithoutResultSet(methodName))  {
+        if (!isExecuteMethod(methodName))  {
             return false;
         }
 
@@ -75,13 +76,11 @@ public class ConnectionMethodAnalyzer {
         }
 
         String sql = (String) args[0];
-        sql = sql.trim();
-        sql = sql.toLowerCase();
-        return sql.startsWith("set ");
+        return sql.matches(SET_REGEX);
     }
 
     public boolean isExecuteStartingTransaction(String methodName, Object[] args) {
-        if (!isExecuteMethodWithoutResultSet(methodName))  {
+        if (!isExecuteMethod(methodName))  {
             return false;
         }
 
@@ -90,9 +89,7 @@ public class ConnectionMethodAnalyzer {
         }
 
         String sql = (String) args[0];
-        sql = sql.trim();
-        sql = sql.toLowerCase();
-        return sql.startsWith("begin") || sql.startsWith("start transaction");
+        return sql.matches(BEGIN_REGEX) || sql.matches(START_TRANSACTION_REGEX);
     }
 
     public boolean isMethodClosingTransaction(String methodName, Object[] args) {
@@ -103,7 +100,7 @@ public class ConnectionMethodAnalyzer {
     }
 
     public boolean isExecuteClosingTransaction(String methodName, Object[] args) {
-        if (!isExecuteMethodWithoutResultSet(methodName)) {
+        if (!isExecuteMethod(methodName)) {
             return false;
         }
 
@@ -112,7 +109,7 @@ public class ConnectionMethodAnalyzer {
         }
 
         String sql = (String) args[0];
-        return "commit".equalsIgnoreCase(sql) || "rollback".equalsIgnoreCase(sql);
+        return sql.matches(COMMIT_REGEX) || sql.matches(ROLLBACK_REGEX);
     }
 
     public boolean isSetReadOnlyTrue(String methodName, Object[] args) {
@@ -170,14 +167,12 @@ public class ConnectionMethodAnalyzer {
             return true;
         }
 
-        if (!isExecuteMethodWithoutResultSet(methodName)) {
+        if (!isExecuteMethod(methodName)) {
             return false;
         }
 
         String sql = (String) args[0];
-        sql = sql.trim();
-        sql = sql.toLowerCase();
-        return sql.startsWith("set autocommit");
+        return sql.matches(SET_AUTOCOMMIT_REGEX);
     }
 
     public boolean getAutoCommitValueFromSqlStatement(Object[] args) throws SQLException {

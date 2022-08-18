@@ -64,14 +64,6 @@ public enum AutoCommitOffState implements IState {
 
     @Override
     public IState getNextState(Exception e) {
-        if (analyzer.isFailoverException(e)) {
-            return this.INSTANCE;
-        }
-
-        if (analyzer.isCommunicationsException(e)) {
-            return AutoCommitOffTransactionBoundaryState.INSTANCE;
-        }
-
         return this.INSTANCE;
     }
 
