@@ -67,129 +67,129 @@ public class AutoCommitOnTransactionBoundaryStateTest {
     }
 
     @Test
-    public void test_setReadOnly() {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "setReadOnly", new Object[]{ false });
-        assertEquals(ReadWriteState.INSTANCE, nextState);
+    public void test_setReadOnly() throws SQLException {
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "setReadOnly", new Object[]{ false });
+        assertEquals(ReadWriteSplittingStateMachine.READ_WRITE_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "setReadOnly", new Object[]{ true });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "setReadOnly", new Object[]{ true });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
     }
 
     @Test
     public void test_setAutoCommit() throws SQLException {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "setAutoCommit", new Object[]{ true });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "setAutoCommit", new Object[]{ true });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "setAutoCommit", new Object[]{ false });
-        assertEquals(AutoCommitOffState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "setAutoCommit", new Object[]{ false });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "set autocommit = 1" });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "set autocommit = 1" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "set autocommit = 0;" });
-        assertEquals(AutoCommitOffState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "set autocommit = 0;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SET AUTOCOMMIT = TRUE" });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "SET AUTOCOMMIT = TRUE" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SET AUTOCOMMIT = FALSE;" });
-        assertEquals(AutoCommitOffState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "SET AUTOCOMMIT = FALSE;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "   SeT  aUtOcOmMiT = 1 ; " });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "   SeT  aUtOcOmMiT = 1 ; " });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ " SeT aUtOcOmMiT  = 0  ;" });
-        assertEquals(AutoCommitOffState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ " SeT aUtOcOmMiT  = 0  ;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = tRuE;" });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "SeT aUtOcOmMiT = tRuE;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ " SeT  aUtOcOmMiT  =  fAlSe  ;  " });
-        assertEquals(AutoCommitOffState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ " SeT  aUtOcOmMiT  =  fAlSe  ;  " });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE, nextState);
     }
 
     @Test
-    public void test_execute() {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "SELECT 1" });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+    public void test_execute() throws SQLException {
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "SELECT 1" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "executeQuery", new Object[]{ "SELECT 1" });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "executeQuery", new Object[]{ "SELECT 1" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
     }
 
     @Test
     public void test_startTransaction() throws SQLException {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "begin" });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "begin" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "START TRANSACTION;" });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "START TRANSACTION;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  bEgIn; " });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "  bEgIn; " });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  sTarT  tRaNsAction ; " });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "  sTarT  tRaNsAction ; " });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "StaRt  TransActioN  rEad Only;" });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "StaRt  TransActioN  rEad Only;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  stART tRanSACtion ReaD WRITe  ;" });
-        assertEquals(AutoCommitOnTransactionState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "  stART tRanSACtion ReaD WRITe  ;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE, nextState);
     }
 
     @Test
     public void test_closeTransaction() throws SQLException {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "commit" });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "commit" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "ROLLBACK;" });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "ROLLBACK;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "  cOMmit   ;" });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "  cOMmit   ;" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ " rOllBACk ;  " });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ " rOllBACk ;  " });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "execute", new Object[]{ "cOMmit ; " });
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "execute", new Object[]{ "cOMmit ; " });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
 
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
         // commit()/rollback() are called
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "commit", new Object[]{});
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "commit", new Object[]{});
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "rollback", new Object[]{});
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "rollback", new Object[]{});
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
     }
 
     @Test
-    public void test_otherMethods() {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "getAutoCommit", new Object[]{});
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+    public void test_otherMethods() throws SQLException {
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "getAutoCommit", new Object[]{});
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "isClosed", new Object[]{});
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "isClosed", new Object[]{});
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(conn, "setCatalog", new Object[]{ "catalog" });
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(conn, "setCatalog", new Object[]{ "catalog" });
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
     }
 
     @Test
     public void test_exceptions() {
-        IState nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(exception);
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        IState nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(exception);
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(failoverException);
-        assertEquals(AutoCommitOnState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(failoverException);
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE, nextState);
 
-        nextState = AutoCommitOnTransactionBoundaryState.INSTANCE.getNextState(communicationsException);
-        assertEquals(AutoCommitOnTransactionBoundaryState.INSTANCE, nextState);
+        nextState = ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.getNextState(communicationsException);
+        assertEquals(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE, nextState);
     }
 
     @Test
     public void test_shouldSwitchReader() {
-        assertTrue(AutoCommitOnTransactionBoundaryState.INSTANCE.shouldSwitchReader());
+        assertTrue(ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE.isTransactionBoundary());
     }
 }

@@ -68,10 +68,10 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   private final RdsHostUtils rdsHostUtils;
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
+  private final IStateMachine stateMachine;
   private final Log logger;
   private final boolean loadBalanceReadOnlyTraffic;
 
-  private IState currentState;
   private boolean inTransaction = false;
   private boolean explicitlyReadOnly = false;
   private List<HostInfo> hosts = new ArrayList<>();
@@ -89,6 +89,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         new AuroraTopologyService(logger),
         new BasicConnectionProvider(),
         new RdsHostUtils(logger),
+        new ReadWriteSplittingStateMachine(logger),
         propertySet,
         nextPlugin,
         logger);
@@ -99,6 +100,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       ITopologyService topologyService,
       IConnectionProvider connectionProvider,
       RdsHostUtils rdsHostUtils,
+      IStateMachine stateMachine,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
@@ -106,6 +108,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     this.topologyService = topologyService;
     this.connectionProvider = connectionProvider;
     this.rdsHostUtils = rdsHostUtils;
+    this.stateMachine = stateMachine;
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
@@ -122,14 +125,14 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
-    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && this.currentState.shouldSwitchReader()) {
+    } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && this.stateMachine.isTransactionBoundary()) {
       pickNewReaderConnection();
     }
 
     try {
       final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
       JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-      this.currentState = currentState.getNextState(currentConnection, methodName, args);
+      this.stateMachine.getNextState(currentConnection, methodName, args);
 
       return result;
     } catch (SQLException e) {
@@ -143,7 +146,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         updateInternalConnectionInfo(currentConnection, currentHost);
       }
 
-      this.currentState = currentState.getNextState(e);
+      stateMachine.getNextState(e);
       throw e;
     }
   }
@@ -226,16 +229,15 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       return;
     }
 
-    if (readOnly == false && (this.currentState.equals(AutoCommitOffTransactionState.INSTANCE)
-            || this.currentState.equals(AutoCommitOnTransactionState.INSTANCE))) {
-      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.10"),
+    if (!readOnly && isInReaderTransaction()) {
+      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.6"),
               MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION);
     }
 
     this.explicitlyReadOnly = readOnly;
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (readOnly) {
-      if (!isWriterInTransaction() && (!isCurrentConnectionReader() || currentConnection.isClosed())) {
+      if (!isInWriterTransaction() && (!isCurrentConnectionReader() || currentConnection.isClosed())) {
         try {
           switchToReaderConnection(currentConnection);
         } catch (SQLException e) {
@@ -251,13 +253,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       }
     } else {
       if (!isCurrentConnectionWriter() || currentConnection.isClosed()) {
-        if (isReaderInTransaction()) {
-          throw new SQLException(
-              Messages.getString("ReadWriteSplittingPlugin.6"),
-              MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION
-          );
-        }
-
         try {
           switchToWriterConnection(currentConnection);
         } catch (SQLException e) {
@@ -302,7 +297,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       }
 
       updateInternalConnectionInfo(currentConnection, currentHost);
-      this.currentState = ReadWriteState.INSTANCE;
       return;
     }
     this.hosts = topology;
@@ -313,7 +307,6 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
 
     updateInternalConnectionInfo(currentConnection, topologyService.getHostByName(currentConnection));
-    this.currentState = ReadWriteState.INSTANCE;
   }
 
   private void updateInternalConnectionInfo(JdbcConnection currentConnection, HostInfo currentHost) throws SQLException {
@@ -402,15 +395,15 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     this.nextPlugin.transactionCompleted();
   }
 
-  private boolean isWriterInTransaction() {
+  private boolean isInWriterTransaction() {
     return this.inTransaction;
   }
 
-  // this.inTransaction is controlled by ConnectionProxyLifeCycleInterceptor. This method of detecting transaction state
-  // does not properly detect all transaction scenarios, so we will check the current state instead.
-  private boolean isReaderInTransaction() {
-    return AutoCommitOnTransactionState.INSTANCE.equals(this.currentState)
-            || AutoCommitOffTransactionState.INSTANCE.equals(this.currentState);
+  private boolean isInReaderTransaction() {
+    // this.inTransaction is controlled by ConnectionProxyLifeCycleInterceptor. This method of detecting transaction
+    // state does not properly detect all transaction scenarios, so we will check the current state instead if
+    // setReadOnly(true) has been called.
+    return this.stateMachine.isInReaderTransaction();
   }
 
   List<HostInfo> getHosts() {

@@ -31,52 +31,46 @@ package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.jdbc.JdbcConnection;
 
-public enum AutoCommitOffTransactionBoundaryState implements IState {
-
-    INSTANCE;
+public class AutoCommitOffTransactionBoundaryState implements IState {
 
     private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
-
-    AutoCommitOffTransactionBoundaryState() {
-        // singleton class - do not instantiate elsewhere
-    }
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {
         if (analyzer.isSetAutoCommitTrue(methodName, args)) {
-            return AutoCommitOnState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 
         if (analyzer.isMethodClosingTransaction(methodName, args)) {
-            return this.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_BOUNDARY_STATE;
         }
 
         if (analyzer.isSetReadOnlyFalse(methodName, args)) {
-            return ReadWriteState.INSTANCE;
+            return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
         }
 
         if (analyzer.isExecuteDml(methodName, args) || analyzer.isExecuteStartingTransaction(methodName, args)) {
-            return AutoCommitOffTransactionState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
         }
 
-        return AutoCommitOffState.INSTANCE;
+        return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
     }
 
     @Override
     public IState getNextState(Exception e) {
         if (analyzer.isFailoverException(e)) {
-            return AutoCommitOffState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
         }
 
         if (analyzer.isCommunicationsException(e)) {
-            return this.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_BOUNDARY_STATE;
         }
 
-        return AutoCommitOffState.INSTANCE;
+        return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
     }
 
     @Override
-    public boolean shouldSwitchReader() {
+    public boolean isTransactionBoundary() {
         return true;
     }
 }

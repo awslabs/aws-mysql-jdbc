@@ -33,33 +33,29 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 
-public enum ReadWriteState implements IState {
-
-    INSTANCE;
-
-    ReadWriteState() {
-        // singleton class - do not instantiate elsewhere
-    }
+public class ReadWriteState implements IState {
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException {
         if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
             Boolean readOnly = (Boolean) args[0];
             if (Boolean.FALSE.equals(readOnly)) {
-                return this.INSTANCE;
+                return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
             }
-            return currentConnection.getAutoCommit() ? AutoCommitOnState.INSTANCE : AutoCommitOffState.INSTANCE;
+            return currentConnection.getAutoCommit() ?
+                    ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE :
+                    ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
         }
-        return this.INSTANCE;
+        return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
     }
 
     @Override
     public IState getNextState(Exception e) {
-        return this.INSTANCE;
+        return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
     }
 
     @Override
-    public boolean shouldSwitchReader() {
+    public boolean isTransactionBoundary() {
         return false;
     }
 }

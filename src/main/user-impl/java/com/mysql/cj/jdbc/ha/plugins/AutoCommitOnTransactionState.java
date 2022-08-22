@@ -34,22 +34,16 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 
-public enum AutoCommitOnTransactionState implements IState {
-
-    INSTANCE;
+public class AutoCommitOnTransactionState implements IState {
 
     private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
-
-    AutoCommitOnTransactionState() {
-        // singleton class - do not instantiate elsewhere
-    }
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException  {
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
         // commit()/rollback() are called
         if (analyzer.isExecuteClosingTransaction(methodName, args)) {
-            return AutoCommitOnTransactionBoundaryState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE;
         }
 
         if (analyzer.isSetReadOnlyFalse(methodName, args)) {
@@ -57,23 +51,23 @@ public enum AutoCommitOnTransactionState implements IState {
         }
 
         if (analyzer.isSetAutoCommitFalse(methodName, args)) {
-            return AutoCommitOffTransactionState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
         }
 
-        return this.INSTANCE;
+        return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE;
     }
 
     @Override
     public IState getNextState(Exception e) {
         if (analyzer.isFailoverException(e)) {
-            return AutoCommitOnState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 
-        return this.INSTANCE;
+        return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE;
     }
 
     @Override
-    public boolean shouldSwitchReader() {
+    public boolean isTransactionBoundary() {
         return false;
     }
 }

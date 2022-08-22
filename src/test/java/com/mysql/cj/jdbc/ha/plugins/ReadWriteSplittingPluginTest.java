@@ -92,9 +92,6 @@ public class ReadWriteSplittingPluginTest {
 
   private AutoCloseable closeable;
 
-  public ReadWriteSplittingPluginTest() throws SQLException {
-  }
-
   @AfterEach
   void cleanUp() throws Exception {
     closeable.close();
@@ -120,6 +117,7 @@ public class ReadWriteSplittingPluginTest {
   }
 
   void mockDefaultConnectionBehavior(ConnectionImpl mockConn, HostInfo mockConnHost) throws SQLException {
+    when(mockConn.getAutoCommit()).thenReturn(true);
     when(mockConn.getPropertySet()).thenReturn(defaultProps);
     when(mockConn.getHostPortPair()).thenReturn(mockConnHost.getHostPortPair());
     when(mockConn.isClosed()).thenReturn(false);
@@ -473,6 +471,7 @@ public class ReadWriteSplittingPluginTest {
         mockTopologyService,
         mockConnectionProvider,
         rdsHostUtils,
+        new ReadWriteSplittingStateMachine(mockLog),
         props,
         mockNextPlugin,
         mockLog);
@@ -486,11 +485,11 @@ public class ReadWriteSplittingPluginTest {
   }
 
   private ConnectionUrl getConnectionUrl(int numHosts) {
-    String hosts = "";
+    StringBuilder hosts = new StringBuilder();
     for (int hostNum = 1; hostNum <= numHosts; hostNum++) {
-      hosts += "instance-" + hostNum;
+      hosts.append("instance-").append(hostNum);
       if(hostNum != numHosts) {
-        hosts += ",";
+        hosts.append(",");
       }
     }
     String url = "jdbc:mysql:aws://" + hosts + "/test";

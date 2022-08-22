@@ -31,58 +31,52 @@ package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.jdbc.JdbcConnection;
 
-public enum AutoCommitOnTransactionBoundaryState implements IState {
-
-    INSTANCE;
+public class AutoCommitOnTransactionBoundaryState implements IState {
 
     private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
-
-    AutoCommitOnTransactionBoundaryState() {
-        // singleton class - do not instantiate elsewhere
-    }
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {
         if (analyzer.isSetReadOnlyFalse(methodName, args)) {
-            return ReadWriteState.INSTANCE;
+            return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
         }
 
         if (analyzer.isSetAutoCommitFalse(methodName, args)) {
-            return AutoCommitOffState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
         }
 
         if (analyzer.isExecuteStartingTransaction(methodName, args)) {
-            return AutoCommitOnTransactionState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE;
         }
 
         if (analyzer.isSetReadOnlyTrue(methodName, args) || analyzer.isSetAutoCommitTrue(methodName, args)) {
-            return AutoCommitOnState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
         // commit()/rollback() are called
         if (analyzer.isExecuteDml(methodName, args) || analyzer.isExecuteClosingTransaction(methodName, args)) {
-            return this.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE;
         }
 
-        return AutoCommitOnState.INSTANCE;
+        return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
     }
 
     @Override
     public IState getNextState(Exception e) {
         if (analyzer.isFailoverException(e)) {
-            return AutoCommitOnState.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 
         if (analyzer.isCommunicationsException(e)) {
-            return this.INSTANCE;
+            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE;
         }
 
-        return AutoCommitOnState.INSTANCE;
+        return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
     }
 
     @Override
-    public boolean shouldSwitchReader() {
+    public boolean isTransactionBoundary() {
         return true;
     }
 }

@@ -24,7 +24,7 @@
 // See the GNU General Public License, version 2.0, for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program. If not, see
+// along with this program. If not, see 
 // http://www.gnu.org/licenses/gpl-2.0.html.
 
 package com.mysql.cj.jdbc.ha.plugins;
@@ -33,11 +33,15 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 
-public interface IState {
+public interface IStateMachine {
 
-    IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException;
+    void reset();
 
-    IState getNextState(Exception e);
+    void getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException;
+
+    void getNextState(Exception e);
+
+    boolean isInReaderTransaction();
 
     boolean isTransactionBoundary();
 }

@@ -29,43 +29,51 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.Messages;
 import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
 
-public class AutoCommitOffTransactionState implements IState {
+public class ReadWriteSplittingStateMachine implements IStateMachine {
 
-    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+    protected static IState READ_WRITE_STATE = new ReadWriteState();
+    protected static IState AUTOCOMMIT_ON_STATE = new AutoCommitOnState();
+    protected static IState AUTOCOMMIT_ON_TRANSACTION_STATE = new AutoCommitOnTransactionState();
+    protected static IState AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE = new AutoCommitOnTransactionBoundaryState();
+    protected static IState AUTOCOMMIT_OFF_STATE = new AutoCommitOffState();
+    protected static IState AUTOCOMMIT_OFF_TRANSACTION_STATE = new AutoCommitOffTransactionState();
+    protected static IState AUTOCOMMIT_OFF_TRANSACTION_BOUNDARY_STATE = new AutoCommitOffTransactionBoundaryState();
 
-    @Override
-    public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException {
-        if (analyzer.isMethodClosingTransaction(methodName, args)) {
-            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_BOUNDARY_STATE;
-        }
+    private final Log logger;
+    private IState currentState = READ_WRITE_STATE;
 
-        if (analyzer.isSetAutoCommitTrue(methodName, args)) {
-            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE;
-        }
-
-        if (analyzer.isSetReadOnlyFalse(methodName, args)) {
-            throw new SQLException(Messages.getString("AutoCommitOffTransactionState.1"));
-        }
-
-        return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
+    ReadWriteSplittingStateMachine(Log logger) {
+        this.logger = logger;
     }
 
     @Override
-    public IState getNextState(Exception e) {
-        if (analyzer.isFailoverException(e)) {
-            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
-        }
+    public void reset() {
+        this.currentState = READ_WRITE_STATE;
+    }
 
-        return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
+    @Override
+    public void getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException {
+        this.currentState = this.currentState.getNextState(currentConnection, methodName, args);
+    }
+
+    @Override
+    public void getNextState(Exception e) {
+        this.currentState = this.currentState.getNextState(e);
+    }
+
+    @Override
+    public boolean isInReaderTransaction() {
+        return this.currentState.equals(AUTOCOMMIT_ON_TRANSACTION_STATE)
+                || this.currentState.equals(AUTOCOMMIT_OFF_TRANSACTION_STATE);
     }
 
     @Override
     public boolean isTransactionBoundary() {
-        return false;
+        return this.currentState.isTransactionBoundary();
     }
 }
