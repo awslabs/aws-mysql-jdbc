@@ -167,20 +167,20 @@ public class ReadWriteSplittingPluginTest {
   }
 
   @Test
-  public void testSetReadOnly_falseInTransaction() throws SQLException {
+  public void testSetReadOnly_falseInTransaction() throws Exception {
     when(mockCurrentConnectionProvider.getCurrentConnection())
             .thenReturn(mockWriterConn, mockWriterConn, mockWriterConn, mockReaderConn);
 
     final ReadWriteSplittingPlugin plugin = initReadWriteSplittingPlugin(defaultProps);
     plugin.openInitialConnection(defaultConnUrl);
 
-    plugin.switchConnectionIfRequired(true);
+    plugin.execute(JdbcConnection.class, "setReadOnly", mockCallable, new Object[] { true });
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(defaultWriterHost)));
     verify(mockCurrentConnectionProvider, times(0)).setCurrentConnection(eq(mockWriterConn), any(HostInfo.class));
     assertEquals(mockReaderConn, plugin.getReaderConnection());
     assertEquals(mockWriterConn, plugin.getWriterConnection());
 
-    plugin.transactionBegun();
+    plugin.execute(JdbcConnection.class, "execute", mockCallable, new Object[] { "begin" });
     final SQLException e = assertThrows(SQLException.class, () -> plugin.switchConnectionIfRequired(false));
     assertEquals(MysqlErrorNumbers.SQL_STATE_ACTIVE_SQL_TRANSACTION, e.getSQLState());
     verify(mockCurrentConnectionProvider, times(1)).setCurrentConnection(eq(mockReaderConn), not(eq(defaultWriterHost)));

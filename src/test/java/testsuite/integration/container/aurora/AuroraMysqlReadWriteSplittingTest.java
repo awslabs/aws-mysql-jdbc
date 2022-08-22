@@ -265,9 +265,9 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @ParameterizedTest(name = "test_readerLoadBalancing1")
+  @ParameterizedTest(name = "test_readerLoadBalancing_autocommitTrue")
   @MethodSource("testParameters")
-  public void test_readerLoadBalancing1(Properties props) throws SQLException {
+  public void test_readerLoadBalancing_autocommitTrue(Properties props) throws SQLException {
     final String initialWriterId = instanceIDs[0];
 
     props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
@@ -281,36 +281,141 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       assertNotEquals(writerConnectionId, readerId);
       assertTrue(isDBInstanceReader(readerId));
 
+      // Assert switch after each execute
+      String nextReaderId;
       for (int i = 0; i < 5; i++) {
-        String nextReaderId = queryInstanceId(conn);
+        nextReaderId = queryInstanceId(conn);
         assertNotEquals(readerId, nextReaderId);
         assertTrue(isDBInstanceReader(readerId));
         readerId = nextReaderId;
       }
 
+      // Verify behavior for transactions started while autocommit is on (autocommit is implicitly disabled)
+      // Connection should not be switched while inside a transaction
       Statement stmt = conn.createStatement();
-      stmt.execute("  StarT   TRanSACtion  REad onLy   ");
-      stmt.execute("SELECT 1");
-      conn.setAutoCommit(false);
-      readerId = queryInstanceId(conn);
-      assertTrue(isDBInstanceReader(readerId));
-      conn.commit();
-
-      assertFalse(conn.getAutoCommit());
-      String nextReaderId = queryInstanceId(conn);
-      assertTrue(isDBInstanceReader(nextReaderId));
-      assertNotEquals(readerId, nextReaderId);
-      readerId = nextReaderId;
-      nextReaderId = queryInstanceId(conn);
-      assertEquals(readerId, nextReaderId);
-      assertThrows(SQLException.class, () -> conn.setReadOnly(false));
-      conn.commit();
+      for (int i = 0; i < 5; i++) {
+        stmt.execute("  bEgiN ");
+        readerId = queryInstanceId(conn);
+        nextReaderId = queryInstanceId(conn);
+        assertEquals(readerId, nextReaderId);
+        stmt.execute(" CommIT;");
+        nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+      }
     }
   }
 
-  @ParameterizedTest(name = "test_readerLoadBalancing2")
+
+  @ParameterizedTest(name = "test_readerLoadBalancing_autocommitFalse")
   @MethodSource("testParameters")
-  public void test_readerLoadBalancing2(Properties props) throws SQLException, IOException {
+  public void test_readerLoadBalancing_autocommitFalse(Properties props) throws SQLException {
+    final String initialWriterId = instanceIDs[0];
+
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setAutoCommit(false);
+      conn.setReadOnly(true);
+
+      // Connection should not be switched while inside a transaction
+      String readerId, nextReaderId;
+      Statement stmt = conn.createStatement();
+      for (int i = 0; i < 5; i++) {
+        readerId = queryInstanceId(conn);
+        nextReaderId = queryInstanceId(conn);
+        assertEquals(readerId, nextReaderId);
+        conn.commit();
+        nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+      }
+
+      for (int i = 0; i < 5; i++) {
+        readerId = queryInstanceId(conn);
+        nextReaderId = queryInstanceId(conn);
+        assertEquals(readerId, nextReaderId);
+        stmt.execute("commit");
+        nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+      }
+
+      for (int i = 0; i < 5; i++) {
+        readerId = queryInstanceId(conn);
+        nextReaderId = queryInstanceId(conn);
+        assertEquals(readerId, nextReaderId);
+        conn.rollback();
+        nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+      }
+
+      for (int i = 0; i < 5; i++) {
+        readerId = queryInstanceId(conn);
+        nextReaderId = queryInstanceId(conn);
+        assertEquals(readerId, nextReaderId);
+        stmt.execute(" roLLback ; ");
+        nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+      }
+    }
+  }
+
+  @ParameterizedTest(name = "test_readerLoadBalancing_switchAutoCommitInTransaction")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing_switchAutoCommitInTransaction(Properties props) throws SQLException {
+    final String initialWriterId = instanceIDs[0];
+
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(initialWriterId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+
+      conn.setReadOnly(true);
+      String readerId, nextReaderId;
+      Statement stmt = conn.createStatement();
+
+      // Start transaction while autocommit is on (autocommit is implicitly disabled)
+      // Connection should not be switched while inside a transaction
+      stmt.execute("  StarT   TRanSACtion  REad onLy  ; ");
+      readerId = queryInstanceId(conn);
+      nextReaderId = queryInstanceId(conn);
+      assertEquals(readerId, nextReaderId);
+      conn.setAutoCommit(false); // Switch autocommit value while inside the transaction
+      nextReaderId = queryInstanceId(conn);
+      assertEquals(readerId, nextReaderId);
+      conn.commit();
+
+      assertFalse(conn.getAutoCommit());
+      nextReaderId = queryInstanceId(conn);
+      assertNotEquals(readerId, nextReaderId); // Connection should have switched after committing
+
+      readerId = nextReaderId;
+      nextReaderId = queryInstanceId(conn);
+      assertEquals(readerId, nextReaderId); // Since autocommit is now off, we should be in a transaction; connection should not be switching
+      assertThrows(SQLException.class, () -> conn.setReadOnly(false));
+      
+      conn.setAutoCommit(true); // Switch autocommit value while inside the transaction
+      stmt.execute("commit");
+
+      assertTrue(conn.getAutoCommit());
+      readerId = queryInstanceId(conn);
+      
+      // Autocommit is now on; connection should switch after each execute
+      for (int i = 0; i < 5; i++) {
+        nextReaderId = queryInstanceId(conn);
+        assertNotEquals(readerId, nextReaderId);
+        readerId = nextReaderId;
+      }
+    }
+  }
+
+  @ParameterizedTest(name = "test_readerLoadBalancing_remainingStateTransitions")
+  @MethodSource("testParameters")
+  public void test_readerLoadBalancing_remainingStateTransitions(Properties props) throws SQLException {
+    // Main functionality has been tested in the other tests
+    // This test executes state transitions not covered by other tests to verify no unexpected errors are thrown
     final String initialWriterId = instanceIDs[0];
 
     props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
@@ -322,35 +427,30 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       conn.setReadOnly(true);
       conn.setReadOnly(false);
       conn.setReadOnly(true);
-      final Statement stmt1 = conn.createStatement();
       conn.setAutoCommit(false);
       conn.setAutoCommit(true);
-      conn.setAutoCommit(false);
-      assertFalse(conn.getAutoCommit());
-      conn.commit();
-      stmt1.execute("SELECT 1");
-      queryInstanceId(conn);
-      conn.setAutoCommit(true);
-      assertTrue(conn.getAutoCommit());
+      Statement stmt = conn.createStatement();
+      stmt.execute("commit");
+      stmt.execute("commit");
+      stmt.execute("begin");
+      stmt.execute("commit");
       conn.setAutoCommit(false);
       conn.commit();
       conn.commit();
-      conn.setAutoCommit(true);
-      stmt1.execute(" COMMIT  "); // error when conn.commit() called here
-      stmt1.execute("  COMMIT ");
-      stmt1.execute(" bEgIn  ");
-      stmt1.execute("SELECT 1");
-      stmt1.execute(" roLLbacK  ");
-      conn.setAutoCommit(false);
+      stmt.execute("begin");
+      stmt.execute("SELECT 1");
+      conn.commit();
+      conn.setReadOnly(false);
+      conn.setReadOnly(true);
       conn.setReadOnly(false);
       conn.setAutoCommit(true);
-      conn.setReadOnly(true);
-      stmt1.execute(" COMMIT ");
+      conn.setReadOnly(false);
+      stmt.execute("commit");
       conn.setReadOnly(false);
       conn.setReadOnly(true);
       conn.setAutoCommit(false);
-      stmt1.execute("  COMMIT ");
-      conn.setReadOnly(false);
+      conn.commit();
+      conn.setAutoCommit(true);
     }
   }
 
