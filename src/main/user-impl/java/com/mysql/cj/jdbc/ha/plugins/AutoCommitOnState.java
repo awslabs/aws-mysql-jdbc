@@ -33,7 +33,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 public class AutoCommitOnState implements IState {
 
-    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+    private final ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {
@@ -52,7 +52,7 @@ public class AutoCommitOnState implements IState {
         }
 
         if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
-            Boolean readOnly = (Boolean) args[0];
+            final Boolean readOnly = (Boolean) args[0];
             return Boolean.TRUE.equals(readOnly) ?
                     ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE :
                     ReadWriteSplittingStateMachine.READ_WRITE_STATE;

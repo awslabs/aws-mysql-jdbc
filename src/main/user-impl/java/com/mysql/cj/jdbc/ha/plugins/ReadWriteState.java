@@ -38,7 +38,7 @@ public class ReadWriteState implements IState {
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException {
         if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
-            Boolean readOnly = (Boolean) args[0];
+            final Boolean readOnly = (Boolean) args[0];
             if (Boolean.FALSE.equals(readOnly)) {
                 return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
             }
