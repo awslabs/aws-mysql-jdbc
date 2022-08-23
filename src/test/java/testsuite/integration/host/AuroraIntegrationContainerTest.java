@@ -39,6 +39,9 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
+import software.aws.rds.jdbc.mysql.Driver;
+import testsuite.integration.utility.AuroraTestUtility;
+import testsuite.integration.utility.ContainerHelper;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -46,10 +49,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
-import software.aws.rds.jdbc.mysql.Driver;
-import testsuite.integration.utility.AuroraTestUtility;
-import testsuite.integration.utility.ContainerHelper;
 
 import static org.junit.jupiter.api.Assertions.fail;
 

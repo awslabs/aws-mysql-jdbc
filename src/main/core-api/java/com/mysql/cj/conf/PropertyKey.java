@@ -301,6 +301,9 @@ public enum PropertyKey {
     failureDetectionCount("failureDetectionCount", true),
     monitorDisposalTime("monitorDisposalTime", true),
 
+    // ReadWriteSplitting plugin
+    loadBalanceReadOnlyTraffic("loadBalanceReadOnlyTraffic", true),
+
     // XML enternal entity
     allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
 
