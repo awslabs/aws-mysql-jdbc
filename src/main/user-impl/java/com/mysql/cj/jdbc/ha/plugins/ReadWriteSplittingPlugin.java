@@ -146,7 +146,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         updateInternalConnectionInfo(currentConnection, currentHost);
       }
 
-      stateMachine.getNextState(e);
+      this.stateMachine.getNextState(e);
       throw e;
     }
   }
