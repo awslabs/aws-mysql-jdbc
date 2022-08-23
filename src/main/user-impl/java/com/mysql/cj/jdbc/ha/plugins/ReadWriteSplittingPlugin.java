@@ -128,7 +128,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     if ("setReadOnly".equals(methodName) && args != null && args.length > 0) {
       switchConnectionIfRequired((Boolean) args[0]);
     } else if (this.explicitlyReadOnly && this.loadBalanceReadOnlyTraffic && this.stateMachine.isTransactionBoundary()) {
-      this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.8"));
+      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.8"));
       pickNewReaderConnection();
     }
 
@@ -139,15 +139,16 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
       return result;
     } catch (SQLException e) {
-      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.10"));
+      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.11"));
       if (isFailoverException(e)) {
-        this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.11"));
+        this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.12"));
         closeAllConnections();
 
         // Update connection/topology info in case the connection was changed
         final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
         final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-        this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.12", new Object[]{ currentHost }));
+        this.logger.logTrace(
+                Messages.getString("ReadWriteSplittingPlugin.13", new Object[]{ currentHost.getHostPortPair() }));
         updateTopology(currentConnection, currentHost);
         updateInternalConnectionInfo(currentConnection, currentHost);
       }
@@ -183,15 +184,15 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       Collections.swap(this.hosts, oldHostIndex, newHostIndex);
       this.logger.logTrace(
               Messages.getString(
-                      "ReadWriteSplittingPlugin.13",
-                      new Object[]{ this.hosts.get(newHostIndex), this.hosts.get(oldHostIndex) }));
+                      "ReadWriteSplittingPlugin.14",
+                      new Object[]{ this.hosts.get(newHostIndex), this.hosts.get(oldHostIndex).getHostPortPair() }));
       logTopology();
     }
   }
 
   void pickNewReaderConnection() {
     if (this.hosts.size() <= 2) {
-      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.14"));
+      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.15"));
       return;
     }
 
@@ -204,10 +205,12 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         getNewReaderConnection(host);
         final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
         switchCurrentConnectionTo(currentConnection, this.readerConnection, index);
-        this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.15", new Object[]{ host }));
+        this.logger.logTrace(
+                Messages.getString("ReadWriteSplittingPlugin.16", new Object[]{ host.getHostPortPair() }));
         return;
       } catch (SQLException e) {
-        this.logger.logWarn(Messages.getString("ReadWriteSplittingPlugin.16", new Object[]{ host }));
+        this.logger.logWarn(
+                Messages.getString("ReadWriteSplittingPlugin.17", new Object[]{ host.getHostPortPair() }));
       }
     }
     // If we get here we failed to connect to a new reader. In this case we will stick with the current one
@@ -231,7 +234,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   private void setWriterConnection(JdbcConnection conn) {
     this.writerConnection = conn;
-    this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.17", new Object[]{ this.hosts.get(WRITER_INDEX) }));
+    this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.18",
+            new Object[]{ this.hosts.get(WRITER_INDEX).getHostPortPair() }));
   }
 
   private void getNewReaderConnection(HostInfo host) throws SQLException {
@@ -241,7 +245,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   private void setReaderConnection(JdbcConnection conn, HostInfo host) {
     this.readerConnection = conn;
-    this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.18", new Object[]{ host }));
+    this.logger.logTrace(
+            Messages.getString("ReadWriteSplittingPlugin.19", new Object[]{ host.getHostPortPair() }));
   }
 
   private JdbcConnection getConnectionToHost(HostInfo host) throws SQLException {
@@ -257,8 +262,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
   void switchConnectionIfRequired(Boolean readOnly) throws SQLException {
     if (readOnly == null) {
-      this.logger.logError(Messages.getString("ReadWriteSplittingPlugin.24"));
-      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.24"));
+      this.logger.logError(Messages.getString("ReadWriteSplittingPlugin.25"));
+      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.25"));
     }
 
     if (!readOnly && isInReaderTransaction()) {
@@ -283,7 +288,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
           // Failed to switch to a reader; use current connection as a fallback
           final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
-          this.logger.logWarn(Messages.getString("ReadWriteSplittingPlugin.21", new Object[]{ currentHost }));
+          this.logger.logWarn(
+                  Messages.getString("ReadWriteSplittingPlugin.22", new Object[]{ currentHost.getHostPortPair() }));
           setReaderConnection(currentConnection, currentHost);
         }
       }
@@ -306,8 +312,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     this.nextPlugin.openInitialConnection(connectionUrl);
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     if (currentConnection == null) {
-      this.logger.logError(Messages.getString("ReadWriteSplittingPlugin.25"));
-      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.25"));
+      this.logger.logError(Messages.getString("ReadWriteSplittingPlugin.26"));
+      throw new SQLException(Messages.getString("ReadWriteSplittingPlugin.26"));
     }
 
     final HostInfo currentHost = this.currentConnectionProvider.getCurrentHostInfo();
@@ -315,7 +321,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     final RdsHost rdsHost;
 
     if (!StringUtils.isNullOrEmpty(hostPattern)) {
-      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.9",
+      this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.10",
               new Object[]{ "clusterInstanceHostPattern", hostPattern }));
       rdsHost = this.rdsHostUtils.getRdsHostFromHostPattern(this.propertySet, currentHost, hostPattern);
     } else {
@@ -402,7 +408,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   }
 
   private void closeAllConnections() {
-    this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.22"));
+    this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.23"));
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     closeInternalConnection(this.readerConnection, currentConnection);
     closeInternalConnection(this.writerConnection, currentConnection);
@@ -476,10 +482,12 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       getNewWriterConnection();
     }
     switchCurrentConnectionTo(currentConnection, this.writerConnection, WRITER_INDEX);
-    this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.20", new Object[]{ this.hosts.get(WRITER_INDEX) }));
+    this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.21",
+            new Object[]{ this.hosts.get(WRITER_INDEX).getHostPortPair() }));
   }
 
-  private void switchCurrentConnectionTo(JdbcConnection oldConn, JdbcConnection newConn, int newConnIndex) throws SQLException {
+  private void switchCurrentConnectionTo(JdbcConnection oldConn, JdbcConnection newConn, int newConnIndex)
+          throws SQLException {
     if (oldConn == newConn) {
       return;
     }
@@ -487,7 +495,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     syncSessionStateOnReadWriteSplit(oldConn, newConn);
     final HostInfo hostInfo = this.hosts.get(newConnIndex);
     this.currentConnectionProvider.setCurrentConnection(newConn, hostInfo);
-    this.logger.logTrace(Messages.getString("ReadWriteSplittingPlugin.23"));
+    this.logger.logTrace(
+            Messages.getString("ReadWriteSplittingPlugin.24", new Object[]{ hostInfo.getHostPortPair() }));
     this.currentHostIndex = newConnIndex;
   }
 
@@ -542,7 +551,8 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
 
     final int readerHostIndex = getHostIndex(this.readerConnection, this.readerConnection.getHostPortPair());
     switchCurrentConnectionTo(currentConnection, this.readerConnection, readerHostIndex);
-    this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.19", new Object[]{ this.hosts.get(readerHostIndex) }));
+    this.logger.logDebug(Messages.getString("ReadWriteSplittingPlugin.20",
+            new Object[]{ this.hosts.get(readerHostIndex).getHostPortPair() }));
   }
 
   private void initializeReaderConnection(JdbcConnection currentConnection) throws SQLException {
@@ -593,7 +603,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
     }
     this.logger.logTrace(
             Messages.getString(
-                    "ClusterAwareConnectionProxy.7",
-                    new Object[] {msg.toString()}));
+                    "ReadWriteSplittingPlugin.27",
+                    new Object[] { msg.toString() }));
   }
 }
