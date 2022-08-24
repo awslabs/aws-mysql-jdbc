@@ -146,7 +146,7 @@ After downloading the .jar file and adding it to your CLASSPATH, add the driver 
 Default Port: 3306
 Driver Name: AWS JDBC Driver for MySQL
 Class Name: software.aws.rds.jdbc.mysql.Driver
-URL Template: jdbc:mysql:aws://<endpoint>
+URL Template: jdbc:mysql:aws://{host}:{port}
 ```
 
 3. Go to the `Libraries` tab, click `Add Artifact` and add the following dependency declaration:
