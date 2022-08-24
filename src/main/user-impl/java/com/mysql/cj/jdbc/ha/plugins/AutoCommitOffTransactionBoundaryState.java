@@ -33,7 +33,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 public class AutoCommitOffTransactionBoundaryState implements IState {
 
-    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+    private final ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {

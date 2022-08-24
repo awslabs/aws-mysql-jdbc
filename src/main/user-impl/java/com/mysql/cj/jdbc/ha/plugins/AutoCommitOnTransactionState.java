@@ -36,7 +36,7 @@ import java.sql.SQLException;
 
 public class AutoCommitOnTransactionState implements IState {
 
-    private ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+    private final ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException  {
