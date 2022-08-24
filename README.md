@@ -564,6 +564,60 @@ public class AWSSecretsManagerPluginSample {
 }
 ```
 
+## Read-Write Splitting Plugin
+
+The read-write splitting plugin adds functionality to switch between writer/reader instances via calls to the `JdbcConnection#setReadOnly` method. Upon calling `setReadOnly(true)`, the plugin will establish a connection to a random reader instance and direct subsequent queries to this instance. Future calls to `setReadOnly` will switch between the established writer and reader connections according to the boolean argument you supply to the `setReadOnly` method.
+
+### Loading the Read-Write Splitting Plugin
+
+The read-write splitting plugin is not loaded by default. To load the plugin, set the `connectionPluginFactories` connection parameter:
+
+```
+final Properties properties = new Properties();
+properties.setProperty("connectionPluginFactories", ReadWriteSplittingPluginFactory.class.getName());
+```
+
+If you would like to load the read-write splitting plugin alongside the failover and enhanced failure monitoring plugins, the read-write splitting plugin must be the first plugin in the connection chain, otherwise failover exceptions will not be properly processed by the plugin:
+
+```
+final Properties properties = new Properties();
+properties.setProperty(
+        "connectionPluginFactories",
+        String.format("%s,%s,%s",
+                ReadWriteSplittingPluginFactory.class.getName(),
+                FailoverConnectionPluginFactory.class.getName(),
+                NodeMonitoringConnectionPluginFactory.class.getName())
+```
+
+### Reader load-balancing
+
+The plugin can also load-balance queries among available reader instances by enabling the `loadBalanceReadOnlyTraffic` connection parameter. This parameter is disabled by default. To enable it, set the following connection parameter:
+
+```
+final Properties properties = new Properties();
+properties.setProperty("loadBalanceReadOnlyTraffic", "true");
+```
+
+Once this parameter is enabled, load-balancing will automatically be performed for reader instances when the connection has been set to read-only mode via `JdbcConnection#setReadOnly`. Load-balancing is performed by randomly selecting new reader instances at transaction boundaries.
+
+### Using the Read-Write Splitting Plugin against RDS/Aurora clusters
+
+When using the read-write splitting plugin against RDS or Aurora clusters, the plugin automatically acquires the cluster topology by querying the cluster. Because of this functionality, you do not have to supply multiple instance URLs in the connection string. Instead, users should only supply the URL for the initial instance they wish to connect to.
+
+### Using the Read-Write Splitting Plugin against non-RDS clusters
+
+If you would like to use the read-write splitting plugin against a cluster that is not RDS or Aurora, the plugin will not be able to automatically acquire the cluster topology. Instead, you must supply the topology information to the plugin by specifying multiple instance URLs in the connection string. Instance URLs should be supplied via a comma-separated list. The first instance in the list must be the writer instance:
+
+```
+String connectionUrl = "jdbc:mysql:aws://writer-instance-1.com,reader-instance-1.com,reader-instance-2.com/database-name"
+```
+
+### Read Write Splitting Plugin Parameters
+
+| Parameter | Value | Required | Description | Default Value |
+| --- | --- | --- | --- | --- |
+| `loadBalanceReadOnlyTraffic` | Boolean | No  | Set to `true` to load-balance queries among available reader instances. Once enabled, load-balancing will automatically be performed for reader instances when the connection has been set to read-only mode via `JdbcConnection#setReadOnly` | `false` |
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
@@ -698,10 +752,6 @@ The driver currently does not support custom logging outside the usual logging f
 Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
 This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`. For additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
 To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection property when connecting to a database.
-
-### Read-Write Splitting
-The driver does not support read-write splitting yet. A possible solution for now is to utilize multiple connection pools.
-One can send write traffic to a connection pool connected to the writer cluster endpoint, and send read-only traffic to another pool connected to the reader cluster endpoint.
 
 ### Password Expiration With AWS Secrets Manager
 When using the driver with AWS Secrets Manager, the driver does not automatically update expired credentials **during failover**.

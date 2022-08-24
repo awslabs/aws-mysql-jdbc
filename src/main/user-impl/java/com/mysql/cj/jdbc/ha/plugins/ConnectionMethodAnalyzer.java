@@ -75,7 +75,7 @@ public class ConnectionMethodAnalyzer {
             return false;
         }
 
-        String sql = (String) args[0];
+        final String sql = (String) args[0];
         return sql.matches(SET_REGEX);
     }
 
@@ -88,7 +88,7 @@ public class ConnectionMethodAnalyzer {
             return false;
         }
 
-        String sql = (String) args[0];
+        final String sql = (String) args[0];
         return sql.matches(BEGIN_REGEX) || sql.matches(START_TRANSACTION_REGEX);
     }
 
@@ -108,7 +108,7 @@ public class ConnectionMethodAnalyzer {
             return false;
         }
 
-        String sql = (String) args[0];
+        final String sql = (String) args[0];
         return sql.matches(COMMIT_REGEX) || sql.matches(ROLLBACK_REGEX);
     }
 
@@ -171,7 +171,7 @@ public class ConnectionMethodAnalyzer {
             return false;
         }
 
-        String sql = (String) args[0];
+        final String sql = (String) args[0];
         return sql.matches(SET_AUTOCOMMIT_REGEX);
     }
 
@@ -205,7 +205,7 @@ public class ConnectionMethodAnalyzer {
             return false;
         }
 
-        SQLException sqlException = (SQLException) e;
+        final SQLException sqlException = (SQLException) e;
         return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(sqlException.getSQLState())
                 || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(sqlException.getSQLState());
     }

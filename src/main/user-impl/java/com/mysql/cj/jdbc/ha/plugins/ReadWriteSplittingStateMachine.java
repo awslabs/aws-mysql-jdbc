@@ -30,11 +30,10 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
 
-public class ReadWriteSplittingStateMachine implements IStateMachine {
+public class ReadWriteSplittingStateMachine implements ITransactionStateMachine {
 
     protected static IState READ_WRITE_STATE = new ReadWriteState();
     protected static IState AUTOCOMMIT_ON_STATE = new AutoCommitOnState();
@@ -44,12 +43,7 @@ public class ReadWriteSplittingStateMachine implements IStateMachine {
     protected static IState AUTOCOMMIT_OFF_TRANSACTION_STATE = new AutoCommitOffTransactionState();
     protected static IState AUTOCOMMIT_OFF_TRANSACTION_BOUNDARY_STATE = new AutoCommitOffTransactionBoundaryState();
 
-    private final Log logger;
     private IState currentState = READ_WRITE_STATE;
-
-    ReadWriteSplittingStateMachine(Log logger) {
-        this.logger = logger;
-    }
 
     @Override
     public void reset() {
