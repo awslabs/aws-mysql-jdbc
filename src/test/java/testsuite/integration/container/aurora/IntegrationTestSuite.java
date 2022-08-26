@@ -43,6 +43,7 @@ import org.junit.platform.suite.api.Suite;
     AuroraMysqlHardFailureIntegrationTest.class,
     ReplicationFailoverIntegrationTest.class,
     HikariCPIntegrationTest.class,
-    AuroraMysqlReadWriteSplittingTest.class
+    AuroraMysqlReadWriteSplittingTest.class,
+    HikariCPReadWriteSplittingTest.class
 })
 public class IntegrationTestSuite {}
