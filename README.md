@@ -158,9 +158,15 @@ URL Template: jdbc:mysql:aws://{host}:{port}
 </dependency>
 ```
 
-4. DBeaver will respond: `Artifacts Found: 1`.
+4. Under advanced paramaters set
+```bash
+Get active database: select database()
+Set active database: use ?
+```
 
-5. Click `OK` to finish adding the driver.
+5. DBeaver will respond: `Artifacts Found: 1`.
+
+6. Click `OK` to finish adding the driver.
 
 After adding driver information, you can create new connections that use the AWS JDBC Driver for MySQL.
 
