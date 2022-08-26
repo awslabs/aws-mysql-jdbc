@@ -122,6 +122,29 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
+  @ParameterizedTest(name = "test_connectToReaderCluster_setReadOnlyTrueFalse")
+  @MethodSource("testParameters")
+  public void test_connectToReaderCluster_setReadOnlyTrueFalse(Properties props) throws SQLException {
+    final String initialReaderId = instanceIDs[1];
+
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
+      String readerConnectionId = queryInstanceId(conn);
+      assertEquals(initialReaderId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      conn.setReadOnly(true);
+      readerConnectionId = queryInstanceId(conn);
+      assertEquals(initialReaderId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      conn.setReadOnly(false);
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(instanceIDs[0], writerConnectionId);
+      assertNotEquals(initialReaderId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+    }
+  }
+
   @ParameterizedTest(name = "test_setReadOnlyFalseInReadOnlyTransaction")
   @MethodSource("testParameters")
   public void test_setReadOnlyFalseInReadOnlyTransaction(Properties props) throws SQLException{
