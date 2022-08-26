@@ -38,6 +38,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -125,15 +126,35 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   @ParameterizedTest(name = "test_connectToReaderCluster_setReadOnlyTrueFalse")
   @MethodSource("testParameters")
   public void test_connectToReaderCluster_setReadOnlyTrueFalse(Properties props) throws SQLException {
-    final String initialReaderId = instanceIDs[1];
+    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL, MYSQL_PORT, props)) {
+      String initialReaderId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(initialReaderId));
 
-    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT, props)) {
+      conn.setReadOnly(true);
       String readerConnectionId = queryInstanceId(conn);
       assertEquals(initialReaderId, readerConnectionId);
       assertTrue(isDBInstanceReader(readerConnectionId));
 
+      conn.setReadOnly(false);
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(instanceIDs[0], writerConnectionId);
+      assertNotEquals(initialReaderId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+    }
+  }
+
+  @ParameterizedTest(name = "test_connectToReaderIP_setReadOnlyTrueFalse")
+  @MethodSource("testParameters")
+  public void test_connectToReaderIP_setReadOnlyTrueFalse(Properties props) throws SQLException, UnknownHostException {
+    String instanceHostPattern = "?" + DB_CONN_STR_SUFFIX;
+    props.setProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), instanceHostPattern);
+    final String hostIp = hostToIP(MYSQL_RO_CLUSTER_URL);
+    try (final Connection conn = connectToInstance(hostIp, MYSQL_PORT, props)) {
+      String initialReaderId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(initialReaderId));
+
       conn.setReadOnly(true);
-      readerConnectionId = queryInstanceId(conn);
+      String readerConnectionId = queryInstanceId(conn);
       assertEquals(initialReaderId, readerConnectionId);
       assertTrue(isDBInstanceReader(readerConnectionId));
 
