@@ -40,7 +40,6 @@ import com.zaxxer.hikari.HikariPoolMXBean;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -65,7 +64,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
 
     private static Log log = null;
     private static final String URL_SUFFIX = PROXIED_DOMAIN_NAME_SUFFIX + ":" + MYSQL_PROXY_PORT;
-    private static HikariDataSource data_source = null;
+    private static HikariDataSource dataSource = null;
     private final List<String> clusterTopology = fetchTopology();
 
     private List<String> fetchTopology() {
@@ -100,18 +99,17 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
 
     @AfterEach
     public void teardown() {
-        data_source.close();
+        dataSource.close();
     }
 
     /**
      * After getting successful connections from the pool, the cluster becomes unavailable
      */
-    @Disabled
     @ParameterizedTest(name = "test_1_1_hikariCP_lost_connection")
     @MethodSource("testParameters")
     public void test_1_1_hikariCP_lost_connection(HikariConfig config) throws SQLException {
         createDataSource(config);
-        try (Connection conn = data_source.getConnection()) {
+        try (Connection conn = dataSource.getConnection()) {
             assertTrue(conn.isValid(5));
 
             putDownAllInstances(true);
@@ -125,7 +123,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
             assertFalse(conn.isValid(5));
         }
 
-        assertThrows(SQLTransientConnectionException.class, () -> data_source.getConnection());
+        assertThrows(SQLTransientConnectionException.class, () -> dataSource.getConnection());
     }
 
     /**
@@ -133,7 +131,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
      * connection fails over to another instance. A connection is then retrieved to check that connections
      * to failed instances are not returned
      */
-    @Disabled @ParameterizedTest(name = "test_1_2_hikariCP_get_dead_connection")
+    @ParameterizedTest(name = "test_1_2_hikariCP_get_dead_connection")
     @MethodSource("testParameters")
     public void test_1_2_hikariCP_get_dead_connection(HikariConfig config) throws SQLException {
         putDownAllInstances(false);
@@ -149,7 +147,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         createDataSource(config);
 
         // Get a valid connection, then make it fail over to a different instance
-        try (Connection conn = data_source.getConnection()) {
+        try (Connection conn = dataSource.getConnection()) {
             assertTrue(conn.isValid(5));
             String currentInstance = queryInstanceId(conn);
             assertTrue(currentInstance.equalsIgnoreCase(writerIdentifier));
@@ -171,7 +169,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
             assertTrue(currentInstance.equalsIgnoreCase(readerIdentifier));
 
             // Try to get a new connection to the failed instance, which times out
-            assertThrows(SQLTransientConnectionException.class, () -> data_source.getConnection());
+            assertThrows(SQLTransientConnectionException.class, () -> dataSource.getConnection());
         }
     }
 
@@ -179,7 +177,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
      * After getting a successful connection from the pool, the connected instance becomes unavailable and the
      * connection fails over to another instance through the Enhanced Failure Monitor
      */
-    @Disabled @ParameterizedTest(name = "test_2_1_hikariCP_efm_failover")
+    @ParameterizedTest(name = "test_2_1_hikariCP_efm_failover")
     @MethodSource("testParameters")
     public void test_2_1_hikariCP_efm_failover(HikariConfig config) throws SQLException {
         createDataSource(config);
@@ -196,7 +194,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         createDataSource(config);
 
         // Get a valid connection, then make it fail over to a different instance
-        try (Connection conn = data_source.getConnection()) {
+        try (Connection conn = dataSource.getConnection()) {
             assertTrue(conn.isValid(5));
             String currentInstance = queryInstanceId(conn);
             assertTrue(currentInstance.equalsIgnoreCase(writerIdentifier));
@@ -228,7 +226,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         createDataSource(config);
         final String initialWriterId = instanceIDs[0];
 
-        try (final Connection conn = data_source.getConnection()) {
+        try (final Connection conn = dataSource.getConnection()) {
             conn.setReadOnly(false);
             String writerConnectionId = queryInstanceId(conn);
             assertEquals(initialWriterId, writerConnectionId);
@@ -271,7 +269,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         createDataSource(config);
         final String initialWriterId = instanceIDs[0];
 
-        try (final Connection conn = data_source.getConnection()) {
+        try (final Connection conn = dataSource.getConnection()) {
             conn.setReadOnly(false);
             String writerConnectionId = queryInstanceId(conn);
             assertEquals(initialWriterId, writerConnectionId);
@@ -328,7 +326,7 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         createDataSource(config);
         final String initialWriterId = instanceIDs[0];
 
-        try (final Connection conn = data_source.getConnection()) {
+        try (final Connection conn = dataSource.getConnection()) {
             conn.setReadOnly(false);
             String writerConnectionId = queryInstanceId(conn);
             assertEquals(initialWriterId, writerConnectionId);
@@ -437,8 +435,8 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
     private static void addAllPlugins(HikariConfig config) {
         config.addDataSourceProperty(PropertyKey.connectionPluginFactories.getKeyName(),
                 "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
-                        "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
-                        "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
+                "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
+                "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
     }
 
     private static void addReadWritePlugin(HikariConfig config) {
@@ -453,9 +451,9 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         log.logDebug("Writer endpoint: " + jdbcUrl);
 
         config.setJdbcUrl(jdbcUrl);
-        data_source = new HikariDataSource(config);
+        dataSource = new HikariDataSource(config);
 
-        final HikariPoolMXBean hikariPoolMXBean = data_source.getHikariPoolMXBean();
+        final HikariPoolMXBean hikariPoolMXBean = dataSource.getHikariPoolMXBean();
 
         log.logDebug("Starting idle connections: " + hikariPoolMXBean.getIdleConnections());
         log.logDebug("Starting active connections: " + hikariPoolMXBean.getActiveConnections());
