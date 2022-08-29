@@ -278,6 +278,10 @@ At this point, the driver will connect to the new primary DB instance and return
 
 To the application, the logical connection will not appear to have changed, but the physical connection will have been swapped to the new primary DB instance. In this way the driver provides a faster way to reconnect to a newly promoted DB instance, thus increasing the availability of the DB cluster.
 
+### Setting the socket timeout
+
+By default, connections do not have a socket timeout. However, it is highly recommended that you set a socket timeout according to your application's needs. This can be done via the `socketTimeout` connection property. Without a socket timeout, the failover plugin may take a long time to detect a failover event.  We recommend that you set the socket timeout to a value slightly higher than the maximum time that you expect your queries to run.
+
 ### Failover Parameters
 
 In addition to [the parameters that you can configure for the MySQL Connector/J driver](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-configuration-properties.html), you can pass the following parameters to the AWS JDBC Driver through the connection URL to specify additional driver behavior.
@@ -296,6 +300,7 @@ In addition to [the parameters that you can configure for the MySQL Connector/J 
 |`gatherPerfMetrics` | Boolean | No | Set to true if you would like the driver to record failover-associated metrics. <br><br>To print collected metrics, call `IClusterAwareMetricsReporter.reportMetrics(String connUrl, Log log)`. <br>e.g. `IClusterAwareMetricsReporter.reportMetrics(db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306, myLog)` <br><br>To reset collected metrics, call `IClusterAwareMetricsReporter.reportMetrics()`. | `false` | 
 |`gatherMetricsPerInstance` | Boolean | No | Set to true to gather additional performance metrics per instance as well as cluster. Set to false to only gather performance metrics per cluster. <br><br>To print collected metrics at instance level, call `IClusterAwareMetricsReporter.reportMetrics(String connUrl, Log log, true)`. | `false` | 
 |`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks. | `false` |
+|`socketTimeout` | Integer | No, but highly recommended | Timeout (in milliseconds) on network socket operations (0, the default means no timeout). | `0` (No timeout) |
 
 ### Failover Exception Codes
 #### 08001 - Unable to Establish SQL Connection
@@ -598,15 +603,15 @@ final Properties properties = new Properties();
 properties.setProperty("loadBalanceReadOnlyTraffic", "true");
 ```
 
-Once this parameter is enabled, load-balancing will automatically be performed for reader instances when the connection has been set to read-only mode via `JdbcConnection#setReadOnly`. Load-balancing is performed by randomly selecting new reader instances at transaction boundaries.
+Once this parameter is enabled, queries will be load-balanced among reader instances after calling `setReadOnly(true)` on the Connection object. Load-balancing will switch to a new randomly selected reader instance at each transaction boundary.
 
 ### Using the Read-Write Splitting Plugin against RDS/Aurora clusters
 
-When using the read-write splitting plugin against RDS or Aurora clusters, the plugin automatically acquires the cluster topology by querying the cluster. Because of this functionality, you do not have to supply multiple instance URLs in the connection string. Instead, users should only supply the URL for the initial instance they wish to connect to.
+When using the read-write splitting plugin against RDS or Aurora clusters, the plugin automatically acquires the cluster topology by querying the cluster. Because of this functionality, you do not have to supply multiple instance URLs in the connection string. Instead, supply just the URL for the initial instance to which you're connecting.
 
 ### Using the Read-Write Splitting Plugin against non-RDS clusters
 
-If you would like to use the read-write splitting plugin against a cluster that is not RDS or Aurora, the plugin will not be able to automatically acquire the cluster topology. Instead, you must supply the topology information to the plugin by specifying multiple instance URLs in the connection string. Instance URLs should be supplied via a comma-separated list. The first instance in the list must be the writer instance:
+If you are using the read-write splitting plugin against a cluster that is not hosted on RDS or Aurora, the plugin will not be able to automatically acquire the cluster topology. Instead, you must supply the topology information in the connection string as a comma-delimited list of multiple instance URLs. The first instance in the list must be the writer instance:
 
 ```
 String connectionUrl = "jdbc:mysql:aws://writer-instance-1.com,reader-instance-1.com,reader-instance-2.com/database-name"
