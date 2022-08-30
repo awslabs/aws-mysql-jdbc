@@ -280,7 +280,7 @@ To the application, the logical connection will not appear to have changed, but 
 
 ### Setting the socket timeout
 
-By default, connections do not have a socket timeout. However, it is highly recommended that you set a socket timeout according to your application's needs. This can be done via the `socketTimeout` connection property. Without a socket timeout, the failover plugin may take a long time to detect a failover event.  We recommend that you set the socket timeout to a value slightly higher than the maximum time that you expect your queries to run.
+If you turn off the enhanced failure monitoring plugin, which is loaded by default, it is highly recommended that you set a socket timeout according to your application's needs. This can be done via the `socketTimeout` connection property. Without enhanced failure monitoring or a socket timeout, the failover plugin may take a long time to detect a failover event.  We recommend that you set the socket timeout to a value slightly higher than the maximum time that you expect your queries to run. If you are using the enhanced failure monitoring plugin, setting the socket timeout is not required - the plugin will automatically detect any problems with the connection.
 
 ### Failover Parameters
 
@@ -300,7 +300,7 @@ In addition to [the parameters that you can configure for the MySQL Connector/J 
 |`gatherPerfMetrics` | Boolean | No | Set to true if you would like the driver to record failover-associated metrics. <br><br>To print collected metrics, call `IClusterAwareMetricsReporter.reportMetrics(String connUrl, Log log)`. <br>e.g. `IClusterAwareMetricsReporter.reportMetrics(db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306, myLog)` <br><br>To reset collected metrics, call `IClusterAwareMetricsReporter.reportMetrics()`. | `false` | 
 |`gatherMetricsPerInstance` | Boolean | No | Set to true to gather additional performance metrics per instance as well as cluster. Set to false to only gather performance metrics per cluster. <br><br>To print collected metrics at instance level, call `IClusterAwareMetricsReporter.reportMetrics(String connUrl, Log log, true)`. | `false` | 
 |`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks. | `false` |
-|`socketTimeout` | Integer | No, but highly recommended | Timeout (in milliseconds) on network socket operations (0, the default means no timeout). | `0` (No timeout) |
+|`socketTimeout` | Integer | Recommended if you turn off the enhanced failure monitoring plugin | Timeout (in milliseconds) on network socket operations (0, the default means no timeout). | `0` (No timeout) |
 
 ### Failover Exception Codes
 #### 08001 - Unable to Establish SQL Connection
