@@ -116,6 +116,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
         config.addDataSourceProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
         config.addDataSourceProperty(PropertyKey.failureDetectionTime.getKeyName(), "3000");
         config.addDataSourceProperty(PropertyKey.failureDetectionInterval.getKeyName(), "1500");
+        config.addDataSourceProperty(PropertyKey.logger.getKeyName(), StandardLogger.class.getName());
 
         dataSource = new HikariDataSource(config);
 
