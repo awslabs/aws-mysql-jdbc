@@ -69,6 +69,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
   private final Supplier<IMonitorService> monitorServiceSupplier;
   private final Set<String> nodeKeys = new HashSet<>();
   private final ICurrentConnectionProvider currentConnectionProvider;
+  private final ConnectionMethodAnalyzer connectionMethodAnalyzer;
   private JdbcConnection connection;
 
   /**
@@ -84,9 +85,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
       ICurrentConnectionProvider currentConnectionProvider,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
-      Log logger) {
+      Log logger) throws SQLException {
     this(
         currentConnectionProvider,
+        new ConnectionMethodAnalyzer(),
         propertySet,
         nextPlugin,
         logger,
@@ -95,10 +97,11 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
   NodeMonitoringConnectionPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
+      ConnectionMethodAnalyzer connectionMethodAnalyzer,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger,
-      Supplier<IMonitorService> monitorServiceSupplier) {
+      Supplier<IMonitorService> monitorServiceSupplier) throws SQLException {
     assertArgumentIsNotNull(currentConnectionProvider, "currentConnectionProvider");
     assertArgumentIsNotNull(propertySet, "propertySet");
     assertArgumentIsNotNull(nextPlugin, "nextPlugin");
@@ -106,6 +109,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
     this.currentConnectionProvider = currentConnectionProvider;
     this.connection = currentConnectionProvider.getCurrentConnection();
+    this.connectionMethodAnalyzer = connectionMethodAnalyzer;
     this.propertySet = propertySet;
     this.logger = logger;
     this.nextPlugin = nextPlugin;
@@ -282,7 +286,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    *
    * @param newConnection The connection used by {@link ConnectionProxy}.
    */
-  private void checkIfChanged(JdbcConnection newConnection) {
+  private void checkIfChanged(JdbcConnection newConnection) throws SQLException {
     final boolean isSameConnection = this.connection != null && this.connection.equals(newConnection);
     if (!isSameConnection) {
       if (!this.nodeKeys.isEmpty()) {
@@ -298,7 +302,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    *
    * @param connection the connection to a specific node.
    */
-  private void generateNodeKeys(Connection connection) {
+  private void generateNodeKeys(Connection connection) throws SQLException {
     this.nodeKeys.clear();
 
     final HostInfo hostInfo = this.currentConnectionProvider.getCurrentHostInfo();
@@ -316,9 +320,13 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
         }
       }
     } catch (SQLException sqlException) {
-      // log and ignore
       this.logger.logTrace(
-          "[NodeMonitoringConnectionPlugin.initNodes]: Could not retrieve Host:Port from querying");
+          "[NodeMonitoringConnectionPlugin.generateNodeKeys]: Could not retrieve Host:Port from querying");
+
+      if (this.connectionMethodAnalyzer.isCommunicationsException(sqlException)) {
+        this.logger.logError("[NodeMonitoringConnectionPlugin.generateNodeKeys]: Encountered a communications exception while querying for host-port information");
+        throw sqlException;
+      }
     }
   }
 }

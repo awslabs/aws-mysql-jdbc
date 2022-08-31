@@ -38,16 +38,15 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.conf.RuntimeProperty;
-import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping;
 import com.mysql.cj.jdbc.ha.ConnectionUtils;
 import com.mysql.cj.jdbc.ha.plugins.BasicConnectionProvider;
+import com.mysql.cj.jdbc.ha.plugins.ConnectionMethodAnalyzer;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
@@ -58,8 +57,6 @@ import com.mysql.cj.log.Log;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
-import javax.net.ssl.SSLException;
-import java.io.EOFException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -100,6 +97,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected final IClusterAwareMetricsContainer metricsContainer;
   private final ICurrentConnectionProvider currentConnectionProvider;
   private final RdsHostUtils rdsHostUtils;
+  private final ConnectionMethodAnalyzer connectionMethodAnalyzer;
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
@@ -147,6 +145,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this(
         currentConnectionProvider,
         new RdsHostUtils(logger),
+        new ConnectionMethodAnalyzer(),
         propertySet,
         nextPlugin,
         logger,
@@ -158,6 +157,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   FailoverConnectionPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
       RdsHostUtils rdsHostUtils,
+      ConnectionMethodAnalyzer connectionMethodAnalyzer,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger,
@@ -166,6 +166,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       Supplier<IClusterAwareMetricsContainer> metricsContainerSupplier) throws SQLException {
     this.currentConnectionProvider = currentConnectionProvider;
     this.rdsHostUtils = rdsHostUtils;
+    this.connectionMethodAnalyzer = connectionMethodAnalyzer;
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
@@ -627,25 +628,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return false;
     }
 
-    if (t instanceof CommunicationsException || t instanceof CJCommunicationsException) {
-      return true;
-    }
-
-    if (t instanceof SQLException) {
-      return ConnectionUtils.isNetworkException((SQLException) t);
-    }
-
-    if (t instanceof CJException) {
-      if (t.getCause() instanceof EOFException) { // Can not read response from server
-        return true;
-      }
-      if (t.getCause() instanceof SSLException) { // Incomplete packets from server may cause SSL communication issues
-        return true;
-      }
-      return ConnectionUtils.isNetworkException(((CJException) t).getSQLState());
-    }
-
-    return false;
+    return this.connectionMethodAnalyzer.isCommunicationsException(t);
   }
 
   /**

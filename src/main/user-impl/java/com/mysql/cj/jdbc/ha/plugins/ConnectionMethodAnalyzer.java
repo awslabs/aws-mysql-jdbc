@@ -210,7 +210,7 @@ public class ConnectionMethodAnalyzer {
                 || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(sqlException.getSQLState());
     }
 
-    public boolean isCommunicationsException(Exception e) {
+    public boolean isCommunicationsException(Throwable e) {
         if (e instanceof CommunicationsException || e instanceof CJCommunicationsException) {
             return true;
         }
