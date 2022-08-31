@@ -32,6 +32,8 @@
 package testsuite.integration.container;
 
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.exceptions.MysqlErrorNumbers;
+import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -43,7 +45,6 @@ import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-import eu.rekawek.toxiproxy.Proxy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -402,6 +403,25 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
       // Verify that connection still accepts multi-statement sql
       final Statement myStmt1 = conn.createStatement();
       myStmt1.executeQuery("select @@aurora_server_id; select 1; select 2;");
+    }
+  }
+
+  @Test
+  public void test_failoverTimeoutMs() throws SQLException, IOException {
+    Properties props = initDefaultProps();
+    int maxTimeout = 10000; // 10 seconds
+    props.setProperty(PropertyKey.failoverTimeoutMs.getKeyName(), String.valueOf(maxTimeout));
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
+      Statement stmt = conn.createStatement();
+      containerHelper.disableConnectivity(proxyInstance_1);
+      long invokeStartTimeMs = System.currentTimeMillis();
+      SQLException e = assertThrows(SQLException.class, () -> stmt.executeQuery("SELECT 1"));
+      long invokeEndTimeMs = System.currentTimeMillis();
+      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
+      long duration = invokeEndTimeMs - invokeStartTimeMs;
+      assertTrue(duration < 15000); // Add in 5 seconds to account for time to detect the failure
     }
   }
 

@@ -142,14 +142,21 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     submitTasks(currentTopology, executorService, completionService);
 
     try {
-      WriterFailoverResult result = getNextResult(executorService, completionService);
+      long startTimeMs = System.currentTimeMillis();
+      WriterFailoverResult result = getNextResult(executorService, completionService, this.maxFailoverTimeoutMs);
       if (result.isConnected() || result.getException() != null) {
         return result;
       }
 
-      result = getNextResult(executorService, completionService);
-      if (result.isConnected() || result.getException() != null) {
-        return result;
+      long endTimeMs = System.currentTimeMillis();
+      int duration = (int)(endTimeMs - startTimeMs);
+      int remainingTime = this.maxFailoverTimeoutMs - duration;
+
+      if (remainingTime > 0) {
+        result = getNextResult(executorService, completionService, remainingTime);
+        if (result.isConnected() || result.getException() != null) {
+          return result;
+        }
       }
 
       this.log.logDebug(Messages.getString("ClusterAwareWriterFailoverHandler.3"));
@@ -178,10 +185,11 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
 
   private WriterFailoverResult getNextResult(
       ExecutorService executorService,
-      CompletionService<WriterFailoverResult> completionService) throws SQLException {
+      CompletionService<WriterFailoverResult> completionService,
+      int timeoutMs) throws SQLException {
     try {
       Future<WriterFailoverResult> firstCompleted = completionService.poll(
-          this.maxFailoverTimeoutMs, TimeUnit.MILLISECONDS);
+          timeoutMs, TimeUnit.MILLISECONDS);
       if (firstCompleted == null) {
         // The task was unsuccessful and we have timed out
         return new WriterFailoverResult(false, false, new ArrayList<>(), null, "None");
