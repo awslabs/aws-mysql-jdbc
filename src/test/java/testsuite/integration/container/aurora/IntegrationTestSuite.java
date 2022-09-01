@@ -40,9 +40,9 @@ import org.junit.platform.suite.api.Suite;
 @Suite
 // @IncludeTags("test")
 @SelectClasses({
-    HikariCPIntegrationTest.class,
-    AuroraMysqlFailoverIntegrationTest.class,
     ReplicationFailoverIntegrationTest.class,
+    AuroraMysqlFailoverIntegrationTest.class,
+    HikariCPIntegrationTest.class,
     // AuroraMysqlReadWriteSplittingTest.class,
     // HikariCPReadWriteSplittingTest.class,
 })
