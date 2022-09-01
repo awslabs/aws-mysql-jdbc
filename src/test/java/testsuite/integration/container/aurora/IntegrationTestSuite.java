@@ -38,12 +38,12 @@ import org.junit.platform.suite.api.Suite;
 // To add additional tests, append it inside SelectClasses, comma-separated
 @Suite
 @SelectClasses({
+    HikariCPIntegrationTest.class,
+    HikariCPReadWriteSplittingTest.class,
     AuroraMysqlIntegrationTest.class,
     AuroraMysqlFailoverIntegrationTest.class,
     AuroraMysqlHardFailureIntegrationTest.class,
     ReplicationFailoverIntegrationTest.class,
-    HikariCPIntegrationTest.class,
-    AuroraMysqlReadWriteSplittingTest.class,
-    HikariCPReadWriteSplittingTest.class
+    AuroraMysqlReadWriteSplittingTest.class
 })
 public class IntegrationTestSuite {}
