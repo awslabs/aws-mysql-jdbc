@@ -39,7 +39,7 @@ import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySet;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
-import com.mysql.cj.jdbc.ha.plugins.ConnectionMethodAnalyzer;
+import com.mysql.cj.jdbc.ha.plugins.ExceptionAnalyzer;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
@@ -667,7 +667,7 @@ class FailoverConnectionPluginTest {
     return new FailoverConnectionPlugin(
         mockCurrentConnectionProvider,
         new RdsHostUtils(mockLogger),
-        new ConnectionMethodAnalyzer(),
+        new ExceptionAnalyzer(),
         propertySet,
         mockNextPlugin,
         mockLogger,

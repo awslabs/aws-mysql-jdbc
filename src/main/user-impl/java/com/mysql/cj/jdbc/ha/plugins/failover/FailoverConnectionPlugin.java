@@ -46,7 +46,7 @@ import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping;
 import com.mysql.cj.jdbc.ha.ConnectionUtils;
 import com.mysql.cj.jdbc.ha.plugins.BasicConnectionProvider;
-import com.mysql.cj.jdbc.ha.plugins.ConnectionMethodAnalyzer;
+import com.mysql.cj.jdbc.ha.plugins.ExceptionAnalyzer;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
@@ -97,7 +97,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected final IClusterAwareMetricsContainer metricsContainer;
   private final ICurrentConnectionProvider currentConnectionProvider;
   private final RdsHostUtils rdsHostUtils;
-  private final ConnectionMethodAnalyzer connectionMethodAnalyzer;
+  private final ExceptionAnalyzer exceptionAnalyzer;
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
@@ -145,7 +145,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this(
         currentConnectionProvider,
         new RdsHostUtils(logger),
-        new ConnectionMethodAnalyzer(),
+        new ExceptionAnalyzer(),
         propertySet,
         nextPlugin,
         logger,
@@ -157,7 +157,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   FailoverConnectionPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
       RdsHostUtils rdsHostUtils,
-      ConnectionMethodAnalyzer connectionMethodAnalyzer,
+      ExceptionAnalyzer exceptionAnalyzer,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger,
@@ -166,7 +166,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       Supplier<IClusterAwareMetricsContainer> metricsContainerSupplier) throws SQLException {
     this.currentConnectionProvider = currentConnectionProvider;
     this.rdsHostUtils = rdsHostUtils;
-    this.connectionMethodAnalyzer = connectionMethodAnalyzer;
+    this.exceptionAnalyzer = exceptionAnalyzer;
     this.propertySet = propertySet;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
@@ -628,7 +628,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return false;
     }
 
-    return this.connectionMethodAnalyzer.isCommunicationsException(t);
+    return this.exceptionAnalyzer.isCommunicationsException(t);
   }
 
   /**
