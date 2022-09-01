@@ -1,32 +1,27 @@
 /*
- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * AWS JDBC Driver for MySQL
+ * Copyright Amazon.com Inc. or affiliates.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License, version 2.0
- * (GPLv2), as published by the Free Software Foundation, with the
- * following additional permissions:
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
  *
- * This program is distributed with certain software that is licensed
- * under separate terms, as designated in a particular file or component
- * or in the license documentation. Without limiting your rights under
- * the GPLv2, the authors of this program hereby grant you an additional
- * permission to link the program and your derivative works with the
- * separately licensed software that they have included with the program.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
  *
- * Without limiting the foregoing grant of rights under the GPLv2 and
- * additional permission as to separately licensed software, this
- * program is also subject to the Universal FOSS Exception, version 1.0,
- * a copy of which can be found along with its FAQ at
- * http://oss.oracle.com/licenses/universal-foss-exception.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License, version 2.0, for more details.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see
- * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
 package com.mysql.cj.jdbc.ha;
@@ -39,7 +34,6 @@ import com.mysql.cj.jdbc.ha.plugins.ConnectionPluginManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -49,15 +43,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -107,21 +100,6 @@ public class ConnectionProxyTest {
   }
 
   @Test
-  public void testInvokeClose()
-      throws Throwable {
-    final ConnectionUrl conStr =
-        ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
-    final ConnectionProxy proxy = getConnectionProxy(conStr);
-    assertSame(mockConnection, proxy.getCurrentConnection());
-
-    proxy.invoke(mockConnection, Connection.class.getMethod("close"), null);
-
-    InOrder inOrder = inOrder(mockPluginManager);
-    inOrder.verify(mockPluginManager, times(1)).execute(eq(mockConnection.getClass()), eq("close"), any(), isNull());
-    inOrder.verify(mockPluginManager, times(1)).releaseResources();
-  }
-
-  @Test
   public void testPluginDisabled() throws SQLException {
     final String url =
         "jdbc:mysql:aws://somehost:1234/test?"
@@ -136,7 +114,26 @@ public class ConnectionProxyTest {
   }
 
   @Test
-  public void testSetCurrentConnection() throws SQLException {
+  public void testSetCurrentConnectionDoesNotThrowSQLException() throws SQLException {
+    when(mockConnection.isClosed()).thenReturn(false);
+    doThrow(new SQLException()).when(mockConnection).close();
+
+    final ConnectionUrl conStr =
+        ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
+    final ConnectionProxy proxy = getConnectionProxy(conStr);
+
+    assertSame(mockConnection, proxy.getCurrentConnection());
+
+    assertDoesNotThrow(() -> proxy.setCurrentConnection(mockConnection2, mockHostInfo));
+
+    assertSame(mockConnection2, proxy.getCurrentConnection());
+    assertSame(mockHostInfo, proxy.getCurrentHostInfo());
+  }
+
+  @Test
+  public void testSetCurrentConnectionWithClosedConnection() throws SQLException {
+    when(mockConnection.isClosed()).thenReturn(false);
+
     final ConnectionUrl conStr =
         ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, new Properties());
     final ConnectionProxy proxy = getConnectionProxy(conStr);
@@ -145,6 +142,7 @@ public class ConnectionProxyTest {
 
     proxy.setCurrentConnection(mockConnection2, mockHostInfo);
 
+    verify(mockConnection).close();
     assertSame(mockConnection2, proxy.getCurrentConnection());
     assertSame(mockHostInfo, proxy.getCurrentHostInfo());
   }
