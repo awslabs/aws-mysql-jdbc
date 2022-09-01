@@ -32,6 +32,7 @@
 package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.jdbc.ha.plugins.failover.AuroraTopologyService;
 import com.mysql.cj.log.NullLogger;
 import com.mysql.cj.util.StringUtils;
 import eu.rekawek.toxiproxy.Proxy;
@@ -199,6 +200,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     assertTrue(clusterSize >= 2); // many tests assume that cluster contains at least a writer and a reader
     assertTrue(isDBInstanceWriter(instanceIDs[0]));
     makeSureInstancesUp(instanceIDs);
+    AuroraTopologyService.topologyCache.clear();
   }
 
   protected static Properties initDefaultPropsNoTimeouts() {
