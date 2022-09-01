@@ -34,8 +34,6 @@ package com.mysql.cj.jdbc.ha.plugins;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.log.Log;
 
-import java.sql.SQLException;
-
 /**
  * Class initializing a {@link NodeMonitoringConnectionPlugin}.
  */
@@ -45,7 +43,7 @@ public class NodeMonitoringConnectionPluginFactory implements IConnectionPluginF
       ICurrentConnectionProvider currentConnectionProvider,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
-      Log logger) throws SQLException {
+      Log logger) {
     return new NodeMonitoringConnectionPlugin(currentConnectionProvider, propertySet, nextPlugin, logger);
   }
 }

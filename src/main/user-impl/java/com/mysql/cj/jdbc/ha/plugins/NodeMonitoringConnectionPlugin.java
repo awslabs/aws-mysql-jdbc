@@ -43,6 +43,7 @@ import com.mysql.cj.log.Log;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -69,7 +70,6 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
   private final Supplier<IMonitorService> monitorServiceSupplier;
   private final Set<String> nodeKeys = new HashSet<>();
   private final ICurrentConnectionProvider currentConnectionProvider;
-  private final ConnectionMethodAnalyzer connectionMethodAnalyzer;
   private JdbcConnection connection;
 
   /**
@@ -85,10 +85,9 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
       ICurrentConnectionProvider currentConnectionProvider,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
-      Log logger) throws SQLException {
+      Log logger) {
     this(
         currentConnectionProvider,
-        new ConnectionMethodAnalyzer(),
         propertySet,
         nextPlugin,
         logger,
@@ -97,11 +96,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
   NodeMonitoringConnectionPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
-      ConnectionMethodAnalyzer connectionMethodAnalyzer,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger,
-      Supplier<IMonitorService> monitorServiceSupplier) throws SQLException {
+      Supplier<IMonitorService> monitorServiceSupplier) {
     assertArgumentIsNotNull(currentConnectionProvider, "currentConnectionProvider");
     assertArgumentIsNotNull(propertySet, "propertySet");
     assertArgumentIsNotNull(nextPlugin, "nextPlugin");
@@ -109,15 +107,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
     this.currentConnectionProvider = currentConnectionProvider;
     this.connection = currentConnectionProvider.getCurrentConnection();
-    this.connectionMethodAnalyzer = connectionMethodAnalyzer;
     this.propertySet = propertySet;
     this.logger = logger;
     this.nextPlugin = nextPlugin;
     this.monitorServiceSupplier = monitorServiceSupplier;
-
-    if (this.connection != null) {
-      generateNodeKeys(this.connection);
-    }
   }
 
   /**
@@ -319,14 +312,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
           this.nodeKeys.add(rs.getString(1));
         }
       }
-    } catch (SQLException sqlException) {
+    } catch (SQLSyntaxErrorException syntaxException) {
+      // The database does not support the query to fetch host/port information - log and ignore
       this.logger.logTrace(
           "[NodeMonitoringConnectionPlugin.generateNodeKeys]: Could not retrieve Host:Port from querying");
-
-      if (this.connectionMethodAnalyzer.isCommunicationsException(sqlException)) {
-        this.logger.logError("[NodeMonitoringConnectionPlugin.generateNodeKeys]: Encountered a communications exception while querying for host-port information");
-        throw sqlException;
-      }
     }
   }
 }

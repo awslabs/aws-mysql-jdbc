@@ -230,7 +230,6 @@ class NodeMonitoringConnectionPluginTest {
 
   private void initializePlugin() throws SQLException {
     plugin = new NodeMonitoringConnectionPlugin(proxy,
-        new ConnectionMethodAnalyzer(),
         propertySet,
         mockPlugin,
         logger,
