@@ -43,6 +43,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
@@ -131,6 +133,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
      * After getting successful connections from the pool, the cluster becomes unavailable
      */
     @Test
+    @Tag("test")
     public void test_1_1_hikariCP_lost_connection() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             assertTrue(conn.isValid(5));

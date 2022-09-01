@@ -824,6 +824,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       rdsHost = this.rdsHostUtils.getRdsHost(this.propertySet, hostInfo);
     }
     this.rdsUrlType = rdsHost.getUrlType();
+    this.logger.logTrace(new SQLException().getStackTrace());
     this.logger.logTrace(
         Messages.getString(
             "ClusterAwareConnectionProxy.14",
