@@ -261,7 +261,9 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    */
   @Override
   public void releaseResources() {
+    this.logger.logTrace("[NodeMonitoringConnectionPlugin] releaseResources called");
     if (this.monitorService != null) {
+      this.logger.logTrace("[NodeMonitoringConnectionPlugin] Releasing monitorService resources");
       this.monitorService.releaseResources();
     }
 

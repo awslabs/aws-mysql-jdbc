@@ -145,6 +145,7 @@ public class DefaultMonitorService implements IMonitorService {
   @Override
   public void releaseResources() {
     this.threadContainer = null;
+    this.logger.logTrace("[DefaultMonitorService] releaseResources called, calling MonitorThreadContainer.releaseInstance()");
     MonitorThreadContainer.releaseInstance();
   }
 

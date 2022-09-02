@@ -31,6 +31,10 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import com.mysql.cj.log.Log;
+import com.mysql.cj.log.LogFactory;
+import com.mysql.cj.log.StandardLogger;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +59,7 @@ public class MonitorThreadContainer {
   private final Map<IMonitor, Future<?>> tasksMap = new ConcurrentHashMap<>();
   private final Queue<IMonitor> availableMonitors = new ConcurrentLinkedDeque<>();
   private final ExecutorService threadPool;
+  private static final Log logger = LogFactory.getLogger(StandardLogger.class.getName(), Log.LOGGER_INSTANCE_NAME);
   private static final Object LOCK_OBJECT = new Object();
 
   /**
@@ -71,9 +76,11 @@ public class MonitorThreadContainer {
       synchronized (LOCK_OBJECT) {
         singleton = new MonitorThreadContainer(executorServiceInitializer);
       }
+      logger.logTrace("[MonitorThreadContainer] singleton initialized, setting usage count to 0");
       CLASS_USAGE_COUNT.set(0);
     }
     CLASS_USAGE_COUNT.getAndIncrement();
+    logger.logTrace("[MonitorThreadContainer] Usage count incremented to: " + CLASS_USAGE_COUNT);
     return singleton;
   }
 
@@ -86,8 +93,11 @@ public class MonitorThreadContainer {
       return;
     }
 
-    if (CLASS_USAGE_COUNT.decrementAndGet() <= 0) {
+    int usageCount = CLASS_USAGE_COUNT.decrementAndGet();
+    logger.logTrace("[MonitorThreadContainer] releaseInstance called. Useage count decremented to: " + usageCount);
+    if (usageCount <= 0) {
       synchronized (LOCK_OBJECT) {
+        logger.logTrace("[MonitorThreadContainer] Usage count is <= 0, releasing resources");
         singleton.releaseResources();
         singleton = null;
       }
@@ -197,7 +207,9 @@ public class MonitorThreadContainer {
         .filter(val -> !val.isDone() && !val.isCancelled())
         .forEach(val -> val.cancel(true));
 
+    logger.logTrace("[MonitorThreadContainer] monitorMap cleared, tasks cancelled");
     if (threadPool != null) {
+      logger.logTrace("[MonitorThreadContainer] Shutting down threadPool");
       threadPool.shutdownNow();
     }
   }
