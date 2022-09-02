@@ -36,21 +36,22 @@ import java.sql.SQLException;
 
 public class AutoCommitOnTransactionState implements IState {
 
-    private final ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+    private final ConnectionMethodAnalyzer methodAnalyzer = new ConnectionMethodAnalyzer();
+    private final ExceptionAnalyzer exceptionAnalyzer = new ExceptionAnalyzer();
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException  {
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
         // commit()/rollback() are called
-        if (analyzer.isExecuteClosingTransaction(methodName, args)) {
+        if (methodAnalyzer.isExecuteClosingTransaction(methodName, args)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE;
         }
 
-        if (analyzer.isSetReadOnlyFalse(methodName, args)) {
+        if (methodAnalyzer.isSetReadOnlyFalse(methodName, args)) {
             throw new SQLException(Messages.getString("AutoCommitOnTransactionState.1"));
         }
 
-        if (analyzer.isSetAutoCommitFalse(methodName, args)) {
+        if (methodAnalyzer.isSetAutoCommitFalse(methodName, args)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
         }
 
@@ -59,7 +60,7 @@ public class AutoCommitOnTransactionState implements IState {
 
     @Override
     public IState getNextState(Exception e) {
-        if (analyzer.isFailoverException(e)) {
+        if (exceptionAnalyzer.isFailoverException(e)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 

@@ -43,6 +43,7 @@ import com.mysql.cj.log.Log;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -110,10 +111,6 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
     this.logger = logger;
     this.nextPlugin = nextPlugin;
     this.monitorServiceSupplier = monitorServiceSupplier;
-
-    if (this.connection != null) {
-      generateNodeKeys(this.connection);
-    }
   }
 
   /**
@@ -282,7 +279,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    *
    * @param newConnection The connection used by {@link ConnectionProxy}.
    */
-  private void checkIfChanged(JdbcConnection newConnection) {
+  private void checkIfChanged(JdbcConnection newConnection) throws SQLException {
     final boolean isSameConnection = this.connection != null && this.connection.equals(newConnection);
     if (!isSameConnection) {
       if (!this.nodeKeys.isEmpty()) {
@@ -298,7 +295,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
    *
    * @param connection the connection to a specific node.
    */
-  private void generateNodeKeys(Connection connection) {
+  private void generateNodeKeys(Connection connection) throws SQLException {
     this.nodeKeys.clear();
 
     final HostInfo hostInfo = this.currentConnectionProvider.getCurrentHostInfo();
@@ -315,10 +312,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
           this.nodeKeys.add(rs.getString(1));
         }
       }
-    } catch (SQLException sqlException) {
-      // log and ignore
+    } catch (SQLSyntaxErrorException syntaxException) {
+      // The database does not support the query to fetch host/port information - log and ignore
       this.logger.logTrace(
-          "[NodeMonitoringConnectionPlugin.initNodes]: Could not retrieve Host:Port from querying");
+          "[NodeMonitoringConnectionPlugin.generateNodeKeys]: Could not retrieve Host:Port from querying");
     }
   }
 }
