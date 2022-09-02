@@ -31,6 +31,7 @@
 
 package testsuite.integration.container.aurora;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -92,7 +93,8 @@ public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegratio
         assertTrue(clusterSize >= 5, "Minimal cluster configuration: 1 writer + 4 readers");
         final String readerId = instanceIDs[1];
 
-        try (final Connection conn = createPooledConnectionWithInstanceId(readerId)) {
+        BasicDataSource ds = createPooledConnectionWithInstanceId(readerId);
+        try (final Connection conn = ds.getConnection()) {
             conn.setReadOnly(true);
 
             startCrashingInstances(readerId);
@@ -108,6 +110,7 @@ public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegratio
             // Assert that the pooled connection is valid.
             assertTrue(conn.isValid(IS_VALID_TIMEOUT));
         }
+        ds.close();
     }
 
     @BeforeEach
