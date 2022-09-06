@@ -142,18 +142,18 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     submitTasks(currentTopology, executorService, completionService);
 
     try {
-      long startTimeMs = System.nanoTime();
+      long startTimeNano = System.nanoTime();
       WriterFailoverResult result = getNextResult(executorService, completionService, this.maxFailoverTimeoutMs);
       if (result.isConnected() || result.getException() != null) {
         return result;
       }
 
-      long endTimeMs = System.nanoTime();
-      int duration = (int)(endTimeMs - startTimeMs);
-      int remainingTime = this.maxFailoverTimeoutMs - duration;
+      long endTimeNano = System.nanoTime();
+      int durationMs = (int) TimeUnit.NANOSECONDS.toMillis(endTimeNano - startTimeNano);
+      int remainingTimeMs = this.maxFailoverTimeoutMs - durationMs;
 
-      if (remainingTime > 0) {
-        result = getNextResult(executorService, completionService, remainingTime);
+      if (remainingTimeMs > 0) {
+        result = getNextResult(executorService, completionService, remainingTimeMs);
         if (result.isConnected() || result.getException() != null) {
           return result;
         }
