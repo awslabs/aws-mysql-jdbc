@@ -93,7 +93,7 @@ public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegratio
         assertTrue(clusterSize >= 5, "Minimal cluster configuration: 1 writer + 4 readers");
         final String readerId = instanceIDs[1];
 
-        try (final BasicDataSource ds = createPooledConnectionWithInstanceId(readerId);
+        try (final BasicDataSource ds = createDataSourceWithInstanceId(readerId);
              final Connection conn = ds.getConnection()) {
             conn.setReadOnly(true);
 

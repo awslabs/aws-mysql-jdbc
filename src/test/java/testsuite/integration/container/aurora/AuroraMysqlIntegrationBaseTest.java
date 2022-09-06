@@ -323,7 +323,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     assertEquals(expectedSQLErrorCode, exception.getSQLState());
   }
 
-  protected BasicDataSource createPooledConnectionWithInstanceId(String instanceID) throws SQLException {
+  protected BasicDataSource createDataSourceWithInstanceId(String instanceID) throws SQLException {
     final BasicDataSource ds = new BasicDataSource();
     ds.setUrl(DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX);
     ds.setUsername(TEST_USERNAME);

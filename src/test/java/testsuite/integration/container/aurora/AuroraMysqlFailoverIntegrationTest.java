@@ -355,7 +355,7 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
     final String initialWriterId = instanceIDs[0];
     final String nominatedWriterId = instanceIDs[1];
 
-    try (final BasicDataSource ds = createPooledConnectionWithInstanceId(initialWriterId);
+    try (final BasicDataSource ds = createDataSourceWithInstanceId(initialWriterId);
          final Connection conn = ds.getConnection()) {
       // Crash writer Instance1 and nominate Instance2 as the new writer
       failoverClusterToATargetAndWaitUntilWriterChanged(initialWriterId, nominatedWriterId);
