@@ -30,14 +30,7 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.Messages;
-import com.mysql.cj.exceptions.CJCommunicationsException;
-import com.mysql.cj.exceptions.CJException;
-import com.mysql.cj.exceptions.MysqlErrorNumbers;
-import com.mysql.cj.jdbc.exceptions.CommunicationsException;
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
 
-import javax.net.ssl.SSLException;
-import java.io.EOFException;
 import java.sql.SQLException;
 
 public class ConnectionMethodAnalyzer {
@@ -198,37 +191,5 @@ public class ConnectionMethodAnalyzer {
         } else {
             throw new SQLException(Messages.getString("ConnectionMethodAnalyzer.1"));
         }
-    }
-
-    public boolean isFailoverException(Exception e) {
-        if (!(e instanceof SQLException)) {
-            return false;
-        }
-
-        final SQLException sqlException = (SQLException) e;
-        return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(sqlException.getSQLState())
-                || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(sqlException.getSQLState());
-    }
-
-    public boolean isCommunicationsException(Exception e) {
-        if (e instanceof CommunicationsException || e instanceof CJCommunicationsException) {
-            return true;
-        }
-
-        if (e instanceof SQLException) {
-            return ConnectionUtils.isNetworkException((SQLException) e);
-        }
-
-        if (e instanceof CJException) {
-            if (e.getCause() instanceof EOFException) { // Can not read response from server
-                return true;
-            }
-            if (e.getCause() instanceof SSLException) { // Incomplete packets from server may cause SSL communication issues
-                return true;
-            }
-            return ConnectionUtils.isNetworkException(((CJException) e).getSQLState());
-        }
-
-        return false;
     }
 }

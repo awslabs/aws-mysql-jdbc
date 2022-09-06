@@ -29,44 +29,46 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import com.mysql.cj.Messages;
-import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.exceptions.CJCommunicationsException;
+import com.mysql.cj.exceptions.CJException;
+import com.mysql.cj.exceptions.MysqlErrorNumbers;
+import com.mysql.cj.jdbc.exceptions.CommunicationsException;
+import com.mysql.cj.jdbc.ha.ConnectionUtils;
 
+import javax.net.ssl.SSLException;
+import java.io.EOFException;
 import java.sql.SQLException;
 
-public class AutoCommitOffTransactionState implements IState {
-
-    private final ConnectionMethodAnalyzer methodAnalyzer = new ConnectionMethodAnalyzer();
-    private final ExceptionAnalyzer exceptionAnalyzer = new ExceptionAnalyzer();
-
-    @Override
-    public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) throws SQLException {
-        if (methodAnalyzer.isMethodClosingTransaction(methodName, args)) {
-            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_BOUNDARY_STATE;
+public class ExceptionAnalyzer {
+    public boolean isFailoverException(Throwable t) {
+        if (!(t instanceof SQLException)) {
+            return false;
         }
 
-        if (methodAnalyzer.isSetAutoCommitTrue(methodName, args)) {
-            return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE;
-        }
-
-        if (methodAnalyzer.isSetReadOnlyFalse(methodName, args)) {
-            throw new SQLException(Messages.getString("AutoCommitOffTransactionState.1"));
-        }
-
-        return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
+        SQLException sqlException = (SQLException) t;
+        return MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN.equals(sqlException.getSQLState())
+                || MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_CHANGED.equals(sqlException.getSQLState());
     }
 
-    @Override
-    public IState getNextState(Exception e) {
-        if (exceptionAnalyzer.isFailoverException(e)) {
-            return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
+    public boolean isCommunicationsException(Throwable e) {
+        if (e instanceof CommunicationsException || e instanceof CJCommunicationsException) {
+            return true;
         }
 
-        return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
-    }
+        if (e instanceof SQLException) {
+            return ConnectionUtils.isNetworkException((SQLException) e);
+        }
 
-    @Override
-    public boolean isTransactionBoundary() {
+        if (e instanceof CJException) {
+            if (e.getCause() instanceof EOFException) { // Can not read response from server
+                return true;
+            }
+            if (e.getCause() instanceof SSLException) { // Incomplete packets from server may cause SSL communication issues
+                return true;
+            }
+            return ConnectionUtils.isNetworkException(((CJException) e).getSQLState());
+        }
+
         return false;
     }
 }

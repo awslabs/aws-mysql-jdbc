@@ -33,29 +33,30 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 public class AutoCommitOnTransactionBoundaryState implements IState {
 
-    private final ConnectionMethodAnalyzer analyzer = new ConnectionMethodAnalyzer();
+    private final ConnectionMethodAnalyzer methodAnalyzer = new ConnectionMethodAnalyzer();
+    private final ExceptionAnalyzer exceptionAnalyzer = new ExceptionAnalyzer();
 
     @Override
     public IState getNextState(JdbcConnection currentConnection, String methodName, Object[] args) {
-        if (analyzer.isSetReadOnlyFalse(methodName, args)) {
+        if (methodAnalyzer.isSetReadOnlyFalse(methodName, args)) {
             return ReadWriteSplittingStateMachine.READ_WRITE_STATE;
         }
 
-        if (analyzer.isSetAutoCommitFalse(methodName, args)) {
+        if (methodAnalyzer.isSetAutoCommitFalse(methodName, args)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_STATE;
         }
 
-        if (analyzer.isExecuteStartingTransaction(methodName, args)) {
+        if (methodAnalyzer.isExecuteStartingTransaction(methodName, args)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_STATE;
         }
 
-        if (analyzer.isSetReadOnlyTrue(methodName, args) || analyzer.isSetAutoCommitTrue(methodName, args)) {
+        if (methodAnalyzer.isSetReadOnlyTrue(methodName, args) || methodAnalyzer.isSetAutoCommitTrue(methodName, args)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 
         // execute("COMMIT")/execute("ROLLBACK") will not throw an error, but the driver will throw an error if
         // commit()/rollback() are called
-        if (analyzer.isExecuteDml(methodName, args) || analyzer.isExecuteClosingTransaction(methodName, args)) {
+        if (methodAnalyzer.isExecuteDml(methodName, args) || methodAnalyzer.isExecuteClosingTransaction(methodName, args)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE;
         }
 
@@ -64,11 +65,11 @@ public class AutoCommitOnTransactionBoundaryState implements IState {
 
     @Override
     public IState getNextState(Exception e) {
-        if (analyzer.isFailoverException(e)) {
+        if (exceptionAnalyzer.isFailoverException(e)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_STATE;
         }
 
-        if (analyzer.isCommunicationsException(e)) {
+        if (exceptionAnalyzer.isCommunicationsException(e)) {
             return ReadWriteSplittingStateMachine.AUTOCOMMIT_ON_TRANSACTION_BOUNDARY_STATE;
         }
 

@@ -139,7 +139,6 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Disabled("Failing because getAutocommit does not return the correct value after executing 'SET autocommit = 0'")
   @ParameterizedTest(name = "test_setReadOnlyFalseInTransaction_setAutocommitZero")
   @MethodSource("testParameters")
   public void test_setReadOnlyFalseInTransaction_setAutocommitZero(Properties props) throws SQLException{
@@ -167,7 +166,6 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  @Disabled("Failing because getAutocommit does not return the correct value after executing 'SET autocommit = 0'")
   @ParameterizedTest(name = "test_setReadOnlyTrueInTransaction")
   @MethodSource("testParameters")
   public void test_setReadOnlyTrueInTransaction(Properties props) throws SQLException{
@@ -223,15 +221,6 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
     }
   }
 
-  /* Fails due to a bug:
-   *
-   * During the call to setReadOnly(true), NodeMonitoringConnectionPlugin#generateNodeKeys tries to execute some SQL
-   * which fails because the nodes were put down. As a result the connection gets closed, but the call to setReadOnly
-   * continues down the connection plugin chain until ConnectionImpl#setReadOnly throws a
-   * SQLNonTransientConnectionException: 'No operations allowed after connection closed'. This test should be enabled
-   * after this issue is fixed.
-   */
-  @Disabled
   @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown")
   @MethodSource("testParameters")
   public void test_setReadOnlyTrue_allInstancesDown(Properties props) throws SQLException, IOException {
@@ -246,10 +235,9 @@ public class StandardMysqlReadWriteSplittingTest extends StandardMysqlBaseTest {
           fail(String.format("%s does not have a proxy setup.", instanceId));
         }
       }
-      
-      assertDoesNotThrow(() -> conn.setReadOnly(true));
-      final SQLException exception = assertThrows(SQLException.class, () -> queryInstanceId(conn));
-      assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, exception.getSQLState());
+
+      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
+      assertEquals(MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_FAILURE, exception.getSQLState());
     }
   }
 

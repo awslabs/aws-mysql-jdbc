@@ -31,19 +31,6 @@
 
 package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.refEq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
@@ -52,6 +39,7 @@ import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySet;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
+import com.mysql.cj.jdbc.ha.plugins.ExceptionAnalyzer;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
@@ -71,6 +59,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.refEq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class FailoverConnectionPluginTest {
   private static final String PREFIX = "jdbc:mysql:aws://";
@@ -666,6 +667,7 @@ class FailoverConnectionPluginTest {
     return new FailoverConnectionPlugin(
         mockCurrentConnectionProvider,
         new RdsHostUtils(mockLogger),
+        new ExceptionAnalyzer(),
         propertySet,
         mockNextPlugin,
         mockLogger,
