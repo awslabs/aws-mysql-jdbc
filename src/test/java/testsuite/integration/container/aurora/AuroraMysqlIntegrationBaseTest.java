@@ -323,7 +323,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     assertEquals(expectedSQLErrorCode, exception.getSQLState());
   }
 
-  protected Connection createPooledConnectionWithInstanceId(String instanceID) throws SQLException {
+  protected BasicDataSource createDataSourceWithInstanceId(String instanceID) throws SQLException {
     final BasicDataSource ds = new BasicDataSource();
     ds.setUrl(DB_CONN_STR_PREFIX + instanceID + DB_CONN_STR_SUFFIX);
     ds.setUsername(TEST_USERNAME);
@@ -332,7 +332,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     ds.setMaxIdle(CP_MAX_IDLE);
     ds.setMaxOpenPreparedStatements(CP_MAX_OPEN_PREPARED_STATEMENTS);
 
-    return ds.getConnection();
+    return ds;
   }
 
   protected DBCluster getDBCluster() {

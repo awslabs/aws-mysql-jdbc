@@ -38,6 +38,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -46,9 +47,6 @@ import java.sql.Statement;
 import java.util.Properties;
 import java.util.stream.Stream;
 
-import static org.hamcrest.CoreMatchers.anyOf;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -111,6 +109,49 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
 
       conn.setReadOnly(true);
       readerConnectionId = queryInstanceId(conn);
+      assertEquals(initialReaderId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      conn.setReadOnly(false);
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(instanceIDs[0], writerConnectionId);
+      assertNotEquals(initialReaderId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+    }
+  }
+
+  @ParameterizedTest(name = "test_connectToReaderCluster_setReadOnlyTrueFalse")
+  @MethodSource("testParameters")
+  public void test_connectToReaderCluster_setReadOnlyTrueFalse(Properties props) throws SQLException {
+    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL, MYSQL_PORT, props)) {
+      String initialReaderId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(initialReaderId));
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
+      assertEquals(initialReaderId, readerConnectionId);
+      assertTrue(isDBInstanceReader(readerConnectionId));
+
+      conn.setReadOnly(false);
+      String writerConnectionId = queryInstanceId(conn);
+      assertEquals(instanceIDs[0], writerConnectionId);
+      assertNotEquals(initialReaderId, writerConnectionId);
+      assertTrue(isDBInstanceWriter(writerConnectionId));
+    }
+  }
+
+  @ParameterizedTest(name = "test_connectToReaderIP_setReadOnlyTrueFalse")
+  @MethodSource("testParameters")
+  public void test_connectToReaderIP_setReadOnlyTrueFalse(Properties props) throws SQLException, UnknownHostException {
+    String instanceHostPattern = "?" + DB_CONN_STR_SUFFIX;
+    props.setProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), instanceHostPattern);
+    final String hostIp = hostToIP(MYSQL_RO_CLUSTER_URL);
+    try (final Connection conn = connectToInstance(hostIp, MYSQL_PORT, props)) {
+      String initialReaderId = queryInstanceId(conn);
+      assertTrue(isDBInstanceReader(initialReaderId));
+
+      conn.setReadOnly(true);
+      String readerConnectionId = queryInstanceId(conn);
       assertEquals(initialReaderId, readerConnectionId);
       assertTrue(isDBInstanceReader(readerConnectionId));
 
@@ -476,16 +517,19 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       SQLException e = assertThrows(SQLException.class, () -> queryInstanceId(conn));
       containerHelper.enableConnectivity(proxyInstance);
 
-      if (!pluginChainIncludesFailoverPlugin(props)) {
+      if (pluginChainIncludesFailoverPlugin(props)) {
+        assertEquals(MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN, e.getSQLState());
+      } else {
         assertEquals(MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_FAILURE, e.getSQLState());
-        return;
       }
 
-      Statement stmt2 = conn.createStatement();
-      stmt2.execute("SELECT 1");
-      ResultSet rs = stmt2.getResultSet();
-      rs.next();
-      assertEquals(1, rs.getInt(1));
+      if (pluginChainIncludesFailoverPlugin(props)) {
+        Statement stmt2 = conn.createStatement();
+        stmt2.execute("SELECT 1");
+        ResultSet rs = stmt2.getResultSet();
+        rs.next();
+        assertEquals(1, rs.getInt(1));
+      }
     }
 
     // autocommit off transaction
@@ -503,8 +547,14 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
       }
       
       SQLException e = assertThrows(SQLException.class, () -> stmt1.execute("SELECT 1"));
-      assertEquals(MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN, e.getSQLState());
       containerHelper.enableConnectivity(proxyInstance);
+
+      if (pluginChainIncludesFailoverPlugin(props)) {
+        assertEquals(MysqlErrorNumbers.SQL_STATE_TRANSACTION_RESOLUTION_UNKNOWN, e.getSQLState());
+      } else {
+        assertEquals(MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_FAILURE, e.getSQLState());
+        return;
+      }
 
       Statement stmt2 = conn.createStatement();
       stmt2.execute("SELECT 1");
@@ -567,9 +617,12 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
         }
       }
 
-      final SQLException exception = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
-      assertThat(exception.getSQLState(), anyOf(is(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE),
-              is(MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_FAILURE)));
+      final SQLException e = assertThrows(SQLException.class, () -> conn.setReadOnly(true));
+      if (pluginChainIncludesFailoverPlugin(props)) {
+        assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
+      } else {
+        assertEquals(MysqlErrorNumbers.SQL_STATE_COMMUNICATION_LINK_FAILURE, e.getSQLState());
+      }
     }
   }
 
@@ -600,7 +653,7 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
     }
   }
 
-  @ParameterizedTest(name = "test_setReadOnlyTrue_allInstancesDown_writerClosed")
+  @ParameterizedTest(name = "test_setReadOnlyFalse_allInstancesDown")
   @MethodSource("proxiedTestParameters")
   public void test_setReadOnlyFalse_allInstancesDown(Properties props) throws SQLException, IOException {
     final String initialReaderId = instanceIDs[1];
