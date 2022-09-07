@@ -33,7 +33,7 @@ import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 
-public interface IStateMachine {
+public interface ITransactionStateMachine {
 
     void reset();
 

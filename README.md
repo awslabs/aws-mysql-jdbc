@@ -278,6 +278,10 @@ At this point, the driver will connect to the new primary DB instance and return
 
 To the application, the logical connection will not appear to have changed, but the physical connection will have been swapped to the new primary DB instance. In this way the driver provides a faster way to reconnect to a newly promoted DB instance, thus increasing the availability of the DB cluster.
 
+### Setting the socket timeout
+
+If you turn off the enhanced failure monitoring plugin, which is loaded by default, it is highly recommended that you set a socket timeout according to your application's needs. This can be done via the `socketTimeout` connection property. Without enhanced failure monitoring or a socket timeout, the failover plugin may take a long time to detect a failover event.  We recommend that you set the socket timeout to a value slightly higher than the maximum time that you expect your queries to run. If you are using the enhanced failure monitoring plugin, setting the socket timeout is not required - the plugin will automatically detect any problems with the connection.
+
 ### Failover Parameters
 
 In addition to [the parameters that you can configure for the MySQL Connector/J driver](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-configuration-properties.html), you can pass the following parameters to the AWS JDBC Driver through the connection URL to specify additional driver behavior.
@@ -296,6 +300,7 @@ In addition to [the parameters that you can configure for the MySQL Connector/J 
 |`gatherPerfMetrics` | Boolean | No | Set to true if you would like the driver to record failover-associated metrics. <br><br>To print collected metrics, call `IClusterAwareMetricsReporter.reportMetrics(String connUrl, Log log)`. <br>e.g. `IClusterAwareMetricsReporter.reportMetrics(db-identifier.cluster-ro-XYZ.us-east-2.rds.amazonaws.com:3306, myLog)` <br><br>To reset collected metrics, call `IClusterAwareMetricsReporter.reportMetrics()`. | `false` | 
 |`gatherMetricsPerInstance` | Boolean | No | Set to true to gather additional performance metrics per instance as well as cluster. Set to false to only gather performance metrics per cluster. <br><br>To print collected metrics at instance level, call `IClusterAwareMetricsReporter.reportMetrics(String connUrl, Log log, true)`. | `false` | 
 |`allowXmlUnsafeExternalEntity` | Boolean | No | Set to true if you would like to use XML inputs that refer to external entities. WARNING: Setting this to true is unsafe since your system to be prone to XXE attacks. | `false` |
+|`socketTimeout` | Integer | Recommended if you turn off the enhanced failure monitoring plugin | Timeout (in milliseconds) on network socket operations (0, the default means no timeout). | `0` (No timeout) |
 
 ### Failover Exception Codes
 #### 08001 - Unable to Establish SQL Connection
@@ -564,6 +569,79 @@ public class AWSSecretsManagerPluginSample {
 }
 ```
 
+## Read-Write Splitting Plugin
+
+The read-write splitting plugin adds functionality to switch between writer/reader instances via calls to the `JdbcConnection#setReadOnly` method. Upon calling `setReadOnly(true)`, the plugin will establish a connection to a random reader instance and direct subsequent queries to this instance. Future calls to `setReadOnly` will switch between the established writer and reader connections according to the boolean argument you supply to the `setReadOnly` method.
+
+### Session State Limitations with the Read-Write Splitting Plugin
+
+There are many session state attributes that can change during a session, and many ways to change them. Consequently, the read-write splitting plugin has limited support for transferring session state between connections. The following attributes will be automatically transferred when switching connections:
+
+- autocommit value
+- current selected database
+- transaction isolation level
+- SQL SELECT max-rows limit
+
+All other session state attributes will be lost when switching connections. There are two scenarios when the plugin may switch a connection:
+1. You have loaded the plugin but have kept reader load balancing disabled. In this case, the connection will switch between the writer/reader when calling `setReadOnly`.
+2. You have loaded the plugin and have enabled reader load balancing. In this case, the connection will still switch between the writer/reader when calling `setReadOnly`. It will also switch at transaction boundaries. See the section on [reader load balancing](#reader-load-balancing) for more information on what is consided a transaction boundary.
+
+If your SQL workflow depends on session state attributes that are not mentioned above, you will need to re-configure those attributes whenever the connection is switched. If you have loaded the plugin but have kept reader load balancing disabled, you will need to re-configure these attributes after each call to `setReadOnly`. If reader load balancing is enabled, you will also need to re-configure these attributes after each transaction boundary. Since reader load balancing frequently switches the connection, we recommend that you keep it disabled if your workflow depends on session state attributes that are not automatically transferred.
+
+### Loading the Read-Write Splitting Plugin
+
+The read-write splitting plugin is not loaded by default. To load the plugin, set the `connectionPluginFactories` connection parameter:
+
+```
+final Properties properties = new Properties();
+properties.setProperty("connectionPluginFactories", ReadWriteSplittingPluginFactory.class.getName());
+```
+
+If you would like to load the read-write splitting plugin alongside the failover and enhanced failure monitoring plugins, the read-write splitting plugin must be the first plugin in the connection chain, otherwise failover exceptions will not be properly processed by the plugin:
+
+```
+final Properties properties = new Properties();
+properties.setProperty(
+        "connectionPluginFactories",
+        String.format("%s,%s,%s",
+                ReadWriteSplittingPluginFactory.class.getName(),
+                FailoverConnectionPluginFactory.class.getName(),
+                NodeMonitoringConnectionPluginFactory.class.getName())
+```
+
+### Reader Load Balancing
+
+The plugin can also load balance queries among available reader instances by enabling the `loadBalanceReadOnlyTraffic` connection parameter. This parameter is disabled by default. To enable it, set the following connection parameter:
+
+```
+final Properties properties = new Properties();
+properties.setProperty("loadBalanceReadOnlyTraffic", "true");
+```
+
+Once this parameter is enabled, queries will be load balanced among reader instances after calling `setReadOnly(true)` on the Connection object. Load balancing will switch to a new randomly selected reader instance at each transaction boundary.
+
+### Limitations with Reader Load Balancing
+
+When reader load balancing is enabled, the read-write splitting plugin will analyze methods and statements executed against the Connection object to determine when the connection is at a transaction boundary. This analysis does not support SQL strings containing multiple statements. If your SQL strings contain multiple statements, we recommend that you do not enable reader load balancing as the resulting behavior is not defined.
+
+### Using the Read-Write Splitting Plugin against RDS/Aurora Clusters
+
+When using the read-write splitting plugin against RDS or Aurora clusters, the plugin automatically acquires the cluster topology by querying the cluster. Because of this functionality, you do not have to supply multiple instance URLs in the connection string. Instead, supply just the URL for the initial instance to which you're connecting.
+
+### Using the Read-Write Splitting Plugin against Non-RDS Clusters
+
+If you are using the read-write splitting plugin against a cluster that is not hosted on RDS or Aurora, the plugin will not be able to automatically acquire the cluster topology. Instead, you must supply the topology information in the connection string as a comma-delimited list of multiple instance URLs. The first instance in the list must be the writer instance:
+
+```
+String connectionUrl = "jdbc:mysql:aws://writer-instance-1.com,reader-instance-1.com,reader-instance-2.com/database-name"
+```
+
+### Read Write Splitting Plugin Parameters
+
+| Parameter | Value | Required | Description | Default Value |
+| --- | --- | --- | --- | --- |
+| `loadBalanceReadOnlyTraffic` | Boolean | No  | Set to `true` to load balance queries among available reader instances. Once enabled, load balancing will automatically be performed for reader instances when the connection has been set to read-only mode via `JdbcConnection#setReadOnly` | `false` |
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
@@ -698,10 +776,6 @@ The driver currently does not support custom logging outside the usual logging f
 Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
 This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`. For additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
 To resolve this exception, add the `enabledTLSProtocols=TLSv1.2` connection property when connecting to a database.
-
-### Read-Write Splitting
-The driver does not support read-write splitting yet. A possible solution for now is to utilize multiple connection pools.
-One can send write traffic to a connection pool connected to the writer cluster endpoint, and send read-only traffic to another pool connected to the reader cluster endpoint.
 
 ### Password Expiration With AWS Secrets Manager
 When using the driver with AWS Secrets Manager, the driver does not automatically update expired credentials **during failover**.

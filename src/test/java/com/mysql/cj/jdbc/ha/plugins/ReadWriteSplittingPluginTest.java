@@ -471,7 +471,7 @@ public class ReadWriteSplittingPluginTest {
         mockTopologyService,
         mockConnectionProvider,
         rdsHostUtils,
-        new ReadWriteSplittingStateMachine(mockLog),
+        new ReadWriteSplittingStateMachine(),
         props,
         mockNextPlugin,
         mockLog);

@@ -68,7 +68,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
   private final RdsHostUtils rdsHostUtils;
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
-  private final IStateMachine stateMachine;
+  private final ITransactionStateMachine stateMachine;
   private final Log logger;
   private final boolean loadBalanceReadOnlyTraffic;
 
@@ -89,7 +89,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
         new AuroraTopologyService(logger),
         new BasicConnectionProvider(),
         new RdsHostUtils(logger),
-        new ReadWriteSplittingStateMachine(logger),
+        new ReadWriteSplittingStateMachine(),
         propertySet,
         nextPlugin,
         logger);
@@ -100,7 +100,7 @@ public class ReadWriteSplittingPlugin implements IConnectionPlugin {
       ITopologyService topologyService,
       IConnectionProvider connectionProvider,
       RdsHostUtils rdsHostUtils,
-      IStateMachine stateMachine,
+      ITransactionStateMachine stateMachine,
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger) {
