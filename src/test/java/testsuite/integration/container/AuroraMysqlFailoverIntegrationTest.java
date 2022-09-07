@@ -415,10 +415,14 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
 
     try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
       Statement stmt = conn.createStatement();
-      containerHelper.disableConnectivity(proxyInstance_1);
+
+      final Proxy instanceProxy = proxyMap.get(initialWriterId);
+      containerHelper.disableConnectivity(instanceProxy);
+
       long invokeStartTimeMs = System.currentTimeMillis();
       SQLException e = assertThrows(SQLException.class, () -> stmt.executeQuery("SELECT 1"));
       long invokeEndTimeMs = System.currentTimeMillis();
+      
       assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
       long duration = invokeEndTimeMs - invokeStartTimeMs;
       assertTrue(duration < 15000); // Add in 5 seconds to account for time to detect the failure
