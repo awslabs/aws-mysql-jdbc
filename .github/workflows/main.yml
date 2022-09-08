@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - read-write-splitting
+      - main
 
 concurrency:
   group: environment-${{ github.ref }}
