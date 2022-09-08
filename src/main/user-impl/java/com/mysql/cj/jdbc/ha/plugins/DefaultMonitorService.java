@@ -118,6 +118,8 @@ public class DefaultMonitorService implements IMonitorService {
       return;
     }
 
+    context.invalidate();
+
     // Any 1 node is enough to find the monitor containing the context
     // All nodes will map to the same monitor
     final String node = this.threadContainer.getNode(context.getNodeKeys());
@@ -127,7 +129,10 @@ public class DefaultMonitorService implements IMonitorService {
       return;
     }
 
-    this.threadContainer.getMonitor(node).stopMonitoring(context);
+    final IMonitor monitor = this.threadContainer.getMonitor(node);
+    if (monitor != null) {
+      monitor.stopMonitoring(context);
+    }
   }
 
   @Override
@@ -138,8 +143,10 @@ public class DefaultMonitorService implements IMonitorService {
       return;
     }
     final IMonitor monitor = this.threadContainer.getMonitor(node);
-    monitor.clearContexts();
-    this.threadContainer.resetResource(monitor);
+    if (monitor != null) {
+      monitor.clearContexts();
+      this.threadContainer.resetResource(monitor);
+    }
   }
 
   @Override
