@@ -618,7 +618,12 @@ final Properties properties = new Properties();
 properties.setProperty("loadBalanceReadOnlyTraffic", "true");
 ```
 
-Once this parameter is enabled, queries will be load balanced among reader instances after calling `setReadOnly(true)` on the Connection object. Load balancing will switch to a new randomly selected reader instance at each transaction boundary.
+Once this parameter is enabled and `setReadOnly(true)` has been called on the Connection object, the plugin will switch to a new randomly selected reader instance at each transaction boundary. The following scenarios are considered transaction boundaries:
+- After calling `commit()` or `rollback()`
+- After executing `COMMIT` or `ROLLBACK` as a SQL statement
+- After executing any SQL statement while autocommit is on, with the following exceptions:
+  - The statement started a transaction via `BEGIN` or `START TRANSACTION`
+  - The statement began with `SET` (eg `SET time_zone = "+00:00"`)
 
 ### Limitations with Reader Load Balancing
 
