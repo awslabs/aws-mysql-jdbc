@@ -31,11 +31,25 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.ConnectionProxy;
 import com.mysql.cj.log.Log;
+import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,37 +64,25 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRespon
 import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerException;
 import software.amazon.awssdk.utils.Pair;
 
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 public class AWSSecretsManagerPluginTest {
 
   private static final String TEST_REGION = "us-east-2";
   private static final String TEST_SECRET_ID = "secretId";
   private static final String TEST_USERNAME = "testUser";
   private static final String TEST_PASSWORD = "testPassword";
-  private static final String VALID_SECRET_STRING = "{\"username\": \"" + TEST_USERNAME + "\", \"password\": \"" + TEST_PASSWORD + "\"}";
+  private static final String VALID_SECRET_STRING =
+      "{\"username\": \"" + TEST_USERNAME + "\", \"password\": \"" + TEST_PASSWORD + "\"}";
   private static final String INVALID_SECRET_STRING = "{username: invalid, password: invalid}";
   private static final Pair<String, Region> SECRET_CACHE_KEY = Pair.of(TEST_SECRET_ID, Region.of(TEST_REGION));
-  private static final AWSSecretsManagerPlugin.Secret SECRET = new AWSSecretsManagerPlugin.Secret("testUser", "testPassword");
+  private static final AWSSecretsManagerPlugin.Secret SECRET = new AWSSecretsManagerPlugin.Secret("testUser",
+      "testPassword");
   private static final String TEST_DB_URL = "jdbc:mysql:aws://test-domain:3306/test";
   private static final String TEST_SQL_ERROR = "SQL exception error message";
   private static final String SQL_STATE_FAIL_GENERIC = "HY000";
-  private static final GetSecretValueResponse VALID_GET_SECRET_VALUE_RESPONSE = GetSecretValueResponse.builder().secretString(VALID_SECRET_STRING).build();
-  private static final GetSecretValueResponse INVALID_GET_SECRET_VALUE_RESPONSE = GetSecretValueResponse.builder().secretString(INVALID_SECRET_STRING).build();
+  private static final GetSecretValueResponse VALID_GET_SECRET_VALUE_RESPONSE = GetSecretValueResponse.builder()
+      .secretString(VALID_SECRET_STRING).build();
+  private static final GetSecretValueResponse INVALID_GET_SECRET_VALUE_RESPONSE = GetSecretValueResponse.builder()
+      .secretString(INVALID_SECRET_STRING).build();
   private final PropertySet propertySet = new JdbcPropertySetImpl();
   private AWSSecretsManagerPlugin plugin;
   private AutoCloseable closeable;
@@ -145,10 +147,13 @@ public class AWSSecretsManagerPluginTest {
   @Test
   public void testFailedInitialConnectionWithGenericError() throws SQLException {
     final SQLException failedFirstConnectionGenericException = new SQLException(TEST_SQL_ERROR, SQL_STATE_FAIL_GENERIC);
-    doThrow(failedFirstConnectionGenericException).when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
-    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(VALID_GET_SECRET_VALUE_RESPONSE);
+    doThrow(failedFirstConnectionGenericException).when(this.nextPlugin)
+        .openInitialConnection(any(ConnectionUrl.class));
+    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(
+        VALID_GET_SECRET_VALUE_RESPONSE);
 
-    final SQLException connectionFailedException = assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
+    final SQLException connectionFailedException = assertThrows(SQLException.class,
+        () -> this.plugin.openInitialConnection(this.connectionUrl));
 
     assertEquals(TEST_SQL_ERROR, connectionFailedException.getMessage());
     verify(this.nextPlugin).openInitialConnection(this.captor.capture());
@@ -158,17 +163,38 @@ public class AWSSecretsManagerPluginTest {
     assertEquals(TEST_PASSWORD, connectionProperties.get("password"));
   }
 
+  @Test
+  public void testFailedInitialConnectionWithWrappedGenericError() throws SQLException {
+    final SQLException failedFirstConnectionGenericException = new SQLException(TEST_SQL_ERROR, SQL_STATE_FAIL_GENERIC);
+    final SQLException wrappedException = new SQLException(failedFirstConnectionGenericException);
+    doThrow(wrappedException).when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
+    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(
+        VALID_GET_SECRET_VALUE_RESPONSE);
+
+    final SQLException connectionFailedException = assertThrows(SQLException.class,
+        () -> this.plugin.openInitialConnection(this.connectionUrl));
+
+    assertEquals(wrappedException, connectionFailedException);
+    verify(this.nextPlugin).openInitialConnection(this.captor.capture());
+    final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
+    final Map<String, String> connectionProperties = connectionUrls.get(0).getOriginalProperties();
+    assertEquals(TEST_USERNAME, connectionProperties.get("user"));
+    assertEquals(TEST_PASSWORD, connectionProperties.get("password"));
+  }
+
   /**
-   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error.
-   * In this case, the plugin will fetch the secret and will retry the connection.
+   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error. In this
+   * case, the plugin will fetch the secret and will retry the connection.
    */
   @Test
   public void testConnectWithNewSecrets() throws SQLException {
     // Fail initial connection attempt so secrets will be retrieved.
     // Second attempt should be successful.
-    final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
+    final SQLException failedFirstConnectionAccessException = new SQLException(TEST_SQL_ERROR,
+        AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
     doThrow(failedFirstConnectionAccessException).when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
-    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(VALID_GET_SECRET_VALUE_RESPONSE);
+    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(
+        VALID_GET_SECRET_VALUE_RESPONSE);
 
     assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
 
@@ -183,19 +209,49 @@ public class AWSSecretsManagerPluginTest {
     assertEquals(TEST_PASSWORD, connectionPropsWithNewSecret.get("password"));
   }
 
+  @Test
+  public void testConnectWithWrappedException() throws SQLException {
+    // Failing the initial connection attempt with a wrapped exception.
+    // Second attempt should be successful.
+    final SQLException connectionAccessError = new SQLException(TEST_SQL_ERROR,
+        AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
+    final SQLException wrappedException = new SQLNonTransientConnectionException(connectionAccessError);
+    doThrow(wrappedException).when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
+    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(
+        VALID_GET_SECRET_VALUE_RESPONSE);
+
+    final SQLException connectionFailedException = assertThrows(SQLException.class,
+        () -> this.plugin.openInitialConnection(this.connectionUrl));
+
+    assertEquals(wrappedException, connectionFailedException);
+
+    assertEquals(1, AWSSecretsManagerPlugin.SECRET_CACHE.size());
+    verify(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
+
+    // Verify the openInitialConnection method was called using different ConnectionUrl arguments.
+    verify(this.nextPlugin, times(1)).openInitialConnection(this.captor.capture());
+    final List<ConnectionUrl> connectionUrls = this.captor.getAllValues();
+    Map<String, String> connectionPropsWithNewSecret = connectionUrls.get(0).getOriginalProperties();
+    assertEquals(TEST_USERNAME, connectionPropsWithNewSecret.get("user"));
+    assertEquals(TEST_PASSWORD, connectionPropsWithNewSecret.get("password"));
+  }
+
   /**
-   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error.
-   * In this case, the plugin will attempt to fetch the secret and retry the connection,
-   * but it will fail because the returned secret could not be parsed.
+   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error. In this
+   * case, the plugin will attempt to fetch the secret and retry the connection, but it will fail because the returned
+   * secret could not be parsed.
    */
   @Test
   public void testFailedToReadSecrets() throws SQLException {
     // Fail initial connection attempt so secrets will be retrieved.
-    final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
+    final SQLException failedFirstConnectionAccessException = new SQLException(TEST_SQL_ERROR,
+        AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
     doThrow(failedFirstConnectionAccessException).when(this.nextPlugin).openInitialConnection(any(ConnectionUrl.class));
-    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(INVALID_GET_SECRET_VALUE_RESPONSE);
+    when(this.mockSecretsManagerClient.getSecretValue(this.mockGetValueRequest)).thenReturn(
+        INVALID_GET_SECRET_VALUE_RESPONSE);
 
-    final SQLException readSecretsFailedException = assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
+    final SQLException readSecretsFailedException = assertThrows(SQLException.class,
+        () -> this.plugin.openInitialConnection(this.connectionUrl));
 
     assertEquals(readSecretsFailedException.getMessage(), AWSSecretsManagerPlugin.ERROR_GET_SECRETS_FAILED);
     assertEquals(0, AWSSecretsManagerPlugin.SECRET_CACHE.size());
@@ -204,18 +260,20 @@ public class AWSSecretsManagerPluginTest {
   }
 
   /**
-   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error.
-   * In this case, the plugin will attempt to fetch the secret and retry the connection,
-   * but it will fail because an exception was thrown by the AWS Secrets Manager.
+   * The plugin will attempt to open a connection with a cached secret, but it will fail with an access error. In this
+   * case, the plugin will attempt to fetch the secret and retry the connection, but it will fail because an exception
+   * was thrown by the AWS Secrets Manager.
    */
   @Test
   public void testFailedToGetSecrets() throws SQLException {
     // Fail initial connection attempt so secrets will be retrieved.
-    final SQLException failedFirstConnectionAccessException  = new SQLException(TEST_SQL_ERROR, AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
+    final SQLException failedFirstConnectionAccessException = new SQLException(TEST_SQL_ERROR,
+        AWSSecretsManagerPlugin.SQLSTATE_ACCESS_ERROR);
     doThrow(failedFirstConnectionAccessException).when(nextPlugin).openInitialConnection(any(ConnectionUrl.class));
     doThrow(SecretsManagerException.class).when(this.mockSecretsManagerClient).getSecretValue(this.mockGetValueRequest);
 
-    final SQLException getSecretsFailedException = assertThrows(SQLException.class, () -> this.plugin.openInitialConnection(this.connectionUrl));
+    final SQLException getSecretsFailedException = assertThrows(SQLException.class,
+        () -> this.plugin.openInitialConnection(this.connectionUrl));
 
     assertEquals(getSecretsFailedException.getMessage(), AWSSecretsManagerPlugin.ERROR_GET_SECRETS_FAILED);
     assertEquals(0, AWSSecretsManagerPlugin.SECRET_CACHE.size());

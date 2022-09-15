@@ -179,7 +179,19 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
    */
   private boolean isLoginUnsuccessful(SQLException exception) {
     this.logger.logTrace("Login failed. SQLState=" + exception.getSQLState(), exception);
-    return SQLSTATE_ACCESS_ERROR.equals(exception.getSQLState());
+
+    Throwable throwable = exception;
+    while (throwable != null) {
+      if (throwable instanceof SQLException) {
+        if (SQLSTATE_ACCESS_ERROR.equals(((SQLException) throwable).getSQLState())) {
+          return true;
+        }
+
+        throwable = throwable.getCause();
+      }
+    }
+
+    return false;
   }
 
   /**
