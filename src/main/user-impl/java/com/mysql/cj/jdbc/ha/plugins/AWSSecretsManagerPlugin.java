@@ -186,9 +186,8 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
         if (SQLSTATE_ACCESS_ERROR.equals(((SQLException) throwable).getSQLState())) {
           return true;
         }
-
-        throwable = throwable.getCause();
       }
+      throwable = throwable.getCause();
     }
 
     return false;
