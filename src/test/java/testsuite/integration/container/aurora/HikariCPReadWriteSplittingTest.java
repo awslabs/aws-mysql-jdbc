@@ -31,6 +31,9 @@ package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
+import com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.LogFactory;
 import com.mysql.cj.log.StandardLogger;
@@ -427,21 +430,20 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
         config.addDataSourceProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
         config.addDataSourceProperty(PropertyKey.failureDetectionTime.getKeyName(), "3000");
         config.addDataSourceProperty(PropertyKey.failureDetectionInterval.getKeyName(), "1500");
-        config.addDataSourceProperty(PropertyKey.socketTimeout.getKeyName(), "3000");
 
         return config;
     }
 
     private static void addAllPlugins(HikariConfig config) {
         config.addDataSourceProperty(PropertyKey.connectionPluginFactories.getKeyName(),
-                "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
-                "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
-                "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
+                ReadWriteSplittingPluginFactory.class.getName() +
+                FailoverConnectionPluginFactory.class.getName() +
+                NodeMonitoringConnectionPluginFactory.class.getName());
     }
 
     private static void addReadWritePlugin(HikariConfig config) {
         config.addDataSourceProperty(PropertyKey.connectionPluginFactories.getKeyName(),
-                "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory");
+                ReadWriteSplittingPluginFactory.class.getName());
     }
 
     private void createDataSource(HikariConfig config) {

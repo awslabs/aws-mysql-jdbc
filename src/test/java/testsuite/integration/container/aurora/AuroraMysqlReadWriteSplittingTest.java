@@ -31,6 +31,9 @@ package testsuite.integration.container.aurora;
 
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
+import com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory;
+import com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
 import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -912,14 +915,14 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
 
   private static void addAllPlugins(Properties props) {
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
-            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory," +
-                    "com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory," +
-                    "com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory");
+            ReadWriteSplittingPluginFactory.class.getName() +
+                    FailoverConnectionPluginFactory.class.getName() +
+                    NodeMonitoringConnectionPluginFactory.class.getName());
   }
 
   private static void addReadWritePlugin(Properties props) {
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
-            "com.mysql.cj.jdbc.ha.plugins.ReadWriteSplittingPluginFactory");
+            ReadWriteSplittingPluginFactory.class.getName());
   }
 
   private boolean pluginChainIncludesFailoverPlugin(Properties props) {
