@@ -237,7 +237,7 @@ dependencies {
     implementation("com.google.protobuf:protobuf-java:3.19.1")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
-    implementation("org.slf4j:slf4j-api:1.7.30")
+    implementation("org.slf4j:slf4j-api:2.0.1")
     implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.13.0")
     compileOnly("software.amazon.awssdk:secretsmanager:2.17.191")
 
