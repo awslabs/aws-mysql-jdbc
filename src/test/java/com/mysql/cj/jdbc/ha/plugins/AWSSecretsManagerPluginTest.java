@@ -31,25 +31,11 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.ConnectionProxy;
 import com.mysql.cj.log.Log;
-import java.sql.SQLException;
-import java.sql.SQLNonTransientConnectionException;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +49,21 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueReques
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerException;
 import software.amazon.awssdk.utils.Pair;
+
+import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class AWSSecretsManagerPluginTest {
 
@@ -96,7 +97,7 @@ public class AWSSecretsManagerPluginTest {
   @Captor ArgumentCaptor<ConnectionUrl> captor;
 
   @BeforeEach
-  private void init() throws SQLException {
+  void init() throws SQLException {
     closeable = MockitoAnnotations.openMocks(this);
 
     Properties properties = new Properties();

@@ -112,7 +112,7 @@ public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegratio
     }
 
     @BeforeEach
-    private void validateCluster() throws InterruptedException, SQLException, IOException {
+    void validateCluster() throws InterruptedException, SQLException, IOException {
         crashInstancesExecutorService = Executors.newFixedThreadPool(clusterSize);
         instancesToCrash.clear();
         for (final String id : instanceIDs) {
@@ -136,7 +136,7 @@ public class AuroraMysqlHardFailureIntegrationTest extends AuroraMysqlIntegratio
     }
 
     @AfterEach
-    private void reviveInstancesAndCloseTestConnection() throws InterruptedException {
+    void reviveInstancesAndCloseTestConnection() throws InterruptedException {
         instancesToCrash.clear();
         crashInstancesExecutorService.shutdownNow();
 
