@@ -33,6 +33,7 @@ package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.LRUCache;
 
@@ -53,6 +54,7 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 
 public class AWSSecretsManagerPlugin implements IConnectionPlugin {
+
   static final String SECRET_ID_PROPERTY = "secretsManagerSecretId";
   static final String REGION_PROPERTY = "secretsManagerRegion";
   private static final String ERROR_MISSING_DEPENDENCY_SECRETS =
@@ -179,7 +181,24 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
    */
   private boolean isLoginUnsuccessful(SQLException exception) {
     this.logger.logTrace("Login failed. SQLState=" + exception.getSQLState(), exception);
-    return SQLSTATE_ACCESS_ERROR.equals(exception.getSQLState());
+
+    Throwable throwable = exception;
+    while (throwable != null) {
+      String sqlState = "";
+      if (throwable instanceof SQLException) {
+        sqlState = ((SQLException) throwable).getSQLState();
+      } else if (throwable instanceof CJException) {
+        sqlState = ((CJException) throwable).getSQLState();
+      }
+
+      if (SQLSTATE_ACCESS_ERROR.equals(sqlState)) {
+        return true;
+      }
+
+      throwable = throwable.getCause();
+    }
+
+    return false;
   }
 
   /**
@@ -190,9 +209,9 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   private void applySecretToProperties(Properties properties) {
     if (this.secret != null) {
       /** Updated credentials are stored in properties. Other plugins in the plugin chain may
-      * change them if needed. Eventually, credentials will be used to open a new connection in
-      * {@link DefaultConnectionPlugin#openInitialConnection}
-      */
+       * change them if needed. Eventually, credentials will be used to open a new connection in
+       * {@link DefaultConnectionPlugin#openInitialConnection}
+       */
       properties.put("user", secret.getUsername());
       properties.put("password", secret.getPassword());
     }
@@ -225,17 +244,18 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   }
 
   /**
-   * Called to open a new connection. This plugin is responsible to providing a recent credentials and
-   * delegate actual opening a new connection to other plugins in the plugin chain. Eventually
-   * a new connection is handled either by some plugin, or by {@link DefaultConnectionPlugin#openInitialConnection}
+   * Called to open a new connection. This plugin is responsible to providing a recent credentials and delegate actual
+   * opening a new connection to other plugins in the plugin chain. Eventually a new connection is handled either by
+   * some plugin, or by {@link DefaultConnectionPlugin#openInitialConnection}
    *
-   * @param props Properties with updated credentials.
+   * @param props         Properties with updated credentials.
    * @param connectionUrl Original instance of ConnectionUrl
    */
   private void attemptToLogin(Properties props, ConnectionUrl connectionUrl)
       throws SQLException {
 
-    final ConnectionUrl newConnectionUrl = ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(), props);
+    final ConnectionUrl newConnectionUrl = ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(),
+        props);
     this.nextPlugin.openInitialConnection(newConnectionUrl);
   }
 
@@ -272,6 +292,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   static class Secret {
+
     @JsonProperty("username")
     private String username;
     @JsonProperty("password")
