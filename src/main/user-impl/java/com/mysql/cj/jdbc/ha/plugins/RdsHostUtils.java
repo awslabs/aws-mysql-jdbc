@@ -113,7 +113,7 @@ public class RdsHostUtils {
     if (rdsUrlType.isRds()) {
       clusterInstanceTemplateHost = getRdsInstanceHostPattern(hostName);
       if (clusterInstanceTemplateHost == null) {
-        logAndThrow(Messages.getString("RdsHostUtils.5"));
+        logAndThrow(Messages.getString("RdsHostUtils.hostPatternRequired"));
       }
     }
 
@@ -125,7 +125,7 @@ public class RdsHostUtils {
     final ConnectionUrlParser.Pair<String, Integer> pair = ConnectionUrlParser.parseHostPortPair(pattern);
     if (pair == null) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the value could not be parsed"
-      logAndThrow(Messages.getString("RdsHostUtils.1"));
+      logAndThrow(Messages.getString("RdsHostUtils.hostPatternParseError"));
     }
 
     final String hostName = pair.left;
@@ -144,17 +144,17 @@ public class RdsHostUtils {
     if (!isDnsPatternValid(hostName)) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the host pattern must contain a '?'
       // character as a placeholder for the DB instance identifiers of the instances in the cluster"
-      logAndThrow(Messages.getString("RdsHostUtils.2"));
+      logAndThrow(Messages.getString("RdsHostUtils.invalidHostPattern"));
     }
 
     if (RDS_PROXY.equals(rdsUrlType)) {
       // "An RDS Proxy url can't be used as the 'clusterInstanceHostPattern' configuration setting."
-      logAndThrow(Messages.getString("RdsHostUtils.3"));
+      logAndThrow(Messages.getString("RdsHostUtils.rdsProxyHostPatternInvalid"));
     }
 
     if (RDS_CUSTOM_CLUSTER.equals(rdsUrlType)) {
       // "An RDS Custom Cluster endpoint can't be used as the 'clusterInstanceHostPattern' configuration setting."
-      logAndThrow(Messages.getString("RdsHostUtils.4"));
+      logAndThrow(Messages.getString("RdsHostUtils.customClusterHostPatternInvalid"));
     }
   }
 

@@ -915,9 +915,9 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
 
   private static void addAllPlugins(Properties props) {
     props.setProperty(PropertyKey.connectionPluginFactories.getKeyName(),
-            ReadWriteSplittingPluginFactory.class.getName() +
-                    FailoverConnectionPluginFactory.class.getName() +
-                    NodeMonitoringConnectionPluginFactory.class.getName());
+            ReadWriteSplittingPluginFactory.class.getName() + ","
+                    + FailoverConnectionPluginFactory.class.getName() + ","
+                    + NodeMonitoringConnectionPluginFactory.class.getName());
   }
 
   private static void addReadWritePlugin(Properties props) {

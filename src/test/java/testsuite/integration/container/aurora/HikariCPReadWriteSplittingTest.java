@@ -436,9 +436,9 @@ public class HikariCPReadWriteSplittingTest extends AuroraMysqlIntegrationBaseTe
 
     private static void addAllPlugins(HikariConfig config) {
         config.addDataSourceProperty(PropertyKey.connectionPluginFactories.getKeyName(),
-                ReadWriteSplittingPluginFactory.class.getName() +
-                FailoverConnectionPluginFactory.class.getName() +
-                NodeMonitoringConnectionPluginFactory.class.getName());
+                ReadWriteSplittingPluginFactory.class.getName() + ","
+                        + FailoverConnectionPluginFactory.class.getName() + ","
+                        + NodeMonitoringConnectionPluginFactory.class.getName());
     }
 
     private static void addReadWritePlugin(HikariConfig config) {

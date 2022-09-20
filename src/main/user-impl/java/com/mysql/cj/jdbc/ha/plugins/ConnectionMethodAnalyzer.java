@@ -175,7 +175,7 @@ public class ConnectionMethodAnalyzer {
 
         int equalsCharacterIndex = sql.indexOf("=");
         if (equalsCharacterIndex == -1) {
-            throw new SQLException(Messages.getString("ConnectionMethodAnalyzer.1"));
+            throw new SQLException(Messages.getString("ConnectionMethodAnalyzer.errorParsingAutocommitSql"));
         }
         sql = sql.substring(equalsCharacterIndex + 1);
 
@@ -189,7 +189,7 @@ public class ConnectionMethodAnalyzer {
         } else if ("true".equals(sql) || "1".equals(sql)) {
             return true;
         } else {
-            throw new SQLException(Messages.getString("ConnectionMethodAnalyzer.1"));
+            throw new SQLException(Messages.getString("ConnectionMethodAnalyzer.errorParsingAutocommitSql"));
         }
     }
 }

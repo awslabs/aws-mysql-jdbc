@@ -48,7 +48,7 @@ public class AutoCommitOnTransactionState implements IState {
         }
 
         if (methodAnalyzer.isSetReadOnlyFalse(methodName, args)) {
-            throw new SQLException(Messages.getString("AutoCommitOnTransactionState.1"));
+            throw new SQLException(Messages.getString("AutoCommitOnTransactionState.setReadOnlyFalseInTransaction"));
         }
 
         if (methodAnalyzer.isSetAutoCommitFalse(methodName, args)) {

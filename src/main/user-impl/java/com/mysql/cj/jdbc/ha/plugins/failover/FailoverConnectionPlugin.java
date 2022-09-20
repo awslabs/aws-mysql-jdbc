@@ -944,6 +944,10 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private void logTopology() {
+    if (!this.logger.isTraceEnabled()) {
+      return;
+    }
+
     StringBuilder msg = new StringBuilder();
     for (int i = 0; i < this.hosts.size(); i++) {
       HostInfo hostInfo = this.hosts.get(i);

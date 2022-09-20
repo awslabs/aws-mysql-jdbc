@@ -50,7 +50,7 @@ public class AutoCommitOffTransactionState implements IState {
         }
 
         if (methodAnalyzer.isSetReadOnlyFalse(methodName, args)) {
-            throw new SQLException(Messages.getString("AutoCommitOffTransactionState.1"));
+            throw new SQLException(Messages.getString("AutoCommitOffTransactionState.setReadOnlyFalseInTransaction"));
         }
 
         return ReadWriteSplittingStateMachine.AUTOCOMMIT_OFF_TRANSACTION_STATE;
