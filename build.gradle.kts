@@ -226,7 +226,7 @@ dependencies {
     testImplementation("org.mockito:mockito-inline:4.8.0")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.testcontainers:testcontainers:1.16.2")
-    testImplementation("org.testcontainers:mysql:1.16.2")
+    testImplementation("org.testcontainers:mysql:1.17.3")
     testImplementation("org.testcontainers:junit-jupiter:1.16.2")
     testImplementation("org.testcontainers:toxiproxy:1.16.2")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
