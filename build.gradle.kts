@@ -214,8 +214,8 @@ tasks.withType<Checkstyle>().configureEach {
 
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.9.0")
-    testImplementation("software.amazon.awssdk:rds:2.17.165")
-    testImplementation("software.amazon.awssdk:ec2:2.17.165")
+    testImplementation("software.amazon.awssdk:rds:2.17.191")
+    testImplementation("software.amazon.awssdk:ec2:2.17.191")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
@@ -231,15 +231,15 @@ dependencies {
     testImplementation("org.testcontainers:toxiproxy:1.17.3")
     testImplementation("org.apache.poi:poi-ooxml:5.1.0")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
-    testImplementation("software.amazon.awssdk:secretsmanager:2.17.165")
+    testImplementation("software.amazon.awssdk:secretsmanager:2.17.191")
 
-    implementation("software.amazon.awssdk:rds:2.17.165")
+    implementation("software.amazon.awssdk:rds:2.17.191")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:2.0.1")
     implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.13.0")
-    compileOnly("software.amazon.awssdk:secretsmanager:2.17.165")
+    compileOnly("software.amazon.awssdk:secretsmanager:2.17.191")
 
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }
