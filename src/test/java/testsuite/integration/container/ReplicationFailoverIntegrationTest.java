@@ -146,7 +146,7 @@ public class ReplicationFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   @BeforeEach
-  private void resetCluster() throws InterruptedException {
+  void resetCluster() throws InterruptedException {
     waitUntilFirstInstanceIsWriter();
   }
 }
