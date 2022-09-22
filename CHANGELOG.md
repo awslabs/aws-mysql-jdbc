@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
 
+## [1.1.1] - 2022-09-22
+
+### Changed
+* Upgraded dependency versions
+
+### Fixed
+* Resolved an issue where failover was taking longer than expected when the driver was used with certain versions of HikariCP. [Issue 254](https://github.com/awslabs/aws-mysql-jdbc/issues/254).
+* Resolved an issue where the EFM plugin occasionally threw a NullPointerException while stopping the monitor context. [Issue 209](https://github.com/awslabs/aws-mysql-jdbc/issues/209).
+* Fixed a bug where the AWS Secrets Manager Plugin was not checking nested exceptions when determining if the exception was caused by an unsuccessful login attempt.
+* Fixed a bug where failover could take up to two times the length of the failoverTimeoutMs connection property.
+* Fixed an incorrect URL template for DBeaver in README.md.
+* Fixed some incorrect log messages.
+
 ## [1.1.0] - 2022-06-29
 
 ### Added
