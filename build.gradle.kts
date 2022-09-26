@@ -45,7 +45,7 @@ plugins {
     signing
     // Release
     id("com.github.vlsi.crlf") version "1.77"
-    id("com.github.vlsi.gradle-extensions") version "1.77"
+    id("com.github.vlsi.gradle-extensions") version "1.82"
     id("com.github.vlsi.license-gather") version "1.77" apply false
     id("com.github.vlsi.stage-vote-release") version "1.82"
     id("com.github.johnrengelman.shadow") version "7.1.2"
