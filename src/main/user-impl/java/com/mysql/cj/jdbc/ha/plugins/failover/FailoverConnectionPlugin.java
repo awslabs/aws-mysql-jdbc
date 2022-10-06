@@ -1,32 +1,32 @@
 /*
- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License, version 2.0
- * (GPLv2), as published by the Free Software Foundation, with the
- * following additional permissions:
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
  *
- * This program is distributed with certain software that is licensed
- * under separate terms, as designated in a particular file or component
- * or in the license documentation. Without limiting your rights under
- * the GPLv2, the authors of this program hereby grant you an additional
- * permission to link the program and your derivative works with the
- * separately licensed software that they have included with the program.
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License, version 2.0, as published by the
+ * Free Software Foundation.
  *
- * Without limiting the foregoing grant of rights under the GPLv2 and
- * additional permission as to separately licensed software, this
- * program is also subject to the Universal FOSS Exception, version 1.0,
- * a copy of which can be found along with its FAQ at
+ * This program is also distributed with certain software (including but not
+ * limited to OpenSSL) that is licensed under separate terms, as designated in a
+ * particular file or component or in included license documentation. The
+ * authors of MySQL hereby grant you an additional permission to link the
+ * program and your derivative works with the separately licensed software that
+ * they have included with MySQL.
+ *
+ * Without limiting anything contained in the foregoing, this file, which is
+ * part of MySQL Connector/J, is also subject to the Universal FOSS Exception,
+ * version 1.0, a copy of which can be found at
  * http://oss.oracle.com/licenses/universal-foss-exception.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License, version 2.0, for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,
+ * for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see
- * http://www.gnu.org/licenses/gpl-2.0.html.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
 package com.mysql.cj.jdbc.ha.plugins.failover;
@@ -57,6 +57,7 @@ import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
+import javax.net.ssl.SSLException;
 import java.io.EOFException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -69,8 +70,6 @@ import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.net.ssl.SSLException;
 
 /**
  * A {@link IConnectionPlugin} implementation that provides cluster-aware failover
