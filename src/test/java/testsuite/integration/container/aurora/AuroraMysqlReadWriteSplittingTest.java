@@ -503,10 +503,11 @@ public class AuroraMysqlReadWriteSplittingTest extends AuroraMysqlIntegrationBas
   public void test_readerLoadBalancing_lostConnectivity(Properties props) throws SQLException, IOException {
     String initialWriterId = instanceIDs[0];
 
-    // autocommit on transaction (autocommit implicitly disabled)
+    props.setProperty(PropertyKey.loadBalanceReadOnlyTraffic.getKeyName(), "true");
     try (Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT, props)) {
       conn.setReadOnly(true);
       final Statement stmt1 = conn.createStatement();
+      // autocommit on transaction (autocommit implicitly disabled)
       stmt1.execute("BEGIN");
       String readerId = queryInstanceId(conn);
 
