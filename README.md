@@ -256,7 +256,7 @@ To learn how to write custom plugins, refer to examples located inside [Custom P
 | Parameter       | Value           | Required      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                              | Default Value |
 | --------------- |:---------------:|:-------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ------------- |
 | `useConnectionPlugins` | Boolean | No | When set to the default value `true`, the connection plugins will be loaded, including the Failover and Enhanced Failure Monitor plugins. When set to `false`, the connection plugins will not be loaded and the driver will instead execute JDBC methods directly. <br><br> **NOTE:** Since the failover functionality and Enhanced Failure Monitoring are implemented with plugins, disabling connection plugins will also disable such functionality. | `true` |
-| `connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories that will create the plugin objects. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory`                             | `com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory, com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` |
+| `connectionPluginFactories` | String | No | String of fully-qualified class name of plugin factories that will create the plugin objects. <br/><br/>Each factory in the string should be comma-separated `,`<br/><br/>**NOTE: The order of factories declared matters.**  <br/><br/>Example: `customplugins.MethodCountConnectionPluginFactory`, `customplugins.ExecutionTimeConnectionPluginFactory,software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory`                             | `software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory, software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` |
 
 ## Failover Plugin
 
@@ -498,7 +498,7 @@ The figure above shows a simplified workflow of Enhanced Failure Monitoring. Enh
 The Enhanced Failure Monitoring plugin is loaded by default, and can be disabled by setting parameter `failureDetectionEnabled` to `false`. 
 
 If custom connection plugins are loaded, Enhanced Failure Monitoring and Failover Connection Plugin 
-will NOT be loaded unless explicitly included by adding `com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory,com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` to `connectionPluginFactories`. 
+will NOT be loaded unless explicitly included by adding `software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory,software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory` to `connectionPluginFactories`. 
 
 ### Enhanced Failure Monitoring Parameters
 `failureDetectionTime`, `failureDetectionInterval`, and `failureDetectionCount` are similar to TCP Keep Alive parameters.
@@ -712,9 +712,9 @@ A possible solution to handle password expiration during failover is to catch SQ
 ```java
 import java.sql.*;
 import java.util.Properties;
-import com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
-import com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory;
+import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.AWSSecretsManagerPluginFactory;
+import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.failover.FailoverConnectionPluginFactory;
+import software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.NodeMonitoringConnectionPluginFactory;
 import com.mysql.cj.log.StandardLogger;
 
 public class AWSSecretsManagerPluginSample2 {
