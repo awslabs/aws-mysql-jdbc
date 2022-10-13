@@ -1,34 +1,33 @@
-AWS JDBC Driver for MySQL
+Copyright (c) 2000, 2022, Oracle and/or its affiliates.
 
-Copyright Amazon.com Inc. or affiliates.
-
-
-
-The Amazon Web Services (AWS) JDBC Driver for MySQL is a driver that enables
-
-applications to take full advantage of the features of clustered MySQL databases.
-
-It is based on and can be used as a drop-in replacement for the MySQL Connector/J driver
-
-(https://github.com/mysql/mysql-connector-j) and is compatible with all MySQL deployments.
-
-
-
-
-The AWS JDBC Driver for MySQL currently enables fast failover for Amazon Aurora with MySQL
-
-compatibility. Support for additional features of clustered databases, including features
-
-of Amazon RDS for MySQL and on-premises MySQL deployments, is planned.
-
-
+This is a release of MySQL Connector/J, a JDBC Type 4 driver for MySQL that
+also supports the new X DevAPI.
 
 License information can be found in the LICENSE file.
 
-
-
 This distribution may include materials developed by third parties.
-
 For license and attribution notices for these materials, please refer to the
-
 LICENSE file.
+
+For more information on MySQL Connector/J, visit
+  https://dev.mysql.com/doc/connector-j/8.0/en/
+
+For additional downloads and the source of MySQL Connector/J, visit
+  https://dev.mysql.com/downloads/
+
+MySQL Connector/J is brought to you by the MySQL team at Oracle.
+
+Notice:
+- In order to use the logging capabilities provided by the default
+  implementation com.mysql.cj.log.Slf4JLogger, it is required to add one or
+  more jars for Simple Logging Facade for Java (SLF4J) to your CLASSPATH.
+- To use the X DevAPI features in Connector/J, you also need the external
+  library protobuf-java, which you can download manually from the official
+  Maven repository and add it to the CLASSPATH, or use Maven's automatic
+  dependency resolution features by adding a dependency to "GroupId: com.mysql"
+  and "ArtifactId: mysql-connector-j" to your project's pom.xml file.
+- To use OCI AIM authentication, you will need to add the external library
+  oci-java-sdk-common, which you can download manually from the official Maven
+  repository and add it to the CLASSPATH, or use Maven's automatic dependency
+  resolution features by adding a dependency to "GroupId: com.oracle.oci.sdk"
+  and "ArtifactId: oci-java-sdk-common" to your project's pom.xml file.

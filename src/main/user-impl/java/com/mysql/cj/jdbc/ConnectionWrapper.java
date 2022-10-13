@@ -57,7 +57,6 @@ import com.mysql.cj.exceptions.ExceptionInterceptor;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.interceptors.QueryInterceptor;
 import com.mysql.cj.jdbc.exceptions.SQLError;
-import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaData;
 import com.mysql.cj.jdbc.result.ResultSetInternalMethods;
 import com.mysql.cj.protocol.ServerSessionStateController;
@@ -1143,11 +1142,6 @@ public class ConnectionWrapper extends WrapperBase implements JdbcConnection {
     @Override
     public void initializeSafeQueryInterceptors() throws SQLException {
         this.mc.initializeSafeQueryInterceptors();
-    }
-
-    @Override
-    public void setConnectionLifecycleInterceptor(ConnectionLifecycleInterceptor interceptor) {
-        this.mc.setConnectionLifecycleInterceptor(interceptor);
     }
 
     @Override

@@ -35,7 +35,7 @@ import com.mysql.cj.callback.MysqlCallbackHandler;
 
 /**
  * Implementors of this interface can be installed via the "authenticationPlugins" configuration property.
- *
+ * 
  * The driver will create one instance of a given plugin per AuthenticationProvider instance if it's reusable (see {@link #isReusable()}) or a new instance
  * in each NativeAuthenticationProvider#proceedHandshakeWithPluggableAuthentication(String, String, String, Buffer) call.
  * 
@@ -58,7 +58,7 @@ public interface AuthenticationPlugin<M extends Message> {
      * authentication provider.
      * For example an authentication plugin may accept <code>null</code> usernames and use that information to obtain them from some external source, such as
      * the system login.
-     *
+     * 
      * @param protocol
      *            the protocol instance
      * @param callbackHandler
@@ -103,7 +103,7 @@ public interface AuthenticationPlugin<M extends Message> {
     /**
      * This method called from Connector/J before first nextAuthenticationStep call. Values of user and password parameters are passed from those in
      * NativeAuthenticationProvider#changeUser() or NativeAuthenticationProvider#connect().
-     *
+     * 
      * Plugin should use these values instead of values from connection properties because parent method may be a changeUser call which saves user and password
      * into connection only after successful handshake.
      * 
@@ -119,9 +119,9 @@ public interface AuthenticationPlugin<M extends Message> {
      * authentication step(s). The source of the authentication data in the first iteration will always be the sever-side default authentication plugin name.
      * In the following iterations this depends on the client-side default authentication plugin or on the successive Protocol::AuthSwitchRequest that may have
      * been received in the meantime.
-     *
+     * 
      * Authentication plugin implementation can use this information to decide if the data coming from the server is useful to them or not.
-     *
+     * 
      * @param sourceOfAuthData
      */
     default void setSourceOfAuthData(String sourceOfAuthData) {

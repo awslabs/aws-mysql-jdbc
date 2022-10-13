@@ -89,7 +89,7 @@ public class Jdk14Logger implements Log {
 
     /**
      * Logs the given message instance using the 'debug' level
-     *
+     * 
      * @param message
      *            the message to log
      */
@@ -99,7 +99,7 @@ public class Jdk14Logger implements Log {
 
     /**
      * Logs the given message and Throwable at the 'debug' level.
-     *
+     * 
      * @param message
      *            the message to log
      * @param exception

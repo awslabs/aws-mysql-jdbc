@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -45,7 +45,6 @@ import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Struct;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -63,8 +62,8 @@ import com.mysql.cj.LicenseConfiguration;
 import com.mysql.cj.Messages;
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.NoSubInterceptorWrapper;
-import com.mysql.cj.ParseInfo;
 import com.mysql.cj.PreparedQuery;
+import com.mysql.cj.QueryInfo;
 import com.mysql.cj.ServerVersion;
 import com.mysql.cj.Session.SessionEventListener;
 import com.mysql.cj.conf.HostInfo;
@@ -129,21 +128,11 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public void setProxy(JdbcConnection proxy) {
-        // If proxy is null, then set all of three proxy arguments to null.
-        if(proxy == null) {
-            this.parentProxy = null;
-            this.topProxy = null;
-            this.realProxy = null;
-            return;
-        }
-
         if (this.parentProxy == null) { // Only set this once.
             this.parentProxy = proxy;
         }
         this.topProxy = proxy;
         this.realProxy = this.topProxy instanceof MultiHostMySQLConnection ? ((MultiHostMySQLConnection) proxy).getThisAsProxy() : null;
-
-        addProxyInterceptor();
     }
 
     // this connection has to be proxied when using multi-host settings so that statements get routed to the right physical connection
@@ -222,15 +211,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
      * java.sql.Connection.TRANSACTION_XXX
      */
     private static Map<String, Integer> mapTransIsolationNameToValue = null;
-
-    protected static Map<?, ?> roundRobinStatsMap;
-
-    private List<ConnectionLifecycleInterceptor> connectionLifecycleInterceptors;
-
-    private static final int DEFAULT_RESULT_SET_TYPE = ResultSet.TYPE_FORWARD_ONLY;
-
-    private static final int DEFAULT_RESULT_SET_CONCURRENCY = ResultSet.CONCUR_READ_ONLY;
-
     static {
         mapTransIsolationNameToValue = new HashMap<>(8);
         mapTransIsolationNameToValue.put("READ-UNCOMMITED", TRANSACTION_READ_UNCOMMITTED);
@@ -239,6 +219,14 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         mapTransIsolationNameToValue.put("REPEATABLE-READ", TRANSACTION_REPEATABLE_READ);
         mapTransIsolationNameToValue.put("SERIALIZABLE", TRANSACTION_SERIALIZABLE);
     }
+
+    protected static Map<?, ?> roundRobinStatsMap;
+
+    private List<ConnectionLifecycleInterceptor> connectionLifecycleInterceptors;
+
+    private static final int DEFAULT_RESULT_SET_TYPE = ResultSet.TYPE_FORWARD_ONLY;
+
+    private static final int DEFAULT_RESULT_SET_CONCURRENCY = ResultSet.CONCUR_READ_ONLY;
 
     /**
      * Creates a connection instance.
@@ -285,7 +273,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     }
 
     /** A cache of SQL to parsed prepared statement parameters. */
-    private CacheAdapter<String, ParseInfo> cachedPreparedStatementParams;
+    private CacheAdapter<String, QueryInfo> queryInfoCache;
 
     /** The database we're currently using. */
     private String database = null;
@@ -392,8 +380,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             this.origPortToConnectTo = hostInfo.getPort();
 
             this.database = hostInfo.getDatabase();
-            this.user = StringUtils.isNullOrEmpty(hostInfo.getUser()) ? "" : hostInfo.getUser();
-            this.password = StringUtils.isNullOrEmpty(hostInfo.getPassword()) ? "" : hostInfo.getPassword();
+            this.user = hostInfo.getUser();
+            this.password = hostInfo.getPassword();
 
             this.props = hostInfo.exposeAsProperties();
 
@@ -669,12 +657,12 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         ClientPreparedStatement pStmt = null;
 
         if (this.cachePrepStmts.getValue()) {
-            ParseInfo pStmtInfo = this.cachedPreparedStatementParams.get(nativeSql);
+            QueryInfo pStmtInfo = this.queryInfoCache.get(nativeSql);
 
             if (pStmtInfo == null) {
                 pStmt = ClientPreparedStatement.getInstance(getMultiHostSafeProxy(), nativeSql, this.database);
 
-                this.cachedPreparedStatementParams.put(nativeSql, pStmt.getParseInfo());
+                this.queryInfoCache.put(nativeSql, pStmt.getQueryInfo());
             } else {
                 pStmt = ClientPreparedStatement.getInstance(getMultiHostSafeProxy(), nativeSql, this.database, pStmtInfo);
             }
@@ -1029,29 +1017,28 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     private void createPreparedStatementCaches() throws SQLException {
         synchronized (getConnectionMutex()) {
             int cacheSize = this.propertySet.getIntegerProperty(PropertyKey.prepStmtCacheSize).getValue();
-            String parseInfoCacheFactory = this.propertySet.getStringProperty(PropertyKey.parseInfoCacheFactory).getValue();
+            String queryInfoCacheFactory = this.propertySet.getStringProperty(PropertyKey.queryInfoCacheFactory).getValue();
 
             try {
                 Class<?> factoryClass;
 
-                factoryClass = Class.forName(parseInfoCacheFactory);
+                factoryClass = Class.forName(queryInfoCacheFactory);
 
                 @SuppressWarnings("unchecked")
-                CacheAdapterFactory<String, ParseInfo> cacheFactory = ((CacheAdapterFactory<String, ParseInfo>) factoryClass.newInstance());
+                CacheAdapterFactory<String, QueryInfo> cacheFactory = ((CacheAdapterFactory<String, QueryInfo>) factoryClass.newInstance());
 
-                this.cachedPreparedStatementParams = cacheFactory.getInstance(this, this.origHostInfo.getDatabaseUrl(), cacheSize,
-                        this.prepStmtCacheSqlLimit.getValue());
+                this.queryInfoCache = cacheFactory.getInstance(this, this.origHostInfo.getDatabaseUrl(), cacheSize, this.prepStmtCacheSqlLimit.getValue());
 
             } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
                 SQLException sqlEx = SQLError.createSQLException(
-                        Messages.getString("Connection.CantFindCacheFactory", new Object[] { parseInfoCacheFactory, PropertyKey.parseInfoCacheFactory }),
+                        Messages.getString("Connection.CantFindCacheFactory", new Object[] { queryInfoCacheFactory, PropertyKey.queryInfoCacheFactory }),
                         getExceptionInterceptor());
                 sqlEx.initCause(e);
 
                 throw sqlEx;
             } catch (Exception e) {
                 SQLException sqlEx = SQLError.createSQLException(
-                        Messages.getString("Connection.CantLoadCacheFactory", new Object[] { parseInfoCacheFactory, PropertyKey.parseInfoCacheFactory }),
+                        Messages.getString("Connection.CantLoadCacheFactory", new Object[] { queryInfoCacheFactory, PropertyKey.queryInfoCacheFactory }),
                         getExceptionInterceptor());
                 sqlEx.initCause(e);
 
@@ -1305,8 +1292,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             }
         }
 
-        addProxyInterceptor();
-
         this.session.setSessionVariables();
 
         this.session.loadServerVariables(this.getConnectionMutex(), this.dbmd.getDriverVersion());
@@ -1334,36 +1319,6 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         //
 
         setupServerForTruncationChecks();
-    }
-
-    private void addProxyInterceptor() {
-        if (this.realProxy != null) {
-            ConnectionLifecycleInterceptor proxyInterceptor = null;
-            if (this.realProxy instanceof ConnectionLifecycleInterceptor) {
-                proxyInterceptor = (ConnectionLifecycleInterceptor)this.realProxy;
-            }
-
-            if(proxyInterceptor != null) {
-                if(this.connectionLifecycleInterceptors == null) {
-                    this.connectionLifecycleInterceptors = new ArrayList<ConnectionLifecycleInterceptor>();
-                }
-                if(!this.connectionLifecycleInterceptors.contains(proxyInterceptor)) {
-                    this.connectionLifecycleInterceptors.add(proxyInterceptor);
-                }
-            }
-        }
-    }
-
-    @Override
-    public void setConnectionLifecycleInterceptor(ConnectionLifecycleInterceptor interceptor) {
-        if (interceptor != null) {
-            if (this.connectionLifecycleInterceptors == null) {
-                this.connectionLifecycleInterceptors = new ArrayList<>();
-            }
-            if (!this.connectionLifecycleInterceptors.contains(interceptor)) {
-                this.connectionLifecycleInterceptors.add(interceptor);
-            }
-        }
     }
 
     /**
@@ -1797,7 +1752,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             if (this.cachePrepStmts.getValue() && pstmt.isPoolable()) {
                 synchronized (this.serverSideStatementCache) {
                     Object oldServerPrepStmt = this.serverSideStatementCache.put(
-                            new CompoundCacheKey(pstmt.getCurrentDatabase(), ((PreparedQuery<?>) pstmt.getQuery()).getOriginalSql()),
+                            new CompoundCacheKey(pstmt.getCurrentDatabase(), ((PreparedQuery) pstmt.getQuery()).getOriginalSql()),
                             (ServerPreparedStatement) pstmt);
                     if (oldServerPrepStmt != null && oldServerPrepStmt != pstmt) {
                         ((ServerPreparedStatement) oldServerPrepStmt).isCached = false;
@@ -1814,8 +1769,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         synchronized (getConnectionMutex()) {
             if (this.cachePrepStmts.getValue()) {
                 synchronized (this.serverSideStatementCache) {
-                    this.serverSideStatementCache
-                            .remove(new CompoundCacheKey(pstmt.getCurrentDatabase(), ((PreparedQuery<?>) pstmt.getQuery()).getOriginalSql()));
+                    this.serverSideStatementCache.remove(new CompoundCacheKey(pstmt.getCurrentDatabase(), ((PreparedQuery) pstmt.getQuery()).getOriginalSql()));
                 }
             }
         }
@@ -2061,10 +2015,10 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 this.autoReconnect.setValue(true);
             }
 
-            boolean isAutocommit = this.session.getServerSession().isAutocommit();
+            boolean isAutoCommit = this.session.getServerSession().isAutoCommit();
             try {
                 boolean needsSetOnServer = true;
-                if (this.useLocalSessionState.getValue() && isAutocommit == autoCommitFlag) {
+                if (this.useLocalSessionState.getValue() && isAutoCommit == autoCommitFlag) {
                     needsSetOnServer = false;
                 } else if (!this.autoReconnect.getValue()) {
                     needsSetOnServer = getSession().isSetNeededForAutoCommitMode(autoCommitFlag);
@@ -2083,7 +2037,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
                 throw e;
             } catch (CJException e) {
                 // Reset to current autocommit value in case of an exception different than a communication exception occurs.
-                this.session.getServerSession().setAutoCommit(isAutocommit);
+                this.session.getServerSession().setAutoCommit(isAutoCommit);
                 // Update the stacktrace.
                 throw SQLError.createSQLException(e.getMessage(), e.getSQLState(), e.getVendorCode(), e.isTransient(), e, getExceptionInterceptor());
             } finally {
@@ -2575,7 +2529,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        return new MysqlSQLXML(getExceptionInterceptor(), getActiveMySQLConnection().getPropertySet());
+        return new MysqlSQLXML(getExceptionInterceptor());
     }
 
     @Override

@@ -2,8 +2,10 @@
 /build/
 /buildtest/
 /dist/
+/docs/
 /nbproject/
 /patches/
+/*.properties
 *~
 *.lock
 *.swp
@@ -12,10 +14,7 @@
 *.dot
 *.dot.png
 *.class
-*.iml
-.project.elrade
+.project.el
 .attach_pid*
-.gradle
-.idea
 hs_err_pid*.log
 *.sh

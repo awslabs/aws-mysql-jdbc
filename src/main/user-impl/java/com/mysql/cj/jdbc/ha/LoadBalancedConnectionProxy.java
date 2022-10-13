@@ -676,7 +676,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Adds a host to the blocklist with the given timeout.
-     *
+     * 
      * @param host
      *            The host to be blocklisted.
      * @param timeout
@@ -706,7 +706,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Use {@link #removeFromGlobalBlocklist(String)} instead.
-     *
+     * 
      * @param host
      *            host
      * @deprecated
@@ -718,7 +718,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Use {@link #addToGlobalBlocklist(String, long)} instead.
-     *
+     * 
      * @param host
      *            The host to be blocklisted.
      * @param timeout
@@ -732,7 +732,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Adds a host to the blocklist.
-     *
+     * 
      * @param host
      *            The host to be blocklisted.
      */
@@ -742,7 +742,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Use {@link #addToGlobalBlocklist(String)} instead.
-     *
+     * 
      * @param host
      *            The host to be blocklisted.
      * @deprecated
@@ -754,7 +754,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Checks if host blocklist management was enabled.
-     *
+     * 
      * @return true if host blocklist management was enabled
      */
     public boolean isGlobalBlocklistEnabled() {
@@ -763,7 +763,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Use {@link #isGlobalBlocklistEnabled()} instead.
-     *
+     * 
      * @return true if host blocklist management was enabled
      * @deprecated
      */
@@ -774,7 +774,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Returns a local hosts blocklist, while cleaning up expired records from the global blocklist, or a blocklist with the hosts to be removed.
-     *
+     * 
      * @return
      *         A local hosts blocklist.
      */
@@ -826,7 +826,7 @@ public class LoadBalancedConnectionProxy extends MultiHostConnectionProxy implem
 
     /**
      * Use {@link #getGlobalBlocklist()} instead.
-     *
+     * 
      * @return
      *         A local hosts blocklist.
      * @deprecated

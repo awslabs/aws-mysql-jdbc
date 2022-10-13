@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -29,6 +29,14 @@
 
 package com.mysql.cj.protocol.a.authentication;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.interfaces.RSAPrivateKey;
+import java.util.Base64;
+import java.util.List;
+
 import com.mysql.cj.Messages;
 import com.mysql.cj.callback.MysqlCallbackHandler;
 import com.mysql.cj.callback.UsernameCallback;
@@ -43,14 +51,6 @@ import com.mysql.cj.protocol.a.NativePacketPayload;
 import com.mysql.cj.util.StringUtils;
 import com.oracle.bmc.ConfigFileReader;
 import com.oracle.bmc.ConfigFileReader.ConfigFile;
-
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.interfaces.RSAPrivateKey;
-import java.util.Base64;
-import java.util.List;
 
 /**
  * MySQL 'authentication_iam_client' authentication plugin.
@@ -80,6 +80,8 @@ public class AuthenticationOciClient implements AuthenticationPlugin<NativePacke
     @Override
     public void destroy() {
         reset();
+        this.protocol = null;
+        this.usernameCallbackHandler = null;
     }
 
     @Override
@@ -100,7 +102,7 @@ public class AuthenticationOciClient implements AuthenticationPlugin<NativePacke
     @Override
     public void setAuthenticationParameters(String user, String password) {
         if (user == null && this.usernameCallbackHandler != null) {
-            // Fall-back to system login user.
+            // Fall back to system login user.
             this.usernameCallbackHandler.handle(new UsernameCallback(System.getProperty("user.name")));
         }
     }

@@ -176,12 +176,12 @@ public abstract class BaseBugReport {
      * java.sql.Connection that you use to demonstrate this bug will be provided
      * by the getConnection() method using this URL.
      * 
-     * The default value is 'jdbc:mysql:aws:///test'
+     * The default value is 'jdbc:mysql:///test'
      * 
      * @return URL
      */
     public String getUrl() {
-        return "jdbc:mysql:aws:///test";
+        return "jdbc:mysql:///test";
     }
 
     /**

@@ -785,10 +785,10 @@ public class CompressionTest extends DevApiBaseTestCase {
 
     /**
      * Test fix for Bug#99708 (31510398), mysql-connector-java 8.0.20 ASSERTION FAILED: Unknown message type: 57 s.close.
-     *
+     * 
      * This test is not entirely deterministic, since it depends on the size of the compressed data returned from the server. Observations showed that it fails
      * in pretty close to 100% of executions.
-     *
+     * 
      * The test fails by throwing an exception.
      */
     @Test

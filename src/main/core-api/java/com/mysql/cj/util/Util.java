@@ -50,7 +50,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.mysql.cj.Constants;
 import com.mysql.cj.Messages;
-import com.mysql.cj.MysqlType;
 import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.ExceptionInterceptor;
@@ -350,10 +349,7 @@ public class Util {
      */
     public static boolean isJdbcPackage(String packageName) {
         return packageName != null
-                && (packageName.startsWith("java.sql") ||
-                packageName.startsWith("javax.sql") ||
-                packageName.startsWith("com.mysql.cj.jdbc") ||
-                packageName.startsWith(Util.getPackageName(MysqlType.class) + ".jdbc")); // "<shading-prefix>.com.mysql.cj.jdbc"
+                && (packageName.startsWith("java.sql") || packageName.startsWith("javax.sql") || packageName.startsWith("com.mysql.cj.jdbc"));
     }
 
     /** Cache for the implemented interfaces searched. */
@@ -507,9 +503,5 @@ public class Util {
         } catch (Throwable ex) {
             throw ExceptionFactory.createException(Messages.getString("Util.5") + ex.getClass().getName(), exceptionInterceptor);
         }
-    }
-
-    public static boolean isNullOrEmpty(List<?> list) {
-        return list == null || list.isEmpty();
     }
 }

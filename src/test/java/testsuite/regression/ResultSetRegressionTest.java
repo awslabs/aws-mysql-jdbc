@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -68,6 +68,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -108,7 +109,6 @@ import com.mysql.cj.exceptions.ExceptionInterceptor;
 import com.mysql.cj.exceptions.ExceptionInterceptorChain;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.MysqlSQLXML;
 import com.mysql.cj.jdbc.ServerPreparedStatement;
 import com.mysql.cj.jdbc.StatementImpl;
@@ -1630,39 +1630,6 @@ public class ResultSetRegressionTest extends BaseTestCase {
                 infoSchemConn.close();
             }
         }
-    }
-
-    @Test
-    public void testBug15604() throws Exception {
-        createTable("testBug15604_date_cal", "(field1 DATE)");
-        Properties props = new Properties();
-        props.setProperty(PropertyKey.sessionVariables.getKeyName(), "time_zone='America/Chicago'");
-
-        Connection nonLegacyConn = getConnectionWithProps(props);
-
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-
-        cal.set(Calendar.YEAR, 2005);
-        cal.set(Calendar.MONTH, 4);
-        cal.set(Calendar.DAY_OF_MONTH, 15);
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-
-        java.sql.Date sqlDate = new java.sql.Date(cal.getTime().getTime());
-
-        Calendar cal2 = Calendar.getInstance();
-        cal2.setTime(sqlDate);
-        System.out.println(new java.sql.Date(cal2.getTime().getTime()));
-        this.pstmt = nonLegacyConn.prepareStatement("INSERT INTO testBug15604_date_cal VALUES (?)");
-
-        this.pstmt.setDate(1, sqlDate, cal);
-        this.pstmt.executeUpdate();
-        this.rs = nonLegacyConn.createStatement().executeQuery("SELECT field1 FROM testBug15604_date_cal");
-        this.rs.next();
-
-        assertEquals(sqlDate.getTime(), this.rs.getDate(1, cal).getTime());
     }
 
     @Test
@@ -4887,7 +4854,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         Properties props = new Properties();
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
-        props.setProperty(PropertyKey.jdbcCompliantTruncation.getKeyName(), "false"); // TODO fails with jdbcCompliantTruncation=true
+        props.setProperty(PropertyKey.jdbcCompliantTruncation.getKeyName(), "false"); // TODO fails with jdbcCompliantTruncation=true 
 
         for (String useSSPS : new String[] { "false", "true" }) {
             for (String cacheResultSetMetadata : new String[] { "false", "true" }) {
@@ -5634,7 +5601,7 @@ public class ResultSetRegressionTest extends BaseTestCase {
         rs1.updateNCharacterStream(43, new StringReader("bbbbbb"), 3);
         rs1.updateNull(44);
 
-        SQLXML xml = new MysqlSQLXML(null, new JdbcPropertySetImpl());
+        SQLXML xml = new MysqlSQLXML(null);
         xml.setString("<doc/>");
         rs1.updateSQLXML(45, xml);
 
@@ -6251,8 +6218,8 @@ public class ResultSetRegressionTest extends BaseTestCase {
         this.rs = ps.executeQuery();
 
         assertNotNull(this.rs.next());
-        assertEquals(Date.valueOf(LocalDate.of(1970, 1, 1)).getTime(), this.rs.getDate(1, null).getTime());
-        assertEquals(Date.valueOf(LocalDate.of(1970, 1, 1)).getTime(), this.rs.getDate(2, null).getTime());
+        assertEquals(Date.valueOf(TimeUtil.DEFAULT_DATE).getTime(), this.rs.getDate(1, null).getTime());
+        assertEquals(Date.valueOf(TimeUtil.DEFAULT_DATE).getTime(), this.rs.getDate(2, null).getTime());
 
         // at least 2 warnings are expected 
         SQLWarning w = this.rs.getWarnings();
@@ -6855,29 +6822,6 @@ public class ResultSetRegressionTest extends BaseTestCase {
             c1.close();
 
         } while ((sendFractionalSeconds = !sendFractionalSeconds) || (useServerPrepStmts = !useServerPrepStmts));
-    }
-
-    /**
-     * Tests for fix to BUG#92574 (28706219), WHEN CONVERTING FROM VARCHAR TO JAVA BOOLEAN, 'N' IS NOT SUPPORTED.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBug92574() throws Exception {
-        String[] strValues = new String[] { null, "N", "n", "Y", "y", "0", "1" };
-        boolean[] boolValues = new boolean[] { false, false, false, true, true, false, true };
-
-        createTable("testBug92574", "(id int not null, f varchar(1), key(id))");
-        for (int i = 0; i < strValues.length; i++) {
-            String val = strValues[i] == null ? null : "'" + strValues[i] + "'";
-            this.stmt.executeUpdate("insert into testBug92574 values(" + i + "," + val + ")");
-        }
-        this.rs = this.stmt.executeQuery("SELECT * from testBug92574");
-        while (this.rs.next()) {
-            int i = this.rs.getInt(1);
-            assertEquals(strValues[i], this.rs.getString(2));
-            assertEquals(boolValues[i], this.rs.getBoolean(2));
-        }
     }
 
     /**
@@ -7696,8 +7640,8 @@ public class ResultSetRegressionTest extends BaseTestCase {
             System.out.println("getObject(ts, OffsetDateTime.class)  : " + odt2 + " (" + odt2.toEpochSecond() + ")");
             System.out.println("getObject(odt, OffsetDateTime.class) : " + odt3 + " (" + odt3.toEpochSecond() + ")");
 
-            int localOffset = TimeZone.getDefault().getRawOffset() / 1000;
-            int serverOffset = serverTz.getRawOffset() / 1000;
+            int localOffset = ZoneId.of(TimeZone.getDefault().getID()).getRules().getOffset(Instant.now()).getTotalSeconds();
+            int serverOffset = ZoneId.of(serverTz.getID()).getRules().getOffset(Instant.now()).getTotalSeconds();
 
             int expOffset = 6 * 60 * 60;
 

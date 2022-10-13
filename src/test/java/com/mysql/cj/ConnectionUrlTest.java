@@ -485,9 +485,6 @@ public class ConnectionUrlTest {
         assertEquals(ConnectionUrl.Type.REPLICATION_DNS_SRV_CONNECTION, ConnectionUrl.Type.fromValue("jdbc:mysql+srv:replication:", 1));
         assertEquals(ConnectionUrl.Type.REPLICATION_DNS_SRV_CONNECTION, ConnectionUrl.Type.fromValue("jdbc:mysql+srv:replication:", 2));
         assertEquals(ConnectionUrl.Type.XDEVAPI_DNS_SRV_SESSION, ConnectionUrl.Type.fromValue("mysqlx+srv:", 1));
-
-        // AWS Standard schemes:
-        assertEquals(ConnectionUrl.Type.SINGLE_CONNECTION_AWS, ConnectionUrl.Type.fromValue("jdbc:mysql:aws:", 1));
     }
 
     /**
@@ -906,8 +903,8 @@ public class ConnectionUrlTest {
                 assertEquals("localhost", hi.getHost(), cs + "#host");
                 assertEquals(connStr.get(cs).intValue(), hi.getPort(), cs + "#port");
                 assertEquals("localhost:" + connStr.get(cs), hi.getHostPortPair(), cs + "#hostPortPair");
-                assertEquals("", hi.getUser(), cs + "#user");
-                assertEquals("", hi.getPassword(), cs + "#password");
+                assertNull(hi.getUser(), cs + "#user");
+                assertNull(hi.getPassword(), cs + "#password");
                 assertEquals("", hi.getDatabase(), cs + "#database");
             }
         }

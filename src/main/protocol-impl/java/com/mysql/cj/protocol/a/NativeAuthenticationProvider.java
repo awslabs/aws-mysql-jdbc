@@ -1,7 +1,5 @@
 /*
- * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -57,12 +55,10 @@ import com.mysql.cj.protocol.ServerSession;
 import com.mysql.cj.protocol.a.NativeConstants.IntegerDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 import com.mysql.cj.protocol.a.NativeConstants.StringSelfDataType;
-import com.mysql.cj.protocol.a.authentication.AuthenticationOciClient;
+import com.mysql.cj.protocol.a.authentication.AuthenticationFidoClient;
 import com.mysql.cj.protocol.a.authentication.AuthenticationKerberosClient;
 import com.mysql.cj.protocol.a.authentication.AuthenticationLdapSaslClientPlugin;
-import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationPlugin;
-import com.mysql.cj.protocol.a.authentication.AwsIamAuthenticationTokenHelper;
-import com.mysql.cj.protocol.a.authentication.AwsIamClearAuthenticationPlugin;
+import com.mysql.cj.protocol.a.authentication.AuthenticationOciClient;
 import com.mysql.cj.protocol.a.authentication.CachingSha2PasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlClearPasswordPlugin;
 import com.mysql.cj.protocol.a.authentication.MysqlNativePasswordPlugin;
@@ -196,10 +192,10 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
                 | capabilityFlags & NativeServerSession.CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA //
                 | (this.propertySet.getBooleanProperty(PropertyKey.disconnectOnExpiredPasswords).getValue() ? //
                         0 : capabilityFlags & NativeServerSession.CLIENT_CAN_HANDLE_EXPIRED_PASSWORD) //
-                | (this.propertySet.getBooleanProperty(PropertyKey.trackSessionState).getValue() ? //
+                | (this.propertySet.getBooleanProperty(PropertyKey.trackSessionState).getValue() ? // 
                         capabilityFlags & NativeServerSession.CLIENT_SESSION_TRACK : 0) //
                 | capabilityFlags & NativeServerSession.CLIENT_DEPRECATE_EOF //
-                | capabilityFlags & NativeServerSession.CLIENT_QUERY_ATTRIBUTES //
+                | capabilityFlags & NativeServerSession.CLIENT_QUERY_ATTRIBUTES // 
                 | capabilityFlags & NativeServerSession.CLIENT_MULTI_FACTOR_AUTHENTICATION;
 
         sessState.setClientParam(clientParam);
@@ -220,10 +216,10 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
 
     /**
      * Fill the authentication plugins map.
-     *
+     * 
      * Starts by filling the map with instances of the built-in authentication plugins. Then creates instances of plugins listed in the "authenticationPlugins"
      * connection property and adds them to the map too.
-     *
+     * 
      * The key for the map entry is got by {@link AuthenticationPlugin#getProtocolPluginName()} thus it is possible to replace built-in plugins with custom
      * implementations. To do it, the custom plugin should return one of the values "mysql_native_password", "mysql_clear_password", "sha256_password",
      * "caching_sha2_password", "mysql_old_password", "authentication_ldap_sasl_client" or "authentication_kerberos_client" from its own getProtocolPluginName()
@@ -253,48 +249,15 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
         List<AuthenticationPlugin<NativePacketPayload>> pluginsToInit = new LinkedList<>();
 
         // built-in plugins
+        pluginsToInit.add(new MysqlNativePasswordPlugin());
+        pluginsToInit.add(new MysqlClearPasswordPlugin());
         pluginsToInit.add(new Sha256PasswordPlugin());
         pluginsToInit.add(new CachingSha2PasswordPlugin());
         pluginsToInit.add(new MysqlOldPasswordPlugin());
         pluginsToInit.add(new AuthenticationLdapSaslClientPlugin());
         pluginsToInit.add(new AuthenticationKerberosClient());
         pluginsToInit.add(new AuthenticationOciClient());
-
-        final boolean useAwsIam = this.propertySet.getBooleanProperty(PropertyKey.useAwsIam).getValue();
-
-        if (useAwsIam) {
-            try {
-                Class.forName("software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider");
-            } catch (ClassNotFoundException ex) {
-                throw ExceptionFactory.createException(Messages.getString(
-                    "AuthenticationAwsIamPlugin.MissingSDK"
-                ));
-            }
-
-            final String host = this.protocol.getSocketConnection().getHost();
-            final int port = this.protocol.getSocketConnection().getPort();
-
-            final AwsIamAuthenticationTokenHelper tokenHelper = new AwsIamAuthenticationTokenHelper(
-                host,
-                port,
-                this.propertySet.getStringProperty(PropertyKey.logger).getStringValue()
-            );
-
-            pluginsToInit.add(new AwsIamAuthenticationPlugin(tokenHelper));
-            pluginsToInit.add(new AwsIamClearAuthenticationPlugin(tokenHelper));
-
-            final String defaultPluginClassName = this.propertySet
-                .getStringProperty(PropertyKey.defaultAuthenticationPlugin)
-                .getPropertyDefinition()
-                .getDefaultValue();
-
-            if (defaultAuthenticationPluginValue.equals(defaultPluginClassName)) {
-                defaultAuthenticationPluginValue = AwsIamAuthenticationPlugin.class.getName();
-            }
-        } else {
-            pluginsToInit.add(new MysqlNativePasswordPlugin());
-            pluginsToInit.add(new MysqlClearPasswordPlugin());
-        }
+        pluginsToInit.add(new AuthenticationFidoClient());
 
         // plugins from authenticationPluginClasses connection parameter
         String authenticationPluginClasses = this.propertySet.getStringProperty(PropertyKey.authenticationPlugins).getValue();
@@ -402,7 +365,7 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
      * at any moment during the connection life-time via a Change User request.
      * 
      * This method will use registered authentication plugins as requested by the server.
-     *
+     * 
      * @param challenge
      *            the Auth Challenge Packet received from server if
      *            this method is used during the initial connection.
@@ -538,7 +501,7 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
                 fromServer = new NativePacketPayload(lastReceived.readBytes(StringSelfDataType.STRING_EOF));
 
             } else if (lastReceived.isAuthNextFactorPacket()) {
-                // authentication not done yet, there's another MFA iteration
+                // authentication not done yet, there's another MFA iteration 
                 mfaNthFactor++;
                 skipPassword = false;
                 pluginName = lastReceived.readString(StringSelfDataType.STRING_TERM, "ASCII");
@@ -558,7 +521,7 @@ public class NativeAuthenticationProvider implements AuthenticationProvider<Nati
                 fromServer = new NativePacketPayload(lastReceived.readBytes(StringSelfDataType.STRING_EOF));
 
             } else {
-                // read raw (from AuthMoreData) packet
+                // read raw (from AuthMoreData) packet 
                 if (!this.protocol.versionMeetsMinimum(5, 5, 16)) {
                     lastReceived.setPosition(lastReceived.getPosition() - 1);
                 }

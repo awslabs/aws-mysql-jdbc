@@ -49,7 +49,7 @@ public interface MessageReader<H extends MessageHeader, M extends Message> {
     /**
      * Read the next message header from server, possibly blocking indefinitely until the message is received,
      * and cache it so that the next {@link #readHeader()} return the same header.
-     *
+     * 
      * @return {@link MessageHeader} of the next message
      * @throws IOException
      *             if an error occurs
@@ -78,7 +78,7 @@ public interface MessageReader<H extends MessageHeader, M extends Message> {
      * and cache it so that the next {@link #readMessage(Optional, MessageHeader)} return the same message.
      * For asynchronous channel it synchronously reads the next message in the stream, blocking until the message is read fully.
      * Could throw CJCommunicationsException wrapping an {@link IOException} during read or parse
-     *
+     * 
      * @param reuse
      *            {@link Message} object to reuse. May be ignored by implementation.
      * @param header

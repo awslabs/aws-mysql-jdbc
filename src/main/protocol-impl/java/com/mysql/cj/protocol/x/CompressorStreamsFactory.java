@@ -65,7 +65,7 @@ public class CompressorStreamsFactory {
      * 
      * If the compression algorithm operates in steam mode (continuous) then create and reuse one single instance of the compressor {@link InputStream}, else
      * create a new instance every time.
-     *
+     * 
      * @param in
      *            the {@link InputStream} to use as source of the bytes to inflate.
      * @return
@@ -99,7 +99,7 @@ public class CompressorStreamsFactory {
      * 
      * If the compression algorithm operates in steam mode (continuous) then create and reuse one single instance of the compressor {@link OutputStream}, else
      * create a new instance every time.
-     *
+     * 
      * @param out
      *            the {@link OutputStream} to use as target of the bytes to deflate.
      * @return

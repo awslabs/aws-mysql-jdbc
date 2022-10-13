@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -82,13 +82,14 @@ public final class MysqlxConnection {
   }
   /**
    * <pre>
-   * a Capability
-   * a tuple of a ``name`` and a :protobuf:msg:`Mysqlx.Datatypes::Any`
+   **
+   *Capability
+   *A tuple of a ``name`` and a &#64;ref Mysqlx::Datatypes::Any
    * </pre>
    *
    * Protobuf type {@code Mysqlx.Connection.Capability}
    */
-  public  static final class Capability extends
+  public static final class Capability extends
       com.google.protobuf.GeneratedMessageV3 implements
       // @@protoc_insertion_point(message_implements:Mysqlx.Connection.Capability)
       CapabilityOrBuilder {
@@ -190,6 +191,7 @@ public final class MysqlxConnection {
      * <code>required string name = 1;</code>
      * @return Whether the name field is set.
      */
+    @java.lang.Override
     public boolean hasName() {
       return ((bitField0_ & 0x00000001) != 0);
     }
@@ -197,6 +199,7 @@ public final class MysqlxConnection {
      * <code>required string name = 1;</code>
      * @return The name.
      */
+    @java.lang.Override
     public java.lang.String getName() {
       java.lang.Object ref = name_;
       if (ref instanceof java.lang.String) {
@@ -215,6 +218,7 @@ public final class MysqlxConnection {
      * <code>required string name = 1;</code>
      * @return The bytes for name.
      */
+    @java.lang.Override
     public com.google.protobuf.ByteString
         getNameBytes() {
       java.lang.Object ref = name_;
@@ -235,6 +239,7 @@ public final class MysqlxConnection {
      * <code>required .Mysqlx.Datatypes.Any value = 2;</code>
      * @return Whether the value field is set.
      */
+    @java.lang.Override
     public boolean hasValue() {
       return ((bitField0_ & 0x00000002) != 0);
     }
@@ -242,12 +247,14 @@ public final class MysqlxConnection {
      * <code>required .Mysqlx.Datatypes.Any value = 2;</code>
      * @return The value.
      */
+    @java.lang.Override
     public com.mysql.cj.x.protobuf.MysqlxDatatypes.Any getValue() {
       return value_ == null ? com.mysql.cj.x.protobuf.MysqlxDatatypes.Any.getDefaultInstance() : value_;
     }
     /**
      * <code>required .Mysqlx.Datatypes.Any value = 2;</code>
      */
+    @java.lang.Override
     public com.mysql.cj.x.protobuf.MysqlxDatatypes.AnyOrBuilder getValueOrBuilder() {
       return value_ == null ? com.mysql.cj.x.protobuf.MysqlxDatatypes.Any.getDefaultInstance() : value_;
     }
@@ -441,8 +448,9 @@ public final class MysqlxConnection {
     }
     /**
      * <pre>
-     * a Capability
-     * a tuple of a ``name`` and a :protobuf:msg:`Mysqlx.Datatypes::Any`
+     **
+     *Capability
+     *A tuple of a ``name`` and a &#64;ref Mysqlx::Datatypes::Any
      * </pre>
      *
      * Protobuf type {@code Mysqlx.Connection.Capability}
@@ -913,12 +921,14 @@ public final class MysqlxConnection {
   }
   /**
    * <pre>
-   * Capabilities
+   **
+   *Capabilities
+   *list of Capability
    * </pre>
    *
    * Protobuf type {@code Mysqlx.Connection.Capabilities}
    */
-  public  static final class Capabilities extends
+  public static final class Capabilities extends
       com.google.protobuf.GeneratedMessageV3 implements
       // @@protoc_insertion_point(message_implements:Mysqlx.Connection.Capabilities)
       CapabilitiesOrBuilder {
@@ -1011,12 +1021,14 @@ public final class MysqlxConnection {
     /**
      * <code>repeated .Mysqlx.Connection.Capability capabilities = 1;</code>
      */
+    @java.lang.Override
     public java.util.List<com.mysql.cj.x.protobuf.MysqlxConnection.Capability> getCapabilitiesList() {
       return capabilities_;
     }
     /**
      * <code>repeated .Mysqlx.Connection.Capability capabilities = 1;</code>
      */
+    @java.lang.Override
     public java.util.List<? extends com.mysql.cj.x.protobuf.MysqlxConnection.CapabilityOrBuilder> 
         getCapabilitiesOrBuilderList() {
       return capabilities_;
@@ -1024,18 +1036,21 @@ public final class MysqlxConnection {
     /**
      * <code>repeated .Mysqlx.Connection.Capability capabilities = 1;</code>
      */
+    @java.lang.Override
     public int getCapabilitiesCount() {
       return capabilities_.size();
     }
     /**
      * <code>repeated .Mysqlx.Connection.Capability capabilities = 1;</code>
      */
+    @java.lang.Override
     public com.mysql.cj.x.protobuf.MysqlxConnection.Capability getCapabilities(int index) {
       return capabilities_.get(index);
     }
     /**
      * <code>repeated .Mysqlx.Connection.Capability capabilities = 1;</code>
      */
+    @java.lang.Override
     public com.mysql.cj.x.protobuf.MysqlxConnection.CapabilityOrBuilder getCapabilitiesOrBuilder(
         int index) {
       return capabilities_.get(index);
@@ -1206,7 +1221,9 @@ public final class MysqlxConnection {
     }
     /**
      * <pre>
-     * Capabilities
+     **
+     *Capabilities
+     *list of Capability
      * </pre>
      *
      * Protobuf type {@code Mysqlx.Connection.Capabilities}
@@ -1696,13 +1713,14 @@ public final class MysqlxConnection {
   }
   /**
    * <pre>
-   * get supported connection capabilities and their current state
-   *   :returns: :protobuf:msg:`Mysqlx.Connection::Capabilities` or :protobuf:msg:`Mysqlx::Error`
+   **
+   *Get supported connection capabilities and their current state.
+   *&#64;returns &#64;ref Mysqlx::Connection::Capabilities or &#64;ref Mysqlx::Error
    * </pre>
    *
    * Protobuf type {@code Mysqlx.Connection.CapabilitiesGet}
    */
-  public  static final class CapabilitiesGet extends
+  public static final class CapabilitiesGet extends
       com.google.protobuf.GeneratedMessageV3 implements
       // @@protoc_insertion_point(message_implements:Mysqlx.Connection.CapabilitiesGet)
       CapabilitiesGetOrBuilder {
@@ -1922,8 +1940,9 @@ public final class MysqlxConnection {
     }
     /**
      * <pre>
-     * get supported connection capabilities and their current state
-     *   :returns: :protobuf:msg:`Mysqlx.Connection::Capabilities` or :protobuf:msg:`Mysqlx::Error`
+     **
+     *Get supported connection capabilities and their current state.
+     *&#64;returns &#64;ref Mysqlx::Connection::Capabilities or &#64;ref Mysqlx::Error
      * </pre>
      *
      * Protobuf type {@code Mysqlx.Connection.CapabilitiesGet}
@@ -2139,16 +2158,18 @@ public final class MysqlxConnection {
   }
   /**
    * <pre>
-   * sets connection capabilities atomically
-   * only provided values are changed, other values are left unchanged.
-   * If any of the changes fails, all changes are discarded.
-   * :precond: active sessions == 0
-   * :returns: :protobuf:msg:`Mysqlx::Ok` or :protobuf:msg:`Mysqlx::Error`
+   **
+   *Set connection capabilities atomically.
+   *Only provided values are changed; other values are left
+   *unchanged. If any of the changes fails, all changes are
+   *discarded.
+   *&#64;pre active sessions == 0
+   *&#64;returns &#64;ref Mysqlx::Ok  or &#64;ref Mysqlx::Error
    * </pre>
    *
    * Protobuf type {@code Mysqlx.Connection.CapabilitiesSet}
    */
-  public  static final class CapabilitiesSet extends
+  public static final class CapabilitiesSet extends
       com.google.protobuf.GeneratedMessageV3 implements
       // @@protoc_insertion_point(message_implements:Mysqlx.Connection.CapabilitiesSet)
       CapabilitiesSetOrBuilder {
@@ -2243,6 +2264,7 @@ public final class MysqlxConnection {
      * <code>required .Mysqlx.Connection.Capabilities capabilities = 1;</code>
      * @return Whether the capabilities field is set.
      */
+    @java.lang.Override
     public boolean hasCapabilities() {
       return ((bitField0_ & 0x00000001) != 0);
     }
@@ -2250,12 +2272,14 @@ public final class MysqlxConnection {
      * <code>required .Mysqlx.Connection.Capabilities capabilities = 1;</code>
      * @return The capabilities.
      */
+    @java.lang.Override
     public com.mysql.cj.x.protobuf.MysqlxConnection.Capabilities getCapabilities() {
       return capabilities_ == null ? com.mysql.cj.x.protobuf.MysqlxConnection.Capabilities.getDefaultInstance() : capabilities_;
     }
     /**
      * <code>required .Mysqlx.Connection.Capabilities capabilities = 1;</code>
      */
+    @java.lang.Override
     public com.mysql.cj.x.protobuf.MysqlxConnection.CapabilitiesOrBuilder getCapabilitiesOrBuilder() {
       return capabilities_ == null ? com.mysql.cj.x.protobuf.MysqlxConnection.Capabilities.getDefaultInstance() : capabilities_;
     }
@@ -2430,11 +2454,13 @@ public final class MysqlxConnection {
     }
     /**
      * <pre>
-     * sets connection capabilities atomically
-     * only provided values are changed, other values are left unchanged.
-     * If any of the changes fails, all changes are discarded.
-     * :precond: active sessions == 0
-     * :returns: :protobuf:msg:`Mysqlx::Ok` or :protobuf:msg:`Mysqlx::Error`
+     **
+     *Set connection capabilities atomically.
+     *Only provided values are changed; other values are left
+     *unchanged. If any of the changes fails, all changes are
+     *discarded.
+     *&#64;pre active sessions == 0
+     *&#64;returns &#64;ref Mysqlx::Ok  or &#64;ref Mysqlx::Error
      * </pre>
      *
      * Protobuf type {@code Mysqlx.Connection.CapabilitiesSet}
@@ -2783,14 +2809,15 @@ public final class MysqlxConnection {
   }
   /**
    * <pre>
-   * announce to the server that the client wants to close the connection
-   * it discards any session state of the server
-   * :Returns: :protobuf:msg:`Mysqlx::Ok`
+   **
+   *Announce to the server that the client wants to close the connection.
+   *It discards any session state of the server.
+   *&#64;returns &#64;ref Mysqlx::Ok
    * </pre>
    *
    * Protobuf type {@code Mysqlx.Connection.Close}
    */
-  public  static final class Close extends
+  public static final class Close extends
       com.google.protobuf.GeneratedMessageV3 implements
       // @@protoc_insertion_point(message_implements:Mysqlx.Connection.Close)
       CloseOrBuilder {
@@ -3010,9 +3037,10 @@ public final class MysqlxConnection {
     }
     /**
      * <pre>
-     * announce to the server that the client wants to close the connection
-     * it discards any session state of the server
-     * :Returns: :protobuf:msg:`Mysqlx::Ok`
+     **
+     *Announce to the server that the client wants to close the connection.
+     *It discards any session state of the server.
+     *&#64;returns &#64;ref Mysqlx::Ok
      * </pre>
      *
      * Protobuf type {@code Mysqlx.Connection.Close}
@@ -3258,7 +3286,7 @@ public final class MysqlxConnection {
   /**
    * Protobuf type {@code Mysqlx.Connection.Compression}
    */
-  public  static final class Compression extends
+  public static final class Compression extends
       com.google.protobuf.GeneratedMessageV3 implements
       // @@protoc_insertion_point(message_implements:Mysqlx.Connection.Compression)
       CompressionOrBuilder {
@@ -3377,6 +3405,7 @@ public final class MysqlxConnection {
      * <code>optional uint64 uncompressed_size = 1;</code>
      * @return Whether the uncompressedSize field is set.
      */
+    @java.lang.Override
     public boolean hasUncompressedSize() {
       return ((bitField0_ & 0x00000001) != 0);
     }
@@ -3384,6 +3413,7 @@ public final class MysqlxConnection {
      * <code>optional uint64 uncompressed_size = 1;</code>
      * @return The uncompressedSize.
      */
+    @java.lang.Override
     public long getUncompressedSize() {
       return uncompressedSize_;
     }
@@ -3394,14 +3424,14 @@ public final class MysqlxConnection {
      * <code>optional .Mysqlx.ServerMessages.Type server_messages = 2;</code>
      * @return Whether the serverMessages field is set.
      */
-    public boolean hasServerMessages() {
+    @java.lang.Override public boolean hasServerMessages() {
       return ((bitField0_ & 0x00000002) != 0);
     }
     /**
      * <code>optional .Mysqlx.ServerMessages.Type server_messages = 2;</code>
      * @return The serverMessages.
      */
-    public com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type getServerMessages() {
+    @java.lang.Override public com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type getServerMessages() {
       @SuppressWarnings("deprecation")
       com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type result = com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type.valueOf(serverMessages_);
       return result == null ? com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type.OK : result;
@@ -3413,14 +3443,14 @@ public final class MysqlxConnection {
      * <code>optional .Mysqlx.ClientMessages.Type client_messages = 3;</code>
      * @return Whether the clientMessages field is set.
      */
-    public boolean hasClientMessages() {
+    @java.lang.Override public boolean hasClientMessages() {
       return ((bitField0_ & 0x00000004) != 0);
     }
     /**
      * <code>optional .Mysqlx.ClientMessages.Type client_messages = 3;</code>
      * @return The clientMessages.
      */
-    public com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type getClientMessages() {
+    @java.lang.Override public com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type getClientMessages() {
       @SuppressWarnings("deprecation")
       com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type result = com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type.valueOf(clientMessages_);
       return result == null ? com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type.CON_CAPABILITIES_GET : result;
@@ -3432,6 +3462,7 @@ public final class MysqlxConnection {
      * <code>required bytes payload = 4;</code>
      * @return Whether the payload field is set.
      */
+    @java.lang.Override
     public boolean hasPayload() {
       return ((bitField0_ & 0x00000008) != 0);
     }
@@ -3439,6 +3470,7 @@ public final class MysqlxConnection {
      * <code>required bytes payload = 4;</code>
      * @return The payload.
      */
+    @java.lang.Override
     public com.google.protobuf.ByteString getPayload() {
       return payload_;
     }
@@ -3843,6 +3875,7 @@ public final class MysqlxConnection {
        * <code>optional uint64 uncompressed_size = 1;</code>
        * @return Whether the uncompressedSize field is set.
        */
+      @java.lang.Override
       public boolean hasUncompressedSize() {
         return ((bitField0_ & 0x00000001) != 0);
       }
@@ -3850,6 +3883,7 @@ public final class MysqlxConnection {
        * <code>optional uint64 uncompressed_size = 1;</code>
        * @return The uncompressedSize.
        */
+      @java.lang.Override
       public long getUncompressedSize() {
         return uncompressedSize_;
       }
@@ -3880,13 +3914,14 @@ public final class MysqlxConnection {
        * <code>optional .Mysqlx.ServerMessages.Type server_messages = 2;</code>
        * @return Whether the serverMessages field is set.
        */
-      public boolean hasServerMessages() {
+      @java.lang.Override public boolean hasServerMessages() {
         return ((bitField0_ & 0x00000002) != 0);
       }
       /**
        * <code>optional .Mysqlx.ServerMessages.Type server_messages = 2;</code>
        * @return The serverMessages.
        */
+      @java.lang.Override
       public com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type getServerMessages() {
         @SuppressWarnings("deprecation")
         com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type result = com.mysql.cj.x.protobuf.Mysqlx.ServerMessages.Type.valueOf(serverMessages_);
@@ -3922,13 +3957,14 @@ public final class MysqlxConnection {
        * <code>optional .Mysqlx.ClientMessages.Type client_messages = 3;</code>
        * @return Whether the clientMessages field is set.
        */
-      public boolean hasClientMessages() {
+      @java.lang.Override public boolean hasClientMessages() {
         return ((bitField0_ & 0x00000004) != 0);
       }
       /**
        * <code>optional .Mysqlx.ClientMessages.Type client_messages = 3;</code>
        * @return The clientMessages.
        */
+      @java.lang.Override
       public com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type getClientMessages() {
         @SuppressWarnings("deprecation")
         com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type result = com.mysql.cj.x.protobuf.Mysqlx.ClientMessages.Type.valueOf(clientMessages_);
@@ -3964,6 +4000,7 @@ public final class MysqlxConnection {
        * <code>required bytes payload = 4;</code>
        * @return Whether the payload field is set.
        */
+      @java.lang.Override
       public boolean hasPayload() {
         return ((bitField0_ & 0x00000008) != 0);
       }
@@ -3971,6 +4008,7 @@ public final class MysqlxConnection {
        * <code>required bytes payload = 4;</code>
        * @return The payload.
        */
+      @java.lang.Override
       public com.google.protobuf.ByteString getPayload() {
         return payload_;
       }

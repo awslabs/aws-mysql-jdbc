@@ -1,6 +1,4 @@
 /*
- * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
  * Copyright (c) 2002, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -41,7 +39,6 @@ import com.mchange.v2.c3p0.QueryConnectionTester;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
 
 /**
  * ConnectionTester for C3P0 connection pool that uses the more efficient COM_PING method of testing connection 'liveness' for MySQL, and 'sorts' exceptions
@@ -103,7 +100,7 @@ public final class MysqlConnectionTester implements QueryConnectionTester {
         if (throwable instanceof SQLException) {
             String sqlState = ((SQLException) throwable).getSQLState();
 
-            if (ConnectionUtils.isNetworkException(sqlState)) {
+            if (sqlState != null && sqlState.startsWith("08")) {
                 return CONNECTION_IS_INVALID;
             }
 

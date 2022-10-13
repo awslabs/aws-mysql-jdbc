@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -79,8 +79,6 @@ import com.mysql.cj.jdbc.ha.ReplicationConnection;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
-import software.aws.rds.jdbc.mysql.Driver;
-
 /**
  * Base class for all test cases. Creates connections, statements, etc. and closes them.
  */
@@ -107,7 +105,7 @@ public abstract class BaseTestCase {
     private List<String[]> createdObjects;
 
     /** The driver to use */
-    protected String dbClass = com.mysql.cj.jdbc.Driver.class.getName();
+    protected String dbClass = "com.mysql.cj.jdbc.Driver";
 
     /** My instance number */
     private int myInstanceNumber = 0;
@@ -139,38 +137,41 @@ public abstract class BaseTestCase {
 
     private boolean isOnCSFS = true;
 
-    private static Driver registeredDriver;
-
-    private static final String DOMAIN_NAME = System.getenv("TEST_MYSQL_DOMAIN");
-    private static final String TEST_MYSQL_PORT = System.getenv("TEST_MYSQL_PORT");
-
     /**
      * Creates a new BaseTestCase object.
      */
     public BaseTestCase() {
-        try {
-            if(registeredDriver == null) {
-                registeredDriver = new Driver();
-            }
-            DriverManager.registerDriver(registeredDriver);
-        } catch (SQLException E) {
-            throw new RuntimeException("Can't register driver!");
-        }
-
         this.myInstanceNumber = instanceCount++;
 
         String newDbUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url);
 
         if ((newDbUrl != null) && (newDbUrl.trim().length() != 0)) {
-            dbUrl = newDbUrl;
-            dbUrl = dbUrl
-                .replace("{domain}", DOMAIN_NAME)
-                .replace("{port}", TEST_MYSQL_PORT);
+            dbUrl = sanitizeDbName(newDbUrl);
         }
-        timeZoneFreeDbUrl = dbUrl.replaceAll(PropertyKey.connectionTimeZone.getKeyName() + "=", PropertyKey.connectionTimeZone.getKeyName() + "VOID=")
-                .replaceAll("serverTimezone=", "serverTimezoneVOID=");
         mainConnectionUrl = ConnectionUrl.getConnectionUrlInstance(dbUrl, null);
         this.dbName = mainConnectionUrl.getDatabase();
+
+        timeZoneFreeDbUrl = dbUrl.replaceAll(PropertyKey.connectionTimeZone.getKeyName() + "=", PropertyKey.connectionTimeZone.getKeyName() + "VOID=")
+                .replaceAll("serverTimezone=", "serverTimezoneVOID=");
+    }
+
+    private String sanitizeDbName(String url) {
+        ConnectionUrl parsedUrl = ConnectionUrl.getConnectionUrlInstance(url, null);
+        if (StringUtils.isNullOrEmpty(parsedUrl.getDatabase())) {
+            List<String> splitUp = StringUtils.split(url, "\\?", true);
+            StringBuilder value = new StringBuilder();
+            for (int i = 0; i < splitUp.size(); i++) {
+                value.append(splitUp.get(i));
+                if (i == 0) {
+                    if (!splitUp.get(i).endsWith("/")) {
+                        value.append("/");
+                    }
+                    value.append("cjtest_8_0?");
+                }
+            }
+            url = value.toString();
+        }
+        return url;
     }
 
     protected void createSchemaObject(String objectType, String objectName, String columnsAndOtherStuff) throws SQLException {
@@ -506,7 +507,7 @@ public abstract class BaseTestCase {
         props.remove(PropertyKey.DBNAME.getKeyName());
         removeHostRelatedProps(props);
 
-        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql:aws://").append(host).append(":").append(port).append("/?");
+        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql://").append(host).append(":").append(port).append("/?");
 
         Enumeration<Object> keyEnum = props.keys();
         while (keyEnum.hasMoreElements()) {
@@ -633,7 +634,6 @@ public abstract class BaseTestCase {
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
         System.out.println("Running test " + testInfo.getTestClass().get().getName() + "#" + testInfo.getDisplayName());
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-
         Class.forName(this.dbClass);
         this.createdObjects = new ArrayList<>();
 
@@ -993,7 +993,7 @@ public abstract class BaseTestCase {
     protected static void assertSecureConnection(Connection conn) throws Exception {
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SHOW STATUS LIKE 'Ssl_version'")) {
             assertTrue(rs.next());
-            assertNotEquals("", rs.getString(1));
+            assertNotEquals("", rs.getString(2));
         }
     }
 
@@ -1002,6 +1002,13 @@ public abstract class BaseTestCase {
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT CURRENT_USER()")) {
             assertTrue(rs.next());
             assertEquals(user, rs.getString(1).split("@")[0]);
+        }
+    }
+
+    protected static void assertNonSecureConnection(Connection conn) throws Exception {
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SHOW STATUS LIKE 'Ssl_version'")) {
+            assertTrue(rs.next());
+            assertEquals("", rs.getString(2));
         }
     }
 

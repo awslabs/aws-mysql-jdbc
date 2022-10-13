@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -69,6 +69,7 @@ public enum PropertyKey {
     allowSourceDownConnections("allowSourceDownConnections", "allowMasterDownConnections", true), //
     allowUrlInLocalInfile("allowUrlInLocalInfile", true), //
     alwaysSendSetIsolation("alwaysSendSetIsolation", true), //
+    authenticationFidoCallbackHandler("authenticationFidoCallbackHandler", true), //
     authenticationPlugins("authenticationPlugins", true), //
     autoClosePStmtStreams("autoClosePStmtStreams", true), //
     autoDeserialize("autoDeserialize", true), //
@@ -139,7 +140,7 @@ public enum PropertyKey {
     interactiveClient("interactiveClient", true), //
     jdbcCompliantTruncation("jdbcCompliantTruncation", true), //
     largeRowSizeThreshold("largeRowSizeThreshold", true), //
-    ldapServerHostname("ldapServerHostname", true), //
+    ldapServerHostname("ldapServerHostname", true), // 
     loadBalanceAutoCommitStatementRegex("loadBalanceAutoCommitStatementRegex", true), //
     loadBalanceAutoCommitStatementThreshold("loadBalanceAutoCommitStatementThreshold", true), //
     loadBalanceBlocklistTimeout("loadBalanceBlocklistTimeout", "loadBalanceBlacklistTimeout", true), //
@@ -157,6 +158,7 @@ public enum PropertyKey {
     logXaCommands("logXaCommands", true), //
     maintainTimeStats("maintainTimeStats", true), //
     maxAllowedPacket("maxAllowedPacket", true), //
+    maxByteArrayAsHex("maxByteArrayAsHex", true), //
     maxQuerySizeToLog("maxQuerySizeToLog", true), //
     maxReconnects("maxReconnects", true), //
     maxRows("maxRows", true), //
@@ -170,7 +172,7 @@ public enum PropertyKey {
     packetDebugBufferSize("packetDebugBufferSize", true), //
     padCharsWithSpace("padCharsWithSpace", true), //
     paranoid("paranoid", false), //
-    parseInfoCacheFactory("parseInfoCacheFactory", true), //
+    queryInfoCacheFactory("queryInfoCacheFactory", "parseInfoCacheFactory", true), //
     password1("password1", true), //
     password2("password2", true), //
     password3("password3", true), //
@@ -215,6 +217,7 @@ public enum PropertyKey {
     socketTimeout("socketTimeout", true), //
     socksProxyHost("socksProxyHost", true), //
     socksProxyPort("socksProxyPort", true), //
+    socksProxyRemoteDns("socksProxyRemoteDns", true), //
     sslMode("sslMode", true), //
     strictUpdates("strictUpdates", true), //
     tcpKeepAlive("tcpKeepAlive", true), //
@@ -274,38 +277,8 @@ public enum PropertyKey {
     xdevapiTlsVersions("xdevapi.tls-versions", "xdevapiTlsVersions", true), //
 
     yearIsDateType("yearIsDateType", true), //
-    zeroDateTimeBehavior("zeroDateTimeBehavior", true), //
-
-    // protocols for AWS MySQL Driver
-    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
-
-    // plugin system
-    useConnectionPlugins("useConnectionPlugins", true),
-    connectionPluginFactories("connectionPluginFactories", true),
-
-    // Failover plugin
-    enableClusterAwareFailover("enableClusterAwareFailover", true), //
-    gatherAdditionalMetricsOnInstance("gatherAdditionalMetricsOnInstance", true),
-    clusterInstanceHostPattern("clusterInstanceHostPattern", true), // "?.my-domain.com", "any-subdomain.?.my-domain.com:9999"; "?" will be replaced with node name
-    clusterId("clusterId", true), //
-    clusterTopologyRefreshRateMs("clusterTopologyRefreshRateMs", true), //
-    failoverTimeoutMs("failoverTimeoutMs", true), //
-    failoverClusterTopologyRefreshRateMs("failoverClusterTopologyRefreshRateMs", true), //
-    failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
-    failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
-
-    // Enhanced Failure Monitoring plugin
-    failureDetectionEnabled("failureDetectionEnabled", true),
-    failureDetectionTime("failureDetectionTime", true),
-    failureDetectionInterval("failureDetectionInterval", true),
-    failureDetectionCount("failureDetectionCount", true),
-    monitorDisposalTime("monitorDisposalTime", true),
-
-    // XML enternal entity
-    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
-
-    // IAM authentication
-    useAwsIam("useAwsIam", true);
+    zeroDateTimeBehavior("zeroDateTimeBehavior", true) //
+    ;
 
     private String keyName;
     private String ccAlias = null;
@@ -325,7 +298,7 @@ public enum PropertyKey {
 
     /**
      * Initializes each enum element with the proper key name to be used in the connection string or properties maps.
-     *
+     * 
      * @param keyName
      *            the key name for the enum element.
      * @param isCaseSensitive
@@ -338,7 +311,7 @@ public enum PropertyKey {
 
     /**
      * Initializes each enum element with the proper key name to be used in the connection string or properties maps.
-     *
+     * 
      * @param keyName
      *            the key name for the enum element.
      * @param alias
@@ -358,7 +331,7 @@ public enum PropertyKey {
 
     /**
      * Gets the key name of this enum element.
-     *
+     * 
      * @return
      *         the key name associated with the enum element.
      */
@@ -368,7 +341,7 @@ public enum PropertyKey {
 
     /**
      * Gets the camel-case alias key name of this enum element.
-     *
+     * 
      * @return
      *         the camel-case alias key name associated with the enum element or null.
      */
@@ -378,7 +351,7 @@ public enum PropertyKey {
 
     /**
      * Looks for a {@link PropertyKey} that matches the given value as key name.
-     *
+     * 
      * @param value
      *            the key name to look for.
      * @return
@@ -401,7 +374,7 @@ public enum PropertyKey {
 
     /**
      * Helper method that normalizes the case of the given key, if it is one of {@link PropertyKey} elements.
-     *
+     * 
      * @param keyName
      *            the key name to normalize.
      * @return

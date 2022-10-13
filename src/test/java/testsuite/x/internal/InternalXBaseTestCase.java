@@ -44,9 +44,9 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DefaultPropertySet;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyDefinitions;
-import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.protocol.x.StatementExecuteOkBuilder;
 import com.mysql.cj.protocol.x.XMessageBuilder;
 import com.mysql.cj.protocol.x.XProtocol;
@@ -247,7 +247,7 @@ public class InternalXBaseTestCase {
 
     /**
      * Checks if the MySQL version we are connected to meets the minimum {@link ServerVersion} provided.
-     *
+     * 
      * @param url
      *            server URL
      * @param version
