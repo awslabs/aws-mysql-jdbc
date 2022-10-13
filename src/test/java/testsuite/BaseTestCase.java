@@ -79,6 +79,8 @@ import com.mysql.cj.jdbc.ha.ReplicationConnection;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
 
+import software.aws.rds.jdbc.mysql.Driver;
+
 /**
  * Base class for all test cases. Creates connections, statements, etc. and closes them.
  */
@@ -105,7 +107,7 @@ public abstract class BaseTestCase {
     private List<String[]> createdObjects;
 
     /** The driver to use */
-    protected String dbClass = "com.mysql.cj.jdbc.Driver";
+    protected String dbClass = com.mysql.cj.jdbc.Driver.class.getName();
 
     /** My instance number */
     private int myInstanceNumber = 0;
@@ -137,16 +139,33 @@ public abstract class BaseTestCase {
 
     private boolean isOnCSFS = true;
 
+    private static Driver registeredDriver;
+
+    private static final String DOMAIN_NAME = System.getenv("TEST_MYSQL_DOMAIN");
+    private static final String TEST_MYSQL_PORT = System.getenv("TEST_MYSQL_PORT");
+
     /**
      * Creates a new BaseTestCase object.
      */
     public BaseTestCase() {
+        try {
+            if(registeredDriver == null) {
+                registeredDriver = new Driver();
+            }
+            DriverManager.registerDriver(registeredDriver);
+        } catch (SQLException E) {
+            throw new RuntimeException("Can't register driver!");
+        }
+
         this.myInstanceNumber = instanceCount++;
 
         String newDbUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url);
 
         if ((newDbUrl != null) && (newDbUrl.trim().length() != 0)) {
             dbUrl = sanitizeDbName(newDbUrl);
+            dbUrl = dbUrl
+                .replace("{domain}", DOMAIN_NAME)
+                .replace("{port}", TEST_MYSQL_PORT);
         }
         mainConnectionUrl = ConnectionUrl.getConnectionUrlInstance(dbUrl, null);
         this.dbName = mainConnectionUrl.getDatabase();
@@ -507,7 +526,7 @@ public abstract class BaseTestCase {
         props.remove(PropertyKey.DBNAME.getKeyName());
         removeHostRelatedProps(props);
 
-        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql://").append(host).append(":").append(port).append("/?");
+        final StringBuilder urlBuilder = new StringBuilder("jdbc:mysql:aws://").append(host).append(":").append(port).append("/?");
 
         Enumeration<Object> keyEnum = props.keys();
         while (keyEnum.hasMoreElements()) {

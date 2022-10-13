@@ -1,50 +1,61 @@
 # Contributing Guidelines
 
-We love getting feedback from our users. Bugs and code contributions are great forms of feedback and we thank you for any bugs you report or code you contribute.
+Thank you for your interest in contributing to our project. Whether it's a bug report, new feature, correction, or additional
+documentation, we greatly value feedback and contributions from our community.
 
-## Reporting Issues
+Please read through this document before submitting any issues or pull requests to ensure we have all the necessary
+information to effectively respond to your bug report or contribution.
 
-Before reporting a new bug, please [check first](https://bugs.mysql.com/search.php) to see if a similar bug already exists.
 
-Bug reports should be as complete as possible. Please try and include the following:
+## Reporting Bugs/Feature Requests
 
-* Complete steps to reproduce the issue.
-* Any information about platform and environment that could be specific to the bug.
-* Specific version of the product you are using.
-* Specific version of the server being used.
-* Sample code to help reproduce the issue, if possible.
+We welcome you to use the GitHub issue tracker to report bugs or suggest features.
 
-## Contributing Code
+When filing an issue, please check [existing open](https://github.com/awslabs/aws-mysql-jdbc/issues), or [recently closed](https://github.com/awslabs/aws-mysql-jdbc/issues?q=is%3Aissue+is%3Aclosed), issues to make sure somebody else hasn't already
+reported the issue. Please try to include as much information as you can. Details like these are incredibly useful:
 
-Contributing to MySQL projects is easy. You just need to follow these steps.
+* A reproducible test case or series of steps
+* The version of our code being used
+* Any modifications you've made relevant to the bug
+* Anything unusual about your environment or deployment
 
-* Make sure you have a user account at [bugs.mysql.com](https://bugs.mysql.com). You will need to reference this user account when you submit your Oracle Contributor Agreement (OCA).
-* Sign the Oracle Contributor Agreement. You can find instructions for doing that at the [OCA Page](https://oca.opensource.oracle.com/).
-* Develop your pull request. Make sure you are aware of the requirements for the project (e.g. do not require Java 7 if we are supporting Java 8 and higher).
-* Validate your pull request by including tests that sufficiently cover the functionality you are adding.
-* Verify that the entire test suite passes with your code applied.
-* Submit your pull request. While you can submit the pull request via [GitHub](https://github.com/mysql/mysql-connector-j/pulls), you can also submit it directly via [bugs.mysql.com](https://bugs.mysql.com).
 
-Thanks again for your wish to contribute to MySQL. We truly believe in the principles of open source development and appreciate any contributions to our projects.
+## Contributing via Pull Requests
+Contributions via pull requests are much appreciated. Before sending us a pull request, please ensure that:
 
-## Setting Up a Development Environment
+1. You are working against the latest source on the *main* branch.
+2. You check existing open, and recently merged, pull requests to make sure someone else hasn't addressed the problem already.
+3. You open an issue to discuss any significant work - we would hate for your time to be wasted.
 
-You can use your preferred Java IDE to view, edit, and compile the MySQL Connector/J source code. The configuration setup can be adapted from [Installing from Source](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-installing-source.html) with little effort.
+To send us a pull request, please:
 
-Running the entire test suite or your own test case is also possible by setting a few Ant properties in your IDE preferences setup. Refer to [Testing Connector/J](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-testing.html) for additional details.
+1. Fork the repository.
+2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
+3. Ensure local tests pass.
+4. Commit to your fork using clear commit messages.
+5. Send us a pull request, answering any default questions in the pull request interface.
+6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
-## Getting Help
+GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
+[creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
 
-If you need help or just want to get in touch with us, please use the following resources:
 
-* [MySQL Connector/J, JDBC and Java forum](https://forums.mysql.com/list.php?39).
-* [`#connectors` channel in MySQL Community Slack](https://mysqlcommunity.slack.com/messages/connectors). ([Sign-up](https://lefred.be/mysql-community-on-slack/) required if you do not have an Oracle account.)
-* [@MySQL on Twitter](https://twitter.com/MySQL).
-* [MySQL Blog](https://blogs.oracle.com/mysql/).
-* [MySQL Connectors Blog archive](https://dev.mysql.com/blog-archive/?cat=Connectors%20%2F%20Languages).
-* [MySQL Newsletter](https://www.mysql.com/news-and-events/newsletter/).
-* [MySQL Bugs Database](https://bugs.mysql.com/).
+## Finding Contributions to Work On
+Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels ((enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any ['help wanted'](https://github.com/awslabs/aws-mysql-jdbc/labels/help%20wanted) issues is a great place to start.
 
-We hope to hear from you soon. Enjoy your coding!
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/MySQL.svg?label=Follow%20%40MySQL&style=social)](https://twitter.com/intent/follow?screen_name=MySQL)
+## Code of Conduct
+This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
+For more information see the [Code of Conduct FAQ](https://aws.github.io/code-of-conduct-faq) or contact
+opensource-codeofconduct@amazon.com with any additional questions or comments.
+
+
+## Security Issue Notifications
+If you discover a potential security issue in this project we ask that you notify AWS/Amazon Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public GitHub issue.
+
+
+## Licensing
+
+See the [LICENSE](https://github.com/awslabs/aws-mysql-jdbc/blob/main/LICENSE) file for our project's licensing. We will ask you to confirm the licensing of your contribution.
+
+We may ask you to sign a [Contributor License Agreement (CLA)](http://en.wikipedia.org/wiki/Contributor_License_Agreement) for larger changes.

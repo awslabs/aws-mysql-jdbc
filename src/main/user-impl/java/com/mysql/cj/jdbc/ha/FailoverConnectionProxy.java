@@ -1,4 +1,6 @@
 /*
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
  * Copyright (c) 2010, 2021, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -163,14 +165,7 @@ public class FailoverConnectionProxy extends MultiHostConnectionProxy {
             sqlState = ((CJException) t).getSQLState();
         }
 
-        if (sqlState != null) {
-            if (sqlState.startsWith("08")) {
-                // connection error
-                return true;
-            }
-        }
-
-        return false;
+        return ConnectionUtils.isNetworkException(sqlState);
     }
 
     /**

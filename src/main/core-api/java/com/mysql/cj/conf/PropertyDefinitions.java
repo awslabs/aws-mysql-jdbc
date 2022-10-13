@@ -650,6 +650,74 @@ public class PropertyDefinitions {
                 new StringPropertyDefinition(PropertyKey.serverAffinityOrder, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.serverAffinityOrder"), "8.0.8", CATEGORY_HA, Integer.MIN_VALUE),
 
+                // Cluster-aware failover settings
+
+                new StringPropertyDefinition(PropertyKey.clusterId, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.clusterId"), "0.1.0", CATEGORY_HA, Integer.MIN_VALUE),
+
+                new StringPropertyDefinition(PropertyKey.clusterInstanceHostPattern, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.clusterInstanceHostPattern"), "0.1.0", CATEGORY_HA, Integer.MIN_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.useConnectionPlugins, DEFAULT_VALUE_TRUE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.useConnectionPlugins"), "0.4.1", CATEGORY_HA, Integer.MAX_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.enableClusterAwareFailover, DEFAULT_VALUE_TRUE, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.enableClusterAwareFailover"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.gatherAdditionalMetricsOnInstance, DEFAULT_VALUE_FALSE, RUNTIME_MODIFIABLE,
+                    Messages.getString("ConnectionProperties.gatherAdditionalMetricsOnInstance"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.clusterTopologyRefreshRateMs, 30_000, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.clusterTopologyRefreshRateMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failoverTimeoutMs, 300_000, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failoverTimeoutMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failoverClusterTopologyRefreshRateMs, 2000, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failoverClusterTopologyRefreshRateMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failoverWriterReconnectIntervalMs, 2000, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failoverWriterReconnectIntervalMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failoverReaderConnectTimeoutMs, 30_000, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failoverReaderConnectTimeoutMs"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.acceptAwsProtocolOnly, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.acceptAwsProtocolOnly"), "0.1.0", CATEGORY_HA, Integer.MAX_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.allowXmlUnsafeExternalEntity, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.allowXmlUnsafeExternalEntity"), "0.2.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
+
+                new StringPropertyDefinition(PropertyKey.connectionPluginFactories, DEFAULT_VALUE_NULL_STRING, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.connectionPluginFactories"), "0.4.0", CATEGORY_HA, Integer.MIN_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.failureDetectionEnabled, DEFAULT_VALUE_TRUE, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionEnabled"), "0.4.0", CATEGORY_HA, Integer.MIN_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failureDetectionTime, 30_000, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionTime"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failureDetectionInterval, 5_000, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionInterval"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.failureDetectionCount, 3, RUNTIME_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.failureDetectionCount"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                        Integer.MAX_VALUE),
+
+                new IntegerPropertyDefinition(PropertyKey.monitorDisposalTime, 60_000, RUNTIME_MODIFIABLE,
+                    Messages.getString("ConnectionProperties.monitorDisposalTime"), "0.4.0", CATEGORY_HA, Integer.MAX_VALUE, 0,
+                    Integer.MAX_VALUE),
+
+                new BooleanPropertyDefinition(PropertyKey.useAwsIam, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.useAwsIam"), "0.3.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
+
                 //
                 // CATEGORY_PERFORMANCE
                 //

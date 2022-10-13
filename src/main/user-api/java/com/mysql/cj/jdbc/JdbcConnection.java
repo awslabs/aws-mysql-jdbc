@@ -36,6 +36,7 @@ import com.mysql.cj.MysqlConnection;
 import com.mysql.cj.ServerVersion;
 import com.mysql.cj.TransactionEventHandler;
 import com.mysql.cj.interceptors.QueryInterceptor;
+import com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor;
 import com.mysql.cj.jdbc.result.CachedResultSetMetaData;
 import com.mysql.cj.jdbc.result.ResultSetInternalMethods;
 
@@ -524,6 +525,7 @@ public interface JdbcConnection extends java.sql.Connection, MysqlConnection, Tr
 
     void initializeSafeQueryInterceptors() throws SQLException;
 
+    void setConnectionLifecycleInterceptor(ConnectionLifecycleInterceptor interceptor);
     /**
      * Tests to see if the connection is in Read Only Mode.
      * 

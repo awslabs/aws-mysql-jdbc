@@ -140,7 +140,7 @@ public enum PropertyKey {
     interactiveClient("interactiveClient", true), //
     jdbcCompliantTruncation("jdbcCompliantTruncation", true), //
     largeRowSizeThreshold("largeRowSizeThreshold", true), //
-    ldapServerHostname("ldapServerHostname", true), // 
+    ldapServerHostname("ldapServerHostname", true), //
     loadBalanceAutoCommitStatementRegex("loadBalanceAutoCommitStatementRegex", true), //
     loadBalanceAutoCommitStatementThreshold("loadBalanceAutoCommitStatementThreshold", true), //
     loadBalanceBlocklistTimeout("loadBalanceBlocklistTimeout", "loadBalanceBlacklistTimeout", true), //
@@ -277,8 +277,38 @@ public enum PropertyKey {
     xdevapiTlsVersions("xdevapi.tls-versions", "xdevapiTlsVersions", true), //
 
     yearIsDateType("yearIsDateType", true), //
-    zeroDateTimeBehavior("zeroDateTimeBehavior", true) //
-    ;
+    zeroDateTimeBehavior("zeroDateTimeBehavior", true), //
+
+    // protocols for AWS MySQL Driver
+    acceptAwsProtocolOnly("acceptAwsProtocolOnly", true),
+
+    // plugin system
+    useConnectionPlugins("useConnectionPlugins", true),
+    connectionPluginFactories("connectionPluginFactories", true),
+
+    // Failover plugin
+    enableClusterAwareFailover("enableClusterAwareFailover", true), //
+    gatherAdditionalMetricsOnInstance("gatherAdditionalMetricsOnInstance", true),
+    clusterInstanceHostPattern("clusterInstanceHostPattern", true), // "?.my-domain.com", "any-subdomain.?.my-domain.com:9999"; "?" will be replaced with node name
+    clusterId("clusterId", true), //
+    clusterTopologyRefreshRateMs("clusterTopologyRefreshRateMs", true), //
+    failoverTimeoutMs("failoverTimeoutMs", true), //
+    failoverClusterTopologyRefreshRateMs("failoverClusterTopologyRefreshRateMs", true), //
+    failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
+    failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
+
+    // Enhanced Failure Monitoring plugin
+    failureDetectionEnabled("failureDetectionEnabled", true),
+    failureDetectionTime("failureDetectionTime", true),
+    failureDetectionInterval("failureDetectionInterval", true),
+    failureDetectionCount("failureDetectionCount", true),
+    monitorDisposalTime("monitorDisposalTime", true),
+
+    // XML enternal entity
+    allowXmlUnsafeExternalEntity("allowXmlUnsafeExternalEntity", true),
+
+    // IAM authentication
+    useAwsIam("useAwsIam", true);
 
     private String keyName;
     private String ccAlias = null;
@@ -298,7 +328,7 @@ public enum PropertyKey {
 
     /**
      * Initializes each enum element with the proper key name to be used in the connection string or properties maps.
-     * 
+     *
      * @param keyName
      *            the key name for the enum element.
      * @param isCaseSensitive
@@ -311,7 +341,7 @@ public enum PropertyKey {
 
     /**
      * Initializes each enum element with the proper key name to be used in the connection string or properties maps.
-     * 
+     *
      * @param keyName
      *            the key name for the enum element.
      * @param alias
@@ -331,7 +361,7 @@ public enum PropertyKey {
 
     /**
      * Gets the key name of this enum element.
-     * 
+     *
      * @return
      *         the key name associated with the enum element.
      */
@@ -341,7 +371,7 @@ public enum PropertyKey {
 
     /**
      * Gets the camel-case alias key name of this enum element.
-     * 
+     *
      * @return
      *         the camel-case alias key name associated with the enum element or null.
      */
@@ -351,7 +381,7 @@ public enum PropertyKey {
 
     /**
      * Looks for a {@link PropertyKey} that matches the given value as key name.
-     * 
+     *
      * @param value
      *            the key name to look for.
      * @return
@@ -374,7 +404,7 @@ public enum PropertyKey {
 
     /**
      * Helper method that normalizes the case of the given key, if it is one of {@link PropertyKey} elements.
-     * 
+     *
      * @param keyName
      *            the key name to normalize.
      * @return

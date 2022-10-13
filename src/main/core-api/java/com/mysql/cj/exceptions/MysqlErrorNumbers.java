@@ -1214,6 +1214,8 @@ public final class MysqlErrorNumbers {
 
     public static final String SQL_STATE_BAD_SSL_PARAMS = "08000";
 
+    public static final String SQL_STATE_COMMUNICATION_LINK_CHANGED = "08S02";
+
     private static Map<String, String> sqlStateMessages;
 
     public static Map<Integer, String> mysqlToSql99State;

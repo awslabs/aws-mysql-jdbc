@@ -63,7 +63,7 @@ public class ExceptionsTest extends BaseTestCase {
                 "Communications link failure\n\nThe last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.",
                 new Callable<Void>() {
                     public Void call() throws Exception {
-                        new NonRegisteringDriver().connect("jdbc:mysql://wrongurl?user=usr", null);
+                        new NonRegisteringDriver().connect("jdbc:mysql:aws://wrongurl?user=usr", null);
                         return null;
                     }
                 });

@@ -82,6 +82,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.CharsetMappingWrapper;
@@ -94,6 +95,7 @@ import com.mysql.cj.conf.PropertyDefinitions;
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
 import com.mysql.cj.conf.PropertyDefinitions.SslMode;
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.InvalidConnectionAttributeException;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.jdbc.ClientPreparedStatement;
@@ -120,8 +122,8 @@ import com.mysql.cj.protocol.a.TracingPacketReader;
 import com.mysql.cj.protocol.a.TracingPacketSender;
 import com.mysql.cj.util.TimeUtil;
 import com.mysql.cj.util.Util;
-import com.mysql.jdbc.Driver;
 
+import software.aws.rds.jdbc.mysql.Driver;
 import testsuite.BaseQueryInterceptor;
 import testsuite.BaseTestCase;
 import testsuite.BufferingLogger;
@@ -903,7 +905,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests if useCompress works.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -950,7 +952,7 @@ public class ConnectionTest extends BaseTestCase {
     /**
      * @param useCompression
      * @param maxPayloadSize
-     * 
+     *
      * @throws Exception
      */
     private void testCompressionWith(String useCompression, int maxPayloadSize) throws Exception {
@@ -960,7 +962,7 @@ public class ConnectionTest extends BaseTestCase {
         File testBlobFile = File.createTempFile("cmj-testblob", ".dat");
         testBlobFile.deleteOnExit();
 
-        // TODO: following cleanup doesn't work correctly during concurrent execution of testsuite 
+        // TODO: following cleanup doesn't work correctly during concurrent execution of testsuite
         // cleanupTempFiles(testBlobFile, "cmj-testblob");
 
         BufferedOutputStream bOut = new BufferedOutputStream(new FileOutputStream(testBlobFile));
@@ -1009,13 +1011,14 @@ public class ConnectionTest extends BaseTestCase {
         if (bIn != null) {
             bIn.close();
         }
+        conn1.close();
     }
 
     /**
      * Tests feature of "localSocketAddress", by enumerating local IF's and trying each one in turn. This test might take a long time to run, since we can't set
      * timeouts if we're using localSocketAddress. We try and keep the time down on the testcase by spawning the checking of each interface off into separate
      * threads.
-     * 
+     *
      * @throws Exception
      *             if the test can't use at least one of the local machine's interfaces to make an outgoing connection to the server.
      */
@@ -1430,7 +1433,7 @@ public class ConnectionTest extends BaseTestCase {
         String password = parsedProps.getProperty(PropertyKey.PASSWORD.getKeyName());
         String database = parsedProps.getProperty(PropertyKey.DBNAME.getKeyName());
 
-        String newUrl = String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%s)(user=%s)(password=%s)/%s", TestUtils.encodePercent(host), port,
+        String newUrl = String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%s)(user=%s)(password=%s)/%s", TestUtils.encodePercent(host), port,
                 user != null ? user : "", password != null ? password : "", database);
 
         Properties props = getHostFreePropertiesFromTestsuiteUrl();
@@ -1566,6 +1569,7 @@ public class ConnectionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled // This test is disabled since Github Actions doesn't support IPv6
     public void testIPv6() throws Exception {
         assumeTrue(versionMeetsMinimum(5, 6), "MySQL 5.6+ is required to run this test."); // this test could work with MySQL 5.5 but requires specific server configuration, e.g. "--bind-address=::"
 
@@ -1590,7 +1594,7 @@ public class ConnectionTest extends BaseTestCase {
         for (String host : ipv6Addrs) {
             if (TestUtils.serverListening(host, port)) {
                 atLeastOne = true;
-                String ipv6Url = String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%d)", TestUtils.encodePercent(host), port);
+                String ipv6Url = String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%d)", TestUtils.encodePercent(host), port);
 
                 Connection testConn = null;
                 Statement testStmt = null;
@@ -1815,10 +1819,14 @@ public class ConnectionTest extends BaseTestCase {
         public <T extends Resultset> T preProcess(Supplier<String> str, Query interceptedQuery) {
             String sql = str == null ? null : str.get();
             if (sql == null) {
-                if (interceptedQuery instanceof ClientPreparedStatement) {
-                    sql = ((PreparedQuery) ((ClientPreparedStatement) interceptedQuery)).asSql();
-                } else if (interceptedQuery instanceof PreparedQuery) {
-                    sql = ((PreparedQuery) interceptedQuery).asSql();
+                try {
+                    if (interceptedQuery instanceof ClientPreparedStatement) {
+                        sql = ((PreparedQuery) ((ClientPreparedStatement) interceptedQuery)).asSql();
+                    } else if (interceptedQuery instanceof PreparedQuery) {
+                        sql = ((PreparedQuery) interceptedQuery).asSql();
+                    }
+                } catch (Exception ex) {
+                    throw ExceptionFactory.createException(ex.getMessage(), ex);
                 }
             }
 
@@ -2150,7 +2158,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests that given SSL/TLS related connection properties values are processed as expected.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -2221,7 +2229,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests connection property 'testFallbackToSystemTrustStore' behavior.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -2312,7 +2320,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests connection property 'testFallbackToSystemKeyStore' behavior.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -2403,7 +2411,7 @@ public class ConnectionTest extends BaseTestCase {
     /**
      * Tests "LOAD DATA LOCAL INFILE" statements when enabled but restricted to a specific path, by specifying a path in the connection property
      * 'allowLoadLocalInfileInPath'.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -2702,7 +2710,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests WL#14392, Improve timeout error messages [classic].
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -2723,7 +2731,7 @@ public class ConnectionTest extends BaseTestCase {
         Thread.sleep(1500 * seconds);
         if (versionMeetsMinimum(8, 0, 24) && !(isServerRunningOnWindows() && System.getProperty("os.name").contains("Windows"))) { // server reports timeout
             // TS.1.1 Create a connection to a MySQL configured with a short session timeout value.
-            // Sleep for a time longer than the specified timeout and assess that the error message obtained is the new one.        
+            // Sleep for a time longer than the specified timeout and assess that the error message obtained is the new one.
             assertThrows(CommunicationsException.class,
                     "The client was disconnected by the server because of inactivity. See wait_timeout and interactive_timeout for configuring this behavior.",
                     () -> timeoutConn.createStatement().executeQuery("SELECT 1"));
@@ -2752,7 +2760,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests WL#14805, Remove support for TLS 1.0 and 1.1.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -2769,7 +2777,7 @@ public class ConnectionTest extends BaseTestCase {
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.REQUIRED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
 
-        // TS.FR.1_1. Create a Connection with the connection property tlsVersions=TLSv1.2. Assess that the connection is created successfully and it is using 
+        // TS.FR.1_1. Create a Connection with the connection property tlsVersions=TLSv1.2. Assess that the connection is created successfully and it is using
         // TLSv1.2.
         props.setProperty(PropertyKey.tlsVersions.getKeyName(), "TLSv1.2");
         con = getConnectionWithProps(props);
@@ -2890,7 +2898,7 @@ public class ConnectionTest extends BaseTestCase {
 
     /**
      * Tests WL#14835, Align TLS option checking across connectors
-     * 
+     *
      * @throws Exception
      */
     @Test

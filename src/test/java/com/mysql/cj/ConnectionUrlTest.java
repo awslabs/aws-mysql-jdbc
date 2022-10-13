@@ -485,6 +485,9 @@ public class ConnectionUrlTest {
         assertEquals(ConnectionUrl.Type.REPLICATION_DNS_SRV_CONNECTION, ConnectionUrl.Type.fromValue("jdbc:mysql+srv:replication:", 1));
         assertEquals(ConnectionUrl.Type.REPLICATION_DNS_SRV_CONNECTION, ConnectionUrl.Type.fromValue("jdbc:mysql+srv:replication:", 2));
         assertEquals(ConnectionUrl.Type.XDEVAPI_DNS_SRV_SESSION, ConnectionUrl.Type.fromValue("mysqlx+srv:", 1));
+
+        // AWS Standard schemes:
+        assertEquals(ConnectionUrl.Type.SINGLE_CONNECTION_AWS, ConnectionUrl.Type.fromValue("jdbc:mysql:aws:", 1));
     }
 
     /**

@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  
+  first-mysql:
+    image: mysql:8.0.21
+    container_name: first-mysql
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+    command:
+      - --local_infile=1
+      - --max_allowed_packet=40M
+      - --max-connections=2048
+      - --secure-file-priv=/var/lib/mysql
+      - --ssl-key=/home/certdir/server-key.pem
+      - --ssl-cert=/home/certdir/server-cert.pem
+      - --ssl-ca=/home/certdir/ca-cert.pem
+      - --plugin_dir=/home/plugin_dir
+    volumes:
+      - ../src/test/config/ssl-test-certs/:/home/certdir
+      - ./plugins:/home/plugin_dir
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    security_opt:
+      - seccomp:unconfined
+
+  second-mysql:
+    image: mysql:8.0.21
+    container_name: second-mysql
+    restart: always
+    ports:
+      - 3307:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+    command:
+      - --log-error-verbosity=4
+      - --local_infile=1
+      - --max_allowed_packet=40M
+      - --max-connections=2048
+      - --secure-file-priv=/var/lib/mysql
+      - --ssl-key=/home/certdir/server-key.pem
+      - --ssl-cert=/home/certdir/server-cert.pem
+      - --ssl-ca=/home/certdir/ca-cert.pem
+      - --plugin_dir=/home/plugin_dir
+      - --default-authentication-plugin=sha256_password
+      - --sha256_password_public_key_path=/home/certdir/mykey.pub
+      - --caching_sha2_password_public_key_path=/home/certdir/mykey.pub
+      - --sha256_password_private_key_path=/home/certdir/mykey.pem
+      - --caching_sha2_password_private_key_path=/home/certdir/mykey.pem
+    volumes:
+      - ../src/test/config/ssl-test-certs/:/home/certdir
+      - ./plugins:/home/plugin_dir
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    security_opt:
+      - seccomp:unconfined

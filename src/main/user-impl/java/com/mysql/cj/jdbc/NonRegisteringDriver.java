@@ -35,6 +35,7 @@ import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -48,6 +49,7 @@ import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.exceptions.ExceptionFactory;
 import com.mysql.cj.exceptions.UnableToConnectException;
 import com.mysql.cj.exceptions.UnsupportedConnectionStringException;
+import com.mysql.cj.jdbc.ha.ConnectionProxy;
 import com.mysql.cj.jdbc.ha.FailoverConnectionProxy;
 import com.mysql.cj.jdbc.ha.LoadBalancedConnectionProxy;
 import com.mysql.cj.jdbc.ha.ReplicationConnectionProxy;
@@ -72,6 +74,8 @@ import com.mysql.cj.util.StringUtils;
  * </p>
  */
 public class NonRegisteringDriver implements java.sql.Driver {
+
+    protected static boolean acceptAwsProtocolOnly = false;
 
     /*
      * Standardizes OS name information to align with other drivers/clients
@@ -143,8 +147,23 @@ public class NonRegisteringDriver implements java.sql.Driver {
      *                if a database access error occurs or the url is null
      */
     @Override
-    public boolean acceptsURL(String url) throws SQLException {
+    public boolean acceptsURL(String url) {
+        if (isAcceptAwsProtocolOnly(url) && !url.startsWith(Type.SINGLE_CONNECTION_AWS.getScheme())) {
+            return false;
+        }
         return (ConnectionUrl.acceptsUrl(url));
+    }
+
+    private boolean isAcceptAwsProtocolOnly(String url) {
+        Properties info = new Properties();
+        ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
+        Map<String, String> connProps = conStr.getOriginalProperties();
+
+        if (connProps.containsKey("acceptAwsProtocolOnly")) {
+            return Boolean.parseBoolean(connProps.get("acceptAwsProtocolOnly"));
+        } else {
+            return acceptAwsProtocolOnly;
+        }
     }
 
     //
@@ -193,21 +212,25 @@ public class NonRegisteringDriver implements java.sql.Driver {
             }
 
             ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, info);
+
             switch (conStr.getType()) {
                 case SINGLE_CONNECTION:
-                    return com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
+                    return isAcceptAwsProtocolOnly(url) ? null : com.mysql.cj.jdbc.ConnectionImpl.getInstance(conStr.getMainHost());
+
+                case SINGLE_CONNECTION_AWS:
+                    return ConnectionProxy.autodetectClusterAndCreateProxyInstance(conStr);
 
                 case FAILOVER_CONNECTION:
                 case FAILOVER_DNS_SRV_CONNECTION:
-                    return FailoverConnectionProxy.createProxyInstance(conStr);
+                    return isAcceptAwsProtocolOnly(url) ? null : FailoverConnectionProxy.createProxyInstance(conStr);
 
                 case LOADBALANCE_CONNECTION:
                 case LOADBALANCE_DNS_SRV_CONNECTION:
-                    return LoadBalancedConnectionProxy.createProxyInstance(conStr);
+                    return isAcceptAwsProtocolOnly(url) ? null : LoadBalancedConnectionProxy.createProxyInstance(conStr);
 
                 case REPLICATION_CONNECTION:
                 case REPLICATION_DNS_SRV_CONNECTION:
-                    return ReplicationConnectionProxy.createProxyInstance(conStr);
+                    return isAcceptAwsProtocolOnly(url) ? null : ReplicationConnectionProxy.createProxyInstance(conStr);
 
                 default:
                     return null;
@@ -243,7 +266,7 @@ public class NonRegisteringDriver implements java.sql.Driver {
 
         if (!isNullOrEmpty(url)) {
             ConnectionUrl connStr = ConnectionUrl.getConnectionUrlInstance(url, info);
-            if (connStr.getType() == Type.SINGLE_CONNECTION) {
+            if (connStr.getType() == Type.SINGLE_CONNECTION || connStr.getType() == Type.SINGLE_CONNECTION_AWS) {
                 HostInfo hostInfo = connStr.getMainHost();
                 info = hostInfo.exposeAsProperties();
             }

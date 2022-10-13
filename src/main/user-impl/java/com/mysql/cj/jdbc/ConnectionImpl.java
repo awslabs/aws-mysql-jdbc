@@ -45,6 +45,7 @@ import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Struct;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -128,11 +129,21 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public void setProxy(JdbcConnection proxy) {
+        // If proxy is null, then set all of three proxy arguments to null.
+        if(proxy == null) {
+            this.parentProxy = null;
+            this.topProxy = null;
+            this.realProxy = null;
+            return;
+        }
+
         if (this.parentProxy == null) { // Only set this once.
             this.parentProxy = proxy;
         }
         this.topProxy = proxy;
         this.realProxy = this.topProxy instanceof MultiHostMySQLConnection ? ((MultiHostMySQLConnection) proxy).getThisAsProxy() : null;
+
+        addProxyInterceptor();
     }
 
     // this connection has to be proxied when using multi-host settings so that statements get routed to the right physical connection
@@ -1292,6 +1303,8 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             }
         }
 
+        addProxyInterceptor();
+
         this.session.setSessionVariables();
 
         this.session.loadServerVariables(this.getConnectionMutex(), this.dbmd.getDriverVersion());
@@ -1319,6 +1332,36 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
         //
 
         setupServerForTruncationChecks();
+    }
+
+    private void addProxyInterceptor() {
+        if (this.realProxy != null) {
+            ConnectionLifecycleInterceptor proxyInterceptor = null;
+            if (this.realProxy instanceof ConnectionLifecycleInterceptor) {
+                proxyInterceptor = (ConnectionLifecycleInterceptor)this.realProxy;
+            }
+
+            if(proxyInterceptor != null) {
+                if(this.connectionLifecycleInterceptors == null) {
+                    this.connectionLifecycleInterceptors = new ArrayList<ConnectionLifecycleInterceptor>();
+                }
+                if(!this.connectionLifecycleInterceptors.contains(proxyInterceptor)) {
+                    this.connectionLifecycleInterceptors.add(proxyInterceptor);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void setConnectionLifecycleInterceptor(ConnectionLifecycleInterceptor interceptor) {
+        if (interceptor != null) {
+            if (this.connectionLifecycleInterceptors == null) {
+                this.connectionLifecycleInterceptors = new ArrayList<>();
+            }
+            if (!this.connectionLifecycleInterceptors.contains(interceptor)) {
+                this.connectionLifecycleInterceptors.add(interceptor);
+            }
+        }
     }
 
     /**
@@ -1752,7 +1795,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             if (this.cachePrepStmts.getValue() && pstmt.isPoolable()) {
                 synchronized (this.serverSideStatementCache) {
                     Object oldServerPrepStmt = this.serverSideStatementCache.put(
-                            new CompoundCacheKey(pstmt.getCurrentDatabase(), ((PreparedQuery) pstmt.getQuery()).getOriginalSql()),
+                        new CompoundCacheKey(pstmt.getCurrentDatabase(), ((PreparedQuery) pstmt.getQuery()).getOriginalSql()),
                             (ServerPreparedStatement) pstmt);
                     if (oldServerPrepStmt != null && oldServerPrepStmt != pstmt) {
                         ((ServerPreparedStatement) oldServerPrepStmt).isCached = false;
@@ -2529,7 +2572,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        return new MysqlSQLXML(getExceptionInterceptor());
+        return new MysqlSQLXML(getExceptionInterceptor(), getActiveMySQLConnection().getPropertySet());
     }
 
     @Override

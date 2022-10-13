@@ -115,13 +115,17 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         REPLICATION_CONNECTION("jdbc:mysql:replication:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.ReplicationConnectionUrl", PropertyKey.dnsSrv,
                 REPLICATION_DNS_SRV_CONNECTION), //
         XDEVAPI_SESSION("mysqlx:", HostsCardinality.ONE_OR_MORE, "com.mysql.cj.conf.url.XDevApiConnectionUrl", PropertyKey.xdevapiDnsSrv,
-                XDEVAPI_DNS_SRV_SESSION);
+                XDEVAPI_DNS_SRV_SESSION),
+        // AWS schemes:
+        SINGLE_CONNECTION_AWS("jdbc:mysql:aws:", HostsCardinality.SINGLE, com.mysql.cj.conf.url.AwsSingleConnectionUrl.class.getName());
 
         private String scheme;
         private HostsCardinality cardinality;
         private String implementingClass;
         private PropertyKey dnsSrvPropertyKey;
         private Type alternateDnsSrvType;
+
+        private static Type[] supportedTypes = { SINGLE_CONNECTION_AWS }; // This driver supports just AWS scheme.
 
         private Type(String scheme, HostsCardinality cardinality, String implementingClass) {
             this(scheme, cardinality, implementingClass, null, null);

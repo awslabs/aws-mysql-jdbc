@@ -1,4 +1,6 @@
 /*
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
  * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -31,49 +33,49 @@ package com.mysql.cj.log;
 
 public class BaseMetricsHolder {
 
-    private final static int HISTOGRAM_BUCKETS = 20;
+    protected final static int HISTOGRAM_BUCKETS = 20;
 
     /**
      * If gathering metrics, what was the execution time of the longest query so
      * far ?
      */
-    private long longestQueryTimeMs = 0;
+    protected long longestQueryTimeMs = 0;
 
-    private long maximumNumberTablesAccessed = 0;
+    protected long maximumNumberTablesAccessed = 0;
 
-    private long minimumNumberTablesAccessed = Long.MAX_VALUE;
+    protected long minimumNumberTablesAccessed = Long.MAX_VALUE;
 
     /** When was the last time we reported metrics? */
     //private long metricsLastReportedMs;
 
-    private long numberOfPreparedExecutes = 0;
+    protected long numberOfPreparedExecutes = 0;
 
-    private long numberOfPrepares = 0;
+    protected long numberOfPrepares = 0;
 
-    private long numberOfQueriesIssued = 0;
+    protected long numberOfQueriesIssued = 0;
 
-    private long numberOfResultSetsCreated = 0;
+    protected long numberOfResultSetsCreated = 0;
 
-    private long[] numTablesMetricsHistBreakpoints;
+    protected long[] numTablesMetricsHistBreakpoints;
 
-    private int[] numTablesMetricsHistCounts;
+    protected int[] numTablesMetricsHistCounts;
 
-    private long[] oldHistBreakpoints = null;
+    protected long[] oldHistBreakpoints = null;
 
-    private int[] oldHistCounts = null;
+    protected int[] oldHistCounts = null;
 
-    private long shortestQueryTimeMs = Long.MAX_VALUE;
+    protected long shortestQueryTimeMs = Long.MAX_VALUE;
 
-    private double totalQueryTimeMs = 0;
+    protected double totalQueryTimeMs = 0;
 
-    private long[] perfMetricsHistBreakpoints;
+    protected long[] perfMetricsHistBreakpoints;
 
-    private int[] perfMetricsHistCounts;
+    protected int[] perfMetricsHistCounts;
 
-    private long queryTimeCount;
-    private double queryTimeSum;
-    private double queryTimeSumSquares;
-    private double queryTimeMean;
+    protected long queryTimeCount;
+    protected double queryTimeSum;
+    protected double queryTimeSumSquares;
+    protected double queryTimeMean;
 
     private void createInitialHistogram(long[] breakpoints, long lowerBound, long upperBound) {
 
@@ -94,9 +96,9 @@ public class BaseMetricsHolder {
         if (histogramCounts == null) {
             createInitialHistogram(histogramBreakpoints, currentLowerBound, currentUpperBound);
         } else {
-            for (int i = 0; i < HISTOGRAM_BUCKETS; i++) {
+            for (int i = 1; i < HISTOGRAM_BUCKETS; i++) {
                 if (histogramBreakpoints[i] >= value) {
-                    histogramCounts[i] += numberOfTimes;
+                    histogramCounts[i - 1] += numberOfTimes;
 
                     break;
                 }
