@@ -3130,7 +3130,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
     @Test
     public void testBug16436511() throws Exception {
         DatabaseMetaData dbmd = this.conn.getMetaData();
-        assertEquals("MySQL Connector/J", dbmd.getDriverName());
+        assertEquals("Amazon Web Services (AWS) JDBC Driver for MySQL", dbmd.getDriverName());
     }
 
     /**

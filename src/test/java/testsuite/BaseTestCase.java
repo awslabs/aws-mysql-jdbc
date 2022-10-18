@@ -162,10 +162,10 @@ public abstract class BaseTestCase {
         String newDbUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url);
 
         if ((newDbUrl != null) && (newDbUrl.trim().length() != 0)) {
-            dbUrl = sanitizeDbName(newDbUrl);
-            dbUrl = dbUrl
+            newDbUrl = newDbUrl
                 .replace("{domain}", DOMAIN_NAME)
                 .replace("{port}", TEST_MYSQL_PORT);
+            dbUrl = sanitizeDbName(newDbUrl);
         }
         mainConnectionUrl = ConnectionUrl.getConnectionUrlInstance(dbUrl, null);
         this.dbName = mainConnectionUrl.getDatabase();

@@ -12546,6 +12546,7 @@ public class StatementRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug104753() throws Exception {
         createTable("testBug104753", "(id BIGINT NOT NULL, PRIMARY KEY (id))");
 
@@ -12557,7 +12558,7 @@ public class StatementRegressionTest extends BaseTestCase {
                 assertTrue(this.rs.next());
                 assertEquals(1, this.rs.getInt(1));
             } catch (Throwable e) {
-                fail("Exception not expected");
+                fail("Exception not expected " + e.toString());
             }
         };
 

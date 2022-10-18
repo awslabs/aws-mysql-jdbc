@@ -1447,7 +1447,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
             props.remove(PropertyKey.trustCertificateKeyStoreType.getKeyName());
             props.remove(PropertyKey.trustCertificateKeyStorePassword.getKeyName());
 
-            final String url = "jdbc:mysql://" + hostSpec + "/" + db + "?sslMode=REQUIRED&verifyServerCertificate=true"
+            final String url = "jdbc:mysql:aws://" + hostSpec + "/" + db + "?sslMode=REQUIRED&verifyServerCertificate=true"
                     + "&trustCertificateKeyStoreUrl=file:src/test/config/ssl-test-certs/ca-truststore&trustCertificateKeyStoreType=JKS"
                     + "&trustCertificateKeyStorePassword=password";
 
@@ -4427,6 +4427,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled // "jdbc:mysql:loadbalance:" isn't supported by the driver
     public void testBug16224249() throws Exception {
         String hostSpec = getEncodedHostPortPairFromTestsuiteUrl();
         int port = getPortFromTestsuiteUrl();
@@ -4964,7 +4965,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         Statement st1 = null;
         Connection c2 = null;
         Properties props = new Properties();
-        String url = "jdbc:mysql://" + getEncodedHostPortPairFromTestsuiteUrl();
+        String url = "jdbc:mysql:aws://" + getEncodedHostPortPairFromTestsuiteUrl();
 
         try {
             props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
@@ -5350,6 +5351,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
      * @throws Exception
      */
     @Test
+    @Disabled
     public void testBug69579() throws Exception {
         // Mock Server that accepts network connections and does nothing with them, for connection timeout testing.
         class MockServer implements Runnable {
@@ -6385,7 +6387,11 @@ public class ConnectionRegressionTest extends BaseTestCase {
                 sql = "";
             }
             if (sql.length() == 0 && interceptedQuery instanceof ClientPreparedStatement) {
-                sql = ((PreparedQuery) ((ClientPreparedStatement) interceptedQuery)).asSql();
+                try {
+                    sql = ((PreparedQuery) ((ClientPreparedStatement) interceptedQuery)).asSql();
+                } catch (Exception ex) {
+                    throw ExceptionFactory.createException(ex.getMessage(), ex);
+                }
             }
             if (sql.indexOf("nonexistent_table") >= 0) {
                 assertTrue(!this.connection.equals(previousConnection), "Different connection expected.");
@@ -8867,6 +8873,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
          */
         replConnGroup = "Bug22678872B";
         props.put(PropertyKey.replicationConnectionGroup.getKeyName(), replConnGroup);
+        props.put(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         final ReplicationConnection testConnB = ReplicationConnectionProxy
                 .createProxyInstance(new ReplicationConnectionUrl(singleHostList, emptyHostsList, props));
         assertTrue(testConnB.isSourceConnection());  // Connected to a source host.
@@ -9170,8 +9177,8 @@ public class ConnectionRegressionTest extends BaseTestCase {
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.socketFactory.getKeyName(), UnreliableSocketFactory.class.getName());
         for (String h : hosts) {
-            getConnectionWithProps(String.format("jdbc:mysql://%s:%s", h, port), props).close();
-            getConnectionWithProps(String.format("jdbc:mysql://address=(protocol=tcp)(host=%s)(port=%s)", h, port), props).close();
+            getConnectionWithProps(String.format("jdbc:mysql:aws://%s:%s", h, port), props).close();
+            getConnectionWithProps(String.format("jdbc:mysql:aws://address=(protocol=tcp)(host=%s)(port=%s)", h, port), props).close();
         }
     }
 
@@ -10132,10 +10139,10 @@ public class ConnectionRegressionTest extends BaseTestCase {
         connStr.add(dbUrl
                 + "&connectionCollation=utf8mb4_unicode_ci&sslMode=DISABLED&allowPublicKeyRetrieval=true&sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0");
         connStr.add(String.format(
-                "jdbc:mysql://address=(host=%1$s)(port=%2$d)(sslMode=DISABLED)(allowPublicKeyRetrieval=true)(connectionCollation=utf8mb4_unicode_ci)(sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0)(user=%3$s)(password=%4$s)/%5$s",
+                "jdbc:mysql:aws://address=(host=%1$s)(port=%2$d)(sslMode=DISABLED)(allowPublicKeyRetrieval=true)(connectionCollation=utf8mb4_unicode_ci)(sessionVariables=sql_mode='IGNORE_SPACE,ANSI',FOREIGN_KEY_CHECKS=0)(user=%3$s)(password=%4$s)/%5$s",
                 getEncodedHostFromTestsuiteUrl(), getPortFromTestsuiteUrl(), user, password, hostInfo.getDatabase()));
         connStr.add(String.format(
-                "jdbc:mysql://(host=%1$s,port=%2$d,connectionCollation=utf8mb4_unicode_ci,sslMode=DISABLED,allowPublicKeyRetrieval=true,sessionVariables=sql_mode='IGNORE_SPACE%3$sANSI'%3$sFOREIGN_KEY_CHECKS=0,user=%4$s,password=%5$s)/%6$s",
+                "jdbc:mysql:aws://(host=%1$s,port=%2$d,connectionCollation=utf8mb4_unicode_ci,sslMode=DISABLED,allowPublicKeyRetrieval=true,sessionVariables=sql_mode='IGNORE_SPACE%3$sANSI'%3$sFOREIGN_KEY_CHECKS=0,user=%4$s,password=%5$s)/%6$s",
                 getEncodedHostFromTestsuiteUrl(), getPortFromTestsuiteUrl(), "%2C", user, password, hostInfo.getDatabase()));
 
         for (String cs : connStr) {
@@ -10976,7 +10983,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
             // OK hosts that match one of the DNS/IP SANs.
             for (String okHost : okHosts) {
-                try (Connection testConn = getConnectionWithProps("jdbc:mysql://" + okHost + ":" + port + "/", props)) {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql:aws://" + okHost + ":" + port + "/", props)) {
                     this.rs = testConn.createStatement().executeQuery("SELECT 1");
                     assertTrue(this.rs.next());
                     assertEquals(1, this.rs.getInt(1));
@@ -10985,7 +10992,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
             // Not OK hosts that don't match any of the DNS/IP SANs.
             for (String notOkHost : notOkHosts) {
-                Exception e = assertThrows(CommunicationsException.class, () -> getConnectionWithProps("jdbc:mysql://" + notOkHost + ":" + port + "/", props));
+                Exception e = assertThrows(CommunicationsException.class, () -> getConnectionWithProps("jdbc:mysql:aws://" + notOkHost + ":" + port + "/", props));
                 assertNotNull(e.getCause());
                 assertNotNull(e.getCause().getCause());
                 String errMsg = e.getCause().getCause().getMessage();
@@ -10999,7 +11006,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
             // Not OK hosts are OK if not verifying identity, though.
             props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.VERIFY_CA.toString());
             for (String okHost : notOkHosts) {
-                try (Connection testConn = getConnectionWithProps("jdbc:mysql://" + okHost + ":" + port + "/", props)) {
+                try (Connection testConn = getConnectionWithProps("jdbc:mysql:aws://" + okHost + ":" + port + "/", props)) {
                     this.rs = testConn.createStatement().executeQuery("SELECT 1");
                     assertTrue(this.rs.next());
                     assertEquals(1, this.rs.getInt(1));
@@ -11106,6 +11113,7 @@ public class ConnectionRegressionTest extends BaseTestCase {
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
         props.setProperty(PropertyKey.cacheDefaultTimeZone.getKeyName(), "false");
         props.setProperty(PropertyKey.connectionTimeZone.getKeyName(), "SERVER");
+        props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), "false");
 
         try (Connection testConn = getConnectionWithProps(props)) {
             TimeZone serverTz = (TimeZone) f.get(((MysqlConnection) testConn).getSession().getServerSession());
