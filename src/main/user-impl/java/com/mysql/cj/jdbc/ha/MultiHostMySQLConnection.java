@@ -343,6 +343,11 @@ public class MultiHostMySQLConnection implements JdbcConnection {
     }
 
     @Override
+    public boolean isInPreparedTx() {
+        return getActiveMySQLConnection().isInPreparedTx();
+    }
+
+    @Override
     public boolean isSourceConnection() {
         return getThisAsProxy().isSourceConnection();
     }
@@ -530,6 +535,11 @@ public class MultiHostMySQLConnection implements JdbcConnection {
     @Override
     public void setInGlobalTx(boolean flag) {
         getActiveMySQLConnection().setInGlobalTx(flag);
+    }
+
+    @Override
+    public void setInPreparedTx(boolean flag) {
+        getActiveMySQLConnection().setInPreparedTx(flag);
     }
 
     @Override

@@ -228,6 +228,21 @@ public interface JdbcConnection extends java.sql.Connection, MysqlConnection, Tr
      */
     void setInGlobalTx(boolean flag);
 
+    /**
+     * Is this connection currently in the prepared transaction state?
+     *
+     * @return true if this connection is currently in a prepared transaction state.
+     */
+    boolean isInPreparedTx();
+
+    /**
+     * Set the state of being in a prepared transaction.
+     *
+     * @param flag
+     *            the state flag
+     */
+    void setInPreparedTx(boolean flag);
+
     // TODO this and other multi-host connection specific methods should be moved to special interface
     /**
      * Is this connection connected to the first host in the list if
