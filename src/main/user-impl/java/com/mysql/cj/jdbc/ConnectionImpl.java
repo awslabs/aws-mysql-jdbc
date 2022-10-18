@@ -298,6 +298,9 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     /** Is this connection associated with a global tx? */
     private boolean isInGlobalTx = false;
 
+    /** Is this connection in a prepared tx? */
+    private boolean isInPreparedTx = false;
+
     /** isolation level */
     private int isolationLevel = java.sql.Connection.TRANSACTION_READ_COMMITTED;
 
@@ -2177,6 +2180,16 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
     @Override
     public void setInGlobalTx(boolean flag) {
         this.isInGlobalTx = flag;
+    }
+
+    @Override
+    public boolean isInPreparedTx() {
+        return this.isInPreparedTx;
+    }
+
+    @Override
+    public void setInPreparedTx(boolean flag) {
+        this.isInPreparedTx = flag;
     }
 
     @Override

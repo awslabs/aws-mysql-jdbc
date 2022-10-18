@@ -605,6 +605,16 @@ public class ConnectionWrapper extends WrapperBase implements JdbcConnection {
     }
 
     @Override
+    public boolean isInPreparedTx() {
+        return this.mc.isInPreparedTx();
+    }
+
+    @Override
+    public void setInPreparedTx(boolean flag) {
+        this.mc.setInPreparedTx(flag);
+    }
+
+    @Override
     public void ping() throws SQLException {
         if (this.mc != null) {
             this.mc.ping();

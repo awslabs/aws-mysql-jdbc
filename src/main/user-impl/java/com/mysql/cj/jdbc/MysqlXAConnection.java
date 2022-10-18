@@ -223,9 +223,12 @@ public class MysqlXAConnection extends MysqlPooledConnection implements XAConnec
         commandBuf.append("XA PREPARE ");
         appendXid(commandBuf, xid);
 
-        dispatchCommand(commandBuf.toString());
-
-        return XA_OK; // TODO: Check for read-only
+        try {
+            dispatchCommand(commandBuf.toString());
+            return XA_OK; // TODO: Check for read-only
+        } finally {
+            this.underlyingConnection.setInPreparedTx(true);
+        }
     }
 
     @Override
@@ -243,6 +246,7 @@ public class MysqlXAConnection extends MysqlPooledConnection implements XAConnec
             dispatchCommand(commandBuf.toString());
         } finally {
             this.underlyingConnection.setInGlobalTx(false);
+            this.underlyingConnection.setInPreparedTx(false);
         }
     }
 
@@ -306,6 +310,7 @@ public class MysqlXAConnection extends MysqlPooledConnection implements XAConnec
             dispatchCommand(commandBuf.toString());
         } finally {
             this.underlyingConnection.setInGlobalTx(false);
+            this.underlyingConnection.setInPreparedTx(false);
         }
     }
 

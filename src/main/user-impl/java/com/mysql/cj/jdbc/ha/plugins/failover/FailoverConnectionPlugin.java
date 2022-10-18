@@ -704,11 +704,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   protected void updateTopologyAndConnectIfNeeded(boolean forceUpdate)
       throws SQLException {
-    JdbcConnection connection = this.currentConnectionProvider.getCurrentConnection();
+    final JdbcConnection connection = this.currentConnectionProvider.getCurrentConnection();
     if (!isFailoverEnabled()
         || connection == null
-        || connection.isClosed()) {
-      return;
+        || connection.isClosed()
+        || connection.isInPreparedTx()) {
+        return;
     }
 
     List<HostInfo> latestTopology =
