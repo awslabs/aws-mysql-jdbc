@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -33,42 +33,24 @@ import java.math.BigInteger;
 import java.sql.SQLException;
 
 import com.mysql.cj.MysqlType;
-import com.mysql.cj.ParseInfo;
+import com.mysql.cj.QueryInfo;
 import com.mysql.cj.QueryBindings;
 
 public interface JdbcPreparedStatement extends java.sql.PreparedStatement, JdbcStatement {
 
     void realClose(boolean calledExplicitly, boolean closeOpenResults) throws SQLException;
 
-    QueryBindings<?> getQueryBindings();
+    QueryBindings getQueryBindings();
 
     byte[] getBytesRepresentation(int parameterIndex) throws SQLException;
 
-    byte[] getOrigBytes(int parameterIndex) throws SQLException;
-
-    ParseInfo getParseInfo();
+    QueryInfo getQueryInfo();
 
     boolean isNull(int paramIndex) throws SQLException;
 
     String getPreparedSql();
 
-    void setBytes(int parameterIndex, byte[] x, boolean checkForIntroducer, boolean escapeForMBChars) throws SQLException;
-
-    /**
-     * Used by updatable result sets for refreshRow() because the parameter has
-     * already been escaped for updater or inserter prepared statements.
-     * 
-     * @param parameterIndex
-     *            the parameter to set.
-     * @param parameterAsBytes
-     *            the parameter as a string.
-     * 
-     * @throws SQLException
-     *             if an error occurs
-     */
-    void setBytesNoEscape(int parameterIndex, byte[] parameterAsBytes) throws SQLException;
-
-    void setBytesNoEscapeNoQuotes(int parameterIndex, byte[] parameterAsBytes) throws SQLException;
+    void setBytes(int parameterIndex, byte[] x, boolean escapeIfNeeded) throws SQLException;
 
     void setBigInteger(int parameterIndex, BigInteger x) throws SQLException;
 

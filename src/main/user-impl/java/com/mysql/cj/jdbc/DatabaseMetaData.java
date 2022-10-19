@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -37,6 +37,7 @@ import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -752,6 +753,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     protected boolean tinyInt1isBit;
     protected boolean transformedBitIsBoolean;
     protected boolean useHostsInPrivileges;
+    protected boolean yearIsDateType;
 
     protected RuntimeProperty<DatabaseTerm> databaseTerm;
     protected RuntimeProperty<Boolean> nullDatabaseMeansCurrent;
@@ -792,6 +794,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         this.tinyInt1isBit = this.conn.getPropertySet().getBooleanProperty(PropertyKey.tinyInt1isBit).getValue();
         this.transformedBitIsBoolean = this.conn.getPropertySet().getBooleanProperty(PropertyKey.transformedBitIsBoolean).getValue();
         this.useHostsInPrivileges = this.conn.getPropertySet().getBooleanProperty(PropertyKey.useHostsInPrivileges).getValue();
+        this.yearIsDateType = this.conn.getPropertySet().getBooleanProperty(PropertyKey.yearIsDateType).getValue();
         this.quotedId = this.session.getIdentifierQuoteString();
     }
 
@@ -873,7 +876,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         row[2] = procNameAsBytes;                                                                                   // PROCEDURE/NAME
         row[3] = s2b(paramName);                                                                                    // COLUMN_NAME
         row[4] = s2b(String.valueOf(getColumnType(isOutParam, isInParam, isReturnParam, forGetFunctionColumns)));   // COLUMN_TYPE
-        row[5] = s2b(Short.toString((short) typeDesc.mysqlType.getJdbcType()));                                     // DATA_TYPE
+        row[5] = Short.toString(typeDesc.mysqlType == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ?     //
+                Types.SMALLINT : (short) typeDesc.mysqlType.getJdbcType()).getBytes();                              // DATA_TYPE (jdbc)
         row[6] = s2b(typeDesc.mysqlType.getName());                                                                 // TYPE_NAME
         row[7] = typeDesc.datetimePrecision == null ? s2b(typeDesc.columnSize.toString()) : s2b(typeDesc.datetimePrecision.toString());            // PRECISION
         row[8] = typeDesc.columnSize == null ? null : s2b(typeDesc.columnSize.toString());                          // LENGTH
@@ -1346,7 +1350,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                                     }
 
                                     MysqlType ft = MysqlType.getByName(type.toUpperCase());
-                                    rowVal[2] = s2b(String.valueOf(ft.getJdbcType()));
+                                    rowVal[2] = s2b(
+                                            String.valueOf(ft == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ? Types.SMALLINT : ft.getJdbcType()));
                                     rowVal[3] = s2b(type);
                                     rowVal[4] = hasLength ? Integer.toString(size + decimals).getBytes() : Long.toString(ft.getPrecision()).getBytes();
                                     rowVal[5] = Integer.toString(maxBufferSize).getBytes();
@@ -2171,7 +2176,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                                 rowVal[1] = DatabaseMetaData.this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? s2b(dbStr) : null;          // TABLE_SCHEM
                                 rowVal[2] = s2b(tableName);                     // TABLE_NAME
                                 rowVal[3] = results.getBytes("Field");
-                                rowVal[4] = Short.toString((short) typeDesc.mysqlType.getJdbcType()).getBytes();// DATA_TYPE (jdbc)
+                                rowVal[4] = Short.toString(typeDesc.mysqlType == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ? Types.SMALLINT
+                                        : (short) typeDesc.mysqlType.getJdbcType()).getBytes();  // DATA_TYPE (jdbc)
                                 rowVal[5] = s2b(typeDesc.mysqlType.getName());  // TYPE_NAME (native)
                                 if (typeDesc.columnSize == null) {              // COLUMN_SIZE
                                     rowVal[6] = null;
@@ -2486,7 +2492,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getDefaultTransactionIsolation() throws SQLException {
-        return java.sql.Connection.TRANSACTION_READ_COMMITTED;
+        return java.sql.Connection.TRANSACTION_REPEATABLE_READ;
     }
 
     @Override
@@ -3943,7 +3949,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         byte[][] rowVal = new byte[18][];
 
         rowVal[0] = s2b(mysqlTypeName);                                                     // Type name
-        rowVal[1] = Integer.toString(mt.getJdbcType()).getBytes();                          // JDBC Data type
+        rowVal[1] = Integer.toString(mt == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ? Types.SMALLINT : mt.getJdbcType()).getBytes();                          // JDBC Data type
         // JDBC spec reserved only 'int' type for precision, thus we need to cut longer values
         rowVal[2] = Integer.toString(mt.getPrecision() > Integer.MAX_VALUE ? Integer.MAX_VALUE : mt.getPrecision().intValue()).getBytes(); // Precision
         switch (mt) {
@@ -3981,7 +3987,29 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         rowVal[8] = Integer.toString(java.sql.DatabaseMetaData.typeSearchable).getBytes();  // Searchable
         rowVal[9] = s2b(mt.isAllowed(MysqlType.FIELD_FLAG_UNSIGNED) ? "true" : "false");    // Unsignable
         rowVal[10] = s2b("false");                                                          // Fixed Prec Scale
-        rowVal[11] = s2b("false");                                                          // Auto Increment
+        switch (mt) {
+            case BIGINT:
+            case BIGINT_UNSIGNED:
+            case BOOLEAN:
+            case DOUBLE:
+            case DOUBLE_UNSIGNED:
+            case FLOAT:
+            case FLOAT_UNSIGNED:
+            case INT:
+            case INT_UNSIGNED:
+            case MEDIUMINT:
+            case MEDIUMINT_UNSIGNED:
+            case SMALLINT:
+            case SMALLINT_UNSIGNED:
+            case TINYINT:
+            case TINYINT_UNSIGNED:
+                rowVal[11] = s2b("true");                                                   // Auto Increment
+                break;
+            default:
+                rowVal[11] = s2b("false");                                                  // Auto Increment
+                break;
+
+        }
         rowVal[12] = s2b(mt.getName());                                                     // Locale Type Name
         switch (mt) {
             case DECIMAL: // TODO is it right? DECIMAL isn't a floating-point number...
@@ -4032,50 +4060,49 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         ArrayList<Row> tuples = new ArrayList<>();
 
-        /*
-         * The following are ordered by java.sql.Types, and then by how closely the MySQL type matches the JDBC Type (per spec)
-         */
-        tuples.add(new ByteArrayRow(getTypeInfo("BIT"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("BOOL"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("TINYINT"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("TINYINT UNSIGNED"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("BIGINT"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("BIGINT UNSIGNED"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("LONG VARBINARY"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("MEDIUMBLOB"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("LONGBLOB"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("BLOB"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("VARBINARY"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("TINYBLOB"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("BINARY"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("LONG VARCHAR"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("MEDIUMTEXT"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("LONGTEXT"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("TEXT"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("BIT"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("BLOB"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("BOOL"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("CHAR"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("ENUM"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("SET"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("DATE"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("DATETIME"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("DECIMAL"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("NUMERIC"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("INTEGER"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("INTEGER UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("DOUBLE PRECISION"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("DOUBLE PRECISION UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("DOUBLE"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("DOUBLE UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("ENUM"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("FLOAT"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("INT"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("INT UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("INTEGER"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("INTEGER UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("LONG VARBINARY"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("LONG VARCHAR"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("LONGBLOB"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("LONGTEXT"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("MEDIUMBLOB"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("MEDIUMINT"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("MEDIUMINT UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("MEDIUMTEXT"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("NUMERIC"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("REAL"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("SET"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("SMALLINT"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("SMALLINT UNSIGNED"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("FLOAT"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("DOUBLE"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("DOUBLE PRECISION"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("REAL"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("VARCHAR"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("TINYTEXT"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("DATE"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("YEAR"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("TEXT"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("TIME"), getExceptionInterceptor()));
-        tuples.add(new ByteArrayRow(getTypeInfo("DATETIME"), getExceptionInterceptor()));
         tuples.add(new ByteArrayRow(getTypeInfo("TIMESTAMP"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("TINYBLOB"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("TINYINT"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("TINYINT UNSIGNED"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("TINYTEXT"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("VARBINARY"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("VARCHAR"), getExceptionInterceptor()));
+        tuples.add(new ByteArrayRow(getTypeInfo("YEAR"), getExceptionInterceptor()));
 
         // TODO add missed types (aliases)
 
@@ -4208,7 +4235,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                                 byte[][] rowVal = new byte[8][];
                                 rowVal[0] = null;                                                                           // SCOPE is not used
                                 rowVal[1] = results.getBytes("Field");                                                      // COLUMN_NAME
-                                rowVal[2] = Short.toString((short) typeDesc.mysqlType.getJdbcType()).getBytes();            // DATA_TYPE
+                                rowVal[2] = Short.toString(typeDesc.mysqlType == MysqlType.YEAR && !DatabaseMetaData.this.yearIsDateType ? Types.SMALLINT
+                                        : (short) typeDesc.mysqlType.getJdbcType()).getBytes();                             // DATA_TYPE (jdbc)
                                 rowVal[3] = s2b(typeDesc.mysqlType.getName());                                              // TYPE_NAME
                                 rowVal[4] = typeDesc.columnSize == null ? null : s2b(typeDesc.columnSize.toString());       // COLUMN_SIZE
                                 rowVal[5] = s2b(Integer.toString(typeDesc.bufferLength));                                   // BUFFER_LENGTH

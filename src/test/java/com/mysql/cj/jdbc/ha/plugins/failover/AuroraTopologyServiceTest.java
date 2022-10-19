@@ -95,7 +95,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
@@ -107,9 +106,8 @@ public class AuroraTopologyServiceTest {
 
     assertEquals("writer-instance.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
     assertEquals(1234, master.getPort());
-    assertEquals("", master.getUser());
-    assertEquals("", master.getPassword());
-    assertTrue(master.isPasswordless());
+    assertNull(master.getUser());
+    assertNull(master.getPassword());
 
     final Map<String, String> props = master.getHostProperties();
     assertEquals("writer-instance", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
@@ -141,7 +139,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
@@ -159,21 +156,18 @@ public class AuroraTopologyServiceTest {
 
     assertEquals("writer-instance-1.XYZ.us-east-2.rds.amazonaws.com", master1.getHost());
     assertEquals(1234, master1.getPort());
-    assertEquals("", master1.getUser());
-    assertEquals("", master1.getPassword());
-    assertTrue(master1.isPasswordless());
+    assertNull(master1.getUser());
+    assertNull(master1.getPassword());
 
     assertEquals("writer-instance-2.XYZ.us-east-2.rds.amazonaws.com", master2.getHost());
     assertEquals(1234, master2.getPort());
-    assertEquals("", master2.getUser());
-    assertEquals("", master2.getPassword());
-    assertTrue(master2.isPasswordless());
+    assertNull(master2.getUser());
+    assertNull(master2.getPassword());
 
     assertEquals("writer-instance-3.XYZ.us-east-2.rds.amazonaws.com", master3.getHost());
     assertEquals(1234, master3.getPort());
-    assertEquals("", master3.getUser());
-    assertEquals("", master3.getPassword());
-    assertTrue(master3.isPasswordless());
+    assertNull(master3.getUser());
+    assertNull(master3.getPassword());
 
     Map<String, String> props1 = master1.getHostProperties();
     assertEquals("writer-instance-1", props1.get(TopologyServicePropertyKeys.INSTANCE_NAME));
@@ -281,7 +275,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
@@ -305,7 +298,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
     when(mockConn.createStatement()).thenThrow(SQLException.class);
@@ -330,7 +322,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
     spyProvider.setRefreshRate(1);
@@ -416,7 +407,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
@@ -446,7 +436,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
@@ -491,7 +480,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
@@ -530,7 +518,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getPort(),
             mainHost.getUser(),
             mainHost.getPassword(),
-            mainHost.isPasswordless(),
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 

@@ -582,5 +582,4 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
               || secondReaderInstanceId.equals(lastInstanceId));
     }
   }
-
 }

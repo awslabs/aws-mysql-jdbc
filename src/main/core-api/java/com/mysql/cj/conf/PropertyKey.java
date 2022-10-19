@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -69,6 +69,7 @@ public enum PropertyKey {
     allowSourceDownConnections("allowSourceDownConnections", "allowMasterDownConnections", true), //
     allowUrlInLocalInfile("allowUrlInLocalInfile", true), //
     alwaysSendSetIsolation("alwaysSendSetIsolation", true), //
+    authenticationFidoCallbackHandler("authenticationFidoCallbackHandler", true), //
     authenticationPlugins("authenticationPlugins", true), //
     autoClosePStmtStreams("autoClosePStmtStreams", true), //
     autoDeserialize("autoDeserialize", true), //
@@ -157,6 +158,7 @@ public enum PropertyKey {
     logXaCommands("logXaCommands", true), //
     maintainTimeStats("maintainTimeStats", true), //
     maxAllowedPacket("maxAllowedPacket", true), //
+    maxByteArrayAsHex("maxByteArrayAsHex", true), //
     maxQuerySizeToLog("maxQuerySizeToLog", true), //
     maxReconnects("maxReconnects", true), //
     maxRows("maxRows", true), //
@@ -170,7 +172,7 @@ public enum PropertyKey {
     packetDebugBufferSize("packetDebugBufferSize", true), //
     padCharsWithSpace("padCharsWithSpace", true), //
     paranoid("paranoid", false), //
-    parseInfoCacheFactory("parseInfoCacheFactory", true), //
+    queryInfoCacheFactory("queryInfoCacheFactory", "parseInfoCacheFactory", true), //
     password1("password1", true), //
     password2("password2", true), //
     password3("password3", true), //
@@ -215,6 +217,7 @@ public enum PropertyKey {
     socketTimeout("socketTimeout", true), //
     socksProxyHost("socksProxyHost", true), //
     socksProxyPort("socksProxyPort", true), //
+    socksProxyRemoteDns("socksProxyRemoteDns", true), //
     sslMode("sslMode", true), //
     strictUpdates("strictUpdates", true), //
     tcpKeepAlive("tcpKeepAlive", true), //

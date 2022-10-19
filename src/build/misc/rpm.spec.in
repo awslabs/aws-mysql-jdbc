@@ -1,4 +1,4 @@
-# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License, version 2.0, as published by the
@@ -62,7 +62,7 @@
 %endif
 
 Summary:        Standardized MySQL database driver for Java
-Name:           @MYSQL_CJ_EXTENDED_PROD_NAME@
+Name:           @MYSQL_CJ_EXTENDED_PROD_NAME@@MYSQL_CJ_RPM_PACKAGE_SUFFIX@
 Version:        @MYSQL_CJ_VERSION_NUMERIC@
 Release:        @MYSQL_CJ_RPM_RELEASE_FULL@%{?dist}
 Epoch:          1
@@ -74,9 +74,14 @@ Source0:        https://cdn.mysql.com/Downloads/Connector-J/@MYSQL_CJ_FULL_PROD_
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 
+Obsoletes:     mysql-connector-java@MYSQL_CJ_RPM_PACKAGE_SUFFIX@ < %{version}-%{release}
+Provides:      mysql-connector-java@MYSQL_CJ_RPM_PACKAGE_SUFFIX@ = %{version}-%{release}
+
 %if 0%{?commercial:1}
 Obsoletes:     mysql-connector-java < %{version}-%{release}
 Provides:      mysql-connector-java = %{version}-%{release}
+Obsoletes:     @MYSQL_CJ_EXTENDED_PROD_NAME@ < %{version}-%{release}
+Provides:      @MYSQL_CJ_EXTENDED_PROD_NAME@ = %{version}-%{release}
 %endif
 
 %if 0%{!?with_ant:1}
@@ -148,12 +153,12 @@ cp %{_tmppath}/@MYSQL_CJ_FULL_PROD_NAME@/revision-info.properties .
 
 ${ANT_CMD} \
    ${COMMON_OPTIONS} \
-   full-package-no-sources
+   package-no-sources
 
-# We use the 'full-package-no-sources' as there are changes done only
-# when creating a package, 'dist' is not enough. To make it a bit easier
+# We use the 'package-no-sources' as there are changes done only
+# when creating a package, 'build' is not enough. To make it a bit easier
 # in the install step, we rename the directory with the content
-mv dist/toArchive/@PACKAGE_NAME@ package-content
+mv @DIR_PACKAGE@ package-content
 
 # The 'package' target doesn't copy the HTML or PDF doc like 'dist',
 # we copy it here

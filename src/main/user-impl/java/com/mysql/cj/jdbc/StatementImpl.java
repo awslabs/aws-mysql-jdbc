@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -46,10 +46,10 @@ import com.mysql.cj.CancelQueryTask;
 import com.mysql.cj.Messages;
 import com.mysql.cj.MysqlType;
 import com.mysql.cj.NativeSession;
-import com.mysql.cj.ParseInfo;
 import com.mysql.cj.PingTarget;
 import com.mysql.cj.Query;
 import com.mysql.cj.QueryAttributesBindings;
+import com.mysql.cj.QueryInfo;
 import com.mysql.cj.QueryReturnType;
 import com.mysql.cj.Session;
 import com.mysql.cj.SimpleQuery;
@@ -306,7 +306,7 @@ public class StatementImpl implements JdbcStatement {
                     public void transactionBegun() {
                     }
                 });
-                newSession.sendCommand(new NativeMessageBuilder(newSession.getServerSession().supportsQueryAttributes())
+                newSession.getProtocol().sendCommand(new NativeMessageBuilder(newSession.getServerSession().supportsQueryAttributes())
                         .buildComQuery(newSession.getSharedSendPacket(), "KILL QUERY " + this.session.getThreadId()), false, 0);
                 setCancelStatus(CancelStatus.CANCELED_BY_USER);
             } catch (IOException e) {
@@ -348,7 +348,7 @@ public class StatementImpl implements JdbcStatement {
      *         <code>true</code> if the query produces a result set, <code>false</code> otherwise.
      */
     protected boolean isResultSetProducingQuery(String sql) {
-        QueryReturnType queryReturnType = ParseInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+        QueryReturnType queryReturnType = QueryInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
         return queryReturnType == QueryReturnType.PRODUCES_RESULT_SET || queryReturnType == QueryReturnType.MAY_PRODUCE_RESULT_SET;
     }
 
@@ -361,7 +361,7 @@ public class StatementImpl implements JdbcStatement {
      *         <code>true</code> if the query does not produce a result set, <code>false</code> otherwise.
      */
     protected boolean isNonResultSetProducingQuery(String sql) {
-        QueryReturnType queryReturnType = ParseInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+        QueryReturnType queryReturnType = QueryInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
         return queryReturnType == QueryReturnType.DOES_NOT_PRODUCE_RESULT_SET || queryReturnType == QueryReturnType.MAY_PRODUCE_RESULT_SET;
     }
 
@@ -567,9 +567,9 @@ public class StatementImpl implements JdbcStatement {
             //
             // Need to be able to get resultset irrespective if we issued DML or not to make this work.
             //
-            ResultSetInternalMethods rs = ((StatementImpl) pStmt).getResultSetInternal();
+            ResultSetInternalMethods rs = ((JdbcStatement) pStmt).getResultSetInternal();
 
-            rs.setStatementUsedForFetchingRows((ClientPreparedStatement) pStmt);
+            rs.setStatementUsedForFetchingRows((JdbcPreparedStatement) pStmt);
 
             this.results = rs;
 
@@ -671,10 +671,10 @@ public class StatementImpl implements JdbcStatement {
             this.retrieveGeneratedKeys = returnGeneratedKeys;
 
             this.lastQueryIsOnDupKeyUpdate = returnGeneratedKeys
-                    && ParseInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet()) == 'I'
+                    && QueryInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet()) == 'I'
                     && containsOnDuplicateKeyInString(sql);
 
-            if (!ParseInfo.isReadOnlySafeQuery(sql, this.session.getServerSession().isNoBackslashEscapesSet()) && locallyScopedConn.isReadOnly()) {
+            if (!QueryInfo.isReadOnlySafeQuery(sql, this.session.getServerSession().isNoBackslashEscapesSet()) && locallyScopedConn.isReadOnly()) {
                 throw SQLError.createSQLException(Messages.getString("Statement.27") + Messages.getString("Statement.28"),
                         MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
             }
@@ -745,7 +745,7 @@ public class StatementImpl implements JdbcStatement {
 
                     this.results = rs;
 
-                    rs.setFirstCharOfQuery(ParseInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet()));
+                    rs.setFirstCharOfQuery(QueryInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet()));
 
                     if (rs.hasRows()) {
                         if (cachedMetaData != null) {
@@ -835,8 +835,7 @@ public class StatementImpl implements JdbcStatement {
 
                         boolean multiQueriesEnabled = locallyScopedConn.getPropertySet().getBooleanProperty(PropertyKey.allowMultiQueries).getValue();
 
-                        if (multiQueriesEnabled || (locallyScopedConn.getPropertySet().getBooleanProperty(PropertyKey.rewriteBatchedStatements).getValue()
-                                && nbrCommands > 4)) {
+                        if (multiQueriesEnabled || this.rewriteBatchedStatements.getValue() && nbrCommands > 4) {
                             return executeBatchUsingMultiQueries(multiQueriesEnabled, nbrCommands, individualStatementTimeout);
                         }
 
@@ -1254,7 +1253,7 @@ public class StatementImpl implements JdbcStatement {
 
             resetCancelledState();
 
-            char firstStatementChar = ParseInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet());
+            char firstStatementChar = QueryInfo.firstCharOfStatementUc(sql, this.session.getServerSession().isNoBackslashEscapesSet());
             if (!isNonResultSetProducingQuery(sql)) {
                 throw SQLError.createSQLException(Messages.getString("Statement.46"), "01S03", getExceptionInterceptor());
             }
@@ -1700,7 +1699,8 @@ public class StatementImpl implements JdbcStatement {
         return java.sql.ResultSet.HOLD_CURSORS_OVER_COMMIT;
     }
 
-    protected ResultSetInternalMethods getResultSetInternal() {
+    @Override
+    public ResultSetInternalMethods getResultSetInternal() {
         try {
             synchronized (checkClosed().getConnectionMutex()) {
                 return this.results;
@@ -2054,8 +2054,8 @@ public class StatementImpl implements JdbcStatement {
     }
 
     protected boolean containsOnDuplicateKeyInString(String sql) {
-        return ParseInfo.getOnDuplicateKeyLocation(sql, this.dontCheckOnDuplicateKeyUpdateInSQL, this.rewriteBatchedStatements.getValue(),
-                this.session.getServerSession().isNoBackslashEscapesSet()) != -1;
+        return (!this.dontCheckOnDuplicateKeyUpdateInSQL || this.rewriteBatchedStatements.getValue())
+                && QueryInfo.containsOnDuplicateKeyUpdateClause(sql, this.session.getServerSession().isNoBackslashEscapesSet());
     }
 
     private boolean closeOnCompletion = false;
@@ -2260,6 +2260,9 @@ public class StatementImpl implements JdbcStatement {
 
     @Override
     public void clearAttributes() {
-        getQueryAttributesBindings().clearAttributes();
+        QueryAttributesBindings qab = getQueryAttributesBindings();
+        if (qab != null) {
+            qab.clearAttributes();
+        }
     }
 }

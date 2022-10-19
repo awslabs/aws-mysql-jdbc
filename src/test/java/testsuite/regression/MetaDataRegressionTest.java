@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -67,6 +67,7 @@ import org.opentest4j.AssertionFailedError;
 import com.mysql.cj.CharsetMappingWrapper;
 import com.mysql.cj.Constants;
 import com.mysql.cj.MysqlConnection;
+import com.mysql.cj.MysqlType;
 import com.mysql.cj.NativeCharsetSettings;
 import com.mysql.cj.Query;
 import com.mysql.cj.conf.PropertyDefinitions.DatabaseTerm;
@@ -2037,14 +2038,14 @@ public class MetaDataRegressionTest extends BaseTestCase {
 
     /**
      * Tests fix for Bug#33594 - When cursor fetch is enabled, wrong metadata is returned from DBMD.
-     *
+     * 
      * The fix is two parts.
-     *
+     * 
      * First, when asking for the first column value twice from a cursor-fetched row, the driver didn't re-position, and thus the "next" column was returned.
-     *
+     * 
      * Second, metadata statements and internal statements the driver uses shouldn't use cursor-based fetching at all, so we've ensured that internal statements
      * have their fetch size set to "0".
-     *
+     * 
      * @throws Exception
      */
     @Test
@@ -2067,8 +2068,6 @@ public class MetaDataRegressionTest extends BaseTestCase {
         props.setProperty(PropertyKey.useCursorFetch.getKeyName(), "false");
         props.setProperty(PropertyKey.defaultFetchSize.getKeyName(), "100");
         props.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
-        props.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), "false");
-
         Connection conn1 = null;
         try {
             conn1 = getConnectionWithProps(props);
@@ -2091,7 +2090,6 @@ public class MetaDataRegressionTest extends BaseTestCase {
             props2.setProperty(PropertyKey.useCursorFetch.getKeyName(), "true");
             props2.setProperty(PropertyKey.defaultFetchSize.getKeyName(), "100");
             props2.setProperty(PropertyKey.nullDatabaseMeansCurrent.getKeyName(), "true");
-            props2.setProperty(PropertyKey.enableClusterAwareFailover.getKeyName(), "false");
 
             Connection conn2 = null;
 
@@ -2630,7 +2628,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
      */
     @Test
     public void testBug61150() throws Exception {
-        StringBuilder newUrlToTestNoDB = new StringBuilder("jdbc:mysql:aws://");
+        StringBuilder newUrlToTestNoDB = new StringBuilder("jdbc:mysql://");
         newUrlToTestNoDB.append(getEncodedHostPortPairFromTestsuiteUrl()).append("/");
 
         Statement savedSt = this.stmt;
@@ -2714,7 +2712,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
             String sql = str.get();
             if (interceptedQuery instanceof ClientPreparedStatement) {
                 sql = ((ClientPreparedStatement) interceptedQuery).getPreparedSql();
-                assertTrue(StringUtils.indexOfIgnoreCase(0, sql, "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?") > -1, "Assereet failed on: " + sql);
+                assertTrue(StringUtils.indexOfIgnoreCase(0, sql, "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?") > -1, "Failed on: " + sql);
             }
             return null;
         }
@@ -3125,12 +3123,12 @@ public class MetaDataRegressionTest extends BaseTestCase {
     }
 
     /**
-     * Tests Amazon Web Services (AWS) JDBC Driver rebranding.
-     *
+     * Tests fix for BUG#16436511 - getDriverName() returns a string with company name "MySQL-AB"
+     * 
      * @throws Exception
      */
     @Test
-    public void testAWSDriverRebranding() throws Exception {
+    public void testBug16436511() throws Exception {
         DatabaseMetaData dbmd = this.conn.getMetaData();
         assertEquals("Amazon Web Services (AWS) JDBC Driver for MySQL", dbmd.getDriverName());
     }
@@ -3990,7 +3988,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
         rsMetaData = this.rs.getMetaData();
 
         assertTrue(this.rs.next());
-        assertEquals(Types.DATE, rsMetaData.getColumnType(1), "YEAR columns should be treated as java.sql.Types.DATE");
+        assertEquals(Types.SMALLINT, rsMetaData.getColumnType(1), "YEAR columns should be treated as java.sql.Types.SMALLINT");
         assertEquals("YEAR", rsMetaData.getColumnTypeName(1), "YEAR columns should be identified as 'YEAR'");
         assertEquals(java.lang.Short.class.getName(), rsMetaData.getColumnClassName(1), "YEAR columns should be mapped to java.lang.Short");
         assertEquals(java.lang.Short.class.getName(), this.rs.getObject(1).getClass().getName(), "YEAR columns should be returned as java.lang.Short");
@@ -5247,7 +5245,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
 
     /**
      * Tests fix for Bug#102076 (32329915), CONTRIBUTION: MYSQL JDBC DRIVER RESULTSET.GETLONG() THROWS NUMBEROUTOFRANGE.
-     *
+     * 
      * @throws Exception
      */
     @Test
@@ -5275,7 +5273,7 @@ public class MetaDataRegressionTest extends BaseTestCase {
 
     /**
      * Tests fix for Bug#95280 (29757140), DATABASEMETADATA.GETIMPORTEDKEYS RETURNS DOUBLE THE ROWS.
-     *
+     * 
      * @throws Exception
      */
     @Test
@@ -5321,12 +5319,15 @@ public class MetaDataRegressionTest extends BaseTestCase {
 
     /**
      * Tests fix for Bug#104641 (33237255), DatabaseMetaData.getImportedKeys can return duplicated foreign keys.
-     *
+     * 
      * @throws Exception
      */
     @Test
     public void testBug104641() throws Exception {
         String databaseName1 = "dbBug104641";
+        if (isServerRunningOnWindows()) {
+            databaseName1 = databaseName1.toLowerCase();
+        }
         createDatabase(databaseName1);
         createTable(databaseName1 + ".table1",
                 "(`CREATED` datetime DEFAULT NULL,`ID` bigint NOT NULL AUTO_INCREMENT,`LRN_ID` bigint DEFAULT '0',`USERNAME` varchar(50) NOT NULL,"
@@ -5393,6 +5394,117 @@ public class MetaDataRegressionTest extends BaseTestCase {
                 con.close();
             }
         }
+    }
 
+    /**
+     * Tests fix for Bug#33723611, getDefaultTransactionIsolation must return repeatable read.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug33723611() throws Exception {
+        this.rs = this.stmt.executeQuery(versionMeetsMinimum(5, 7) ? "SELECT @@SESSION.transaction_isolation" : "SELECT @@SESSION.tx_isolation");
+        assertTrue(this.rs.next());
+        assertEquals("REPEATABLE-READ", this.rs.getString(1));
+
+        assertEquals(Connection.TRANSACTION_REPEATABLE_READ, this.conn.getTransactionIsolation());
+
+        DatabaseMetaData dbmd = this.conn.getMetaData();
+        assertEquals(Connection.TRANSACTION_REPEATABLE_READ, dbmd.getDefaultTransactionIsolation());
+    }
+
+    /**
+     * Tests fix for Bug#82084 (23743938), YEAR DATA TYPE RETURNS INCORRECT VALUE FOR JDBC GETCOLUMNTYPE().
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug82084() throws Exception {
+        createProcedure("testBug82084p", "(in param1 int, out result year) BEGIN select 1, ''; END");
+        createTable("testBug82084", "(col_tiny SMALLINT, col_year year, col_date date)");
+        this.stmt.executeUpdate("INSERT INTO testBug82084 VALUES(1,2006, '2006-01-01')");
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+
+        for (boolean useIS : new Boolean[] { true, false }) {
+            for (boolean yearIsDate : new Boolean[] { true, false }) {
+                props.setProperty(PropertyKey.yearIsDateType.getKeyName(), "" + yearIsDate);
+                props.setProperty(PropertyKey.useInformationSchema.getKeyName(), "" + useIS);
+                Connection con = getConnectionWithProps(props);
+
+                DatabaseMetaData dbmd = con.getMetaData();
+                this.rs = dbmd.getColumns(null, null, "testBug82084", "%year");
+                assertTrue(this.rs.next());
+                assertEquals(MysqlType.YEAR.getName(), this.rs.getString("TYPE_NAME"));
+                assertEquals(yearIsDate ? Types.DATE : Types.SMALLINT, this.rs.getInt("DATA_TYPE"));
+
+                this.rs = dbmd.getTypeInfo();
+                while (this.rs.next()) {
+                    if (this.rs.getString("TYPE_NAME").equals("YEAR")) {
+                        assertEquals(yearIsDate ? Types.DATE : Types.SMALLINT, this.rs.getInt("DATA_TYPE"));
+                        break;
+                    }
+                }
+
+                ResultSet procMD = con.getMetaData().getProcedureColumns(null, null, "testBug82084p", "%result");
+                assertTrue(procMD.next());
+                assertEquals(MysqlType.YEAR.getName(), procMD.getString("TYPE_NAME"));
+                assertEquals(yearIsDate ? Types.DATE : Types.SMALLINT, procMD.getInt("DATA_TYPE"));
+
+                this.rs = con.createStatement().executeQuery("select * from testBug82084");
+                ResultSetMetaData rsmd = this.rs.getMetaData();
+
+                assertEquals(MysqlType.YEAR.getName(), rsmd.getColumnTypeName(2));
+                if (yearIsDate) {
+                    assertEquals(Types.DATE, rsmd.getColumnType(2));
+                    assertEquals(java.sql.Date.class.getName(), rsmd.getColumnClassName(2));
+                } else {
+                    assertEquals(Types.SMALLINT, rsmd.getColumnType(2));
+                    assertEquals(Short.class.getName(), rsmd.getColumnClassName(2));
+                }
+
+                con.close();
+            }
+        }
+    }
+
+    /**
+     * Tests fix for Bug#106758 (33973048), DatabaseMetaData.getTypeInfo returns AUTO_INCREMENT = false for all datatypes.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug106758() throws Exception {
+        DatabaseMetaData dbmd = this.conn.getMetaData();
+
+        this.rs = dbmd.getTypeInfo();
+        while (this.rs.next()) {
+            StringBuilder sb = new StringBuilder("CREATE TEMPORARY TABLE testBug106758 (col ");
+            sb.append(this.rs.getString("TYPE_NAME"));
+            if (this.rs.getString("CREATE_PARAMS").startsWith("(M)")) {
+                sb.append("(5)");
+            } else if (this.rs.getString("CREATE_PARAMS").startsWith("('value")) {
+                sb.append(" ('value')");
+            }
+            sb.append(" AUTO_INCREMENT PRIMARY KEY)"); // Some types don't support primary keys like this, however, the query fails due to AUTO_INCREMENT first. 
+
+            if (this.rs.getBoolean("AUTO_INCREMENT")) {
+                try {
+                    this.stmt.execute(sb.toString());
+                } catch (SQLException e) {
+                    fail("Type " + this.rs.getString("TYPE_NAME") + " does not support AUTO_INCREMENT.");
+                } finally {
+                    this.stmt.execute("DROP TABLE IF EXISTS testBug106758");
+                }
+            } else {
+                assertThrows("Type " + this.rs.getString("TYPE_NAME") + " supports AUTO_INCREMENT.", SQLException.class,
+                        "Incorrect column specifier for column 'col'", () -> {
+                            this.stmt.execute(sb.toString());
+                            this.stmt.execute("DROP TABLE IF EXISTS testBug106758");
+                            return null;
+                        });
+            }
+        }
     }
 }

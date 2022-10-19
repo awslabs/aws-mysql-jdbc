@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -481,7 +482,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         hostProps.putAll(this.properties);
         // Add/override host specific connection arguments.
         hi.getHostProperties().entrySet().stream().forEach(e -> hostProps.put(PropertyKey.normalizeCase(e.getKey()), e.getValue()));
-        // Add the database name
+        // Add the database name.
         if (!hostProps.containsKey(PropertyKey.DBNAME.getKeyName())) {
             hostProps.put(PropertyKey.DBNAME.getKeyName(), getDatabase());
         }
@@ -516,22 +517,18 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
             user = getDefaultUser();
         }
 
-        boolean isPasswordless = hi.isPasswordless();
         String password = hostProps.remove(PropertyKey.PASSWORD.getKeyName());
-        if (!isPasswordless) {
+        if (hi.getPassword() != null) { // Password can be specified as empty string.
             password = hi.getPassword();
-        } else if (password == null) {
+        } else if (isNullOrEmpty(password)) {
             password = getDefaultPassword();
-            isPasswordless = true;
-        } else {
-            isPasswordless = false;
         }
 
         expandPropertiesFromConfigFiles(hostProps);
         fixProtocolDependencies(hostProps);
         replaceLegacyPropertyValues(hostProps);
 
-        return buildHostInfo(host, port, user, password, isPasswordless, hostProps);
+        return buildHostInfo(host, port, user, password, hostProps);
     }
 
     /**
@@ -568,8 +565,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
      * @return the default user
      */
     public String getDefaultUser() {
-        String user = this.properties.get(PropertyKey.USER.getKeyName());
-        return isNullOrEmpty(user) ? "" : user;
+        return this.properties.get(PropertyKey.USER.getKeyName());
     }
 
     /**
@@ -579,8 +575,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
      * @return the default password
      */
     public String getDefaultPassword() {
-        String password = this.properties.get(PropertyKey.PASSWORD.getKeyName());
-        return isNullOrEmpty(password) ? "" : password;
+        return this.properties.get(PropertyKey.PASSWORD.getKeyName());
     }
 
     /**
@@ -701,7 +696,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         String user = getDefaultUser();
         String password = getDefaultPassword();
 
-        return buildHostInfo(host, port, user, password, true, this.properties);
+        return buildHostInfo(host, port, user, password, this.properties);
     }
 
     /**
@@ -716,13 +711,11 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
      *            the user name
      * @param password
      *            the password
-     * @param isDefaultPwd
-     *            no password was provided in the connection URL or arguments?
      * @param hostProps
      *            the host properties map
      * @return a new instance of {@link HostInfo}
      */
-    protected HostInfo buildHostInfo(String host, int port, String user, String password, boolean isDefaultPwd, Map<String, String> hostProps) {
+    protected HostInfo buildHostInfo(String host, int port, String user, String password, Map<String, String> hostProps) {
         // Apply properties transformations if needed.
         if (this.propertiesTransformer != null) {
             Properties props = new Properties();
@@ -730,8 +723,12 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
 
             props.setProperty(PropertyKey.HOST.getKeyName(), host);
             props.setProperty(PropertyKey.PORT.getKeyName(), String.valueOf(port));
-            props.setProperty(PropertyKey.USER.getKeyName(), user);
-            props.setProperty(PropertyKey.PASSWORD.getKeyName(), password);
+            if (user != null) {
+                props.setProperty(PropertyKey.USER.getKeyName(), user);
+            }
+            if (password != null) {
+                props.setProperty(PropertyKey.PASSWORD.getKeyName(), password);
+            }
 
             Properties transformedProps = this.propertiesTransformer.transformProperties(props);
 
@@ -756,7 +753,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
             hostProps = transformedHostProps;
         }
 
-        return new HostInfo(this, host, port, user, password, isDefaultPwd, hostProps);
+        return new HostInfo(this, host, port, user, password, hostProps);
     }
 
     /**
@@ -818,8 +815,9 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
      *         a list of hosts.
      */
     private List<HostInfo> srvRecordsToHostsList(List<SrvRecord> srvRecords, HostInfo baseHostInfo) {
-        return srvRecords.stream().map(s -> buildHostInfo(s.getTarget(), s.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(),
-                baseHostInfo.isPasswordless(), baseHostInfo.getHostProperties())).collect(Collectors.toList());
+        return srvRecords.stream()
+                .map(s -> buildHostInfo(s.getTarget(), s.getPort(), baseHostInfo.getUser(), baseHostInfo.getPassword(), baseHostInfo.getHostProperties()))
+                .collect(Collectors.toList());
     }
 
     /**

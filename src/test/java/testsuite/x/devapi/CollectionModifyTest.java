@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.ServerVersion;
+import com.mysql.cj.exceptions.CJException;
 import com.mysql.cj.xdevapi.AddResult;
 import com.mysql.cj.xdevapi.Collection;
 import com.mysql.cj.xdevapi.DbDoc;
@@ -59,6 +60,7 @@ import com.mysql.cj.xdevapi.JsonLiteral;
 import com.mysql.cj.xdevapi.JsonNumber;
 import com.mysql.cj.xdevapi.JsonParser;
 import com.mysql.cj.xdevapi.JsonString;
+import com.mysql.cj.xdevapi.JsonValue;
 import com.mysql.cj.xdevapi.ModifyStatement;
 import com.mysql.cj.xdevapi.ModifyStatementImpl;
 import com.mysql.cj.xdevapi.Result;
@@ -1189,7 +1191,6 @@ public class CollectionModifyTest extends BaseCollectionTestCase {
         /* add(DbDoc[] docs) */
         DbDoc[] jsonlist = new DbDocImpl[maxrec];
         long l1 = Long.MAX_VALUE, l2 = Long.MIN_VALUE, l3 = 2147483647;
-        System.out.println("l = ===" + l1);
 
         double d1 = 100.4567;
         for (i = 0; i < maxrec; i++) {
@@ -1889,5 +1890,172 @@ public class CollectionModifyTest extends BaseCollectionTestCase {
         docs = asyncDocs.get();
         doc = docs.next();
         assertEquals((long) (maxrec) / 2, (long) (((JsonNumber) doc.get("cnt")).getInteger()));
+    }
+
+    /**
+     * Tests fix for Bug#107510 (Bug#34259416), Empty string given to set() from Collection.modify() replaces full document.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug107510() throws Exception {
+        assumeTrue(mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.5")), "MySQL 8.0.5+ is required to run this test.");
+
+        this.collection.add("{\"bug\": \"testBug107510\"}").execute();
+        DbDoc doc = this.collection.find().execute().fetchOne();
+        assertEquals("testBug107510", ((JsonString) doc.get("bug")).getString());
+
+        // .set()
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").set("", JsonParser.parseDoc("{\"bug\": \"testBug34259416\"}")).execute();
+            return null;
+        });
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").set(null, JsonParser.parseDoc("{\"bug\": \"testBug34259416\"}")).execute();
+            return null;
+        });
+        doc = this.collection.find().execute().fetchOne();
+        assertEquals("testBug107510", ((JsonString) doc.get("bug")).getString());
+
+        this.collection.modify("true").set("$", JsonParser.parseDoc("{\"bug\": \"testBug34259416\"}")).execute();
+        doc = this.collection.find().execute().fetchOne();
+        assertEquals("testBug34259416", ((JsonString) doc.get("bug")).getString());
+
+        this.collection.modify("true").set("$.type", "BUG1").execute();
+        doc = this.collection.find().execute().fetchOne();
+        assertEquals("testBug34259416", ((JsonString) doc.get("bug")).getString());
+        assertEquals("BUG1", ((JsonString) doc.get("type")).getString());
+
+        this.collection.modify("true").set(".type", "BUG2").execute();
+        doc = this.collection.find().execute().fetchOne();
+        assertEquals("testBug34259416", ((JsonString) doc.get("bug")).getString());
+        assertEquals("BUG2", ((JsonString) doc.get("type")).getString());
+
+        this.collection.modify("true").set("type", "BUG3").execute();
+        doc = this.collection.find().execute().fetchOne();
+        assertEquals("testBug34259416", ((JsonString) doc.get("bug")).getString());
+        assertEquals("BUG3", ((JsonString) doc.get("type")).getString());
+
+        // .unset()
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").unset("").execute();
+            return null;
+        });
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").unset((String) null).execute();
+            return null;
+        });
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").unset((String[]) null).execute();
+            return null;
+        });
+
+        // .change()
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").change("", "").execute();
+            return null;
+        });
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").change(null, "").execute();
+            return null;
+        });
+
+        // .arrayAppend()
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").arrayAppend("", "").execute();
+            return null;
+        });
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").arrayAppend(null, "").execute();
+            return null;
+        });
+
+        // .arrayInsert()
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").arrayInsert("", "").execute();
+            return null;
+        });
+        assertThrows(CJException.class, "Parameter 'docPath' must not be null or empty\\.", () -> {
+            this.collection.modify("true").arrayInsert(null, "").execute();
+            return null;
+        });
+    }
+
+    /**
+     * Tests fix for Bug#33637993, Loss of backslashes in data after modify api is used.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug33637993() throws Exception {
+        assumeTrue(mysqlVersionMeetsMinimum(ServerVersion.parseVersion("8.0.0")), "MySQL 8.0 is required to run this test.");
+
+        Result res;
+        String testData = "(%d) foo\nbar\\nbaz\\u003D|\"\""; // Use "(%d)" as an increment to force different documents each step.
+
+        // Test document with a string element.
+        DbDoc doc = new DbDocImpl().add("_id", new JsonString().setValue("1")).add("str", new JsonString().setValue(String.format(testData, 0)));
+        String expected = "{\"_id\":\"1\",\"str\":\"(0) foo\\nbar\\\\nbaz\\\\u003D|\\\"\\\"\"}";
+
+        // Add test document.
+        res = this.collection.add(doc).execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        assertEquals(expected, this.collection.find("_id = \"1\"").execute().fetchOne().toString());
+
+        // Modify using .set(DbDoc)
+        res = this.collection.modify("_id = \"1\"").set("str", String.format(testData, 1)).execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        assertEquals(expected.replace("(0)", "(1)"), this.collection.find("_id = \"1\"").execute().fetchOne().toString());
+
+        // Modify using .patch(DbDoc)
+        DbDoc docEdit = new DbDocImpl().add("str", new JsonString().setValue(String.format(testData, 2)));
+        res = this.collection.modify("_id = \"1\"").patch(docEdit).execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        assertEquals(expected.replace("(0)", "(2)"), this.collection.find("_id = \"1\"").execute().fetchOne().toString());
+
+        // Modify using .patch(String) --> Escape sequences are processed by the JSON parser, so result is different.
+        expected = "{\"_id\":\"1\",\"str\":\"(3) foo\\nbar\\nbaz=|\\\"\"}";
+        res = this.collection.modify("_id = \"1\"").patch("{\"str\": \"" + String.format(testData, 3) + "\"}").execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        assertEquals(expected, this.collection.find("_id = \"1\"").execute().fetchOne().toString());
+
+        // Test document with an array element.
+        doc = new DbDocImpl().add("_id", new JsonString().setValue("2")).add("arr",
+                new JsonArray().addValue(new JsonString().setValue(String.format(testData, 0))));
+        expected = "{\"_id\":\"2\",\"arr\":[\"(0) foo\\nbar\\\\nbaz\\\\u003D|\\\"\\\"\"]}";
+        String expectedPart = expected.substring(expected.indexOf("foo"), expected.indexOf(']'));
+        String resAsStr;
+        int p = -1;
+
+        // Add test document.
+        res = this.collection.add(doc).execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        assertEquals(expected, this.collection.find("_id = \"2\"").execute().fetchOne().toString());
+
+        // Modify using .arrayInsert()
+        res = this.collection.modify("_id = \"2\"").arrayInsert("arr[1]", String.format(testData, 1)).execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        resAsStr = this.collection.find("_id = \"2\"").execute().fetchOne().toString();
+        assertTrue((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+        assertTrue((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+        assertFalse((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+        p = -1;
+
+        // Modify using .arrayInsert()
+        res = this.collection.modify("_id = \"2\"").arrayAppend("arr", String.format(testData, 2)).execute();
+        assertEquals(1, res.getAffectedItemsCount());
+        resAsStr = this.collection.find("_id = \"2\"").execute().fetchOne().toString();
+        assertTrue((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+        assertTrue((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+        assertTrue((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+        assertFalse((p = resAsStr.indexOf(expectedPart, p + 1)) > 0);
+
+        // Final strings (within array) check.
+        doc = this.collection.find("_id = \"2\"").execute().fetchOne();
+        JsonArray arr = (JsonArray) doc.get("arr");
+        assertEquals(3, arr.size());
+        for (JsonValue v : arr) {
+            assertEquals(5, ((JsonString) v).toFormattedString().indexOf(expectedPart));
+        }
     }
 }

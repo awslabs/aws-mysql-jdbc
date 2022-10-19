@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -27,33 +27,32 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package testsuite.x;
+package com.mysql.cj.protocol.a;
 
-import java.util.Properties;
+import java.sql.Blob;
 
-import com.mysql.cj.conf.PropertyDefinitions;
-import com.mysql.cj.xdevapi.Session;
-import com.mysql.cj.xdevapi.SessionFactory;
+import com.mysql.cj.BindValue;
+import com.mysql.cj.exceptions.ExceptionFactory;
+import com.mysql.cj.protocol.Message;
 
-public abstract class BaseXDevAPITestCase {
-    protected String baseUrl = System.getProperty(PropertyDefinitions.SYSP_testsuite_url_mysqlx);
-    protected boolean isSetForXTests = this.baseUrl != null && this.baseUrl.length() > 0;
-    protected SessionFactory f = new SessionFactory();
+public class BlobValueEncoder extends InputStreamValueEncoder {
 
-    public BaseXDevAPITestCase() {
-        super();
-        // TODO create instance of SessionFactory
+    @Override
+    public byte[] getBytes(BindValue binding) {
+        try {
+            return streamToBytes(((Blob) binding.getValue()).getBinaryStream(), binding.getScaleOrLength(), null);
+        } catch (Throwable t) {
+            throw ExceptionFactory.createException(t.getMessage(), t, this.exceptionInterceptor);
+        }
     }
 
-    protected Session getSession(String url) {
-        Session sess = this.f.getSession(url);
-
-        return sess;
+    @Override
+    public void encodeAsText(Message msg, BindValue binding) {
+        try {
+            streamToBytes(((Blob) binding.getValue()).getBinaryStream(), binding.getScaleOrLength(), (NativePacketPayload) msg);
+        } catch (Throwable t) {
+            throw ExceptionFactory.createException(t.getMessage(), t, this.exceptionInterceptor);
+        }
     }
 
-    protected Session getSession(Properties props) {
-        Session sess = this.f.getSession(props);
-
-        return sess;
-    }
 }

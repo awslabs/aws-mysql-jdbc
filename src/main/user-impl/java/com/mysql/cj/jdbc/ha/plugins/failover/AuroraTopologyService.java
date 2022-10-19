@@ -320,7 +320,6 @@ public class AuroraTopologyService implements ITopologyService {
         this.clusterInstanceTemplate.getPort(),
         this.clusterInstanceTemplate.getUser(),
         this.clusterInstanceTemplate.getPassword(),
-        this.clusterInstanceTemplate.isPasswordless(),
         getPropertiesFromTopology(resultSet));
   }
 

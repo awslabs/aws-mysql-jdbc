@@ -1091,7 +1091,6 @@ public final class MysqlErrorNumbers {
     public static final int ER_X_BAD_PROJECTION = 5114;
     public static final int ER_X_DOC_ID_MISSING = 5115;
     public static final int ER_X_DUPLICATE_ENTRY = 5116;
-    public static final int ER_X_DOC_ID_DUPLICATE = 5116;
     public static final int ER_X_DOC_REQUIRED_FIELD_MISSING = 5117;
     public static final int ER_X_PROJ_BAD_KEY_NAME = 5120;
     public static final int ER_X_BAD_DOC_PATH = 5121;
@@ -1110,7 +1109,6 @@ public final class MysqlErrorNumbers {
     public static final int ER_X_INVALID_ADMIN_COMMAND = 5157;
     public static final int ER_X_EXPECT_NOT_OPEN = 5158;
     public static final int ER_X_EXPECT_NO_ERROR_FAILED = 5159;
-    public static final int ER_X_EXPECT_FAILED = 5159;
     public static final int ER_X_EXPECT_BAD_CONDITION = 5160;
     public static final int ER_X_EXPECT_BAD_CONDITION_VALUE = 5161;
     public static final int ER_X_INVALID_NAMESPACE = 5162;

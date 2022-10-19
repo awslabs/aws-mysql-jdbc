@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -27,17 +27,27 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-package com.mysql.cj;
+package com.mysql.cj.protocol;
 
-public interface BatchVisitor {
+import com.mysql.cj.BindValue;
+import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.exceptions.ExceptionInterceptor;
 
-    BatchVisitor increment();
+public interface ValueEncoder {
 
-    BatchVisitor decrement();
+    void init(PropertySet pset, ServerSession serverSession, ExceptionInterceptor exceptionInterceptor);
 
-    BatchVisitor append(byte[] values);
+    byte[] getBytes(BindValue binding);
 
-    BatchVisitor merge(byte[] begin, byte[] end);
+    String getString(BindValue binding);
 
-    BatchVisitor mergeWithLast(byte[] values);
+    long getTextLength(BindValue binding);
+
+    long getBinaryLength(BindValue binding);
+
+    void encodeAsText(Message msg, BindValue binding);
+
+    void encodeAsBinary(Message msg, BindValue binding);
+
+    void encodeAsQueryAttribute(Message msg, BindValue binding);
 }

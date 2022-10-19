@@ -54,7 +54,6 @@ import com.mysql.cj.util.Util;
 public abstract class MultiHostConnectionProxy implements InvocationHandler {
     private static final String METHOD_GET_MULTI_HOST_SAFE_PROXY = "getMultiHostSafeProxy";
     private static final String METHOD_EQUALS = "equals";
-    private static final String METHOD_HASH_CODE = "hashCode";
     private static final String METHOD_CLOSE = "close";
     private static final String METHOD_ABORT_INTERNAL = "abortInternal";
     private static final String METHOD_ABORT = "abort";
@@ -292,14 +291,14 @@ public abstract class MultiHostConnectionProxy implements InvocationHandler {
 
     /**
      * Checks if current connection is to a source host.
-     *
+     * 
      * @return true if current connection is to a source host
      */
     abstract boolean isSourceConnection();
 
     /**
      * Use {@link #isSourceConnection()} instead.
-     *
+     * 
      * @return boolean
      * @deprecated
      */

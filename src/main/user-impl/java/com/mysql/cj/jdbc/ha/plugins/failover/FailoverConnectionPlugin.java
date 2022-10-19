@@ -823,7 +823,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         port,
         hostInfo.getUser(),
         hostInfo.getPassword(),
-        hostInfo.isPasswordless(),
         properties);
   }
 

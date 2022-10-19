@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -1821,11 +1821,11 @@ public class ConnectionTest extends BaseTestCase {
             if (sql == null) {
                 try {
                     if (interceptedQuery instanceof ClientPreparedStatement) {
-                        sql = ((ClientPreparedStatement) interceptedQuery).asSql();
-                    } else if (interceptedQuery instanceof PreparedQuery<?>) {
-                        sql = ((PreparedQuery<?>) interceptedQuery).asSql();
+                        sql = ((PreparedQuery) ((ClientPreparedStatement) interceptedQuery)).asSql();
+                    } else if (interceptedQuery instanceof PreparedQuery) {
+                        sql = ((PreparedQuery) interceptedQuery).asSql();
                     }
-                } catch (SQLException ex) {
+                } catch (Exception ex) {
                     throw ExceptionFactory.createException(ex.getMessage(), ex);
                 }
             }
@@ -1836,7 +1836,7 @@ public class ConnectionTest extends BaseTestCase {
                 boolean enableEscapeProcessing = (tst & 0x1) != 0;
                 boolean processEscapeCodesForPrepStmts = (tst & 0x2) != 0;
                 boolean useServerPrepStmts = (tst & 0x4) != 0;
-                boolean isPreparedStatement = interceptedQuery instanceof PreparedStatement || interceptedQuery instanceof PreparedQuery<?>;
+                boolean isPreparedStatement = interceptedQuery instanceof PreparedStatement || interceptedQuery instanceof PreparedQuery;
 
                 String testCase = String.format("Case: %d [ %s | %s | %s ]/%s", tst, enableEscapeProcessing ? "enEscProc" : "-",
                         processEscapeCodesForPrepStmts ? "procEscProcPS" : "-", useServerPrepStmts ? "useSSPS" : "-",
@@ -2759,7 +2759,7 @@ public class ConnectionTest extends BaseTestCase {
     }
 
     /**
-     * Tests fix for WL#14805, Remove support for TLS 1.0 and 1.1.
+     * Tests WL#14805, Remove support for TLS 1.0 and 1.1.
      *
      * @throws Exception
      */
@@ -2777,14 +2777,16 @@ public class ConnectionTest extends BaseTestCase {
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.REQUIRED.name());
         props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
 
-        // TS.FR.1_1. Create a Connection with the connection property tlsVersions=TLSv1.2. Assess that the connection is created successfully and it is using TLSv1.2.
+        // TS.FR.1_1. Create a Connection with the connection property tlsVersions=TLSv1.2. Assess that the connection is created successfully and it is using
+        // TLSv1.2.
         props.setProperty(PropertyKey.tlsVersions.getKeyName(), "TLSv1.2");
         con = getConnectionWithProps(props);
         assertTrue(((MysqlConnection) con).getSession().isSSLEstablished());
         assertSessionStatusEquals(con.createStatement(), "ssl_version", "TLSv1.2");
         con.close();
 
-        // TS.FR.1_2. Create a Connection with the connection property enabledTLSProtocols=TLSv1.2. Assess that the connection is created successfully and it is using TLSv1.2.
+        // TS.FR.1_2. Create a Connection with the connection property enabledTLSProtocols=TLSv1.2. Assess that the connection is created successfully and it is
+        //            using TLSv1.2.
         props.remove(PropertyKey.tlsVersions.getKeyName());
         props.setProperty("enabledTLSProtocols", "TLSv1.2");
         con = getConnectionWithProps(props);
@@ -2793,14 +2795,16 @@ public class ConnectionTest extends BaseTestCase {
         con.close();
         props.remove("enabledTLSProtocols");
 
-        // TS.FR.2_1. Create a Connection with the connection property tlsCiphersuites=[valid-cipher-suite]. Assess that the connection is created successfully and it is using the cipher suite specified.
+        // TS.FR.2_1. Create a Connection with the connection property tlsCiphersuites=[valid-cipher-suite]. Assess that the connection is created successfully
+        //            and it is using the cipher suite specified.
         props.setProperty(PropertyKey.tlsCiphersuites.getKeyName(), "TLS_DHE_RSA_WITH_AES_128_CBC_SHA");
         con = getConnectionWithProps(props);
         assertTrue(((MysqlConnection) con).getSession().isSSLEstablished());
         assertSessionStatusEquals(con.createStatement(), "ssl_cipher", "DHE-RSA-AES128-SHA");
         con.close();
 
-        // TS.FR.2_2. Create a Connection with the connection property enabledSSLCipherSuites=[valid-cipher-suite] . Assess that the connection is created successfully and it is using the cipher suite specified.
+        // TS.FR.2_2. Create a Connection with the connection property enabledSSLCipherSuites=[valid-cipher-suite] . Assess that the connection is created
+        //            successfully and it is using the cipher suite specified.
         props.remove(PropertyKey.tlsCiphersuites.getKeyName());
         props.setProperty("enabledSSLCipherSuites", "TLS_DHE_RSA_WITH_AES_128_CBC_SHA");
         con = getConnectionWithProps(props);
@@ -2831,7 +2835,8 @@ public class ConnectionTest extends BaseTestCase {
 
         props.remove("enabledTLSProtocols");
 
-        // TS.FR.4. Create a Connection with the connection property tlsVersions=TLSv1 and sslMode=DISABLED. Assess that the connection is created successfully and it is not using encryption.
+        // TS.FR.4. Create a Connection with the connection property tlsVersions=TLSv1 and sslMode=DISABLED. Assess that the connection is created successfully
+        //          and it is not using encryption.
         props.setProperty(PropertyKey.tlsVersions.getKeyName(), "TLSv1");
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
         con = getConnectionWithProps(props);
@@ -2840,7 +2845,8 @@ public class ConnectionTest extends BaseTestCase {
         props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.REQUIRED.name());
 
         // TS.FR.5_1. Create a Connection with the connection property tlsVersions=FOO,BAR.
-        //            Assess that the connection fails with the error message "Specified list of TLS versions only contains non valid TLS protocols. Accepted values are TLSv1.2 and TLSv1.3."
+        //            Assess that the connection fails with the error message "Specified list of TLS versions only contains non valid TLS protocols. Accepted
+        //            values are TLSv1.2 and TLSv1.3."
         props.setProperty(PropertyKey.tlsVersions.getKeyName(), "FOO,BAR");
         assertThrows(SQLException.class, "Specified list of TLS versions only contains non valid TLS protocols. Accepted values are TLSv1.2 and TLSv1.3.+",
                 () -> getConnectionWithProps(props));
@@ -2850,13 +2856,15 @@ public class ConnectionTest extends BaseTestCase {
                 () -> getConnectionWithProps(props));
 
         // TS.FR.5_2. Create a Connection with the connection property tlsVersions=FOO,TLSv1.1.
-        //            Assess that the connection fails with the error message "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2 and TLSv1.3."
+        //            Assess that the connection fails with the error message "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2
+        //            and TLSv1.3."
         props.setProperty(PropertyKey.tlsVersions.getKeyName(), "FOO,TLSv1.1");
         assertThrows(SQLException.class, "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2 and TLSv1.3.+",
                 () -> getConnectionWithProps(props));
 
         // TS.FR.5_3. Create a Connection with the connection property tlsVersions=TLSv1,TLSv1.1.
-        //            Assess that the connection fails with the error message "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2 and TLSv1.3."
+        //            Assess that the connection fails with the error message "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2
+        //            and TLSv1.3."
         props.setProperty(PropertyKey.tlsVersions.getKeyName(), "TLSv1,TLSv1.1");
         assertThrows(SQLException.class, "TLS protocols TLSv1 and TLSv1.1 are not supported. Accepted values are TLSv1.2 and TLSv1.3.+",
                 () -> getConnectionWithProps(props));
@@ -2886,5 +2894,122 @@ public class ConnectionTest extends BaseTestCase {
         assertTrue(((MysqlConnection) con).getSession().isSSLEstablished());
         assertSessionStatusEquals(con.createStatement(), "ssl_version", "TLSv1.2");
         con.close();
+    }
+
+    /**
+     * Tests WL#14835, Align TLS option checking across connectors
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testTSLConflictingOptions() throws Exception {
+        assumeTrue((((MysqlConnection) this.conn).getSession().getServerSession().getCapabilities().getCapabilityFlags() & NativeServerSession.CLIENT_SSL) != 0,
+                "This test requires server with SSL support.");
+
+        Connection testConn;
+        String options;
+
+        // FR.1a.1 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and serverRSAPublicKeyFile=(path_to_valid_key).
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=src/test/config/ssl-test-certs/mykey.pub", PropertyKey.sslMode.getKeyName(),
+                PropertyKey.serverRSAPublicKeyFile.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.2 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and allowPublicKeyRetrieval=true.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=true", PropertyKey.sslMode.getKeyName(), PropertyKey.allowPublicKeyRetrieval.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.3 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and trustCertificateKeyStoreUrl=foo.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.trustCertificateKeyStoreUrl.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.4 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and trustCertificateKeyStoreType=foo.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.trustCertificateKeyStoreType.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.5 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and trustCertificateKeyStorePassword=foo.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.trustCertificateKeyStorePassword.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.6 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and fallbackToSystemTrustStore=false.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=false", PropertyKey.sslMode.getKeyName(), PropertyKey.fallbackToSystemTrustStore.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.7 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and clientCertificateKeyStoreUrl=foo.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.clientCertificateKeyStoreUrl.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.8 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and clientCertificateKeyStoreType=foo.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.clientCertificateKeyStoreType.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.9 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and clientCertificateKeyStorePassword=foo.
+        //         Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.clientCertificateKeyStorePassword.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.10 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and fallbackToSystemKeyStore=false.
+        //          Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=false", PropertyKey.sslMode.getKeyName(), PropertyKey.fallbackToSystemKeyStore.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.11 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and tlsCiphersuites=foo.
+        //          Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.tlsCiphersuites.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.1a.12 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and tlsVersions=foo.
+        //          Assess that the connection is established successfully and not using encryption.
+        options = String.format("%s=DISABLED,%s=foo", PropertyKey.sslMode.getKeyName(), PropertyKey.tlsVersions.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl, options);
+        assertNonSecureConnection(testConn);
+        testConn.close();
+
+        // FR.2.1 Create a JDBC connection to a MySQL server with the options sslMode=DISABLED and sslMode=REQUIRED by this order.
+        //        Assess that the connection is established successfully. It is acceptable that the connection is established over a secure or non secure
+        //        channel, but it is usually expected that the next test delivers the opposite result.
+        options = String.format("&%s=DISABLED&%s=REQUIRED", PropertyKey.sslMode.getKeyName(), PropertyKey.sslMode.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl + options, "");
+        assertTrue(((MysqlConnection) testConn).getURL().contains(options));
+        assertSecureConnection(testConn);
+        testConn.close();
+
+        // FR.2.2 Create a JDBC connection to a MySQL server with the options sslMode=REQUIRED and sslMode=DISABLED by this order.
+        //        Assess that the connection is established successfully. It is acceptable that the connection is established over a secure or non secure
+        //        channel, but it is usually expected that the previous test delivers the opposite result.
+        options = String.format("&%s=REQUIRED&%s=DISABLED", PropertyKey.sslMode.getKeyName(), PropertyKey.sslMode.getKeyName());
+        testConn = getConnectionWithProps(this.sslFreeBaseUrl + options, "");
+        assertTrue(((MysqlConnection) testConn).getURL().contains(options));
+        assertNonSecureConnection(testConn);
+        testConn.close();
     }
 }

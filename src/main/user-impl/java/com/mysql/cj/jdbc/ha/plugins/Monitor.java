@@ -251,7 +251,6 @@ public class Monitor implements IMonitor {
         src.getPort(),
         src.getUser(),
         src.getPassword(),
-        src.isPasswordless(),
         props);
   }
 
