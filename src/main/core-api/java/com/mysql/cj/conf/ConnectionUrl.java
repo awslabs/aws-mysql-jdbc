@@ -774,7 +774,9 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
     public Properties getConnectionArgumentsAsProperties() {
         Properties props = new Properties();
         if (this.properties != null) {
-            props.putAll(this.properties);
+            for (Entry<String, String> entry : this.properties.entrySet()) {
+                props.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
+            }
         }
 
         return this.propertiesTransformer != null ? this.propertiesTransformer.transformProperties(props) : props;
