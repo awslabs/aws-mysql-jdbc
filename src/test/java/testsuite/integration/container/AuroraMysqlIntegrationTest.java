@@ -582,4 +582,13 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
               || secondReaderInstanceId.equals(lastInstanceId));
     }
   }
+
+  @Test
+  public void test_ConnectionStringWithValuelessParameter() throws SQLException {
+    final String url = DB_CONN_STR_PREFIX + MYSQL_INSTANCE_1_URL + ":" + MYSQL_PORT
+        + "/" + TEST_DB + "?parameterWithNoValue&parameterWithValue=1";
+    final Connection conn = DriverManager.getConnection(url, initDefaultProxiedProps());
+    assertTrue(conn.isValid(5));
+    conn.close();
+  }
 }
