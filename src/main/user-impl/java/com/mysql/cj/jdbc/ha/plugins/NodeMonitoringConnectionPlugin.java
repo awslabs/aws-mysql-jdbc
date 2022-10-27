@@ -159,10 +159,12 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
     MonitorConnectionContext monitorContext = null;
 
     try {
-      this.logger.logTrace(String.format(
-          "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is activated",
-          methodInvokeOn.getName(),
-          methodName));
+      if (this.logger.isTraceEnabled()) {
+        this.logger.logTrace(String.format(
+                "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is activated",
+                methodInvokeOn.getName(),
+                methodName));
+      }
 
       this.checkIfChanged(this.currentConnectionProvider.getCurrentConnection());
 
@@ -187,10 +189,12 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
           }
         }
       }
-      this.logger.logTrace(String.format(
-          "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
-          methodInvokeOn.getName(),
-          methodName));
+      if (this.logger.isTraceEnabled()) {
+        this.logger.logTrace(String.format(
+                "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
+                methodInvokeOn.getName(),
+                methodName));
+      }
     }
 
     return result;
