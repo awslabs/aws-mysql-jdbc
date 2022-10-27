@@ -31,23 +31,12 @@
 
 package com.mysql.cj.jdbc.ha.plugins.failover;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.refEq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.mysql.cj.NativeSession;
 import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.ConnectionUrlParser;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.conf.url.AwsSingleConnectionUrl;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySet;
@@ -61,7 +50,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.mockito.stubbing.Answer;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -69,6 +60,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.refEq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class FailoverConnectionPluginTest {
   private static final String PREFIX = "jdbc:mysql:aws://";
@@ -641,6 +648,329 @@ class FailoverConnectionPluginTest {
     assertFalse(failoverPlugin.isRdsProxy());
     assertFalse(failoverPlugin.isClusterTopologyAvailable);
     assertFalse(failoverPlugin.isFailoverEnabled());
+  }
+
+  /**
+   * Verify that reconnection uses the correct topology
+   */
+  @Test
+  public void testReconnectionWhenTopologyHasBeenUpdated()
+      throws SQLException {
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/test";
+    mockHostInfo = new HostInfo(new AwsSingleConnectionUrl(ConnectionUrlParser.parseConnectionString(url), new Properties()),
+        "my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com", 3306, null, null);
+
+    final HostInfo instance0 =
+        ClusterAwareTestUtils.createBasicHostInfo("instance-0", "test");
+    final HostInfo instance1 =
+        ClusterAwareTestUtils.createBasicHostInfo("instance-1", "test");
+    final List<HostInfo> topology = new ArrayList<>();
+    topology.add(instance0);
+    topology.add(instance1);
+    AtomicReference<List<HostInfo>> topologyHolder = new AtomicReference<>();
+    mockTopologyService = Mockito.mock(AuroraTopologyService.class);
+    doAnswer((Answer<List<HostInfo>>) invocation -> topologyHolder.get())
+        .when(mockTopologyService).getCachedTopology();
+    doAnswer((Answer<List<HostInfo>>) invocation -> {
+      topologyHolder.set(new ArrayList<>(topology));
+      return topologyHolder.get();
+    }).when(mockTopologyService).getTopology(any(), eq(false));
+    doAnswer((Answer<List<HostInfo>>) invocation -> {
+      topologyHolder.set(new ArrayList<>(topology));
+      return topologyHolder.get();
+    }).when(mockTopologyService).getTopology(any(), eq(true));
+
+    final AtomicReference<ConnectionImpl> currentConnectionHolder = new AtomicReference<>();
+    final AtomicReference<HostInfo> currentHostInfoHolder = new AtomicReference<>();
+    mockCurrentConnectionProvider = mock(ICurrentConnectionProvider.class);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+        .thenAnswer((Answer<ConnectionImpl>) invocation -> currentConnectionHolder.get());
+    when(mockCurrentConnectionProvider.getCurrentHostInfo())
+        .thenAnswer((Answer<HostInfo>) invocation -> currentHostInfoHolder.get());
+    Mockito.doAnswer(invocation -> {
+      currentConnectionHolder.set(invocation.getArgument(0));
+      currentHostInfoHolder.set(invocation.getArgument(1));
+      return null;
+    }).when(mockCurrentConnectionProvider).setCurrentConnection(any(), any());
+
+    final ConnectionImpl instance0Connection = mock(ConnectionImpl.class);
+    {
+      when(instance0Connection.getHostPortPair()).thenReturn(instance0.getHostPortPair());
+      final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
+      propertySet.initializeProperties(new Properties());
+      when(instance0Connection.getPropertySet()).thenReturn(propertySet);
+      when(instance0Connection.getSession()).thenReturn(mockSession);
+      when(instance0Connection.toString()).thenReturn("Mock connection to instance-0");
+    }
+    final ConnectionImpl instance1Connection = mock(ConnectionImpl.class);
+    {
+      when(instance1Connection.getHostPortPair()).thenReturn(instance1.getHostPortPair());
+      final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
+      propertySet.initializeProperties(new Properties());
+      when(instance1Connection.getPropertySet()).thenReturn(propertySet);
+      when(instance1Connection.getSession()).thenReturn(mockSession);
+      when(instance1Connection.toString()).thenReturn("Mock connection to instance-1");
+    }
+
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      if (instance0.equalHostPortPair(invocation.getArgument(0))) {
+        return instance0Connection;
+      }
+      if (instance1.equalHostPortPair(invocation.getArgument(0))) {
+        return instance1Connection;
+      }
+      if (mockHostInfo.equalHostPortPair(invocation.getArgument(0))) {
+        return mockConnection;
+      }
+      return null;
+    }).when(mockConnectionProvider).connect(any());
+    when(mockTopologyService.getHostByName(instance0Connection)).thenReturn(
+        instance0);
+    when(mockTopologyService.getHostByName(instance1Connection)).thenReturn(
+        instance1);
+
+    currentHostInfoHolder.set(mockHostInfo);
+
+    final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
+    final ConnectionUrl connectionUrl =
+        ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    failoverPlugin.openInitialConnection(connectionUrl);
+
+    assertEquals(instance0Connection, mockCurrentConnectionProvider.getCurrentConnection());
+    assertEquals(instance0, mockCurrentConnectionProvider.getCurrentHostInfo());
+
+    // Cached topology is updated, for instance by another ConnectionProxy instance (e.g. during a failover)
+    topology.clear();
+    topology.add(instance1);
+
+    failoverPlugin.updateTopologyAndConnectIfNeeded(false);
+
+    assertEquals(
+        FailoverConnectionPlugin.WRITER_CONNECTION_INDEX,
+        failoverPlugin.currentHostIndex);
+    assertEquals(
+        instance1,
+        failoverPlugin.hosts.get(failoverPlugin.currentHostIndex));
+    assertEquals(instance1Connection, mockCurrentConnectionProvider.getCurrentConnection());
+    assertEquals(instance1, mockCurrentConnectionProvider.getCurrentHostInfo());
+  }
+
+  /**
+   * Verify that reconnection uses the correct topology, and reconnects to writer when hosts are switched
+   */
+  @Test
+  public void testReconnectionToWriterWhenHostsAreSwitched()
+      throws SQLException {
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/test";
+    mockHostInfo = new HostInfo(new AwsSingleConnectionUrl(ConnectionUrlParser.parseConnectionString(url), new Properties()),
+        "my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com", 3306, null, null);
+
+    final HostInfo instance0 =
+        ClusterAwareTestUtils.createBasicHostInfo("instance-0", "test");
+    final HostInfo instance1 =
+        ClusterAwareTestUtils.createBasicHostInfo("instance-1", "test");
+    final List<HostInfo> topology = new ArrayList<>();
+    topology.add(instance0);
+    topology.add(instance1);
+    AtomicReference<List<HostInfo>> topologyHolder = new AtomicReference<>();
+    mockTopologyService = Mockito.mock(AuroraTopologyService.class);
+    doAnswer((Answer<List<HostInfo>>) invocation -> topologyHolder.get())
+        .when(mockTopologyService).getCachedTopology();
+    doAnswer((Answer<List<HostInfo>>) invocation -> {
+      topologyHolder.set(new ArrayList<>(topology));
+      return topologyHolder.get();
+    }).when(mockTopologyService).getTopology(any(), eq(false));
+    doAnswer((Answer<List<HostInfo>>) invocation -> {
+      topologyHolder.set(new ArrayList<>(topology));
+      return topologyHolder.get();
+    }).when(mockTopologyService).getTopology(any(), eq(true));
+
+    final AtomicReference<ConnectionImpl> currentConnectionHolder = new AtomicReference<>();
+    final AtomicReference<HostInfo> currentHostInfoHolder = new AtomicReference<>();
+    mockCurrentConnectionProvider = mock(ICurrentConnectionProvider.class);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+        .thenAnswer((Answer<ConnectionImpl>) invocation -> currentConnectionHolder.get());
+    when(mockCurrentConnectionProvider.getCurrentHostInfo())
+        .thenAnswer((Answer<HostInfo>) invocation -> currentHostInfoHolder.get());
+    Mockito.doAnswer(invocation -> {
+      currentConnectionHolder.set(invocation.getArgument(0));
+      currentHostInfoHolder.set(invocation.getArgument(1));
+      return null;
+    }).when(mockCurrentConnectionProvider).setCurrentConnection(any(), any());
+
+    final ConnectionImpl instance0Connection = mock(ConnectionImpl.class);
+    {
+      when(instance0Connection.getHostPortPair()).thenReturn(instance0.getHostPortPair());
+      final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
+      propertySet.initializeProperties(new Properties());
+      when(instance0Connection.getPropertySet()).thenReturn(propertySet);
+      when(instance0Connection.getSession()).thenReturn(mockSession);
+      when(instance0Connection.toString()).thenReturn("Mock connection to instance-0");
+    }
+    final ConnectionImpl instance1Connection = mock(ConnectionImpl.class);
+    {
+      when(instance1Connection.getHostPortPair()).thenReturn(instance1.getHostPortPair());
+      final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
+      propertySet.initializeProperties(new Properties());
+      when(instance1Connection.getPropertySet()).thenReturn(propertySet);
+      when(instance1Connection.getSession()).thenReturn(mockSession);
+      when(instance1Connection.toString()).thenReturn("Mock connection to instance-1");
+    }
+
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      if (instance0.equalHostPortPair(invocation.getArgument(0))) {
+        return instance0Connection;
+      }
+      if (instance1.equalHostPortPair(invocation.getArgument(0))) {
+        return instance1Connection;
+      }
+      if (mockHostInfo.equalHostPortPair(invocation.getArgument(0))) {
+        return mockConnection;
+      }
+      return null;
+    }).when(mockConnectionProvider).connect(any());
+    when(mockTopologyService.getHostByName(instance0Connection)).thenReturn(
+        instance0);
+    when(mockTopologyService.getHostByName(instance1Connection)).thenReturn(
+        instance1);
+
+    currentHostInfoHolder.set(mockHostInfo);
+
+    final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
+    final ConnectionUrl connectionUrl =
+        ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    failoverPlugin.openInitialConnection(connectionUrl);
+
+    assertEquals(instance0Connection, mockCurrentConnectionProvider.getCurrentConnection());
+    assertEquals(instance0, mockCurrentConnectionProvider.getCurrentHostInfo());
+
+    // Cached topology is updated, for instance by another ConnectionProxy instance (e.g. during a failover)
+    topology.clear();
+    topology.add(instance1);
+    topology.add(instance0);
+
+    failoverPlugin.updateTopologyAndConnectIfNeeded(false);
+
+    assertEquals(
+        FailoverConnectionPlugin.WRITER_CONNECTION_INDEX,
+        failoverPlugin.currentHostIndex);
+    assertEquals(
+        instance1,
+        failoverPlugin.hosts.get(failoverPlugin.currentHostIndex));
+    assertEquals(instance1Connection, mockCurrentConnectionProvider.getCurrentConnection());
+    assertEquals(instance1, mockCurrentConnectionProvider.getCurrentHostInfo());
+  }
+
+  /**
+   * With AWS Aurora v2, the hosts returned from the topology service are:
+   * initially:                             instance-0 (writer), instance-1
+   * when instance-1 takes over:            instance-1 (writer)
+   * after instance-0 restarted as replica: instance-1 (writer), instance-0
+   * <p>
+   * The topology is updated by one instance doing the failover,
+   * and the new topology is used in updateTopologyAndConnectIfNeeded
+   * When the new topology contains only one endpoint, the failover should not be disabled
+   */
+  @Test
+  void testFailoverStillEnabledWhenReconnectionWithOneHostInTopology()
+      throws SQLException {
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:3306/test";
+    mockHostInfo = new HostInfo(new AwsSingleConnectionUrl(ConnectionUrlParser.parseConnectionString(url), new Properties()),
+        "my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com", 3306, null, null);
+
+    final HostInfo instance0 =
+        ClusterAwareTestUtils.createBasicHostInfo("instance-0", "test");
+    final HostInfo instance1 =
+        ClusterAwareTestUtils.createBasicHostInfo("instance-1", "test");
+    final List<HostInfo> topology = new ArrayList<>();
+    topology.add(instance0);
+    topology.add(instance1);
+    AtomicReference<List<HostInfo>> topologyHolder = new AtomicReference<>();
+    mockTopologyService = Mockito.mock(AuroraTopologyService.class);
+    doAnswer((Answer<List<HostInfo>>) invocation -> topologyHolder.get())
+        .when(mockTopologyService).getCachedTopology();
+    doAnswer((Answer<List<HostInfo>>) invocation -> {
+      topologyHolder.set(new ArrayList<>(topology));
+      return topologyHolder.get();
+    }).when(mockTopologyService).getTopology(any(), eq(false));
+    doAnswer((Answer<List<HostInfo>>) invocation -> {
+      topologyHolder.set(new ArrayList<>(topology));
+      return topologyHolder.get();
+    }).when(mockTopologyService).getTopology(any(), eq(true));
+
+    final AtomicReference<ConnectionImpl> currentConnectionHolder = new AtomicReference<>();
+    final AtomicReference<HostInfo> currentHostInfoHolder = new AtomicReference<>(mockHostInfo);
+    mockCurrentConnectionProvider = mock(ICurrentConnectionProvider.class);
+    when(mockCurrentConnectionProvider.getCurrentConnection())
+        .thenAnswer((Answer<ConnectionImpl>) invocation -> currentConnectionHolder.get());
+    when(mockCurrentConnectionProvider.getCurrentHostInfo())
+        .thenAnswer((Answer<HostInfo>) invocation -> currentHostInfoHolder.get());
+    Mockito.doAnswer(invocation -> {
+      currentConnectionHolder.set(invocation.getArgument(0));
+      currentHostInfoHolder.set(invocation.getArgument(1));
+      return null;
+    }).when(mockCurrentConnectionProvider).setCurrentConnection(any(), any());
+
+    final ConnectionImpl instance0Connection = mock(ConnectionImpl.class);
+    {
+      when(instance0Connection.getHostPortPair()).thenReturn(instance0.getHostPortPair());
+      final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
+      propertySet.initializeProperties(new Properties());
+      when(instance0Connection.getPropertySet()).thenReturn(propertySet);
+      when(instance0Connection.getSession()).thenReturn(mockSession);
+      when(instance0Connection.toString()).thenReturn("Mock connection to instance-0");
+    }
+    final ConnectionImpl instance1Connection = mock(ConnectionImpl.class);
+    {
+      when(instance1Connection.getHostPortPair()).thenReturn(instance1.getHostPortPair());
+      final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
+      propertySet.initializeProperties(new Properties());
+      when(instance1Connection.getPropertySet()).thenReturn(propertySet);
+      when(instance1Connection.getSession()).thenReturn(mockSession);
+      when(instance1Connection.toString()).thenReturn("Mock connection to instance-1");
+    }
+
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      if (instance0.equalHostPortPair(invocation.getArgument(0))) {
+        return instance0Connection;
+      }
+      if (instance1.equalHostPortPair(invocation.getArgument(0))) {
+        return instance1Connection;
+      }
+      if (mockHostInfo.equalHostPortPair(invocation.getArgument(0))) {
+        return mockConnection;
+      }
+      return null;
+    }).when(mockConnectionProvider).connect(any());
+    when(mockTopologyService.getHostByName(instance0Connection)).thenReturn(
+        instance0);
+    when(mockTopologyService.getHostByName(instance1Connection)).thenReturn(
+        instance1);
+
+    final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin();
+    final ConnectionUrl connectionUrl =
+        ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    failoverPlugin.openInitialConnection(connectionUrl);
+
+    assertEquals(instance0Connection, mockCurrentConnectionProvider.getCurrentConnection());
+    assertEquals(instance0, mockCurrentConnectionProvider.getCurrentHostInfo());
+
+    // Cached topology is updated, for instance by another ConnectionProxy instance (e.g. during a failover)
+    topology.clear();
+    topology.add(instance1);
+
+    failoverPlugin.updateTopologyAndConnectIfNeeded(false);
+
+    assertEquals(
+        FailoverConnectionPlugin.WRITER_CONNECTION_INDEX,
+        failoverPlugin.currentHostIndex);
+    assertEquals(
+        instance1,
+        failoverPlugin.hosts.get(failoverPlugin.currentHostIndex));
+    assertTrue(failoverPlugin.isFailoverEnabled(), "failover should be enabled");
   }
 
   @AfterEach

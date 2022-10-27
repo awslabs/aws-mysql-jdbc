@@ -31,6 +31,7 @@ package com.mysql.cj.log;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 public class Slf4JLogger implements Log {
     private Logger log;
@@ -111,4 +112,13 @@ public class Slf4JLogger implements Log {
         this.log.warn(msg.toString(), thrown);
     }
 
+    @Override
+    public void contextAdd(String key, String value) {
+        MDC.put(key, value);
+    }
+
+    @Override
+    public void contextRemove(String key) {
+        MDC.remove(key);
+    }
 }

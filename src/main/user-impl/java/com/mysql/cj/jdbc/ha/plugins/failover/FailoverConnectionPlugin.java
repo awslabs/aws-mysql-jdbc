@@ -277,8 +277,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     return this.enableFailoverSetting
         && !this.isRdsProxy
         && this.isClusterTopologyAvailable
-        && !this.isMultiWriterCluster
-        && (this.hosts == null || this.hosts.size() > 1);
+        && !this.isMultiWriterCluster;
   }
 
   /**
@@ -381,7 +380,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return;
     }
 
-    this.hosts = cachedHosts;
+    updateHosts(cachedHosts);
 
     metricsContainer.registerUseCachedTopology(true);
 
@@ -542,10 +541,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         && !Util.isNullOrEmpty(this.hosts)) {
       HostInfo currentHost = this.hosts.get(this.currentHostIndex);
       topologyService.setLastUsedReaderHost(currentHost);
-      this.logger.logDebug(
-          Messages.getString(
-              "ClusterAwareConnectionProxy.15",
-              new Object[] {currentHost}));
+      if (this.logger.isDebugEnabled()) {
+        this.logger.logDebug(
+            Messages.getString(
+                "ClusterAwareConnectionProxy.15",
+                new Object[]{currentHost}), new Throwable());
+      }
     }
   }
 
@@ -571,7 +572,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
 
     if (!Util.isNullOrEmpty(failoverResult.getTopology())) {
-      this.hosts = failoverResult.getTopology();
+      updateHosts(failoverResult.getTopology());
     }
 
     metricsContainer.registerFailoverConnects(true);
@@ -581,10 +582,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         failoverResult.getNewConnection(),
         WRITER_CONNECTION_INDEX);
 
-    this.logger.logDebug(
-        Messages.getString(
-            "ClusterAwareConnectionProxy.15",
-            new Object[] {this.hosts.get(this.currentHostIndex)}));
+    if (this.logger.isDebugEnabled()) {
+      this.logger.logDebug(
+          Messages.getString(
+              "ClusterAwareConnectionProxy.15",
+              new Object[]{this.hosts.get(this.currentHostIndex)}), new Throwable());
+    }
   }
 
   protected void invalidateCurrentConnection() {
@@ -709,14 +712,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         || connection == null
         || connection.isClosed()
         || connection.isInPreparedTx()) {
-        return;
+      return;
     }
 
     List<HostInfo> latestTopology =
         this.topologyService.getTopology(connection, forceUpdate);
 
     updateHostIndex(latestTopology);
-    this.hosts = latestTopology;
   }
 
   boolean isCurrentConnectionReadOnly() {
@@ -754,10 +756,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   private void connectTo(int hostIndex) throws SQLException {
     try {
       switchCurrentConnectionTo(hostIndex, createConnectionForHostIndex(hostIndex));
-      this.logger.logDebug(
-          Messages.getString(
-              "ClusterAwareConnectionProxy.15",
-              new Object[] {this.hosts.get(hostIndex)}));
+      if (this.logger.isDebugEnabled()) {
+        this.logger.logDebug(
+            Messages.getString(
+                "ClusterAwareConnectionProxy.15",
+                new Object[]{this.hosts.get(hostIndex)}), new Throwable());
+      }
     } catch (SQLException e) {
       if (this.currentConnectionProvider.getCurrentConnection() != null) {
         HostInfo host = this.hosts.get(hostIndex);
@@ -1016,7 +1020,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
     List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
     if (!Util.isNullOrEmpty(topology)) {
-      this.hosts = topology;
+      updateHosts(topology);
     }
 
     this.isClusterTopologyAvailable = !Util.isNullOrEmpty(this.hosts);
@@ -1027,11 +1031,21 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
                 this.isClusterTopologyAvailable}));
     this.isMultiWriterCluster = this.topologyService.isMultiWriterCluster();
     this.currentHostIndex =
-            getHostIndex(topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
+        getHostIndex(topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
 
     if (this.isFailoverEnabled()) {
       logTopology();
     }
+  }
+
+  private void updateHosts(List<HostInfo> newHosts) {
+    if (this.logger.isTraceEnabled() && !Objects.equals(this.hosts, newHosts)) {
+      this.logger.logTrace(
+          Messages.getString(
+              "ClusterAwareConnectionProxy.22",
+              new Object[]{newHosts}), new Throwable());
+    }
+    this.hosts = newHosts;
   }
 
   private void createConnection(ConnectionUrl connectionUrl) throws SQLException {
@@ -1270,8 +1284,11 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       }
     }
 
-    if (latestHostIndex == NO_CONNECTION_INDEX) {
+    // Now we can update our cached hosts with the latest topology
+    updateHosts(latestTopology);
+    if (latestHostIndex == NO_CONNECTION_INDEX || !this.isExplicitlyReadOnly() && latestHostIndex != 0) {
       // current connection host isn't found in the latest topology
+      // Or the current connection now points to a reader
       // switch to another connection;
       this.currentHostIndex = NO_CONNECTION_INDEX;
       pickNewConnection();

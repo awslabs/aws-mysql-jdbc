@@ -38,49 +38,49 @@ public interface Log {
 
     /**
      * Is the 'debug' log level enabled?
-     * 
+     *
      * @return true if so.
      */
     boolean isDebugEnabled();
 
     /**
      * Is the 'error' log level enabled?
-     * 
+     *
      * @return true if so.
      */
     boolean isErrorEnabled();
 
     /**
      * Is the 'fatal' log level enabled?
-     * 
+     *
      * @return true if so.
      */
     boolean isFatalEnabled();
 
     /**
      * Is the 'info' log level enabled?
-     * 
+     *
      * @return true if so.
      */
     boolean isInfoEnabled();
 
     /**
      * Is the 'trace' log level enabled?
-     * 
+     *
      * @return true if so.
      */
     boolean isTraceEnabled();
 
     /**
      * Is the 'warn' log level enabled?
-     * 
+     *
      * @return true if so.
      */
     boolean isWarnEnabled();
 
     /**
      * Logs the given message instance using the 'debug' level
-     * 
+     *
      * @param msg
      *            the message to log
      */
@@ -88,7 +88,7 @@ public interface Log {
 
     /**
      * Logs the given message and Throwable at the 'debug' level.
-     * 
+     *
      * @param msg
      *            the message to log
      * @param thrown
@@ -98,7 +98,7 @@ public interface Log {
 
     /**
      * Logs the given message instance using the 'error' level
-     * 
+     *
      * @param msg
      *            the message to log
      */
@@ -106,7 +106,7 @@ public interface Log {
 
     /**
      * Logs the given message and Throwable at the 'error' level.
-     * 
+     *
      * @param msg
      *            the message to log
      * @param thrown
@@ -116,7 +116,7 @@ public interface Log {
 
     /**
      * Logs the given message instance using the 'fatal' level
-     * 
+     *
      * @param msg
      *            the message to log
      */
@@ -124,7 +124,7 @@ public interface Log {
 
     /**
      * Logs the given message and Throwable at the 'fatal' level.
-     * 
+     *
      * @param msg
      *            the message to log
      * @param thrown
@@ -134,7 +134,7 @@ public interface Log {
 
     /**
      * Logs the given message instance using the 'info' level
-     * 
+     *
      * @param msg
      *            the message to log
      */
@@ -142,7 +142,7 @@ public interface Log {
 
     /**
      * Logs the given message and Throwable at the 'info' level.
-     * 
+     *
      * @param msg
      *            the message to log
      * @param thrown
@@ -152,7 +152,7 @@ public interface Log {
 
     /**
      * Logs the given message instance using the 'trace' level
-     * 
+     *
      * @param msg
      *            the message to log
      */
@@ -160,7 +160,7 @@ public interface Log {
 
     /**
      * Logs the given message and Throwable at the 'trace' level.
-     * 
+     *
      * @param msg
      *            the message to log
      * @param thrown
@@ -170,7 +170,7 @@ public interface Log {
 
     /**
      * Logs the given message instance using the 'warn' level
-     * 
+     *
      * @param msg
      *            the message to log
      */
@@ -178,11 +178,28 @@ public interface Log {
 
     /**
      * Logs the given message and Throwable at the 'warn' level.
-     * 
+     *
      * @param msg
      *            the message to log
      * @param thrown
      *            the throwable to log (may be null)
      */
     void logWarn(Object msg, Throwable thrown);
+
+    /**
+     * Add a property to the logging context. Supported by Slf4j
+     * @param key non-null key
+     * @param value value
+     */
+    default void contextAdd(String key, String value) {
+        // no-op
+    }
+
+    /**
+     * Remove a property from the logging context. Supported by Slf4j
+     * @param key non-null key
+     */
+    default void contextRemove(String key) {
+        // no-op
+    }
 }

@@ -54,6 +54,7 @@ import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -66,7 +67,12 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
   static final String METHOD_EQUALS = "equals";
   private static final String METHOD_HASH_CODE = "hashCode";
+  private static final String LOGGING_CONTEXT_KEY = "ConnectionProxy";
   private final JdbcPropertySetImpl connProps = new JdbcPropertySetImpl();
+  /**
+   * Unique id for this instance, used for logging
+   */
+  private final String uniqueId;
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
   // writer host is always stored at index 0
@@ -98,13 +104,19 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       throws SQLException {
     this.currentHostInfo = connectionUrl.getMainHost();
     this.currentConnection = connection;
+    this.uniqueId = UUID.randomUUID().toString();
 
-    initLogger(connectionUrl);
-    initSettings(connectionUrl);
-    initPluginManager(connectionPluginManagerInitializer, connectionUrl);
+    try {
+      initLogger(connectionUrl);
+      log.contextAdd(LOGGING_CONTEXT_KEY, this.uniqueId);
+      initSettings(connectionUrl);
+      initPluginManager(connectionPluginManagerInitializer, connectionUrl);
 
-    this.currentConnection.setConnectionLifecycleInterceptor(
-        new ConnectionProxyLifecycleInterceptor(this.pluginManager));
+      this.currentConnection.setConnectionLifecycleInterceptor(
+          new ConnectionProxyLifecycleInterceptor(this.pluginManager));
+    } finally {
+      log.contextRemove(LOGGING_CONTEXT_KEY);
+    }
   }
 
   /**
@@ -190,6 +202,7 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
     Object[] argsCopy = args == null ?  null : Arrays.copyOf(args, args.length);
 
     try {
+      log.contextAdd(LOGGING_CONTEXT_KEY, this.uniqueId);
       Object result = this.pluginManager.execute(
           this.currentConnection.getClass(),
           methodName,
@@ -205,6 +218,8 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
         }
       }
       throw new IllegalStateException(e.getMessage(), e);
+    } finally {
+      log.contextRemove(LOGGING_CONTEXT_KEY);
     }
   }
 
@@ -316,13 +331,18 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       Object[] argsCopy = args == null ? null : Arrays.copyOf(args, args.length);
 
       synchronized(ConnectionProxy.this) {
-        Object result =
-            ConnectionProxy.this.pluginManager.execute(
-                this.invokeOn.getClass(),
-                methodName,
-                () -> method.invoke(this.invokeOn, args),
-                argsCopy);
-        return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+        try {
+          log.contextAdd(LOGGING_CONTEXT_KEY, ConnectionProxy.this.uniqueId);
+          Object result =
+              ConnectionProxy.this.pluginManager.execute(
+                  this.invokeOn.getClass(),
+                  methodName,
+                  () -> method.invoke(this.invokeOn, args),
+                  argsCopy);
+          return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+        } finally {
+          log.contextRemove(LOGGING_CONTEXT_KEY);
+        }
       }
     }
   }

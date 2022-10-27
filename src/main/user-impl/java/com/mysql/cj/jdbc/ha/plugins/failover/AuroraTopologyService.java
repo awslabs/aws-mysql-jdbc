@@ -50,6 +50,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -198,6 +199,7 @@ public class AuroraTopologyService implements ITopologyService {
         || refreshNeeded(clusterTopologyInfo)) {
 
       ClusterTopologyInfo latestTopologyInfo = queryForTopology(conn);
+      logTopology(latestTopologyInfo);
 
       if (!Util.isNullOrEmpty(latestTopologyInfo.hosts)) {
         clusterTopologyInfo = updateCache(clusterTopologyInfo, latestTopologyInfo);
@@ -430,6 +432,7 @@ public class AuroraTopologyService implements ITopologyService {
         ClusterTopologyInfo info = topologyCache.get(this.clusterId);
         if (info != null) {
           info.lastUsedReader = reader;
+          logTopologyUpdate(info);
         }
       }
     }
@@ -512,6 +515,7 @@ public class AuroraTopologyService implements ITopologyService {
         clusterTopologyInfo.downHosts = new HashSet<>();
       }
       clusterTopologyInfo.downHosts.add(downHost.getHostPortPair());
+      logTopologyUpdate(clusterTopologyInfo);
     }
   }
 
@@ -529,6 +533,7 @@ public class AuroraTopologyService implements ITopologyService {
       ClusterTopologyInfo clusterTopologyInfo = topologyCache.get(this.clusterId);
       if (clusterTopologyInfo != null && clusterTopologyInfo.downHosts != null) {
         clusterTopologyInfo.downHosts.remove(host.getHostPortPair());
+        logTopologyUpdate(clusterTopologyInfo);
       }
     }
   }
@@ -582,6 +587,24 @@ public class AuroraTopologyService implements ITopologyService {
     }
   }
 
+  private void logTopology(ClusterTopologyInfo latestTopologyInfo) {
+    if (log.isTraceEnabled()) {
+      this.log.logTrace(
+          Messages.getString(
+              "AuroraTopologyService.4",
+              new Object[]{latestTopologyInfo.toString()}));
+    }
+  }
+
+  private void logTopologyUpdate(ClusterTopologyInfo clusterTopologyInfo) {
+    if (this.log.isTraceEnabled()) {
+      this.log.logTrace(
+          Messages.getString(
+              "AuroraTopologyService.5",
+              new Object[]{clusterTopologyInfo.toString()}));
+    }
+  }
+
   private static class ClusterTopologyInfo {
     public Instant lastUpdated;
     public Set<String> downHosts;
@@ -592,11 +615,22 @@ public class AuroraTopologyService implements ITopologyService {
     ClusterTopologyInfo(
         List<HostInfo> hosts, Set<String> downHosts, HostInfo lastUsedReader,
         Instant lastUpdated, boolean isMultiWriterCluster) {
-      this.hosts = hosts;
+      this.hosts = Collections.unmodifiableList(new ArrayList<>(hosts));
       this.downHosts = downHosts;
       this.lastUsedReader = lastUsedReader;
       this.lastUpdated = lastUpdated;
       this.isMultiWriterCluster = isMultiWriterCluster;
+    }
+
+    @Override
+    public String toString() {
+      return "ClusterTopologyInfo{" +
+          "lastUpdated=" + lastUpdated +
+          ", downHosts=" + downHosts +
+          ", hosts=" + hosts +
+          ", lastUsedReader=" + lastUsedReader +
+          ", isMultiWriterCluster=" + isMultiWriterCluster +
+          '}';
     }
   }
 }
