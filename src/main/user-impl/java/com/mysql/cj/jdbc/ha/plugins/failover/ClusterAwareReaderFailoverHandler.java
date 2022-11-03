@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
@@ -78,6 +79,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
   protected Map<String, String> initialConnectionProps;
   protected int maxFailoverTimeoutMs;
   protected int timeoutMs;
+  protected boolean enableFailoverStrictReader;
   protected final IConnectionProvider connProvider;
   protected final ITopologyService topologyService;
 
@@ -101,6 +103,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
         initialConnectionProps,
         DEFAULT_FAILOVER_TIMEOUT,
         DEFAULT_READER_CONNECT_TIMEOUT,
+        false,
         log);
   }
 
@@ -123,13 +126,14 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
       Map<String, String> initialConnectionProps,
       int failoverTimeoutMs,
       int timeoutMs,
+      boolean enableFailoverStrictReader,
       Log log) {
     this.topologyService = topologyService;
     this.connProvider = connProvider;
     this.initialConnectionProps = initialConnectionProps;
     this.maxFailoverTimeoutMs = failoverTimeoutMs;
     this.timeoutMs = timeoutMs;
-
+    this.enableFailoverStrictReader = enableFailoverStrictReader;
     if (log != null) {
       this.log = log;
     }
@@ -176,12 +180,45 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
       HostInfo currentHost,
       ExecutorService executor) {
     Future<ReaderFailoverResult> future = executor.submit(() -> {
-      ReaderFailoverResult result = null;
-      while (result == null || !result.isConnected()) {
-        result = failoverInternal(hosts, currentHost);
-        TimeUnit.SECONDS.sleep(1);
+      ReaderFailoverResult result;
+      try {
+        while (true) {
+          result = failoverInternal(hosts, currentHost);
+          if (result != null && result.isConnected()) {
+
+            if (!this.enableFailoverStrictReader) {
+              // connection to any node works for us
+              return result;
+            }
+
+            // need to ensure that the new connection is a connection to a reader node
+            final HostInfo newHost = hosts.get(result.getConnectionIndex());
+            final List<HostInfo> topology = this.topologyService.getTopology(result.getConnection(), true);
+            for (int i = FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1; i < topology.size(); i++) {
+              if (topology.get(i).equalHostPortPair(newHost)) {
+                return result;
+              }
+            }
+
+            // New node is not found in the latest topology.There are few possible reasons for that:
+            // - Node is not yet presented in the topology due to the failover process in progress
+            // - Node is in the topology but it isn't a
+            //   READER (that is not an acceptable option due to this.strictReader setting)
+            // Need to continue this loop and to make another try to connect to a reader.
+            try {
+              result.getConnection().close();
+            } catch (SQLException ex) {
+              // ignore
+            }
+          }
+
+          TimeUnit.SECONDS.sleep(1);
+        }
+      } catch (SQLException ex) {
+        return new ReaderFailoverResult(null, -1, false, ex);
+      } catch (Exception ex) {
+        return new ReaderFailoverResult(null, -1, false, new SQLException(ex));
       }
-      return result;
     });
     executor.shutdown();
     return future;
@@ -230,10 +267,12 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
     List<HostTuple> hostGroup = new ArrayList<>();
     addActiveReaders(hostGroup, hosts, downHosts);
     HostInfo writerHost = hosts.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
-    hostGroup.add(
-        new HostTuple(
-            writerHost,
-            FailoverConnectionPlugin.WRITER_CONNECTION_INDEX));
+    if (writerHost != null && (!this.enableFailoverStrictReader || hosts.size() == 1)) {
+      hostGroup.add(
+          new HostTuple(
+              writerHost,
+              FailoverConnectionPlugin.WRITER_CONNECTION_INDEX));
+    }
     addDownHosts(hostGroup, hosts, downHosts);
     return hostGroup;
   }
@@ -475,6 +514,26 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
 
     public int getIndex() {
       return index;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(host, index);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == null) {
+        return false;
+      }
+
+      if (obj.getClass() != this.getClass()) {
+        return false;
+      }
+
+      final HostTuple other = (HostTuple) obj;
+
+      return (other.host != null && this.host.equalHostPortPair(other.host) && (this.index == other.index));
     }
   }
 }
