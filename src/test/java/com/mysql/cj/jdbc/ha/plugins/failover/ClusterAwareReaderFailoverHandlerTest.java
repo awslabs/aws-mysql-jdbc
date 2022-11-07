@@ -50,6 +50,7 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
+import com.mysql.cj.jdbc.ha.plugins.failover.ClusterAwareReaderFailoverHandler.HostTuple;
 import com.mysql.cj.log.Log;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -58,6 +59,7 @@ import org.mockito.stubbing.Answer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +70,7 @@ import java.util.Set;
  * ClusterAwareReaderFailoverHandlerTest class.
  */
 public class ClusterAwareReaderFailoverHandlerTest {
+
   static final List<HostInfo> testHosts;
 
   static {
@@ -188,6 +191,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             testConnectionProps,
             5000,
             30000,
+            false,
             mockLog);
     final ReaderFailoverResult result =
         target.failover(hosts, hosts.get(currentHostIndex));
@@ -329,6 +333,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             testConnectionProps,
             60000,
             1000,
+            false,
             mockLog);
     final ReaderFailoverResult result = target.getReaderConnection(hosts);
 
@@ -429,5 +434,45 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertTrue(downReaderTupleIndex >= numActiveReaders);
     assertFalse(readerTuples.contains(writerTuple));
     assertEquals(5, readerTuples.size());
+  }
+
+  @Test
+  public void testHostFailoverStrictReaderEnabled() {
+    final ITopologyService mockTopologyService = Mockito.mock(ITopologyService.class);
+    final IConnectionProvider mockConnProvider = Mockito.mock(IConnectionProvider.class);
+    final List<HostInfo> hosts = getHostsFromTestUrls(2);
+    final HostInfo writer = hosts.get(0);
+    final HostInfo reader = hosts.get(1);
+
+    final ClusterAwareReaderFailoverHandler target =
+        new ClusterAwareReaderFailoverHandler(
+            mockTopologyService,
+            mockConnProvider,
+            testConnectionProps,
+            5000,
+            30000,
+            true,
+            mockLog);
+
+    // We expect only reader nodes to be chosen.
+    List<HostTuple> expectedReaderHost = Collections.singletonList(
+        new ClusterAwareReaderFailoverHandler.HostTuple(
+            reader,
+            1));
+
+    List<HostTuple> hostsByPriority = target.getHostTuplesByPriority(hosts, Collections.emptySet());
+    assertEquals(expectedReaderHost, hostsByPriority);
+
+    // Should pick reader even if unavailable.
+    hostsByPriority = target.getHostTuplesByPriority(hosts, new HashSet<>(Collections.singletonList(reader.getHost())));
+    assertEquals(expectedReaderHost, hostsByPriority);
+
+    // Writer node will only be picked if it is the only node in topology;
+    List<HostTuple> expectedWriterHost = Collections.singletonList(
+        new ClusterAwareReaderFailoverHandler.HostTuple(
+            writer,
+            0));
+    hostsByPriority = target.getHostTuplesByPriority(Collections.singletonList(writer), Collections.emptySet());
+    assertEquals(expectedWriterHost, hostsByPriority);
   }
 }

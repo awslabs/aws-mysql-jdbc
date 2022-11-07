@@ -129,6 +129,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   // Configuration settings
   protected boolean enableFailoverSetting = true;
+  protected boolean enableFailoverStrictReaderSetting;
   protected int clusterTopologyRefreshRateMsSetting;
   protected int failoverTimeoutMsSetting;
   protected int failoverClusterTopologyRefreshRateMsSetting;
@@ -198,6 +199,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
             this.initialConnectionProps,
             this.failoverTimeoutMsSetting,
             this.failoverReaderConnectTimeoutMsSetting,
+            this.enableFailoverStrictReaderSetting,
             this.logger);
     this.writerFailoverHandler =
         new ClusterAwareWriterFailoverHandler(
@@ -334,6 +336,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.autoReconnect =
       propertySet.getBooleanProperty(PropertyKey.autoReconnect.getKeyName()).getValue()
       || propertySet.getBooleanProperty(PropertyKey.autoReconnectForPools.getKeyName()).getValue();
+
+    this.enableFailoverStrictReaderSetting =
+        propertySet.getBooleanProperty(PropertyKey.enableFailoverStrictReader.getKeyName()).getValue();
   }
 
   /**
