@@ -417,14 +417,26 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               topologyService.getTopology(this.currentReaderConnection, true);
 
           if (!topology.isEmpty()) {
-            this.currentTopology = topology;
-            HostInfo writerCandidate = this.currentTopology.get(WRITER_CONNECTION_INDEX);
-            logTopology();
+            if (topology.size() == 1) {
+              // The currently connected reader is in the middle of failover. It's not yet connected
+              // to a new writer and works as "standalone" node. The handler needs to
+              // wait till the reader gets connected to the entire cluster and fetch a proper
+              // cluster topology.
 
-            if (!isSame(writerCandidate, this.originalWriterHost)) {
-              // new writer is available and it's different from the previous writer
-              if (connectToWriter(writerCandidate)) {
-                return true;
+              // do nothing
+              log.logTrace(
+                  Messages.getString("ClusterAwareWriterFailoverHandler.17",
+                      new Object[] {this.currentReaderHost.getHost()}));
+            } else {
+              this.currentTopology = topology;
+              HostInfo writerCandidate = this.currentTopology.get(WRITER_CONNECTION_INDEX);
+
+              if (!isSame(writerCandidate, this.originalWriterHost)) {
+                // new writer is available, and it's different from the previous writer
+                logTopology();
+                if (connectToWriter(writerCandidate)) {
+                  return true;
+                }
               }
             }
           }
@@ -438,7 +450,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     }
 
     private boolean isSame(HostInfo writerCandidate, HostInfo originalWriter) {
-      if (writerCandidate == null) {
+      if (writerCandidate == null || originalWriter == null) {
         return false;
       }
 
@@ -451,29 +463,29 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     }
 
     private boolean connectToWriter(HostInfo writerCandidate) {
-      try {
-        log.logDebug(
-            Messages.getString(
-                "ClusterAwareWriterFailoverHandler.14",
-                new Object[] {writerCandidate.getHostPortPair()}));
+      log.logDebug(
+          Messages.getString(
+              "ClusterAwareWriterFailoverHandler.14",
+              new Object[] {writerCandidate.getHostPortPair()}));
 
-        if (isSame(writerCandidate, this.currentReaderHost)) {
-          this.currentConnection = this.currentReaderConnection;
-        } else {
-          // connect to the new writer
-          HostInfo writerCandidateWithProps =
-              ConnectionUtils.copyWithAdditionalProps(
-                  writerCandidate,
-                  initialConnectionProps);
+      if (isSame(writerCandidate, this.currentReaderHost)) {
+        log.logDebug(Messages.getString("ClusterAwareWriterFailoverHandler.18"));
+        this.currentConnection = this.currentReaderConnection;
+      } else {
+        // connect to the new writer
+        HostInfo writerCandidateWithProps =
+            ConnectionUtils.copyWithAdditionalProps(
+                writerCandidate,
+                initialConnectionProps);
+        try {
           this.currentConnection = connectionProvider.connect(writerCandidateWithProps);
+        } catch (SQLException exception) {
+          topologyService.addToDownHostList(writerCandidate);
+          return false;
         }
-
-        topologyService.removeFromDownHostList(writerCandidate);
-        return true;
-      } catch (SQLException exception) {
-        topologyService.addToDownHostList(writerCandidate);
-        return false;
       }
+      topologyService.removeFromDownHostList(writerCandidate);
+      return true;
     }
 
     /**
