@@ -31,23 +31,6 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyLong;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.mysql.cj.conf.BooleanProperty;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.IntegerProperty;
@@ -66,6 +49,22 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class MonitorTest {
 
@@ -237,7 +236,7 @@ class MonitorTest {
     });
   }
 
-  @RepeatedTest(1000)
+  @Test
   void test_8_runWithoutContext() {
     final MonitorThreadContainer container = MonitorThreadContainer.getInstance(executorServiceInitializer);
     final Map<String, IMonitor> monitorMap = container.getMonitorMap();
@@ -247,9 +246,6 @@ class MonitorTest {
       container.releaseResource(invocation.getArgument(0));
       return null;
     }).when(monitorService).notifyUnused(any(IMonitor.class));
-
-    doReturn((long) SHORT_INTERVAL_MILLIS)
-        .when(monitor).getCurrentTimeMillis();
 
     // Put monitor into container map
     final String nodeKey = "monitorA";

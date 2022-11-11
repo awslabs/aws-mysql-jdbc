@@ -182,18 +182,27 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
     } finally {
       if (monitorContext != null) {
         this.monitorService.stopMonitoring(monitorContext);
-        synchronized (monitorContext) {
-          if (monitorContext.isNodeUnhealthy() && !this.connection.isClosed()) {
+
+        final boolean isConnectionClosed;
+        try {
+          isConnectionClosed = this.currentConnectionProvider.getCurrentConnection().isClosed();
+        } catch (final SQLException e) {
+          throw new CJCommunicationsException("Node is unavailable.");
+        }
+
+        if (monitorContext.isNodeUnhealthy()) {
+          if (!isConnectionClosed) {
             abortConnection();
             throw new CJCommunicationsException("Node is unavailable.");
           }
         }
-      }
-      if (this.logger.isTraceEnabled()) {
-        this.logger.logTrace(String.format(
-                "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
-                methodInvokeOn.getName(),
-                methodName));
+
+        if (this.logger.isTraceEnabled()) {
+          this.logger.logTrace(String.format(
+                  "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
+                  methodInvokeOn.getName(),
+                  methodName));
+        }
       }
     }
 

@@ -38,6 +38,7 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
@@ -106,7 +107,6 @@ public class DefaultMonitorService implements IMonitorService {
         failureDetectionCount);
 
     monitor.startMonitoring(context);
-    this.threadContainer.addTask(monitor);
 
     return context;
   }
@@ -122,30 +122,28 @@ public class DefaultMonitorService implements IMonitorService {
 
     // Any 1 node is enough to find the monitor containing the context
     // All nodes will map to the same monitor
-    final String node = this.threadContainer.getNode(context.getNodeKeys());
-
-    if (node == null) {
-      logger.logWarn(Messages.getString("DefaultMonitorService.InvalidContext"));
-      return;
+    IMonitor monitor;
+    for (Iterator<String> it = context.getNodeKeys().iterator(); it.hasNext();) {
+      String nodeKey = it.next();
+      monitor = this.threadContainer.getMonitor(nodeKey);
+      if (monitor != null) {
+        monitor.stopMonitoring(context);
+        return;
+      }
     }
-
-    final IMonitor monitor = this.threadContainer.getMonitor(node);
-    if (monitor != null) {
-      monitor.stopMonitoring(context);
-    }
+    logger.logTrace(Messages.getString("DefaultMonitorService.NoMonitorForContext"));
   }
 
   @Override
   public void stopMonitoringForAllConnections(Set<String> nodeKeys) {
-    final String node = this.threadContainer.getNode(nodeKeys);
-    if (node == null) {
-      this.logger.logDebug(Messages.getString("DefaultMonitorService.InvalidNodeKey"));
-      return;
-    }
-    final IMonitor monitor = this.threadContainer.getMonitor(node);
-    if (monitor != null) {
-      monitor.clearContexts();
-      this.threadContainer.resetResource(monitor);
+    IMonitor monitor;
+    for (String nodeKey : nodeKeys) {
+      monitor = this.threadContainer.getMonitor(nodeKey);
+      if (monitor != null) {
+        monitor.clearContexts();
+        this.threadContainer.resetResource(monitor);
+        return;
+      }
     }
   }
 
@@ -156,7 +154,7 @@ public class DefaultMonitorService implements IMonitorService {
   }
 
   @Override
-  public synchronized void notifyUnused(IMonitor monitor) {
+  public void notifyUnused(IMonitor monitor) {
     if (monitor == null) {
       logger.logWarn(NullArgumentMessage.getMessage("monitor"));
       return;
