@@ -31,7 +31,7 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
-import com.sun.tools.jdeprscan.Messages;
+import com.mysql.cj.Messages;
 
 import java.util.Collections;
 import java.util.List;
@@ -130,7 +130,7 @@ public class MonitorThreadContainer {
 
   IMonitor getOrCreateMonitor(Set<String> nodeKeys, Supplier<IMonitor> monitorSupplier) {
     if (nodeKeys.isEmpty()) {
-      throw new IllegalArgumentException(Messages.get("MonitorThreadContainer.emptyNodeKeys"));
+      throw new IllegalArgumentException(Messages.getString("MonitorThreadContainer.emptyNodeKeys"));
     }
 
     IMonitor monitor = null;
