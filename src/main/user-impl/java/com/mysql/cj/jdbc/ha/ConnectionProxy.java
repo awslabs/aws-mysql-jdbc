@@ -309,9 +309,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
     public synchronized Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
       final String methodName = method.getName();
-      if (isDirectExecute(methodName)) {
-        return executeMethodDirectly(methodName, args);
-      }
 
       Object[] argsCopy = args == null ? null : Arrays.copyOf(args, args.length);
 
