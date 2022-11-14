@@ -64,8 +64,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
   /** Null logger shared by all connections at startup. */
   protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
-  static final String METHOD_EQUALS = "equals";
-  private static final String METHOD_HASH_CODE = "hashCode";
   private final JdbcPropertySetImpl connProps = new JdbcPropertySetImpl();
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
@@ -183,10 +181,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       throws Throwable {
     final String methodName = method.getName();
 
-    if (isDirectExecute(methodName)) {
-      return executeMethodDirectly(methodName, args);
-    }
-
     Object[] argsCopy = args == null ?  null : Arrays.copyOf(args, args.length);
 
     try {
@@ -251,28 +245,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
     return toProxy;
   }
 
-  /**
-   * Special handling of method calls that can be handled without making an explicit invocation against the connection
-   * underlying this proxy. See {@link #isDirectExecute(String)}
-   *
-   * @param methodName The name of the method being called
-   * @param args The argument parameters of the method that is being called
-   * @return The results of the special method handling, according to which method was called
-   */
-  private Object executeMethodDirectly(String methodName, Object[] args) {
-    if (METHOD_EQUALS.equals(methodName) && args != null && args.length > 0 && args[0] != null) {
-      return args[0].equals(this);
-    }
-
-    if (METHOD_HASH_CODE.equals(methodName)) {
-      return this.hashCode();
-    }
-
-    // should never reach this statement, as the conditions in this method were previously checked in the method
-    // calling this class using the isForwardingRequired method
-    return null;
-  }
-
   protected void initPluginManager(Function<Log, ConnectionPluginManager> connectionPluginManagerInitializer, ConnectionUrl connectionUrl)
       throws SQLException {
     if (this.pluginManager == null) {
@@ -283,18 +255,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
         this.pluginManager.openInitialConnection(connectionUrl);
       }
     }
-  }
-
-  /**
-   * Check if the method that is about to be invoked requires forwarding to the connection underlying this proxy. The
-   * methods indicated below can be handled without needing to perform an invocation against the underlying connection,
-   * provided the arguments are valid when required (eg for METHOD_EQUALS and METHOD_ABORT)
-   *
-   * @param methodName The name of the method that is being called
-   * @return true if we need to explicitly invoke the method indicated by methodName on the underlying connection
-   */
-  private boolean isDirectExecute(String methodName) {
-    return (METHOD_EQUALS.equals(methodName) || METHOD_HASH_CODE.equals(methodName));
   }
 
   /**
@@ -309,9 +269,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
     public synchronized Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
       final String methodName = method.getName();
-      if (isDirectExecute(methodName)) {
-        return executeMethodDirectly(methodName, args);
-      }
 
       Object[] argsCopy = args == null ? null : Arrays.copyOf(args, args.length);
 
