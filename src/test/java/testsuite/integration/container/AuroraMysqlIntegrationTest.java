@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -591,4 +592,19 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     assertTrue(conn.isValid(5));
     conn.close();
   }
+
+  @Test
+  public void test_PreparedStatementHashCodes() throws SQLException, IOException {
+    final Connection conn = connectToInstance(MYSQL_INSTANCE_1_URL + PROXIED_DOMAIN_NAME_SUFFIX, MYSQL_PROXY_PORT);
+    assertTrue(conn.isValid(5));
+
+    PreparedStatement prepStmt1 = conn.prepareCall("select 1");
+    PreparedStatement prepStmt2 = conn.prepareCall("select 1");
+
+    assertNotEquals(prepStmt1.hashCode(), prepStmt2.hashCode());
+    assertNotEquals(prepStmt1, prepStmt2);
+
+    conn.close();
+  }
+
 }

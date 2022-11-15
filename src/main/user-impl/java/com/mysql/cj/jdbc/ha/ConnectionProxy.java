@@ -307,6 +307,28 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       this.invokeOn = toInvokeOn;
     }
 
+    /**
+     * Special handling of method calls that can be handled without making an explicit invocation against the connection
+     * underlying this proxy. See {@link #isDirectExecute(String)}
+     *
+     * @param methodName The name of the method being called
+     * @param args The argument parameters of the method that is being called
+     * @return The results of the special method handling, according to which method was called
+     */
+    private Object executeMethodDirectly(String methodName, Object[] args) {
+      if (METHOD_EQUALS.equals(methodName) && args != null && args.length > 0 && args[0] != null) {
+        return args[0].equals(this);
+      }
+
+      if (METHOD_HASH_CODE.equals(methodName)) {
+        return this.hashCode();
+      }
+
+      // should never reach this statement, as the conditions in this method were previously checked in the method
+      // calling this class using the isForwardingRequired method
+      return null;
+    }
+
     public synchronized Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
       final String methodName = method.getName();
       if (isDirectExecute(methodName)) {
