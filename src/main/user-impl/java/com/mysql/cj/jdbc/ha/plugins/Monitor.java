@@ -170,9 +170,8 @@ public class Monitor implements IMonitor {
                 status.isValid);
           }
 
-          TimeUnit.MILLISECONDS.sleep(Math.max(
-              0,
-              this.getConnectionCheckIntervalMillis() - status.elapsedTime));
+          TimeUnit.MILLISECONDS.sleep(
+                  Math.max(0, this.getConnectionCheckIntervalMillis() - TimeUnit.NANOSECONDS.toMillis(status.elapsedTime)));
         } else {
           if ((this.getCurrentTimeNano() - this.lastContextUsedTimestamp.get())
               >= TimeUnit.MILLISECONDS.toNanos(this.monitorDisposalTime)) {
