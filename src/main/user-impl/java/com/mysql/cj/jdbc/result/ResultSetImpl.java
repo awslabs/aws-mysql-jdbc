@@ -841,7 +841,7 @@ public class ResultSetImpl extends NativeResultset implements ResultSetInternalM
             return new BigInteger(stringVal);
         } catch (NumberFormatException nfe) {
             throw SQLError.createSQLException(
-                    Messages.getString("ResultSet.Bad_format_for_BigInteger", new Object[] { Integer.valueOf(columnIndex), stringVal }),
+                    Messages.getString("ResultSet.Bad_format_for_BigInteger", new Object[] { stringVal, Integer.valueOf(columnIndex) }),
                     MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT, getExceptionInterceptor());
         }
     }
