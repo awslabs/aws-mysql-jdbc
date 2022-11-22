@@ -36,6 +36,7 @@ import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -175,9 +176,9 @@ public class MonitorConnectionContext {
       return;
     }
 
-    final long totalElapsedTimeMillis = currentTime - this.startMonitorTime;
+    final long totalElapsedTimeNano = currentTime - this.startMonitorTime;
 
-    if (totalElapsedTimeMillis > this.failureDetectionTimeMillis) {
+    if (totalElapsedTimeNano > TimeUnit.MILLISECONDS.toNanos(this.failureDetectionTimeMillis)) {
       this.setConnectionValid(isValid, statusCheckStartTime, currentTime);
     }
   }
@@ -208,11 +209,11 @@ public class MonitorConnectionContext {
         this.setInvalidNodeStartTime(statusCheckStartTime);
       }
 
-      final long invalidNodeDurationMillis = currentTime - this.getInvalidNodeStartTime();
+      final long invalidNodeDurationNano = currentTime - this.getInvalidNodeStartTime();
       final long maxInvalidNodeDurationMillis =
           (long) this.getFailureDetectionIntervalMillis() * Math.max(0, this.getFailureDetectionCount());
 
-      if (invalidNodeDurationMillis >= maxInvalidNodeDurationMillis) {
+      if (invalidNodeDurationNano >= TimeUnit.MILLISECONDS.toNanos(maxInvalidNodeDurationMillis)) {
         this.log.logTrace(
             String.format(
                 "[MonitorConnectionContext] node '%s' is *dead*.",
