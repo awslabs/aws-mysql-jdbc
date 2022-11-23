@@ -176,12 +176,15 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
           failureDetectionTimeMillis,
           failureDetectionIntervalMillis,
           failureDetectionCount);
-
+      this.logger.logTrace("Monitoring was started. Executing method...");
       result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
 
     } finally {
+      this.logger.logTrace("Entered finally block");
       if (monitorContext != null) {
+        this.logger.logTrace("Stopping monitoring...");
         this.monitorService.stopMonitoring(monitorContext);
+        this.logger.logTrace("Monitoring stopped");
 
         final boolean isConnectionClosed;
         try {

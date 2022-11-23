@@ -42,8 +42,8 @@ import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import java.io.IOException;
@@ -52,10 +52,10 @@ import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @TestMethodOrder(MethodOrderer.MethodName.class)
@@ -98,7 +98,7 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   public void setUpTest() throws SQLException {
     String writerEndpoint = clusterTopology.get(0);
 
-    String jdbcUrl = DB_CONN_STR_PREFIX + writerEndpoint + URL_SUFFIX;
+    String jdbcUrl = DB_CONN_STR_PREFIX + writerEndpoint + URL_SUFFIX + "/?logger=" + StandardLogger.class.getName();
     log.logDebug("Writer endpoint: " + jdbcUrl);
 
     final HikariConfig config = new HikariConfig();
@@ -111,11 +111,13 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     config.setExceptionOverrideClassName(HikariCPSQLException.class.getName());
     config.setInitializationFailTimeout(75000);
     config.setConnectionTimeout(1000);
+    config.addDataSourceProperty(PropertyKey.socketTimeout.getKeyName(), "300000");
     config.addDataSourceProperty(PropertyKey.failoverTimeoutMs.getKeyName(), "5000");
     config.addDataSourceProperty(PropertyKey.failoverReaderConnectTimeoutMs.getKeyName(), "1000");
     config.addDataSourceProperty(PropertyKey.clusterInstanceHostPattern.getKeyName(), PROXIED_CLUSTER_TEMPLATE);
     config.addDataSourceProperty(PropertyKey.failureDetectionTime.getKeyName(), "3000");
     config.addDataSourceProperty(PropertyKey.failureDetectionInterval.getKeyName(), "1500");
+    config.addDataSourceProperty(PropertyKey.failureDetectionCount.getKeyName(), "5");
 
     data_source = new HikariDataSource(config);
 
@@ -131,12 +133,17 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
    */
   @Test
   public void test_1_1_hikariCP_lost_connection() throws SQLException {
+    StandardLogger logger = new StandardLogger(HikariCPIntegrationTest.class.getName());
     try (Connection conn = data_source.getConnection()) {
       assertTrue(conn.isValid(5));
 
       putDownAllInstances(true);
 
-      final SQLException exception = assertThrows(SQLException.class, () -> queryInstanceId(conn));
+      final SQLException exception = assertThrows(SQLException.class, () -> {
+        logger.logTrace("Executing statement in Hikari test1_1");
+        queryInstanceId(conn);
+        logger.logTrace("Finished executing statement in Hikari test1_1");
+      });
       assertEquals("08001", exception.getSQLState());
       assertFalse(conn.isValid(5));
     }

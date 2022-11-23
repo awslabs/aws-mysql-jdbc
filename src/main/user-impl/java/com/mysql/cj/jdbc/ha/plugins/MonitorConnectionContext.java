@@ -172,7 +172,9 @@ public class MonitorConnectionContext {
       long statusCheckStartTime,
       long currentTime,
       boolean isValid) {
+    this.log.logTrace("Beginning of updateConnectionStatus");
     if (!this.activeContext.get()) {
+      this.log.logTrace("Context is not active");
       return;
     }
 
