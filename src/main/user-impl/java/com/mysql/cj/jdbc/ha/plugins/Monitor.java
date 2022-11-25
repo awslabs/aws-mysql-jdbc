@@ -129,7 +129,7 @@ public class Monitor implements IMonitor {
     context.setStartMonitorTime(currentTime);
     this.lastContextUsedTimestamp.set(currentTime);
     this.contexts.add(context);
-    this.logger.logTrace("Current time: " + currentTime + ", contexts size: " + contexts.size());
+//    this.logger.logTrace("Current time: " + currentTime + ", contexts size: " + contexts.size());
   }
 
   @Override
@@ -157,7 +157,7 @@ public class Monitor implements IMonitor {
     try {
       this.stopped.set(false);
       while (true) {
-        this.logger.logTrace("Inside run() while-loop");
+//        this.logger.logTrace("Inside run() while-loop");
         if (!this.contexts.isEmpty()) {
           final long statusCheckStartTime = this.getCurrentTimeNano();
           this.lastContextUsedTimestamp.set(statusCheckStartTime);

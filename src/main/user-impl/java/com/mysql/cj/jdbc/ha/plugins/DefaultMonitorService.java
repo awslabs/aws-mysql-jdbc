@@ -97,7 +97,7 @@ public class DefaultMonitorService implements IMonitorService {
     }
 
     final IMonitor monitor = getMonitor(nodeKeys, hostInfo, propertySet);
-    this.logger.logTrace("Monitor value: " + monitor == null ? "null" : monitor.toString());
+//    this.logger.logTrace("Monitor value: " + monitor == null ? "null" : monitor.toString());
 
     final MonitorConnectionContext context = new MonitorConnectionContext(
         connectionToAbort,
