@@ -267,7 +267,7 @@ tasks.register<Sync>("replaceTokens") {
     val git = org.ajoberstar.grgit.Grgit.open(mapOf("currentDir" to project.rootDir))
     val revision = git.head().id
 
-    val versionFull = "$versionMajor.$versionMinor.$versionSubminor-SNAPSHOT"
+    val versionFull = "$versionMajor.$versionMinor.$versionSubminor"
 
     val fullProdName = "${project.property("com.mysql.cj.build.driver.name")}-$versionFull"
 
