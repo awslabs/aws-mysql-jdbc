@@ -35,7 +35,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 val versionMajor = project.property("com.mysql.cj.build.driver.version.major")
 val versionMinor = project.property("com.mysql.cj.build.driver.version.minor")
 val versionSubminor = Integer.parseInt(project.property("com.mysql.cj.build.driver.version.subminor").toString()) + if (project.property("snapshot") == "true") 1 else 0
-version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
+val version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
 
 plugins {
     base
@@ -267,14 +267,12 @@ tasks.register<Sync>("replaceTokens") {
     val git = org.ajoberstar.grgit.Grgit.open(mapOf("currentDir" to project.rootDir))
     val revision = git.head().id
 
-    val versionFull = "$versionMajor.$versionMinor.$versionSubminor"
-
-    val fullProdName = "${project.property("com.mysql.cj.build.driver.name")}-$versionFull"
+    val fullProdName = "${project.property("com.mysql.cj.build.driver.name")}-$version"
 
     filter(ReplaceTokens::class, "tokens" to mapOf(
             "MYSQL_CJ_MAJOR_VERSION" to versionMajor,
             "MYSQL_CJ_MINOR_VERSION" to versionMinor,
-            "MYSQL_CJ_VERSION" to versionFull,
+            "MYSQL_CJ_VERSION" to version,
             "MYSQL_CJ_FULL_PROD_NAME" to fullProdName,
             "MYSQL_CJ_DISPLAY_PROD_NAME" to project.property("com.mysql.cj.build.driver.displayName"),
             "MYSQL_CJ_LICENSE_TYPE" to project.property("com.mysql.cj.build.licenseType"),
