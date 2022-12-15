@@ -30,12 +30,18 @@
 */
 
 import org.apache.tools.ant.filters.ReplaceTokens
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 // Driver version numbers
 val versionMajor = project.property("com.mysql.cj.build.driver.version.major")
 val versionMinor = project.property("com.mysql.cj.build.driver.version.minor")
 val versionSubminor = Integer.parseInt(project.property("com.mysql.cj.build.driver.version.subminor").toString()) + if (project.property("snapshot") == "true") 1 else 0
 version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
+
+// Shared Shading Values
+val shadingOriginPackage: String = "com.mysql"
+val shadingDestinationPackage: String = "software.aws.rds.jdbc.mysql.shading.com.mysql"
 
 plugins {
     base
@@ -126,7 +132,7 @@ tasks.shadowJar {
         exclude(dependency(":"))
     }
 
-    relocate ("com.mysql", "software.aws.rds.jdbc.mysql.shading.com.mysql")
+    relocate (shadingOriginPackage, shadingDestinationPackage)
 
     exclude("instrumentation/**")
     exclude("demo/**")
@@ -148,6 +154,45 @@ tasks.register<Jar>("cleanShadowJar") {
         val originalJar = tasks.jar.get().archiveFile.get().asFile
         originalJar.deleteRecursively()
     }
+}
+
+tasks.register<Jar>("shadeSourcesJar") {
+    archiveClassifier.set("sources")
+    dependsOn("sourcesJar")
+
+    val shadingOriginPath: String = shadingOriginPackage.replace('.', '/')
+    val shadingDestinationPath: String = shadingDestinationPackage.replace('.', '/')
+    val tmpShadowedSourcesPath = "${buildDir}/tmp/shadowedSources"
+
+    val sourceCharset: java.nio.charset.Charset = StandardCharsets.UTF_8
+    val shadedSourcesDir: java.nio.file.Path = file(tmpShadowedSourcesPath).toPath()
+
+    doFirst {
+        shadedSourcesDir.toFile().deleteRecursively()
+
+        zipTree(tasks["sourcesJar"].outputs.files.asPath).visit {
+            val relativePath = this.relativePath.toString()
+
+            if (this.file.isDirectory) {
+                return@visit
+            }
+
+            val shadedFilePath = shadedSourcesDir.resolve(relativePath.replace(shadingOriginPath, shadingDestinationPath))
+            if (Files.exists(shadedFilePath)) {
+                Files.delete(shadedFilePath)
+            }
+
+            if (!Files.exists((shadedFilePath.parent))) {
+                Files.createDirectories(shadedFilePath.parent)
+            }
+
+            val originalContent = String(this.file.readBytes(), sourceCharset)
+            val shadedContent = originalContent.replace(shadingOriginPackage, shadingDestinationPackage)
+            Files.write(shadedFilePath, shadedContent.toByteArray())
+        }
+    }
+
+    from(tmpShadowedSourcesPath)
 }
 
 tasks.compileJava {
@@ -178,6 +223,7 @@ tasks.withType(Javadoc::class) {
 
 tasks.assemble {
     dependsOn("cleanShadowJar")
+    dependsOn("shadeSourcesJar")
 }
 
 tasks.named<Test>("test") {
@@ -291,9 +337,9 @@ publishing {
             version = version
 
             artifacts.clear()
-            artifact(tasks["sourcesJar"])
             artifact(tasks["javadocJar"])
             artifact(tasks["cleanShadowJar"])
+            artifact(tasks["shadeSourcesJar"])
 
             pom {
                 name.set("Amazon Web Services (AWS) JDBC Driver for MySQL")
