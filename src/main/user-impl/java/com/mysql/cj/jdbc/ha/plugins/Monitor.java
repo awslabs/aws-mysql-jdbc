@@ -64,6 +64,7 @@ public class Monitor implements IMonitor {
 
   private static final int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
   private static final long DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS = 100;
+  private static final long DEFAULT_MONITOR_SOCKET_TIMEOUT_MILLIS = 3000;
   private static final String MONITORING_PROPERTY_PREFIX = "monitoring-";
 
   private final Queue<MonitorConnectionContext> contexts = new ConcurrentLinkedQueue<>();
@@ -161,7 +162,7 @@ public class Monitor implements IMonitor {
           this.lastContextUsedTimestamp.set(statusCheckStartTime);
 
           final ConnectionStatus status =
-              checkConnectionStatus(this.getConnectionCheckIntervalMillis());
+              checkConnectionStatus(this.getMonitorSocketTimeoutMillis());
 
           for (MonitorConnectionContext monitorContext : this.contexts) {
             monitorContext.updateConnectionStatus(
@@ -240,12 +241,12 @@ public class Monitor implements IMonitor {
     }
   }
 
+  long getMonitorSocketTimeoutMillis() {
+    return this.connectionCheckIntervalMillis == 0 ? DEFAULT_MONITOR_SOCKET_TIMEOUT_MILLIS : this.connectionCheckIntervalMillis;
+  }
+
   long getConnectionCheckIntervalMillis() {
-    if (this.connectionCheckIntervalMillis == DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS) {
-      // connectionCheckIntervalMillis is set to the default because there are no contexts available.
-      return 0;
-    }
-    return this.connectionCheckIntervalMillis;
+    return this.connectionCheckIntervalMillis == 0 ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : this.connectionCheckIntervalMillis;
   }
 
   @Override
