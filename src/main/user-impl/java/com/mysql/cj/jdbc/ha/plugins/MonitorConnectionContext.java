@@ -36,6 +36,7 @@ import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -51,8 +52,8 @@ public class MonitorConnectionContext {
   private final Log log;
   private final JdbcConnection connectionToAbort;
 
-  private long startMonitorTime;
-  private long invalidNodeStartTime;
+  private long startMonitorTimeNano;
+  private long invalidNodeStartTimeNano;
   private int failureCount;
   private boolean nodeUnhealthy;
   private AtomicBoolean activeContext = new AtomicBoolean(true);
@@ -84,8 +85,8 @@ public class MonitorConnectionContext {
     this.failureDetectionCount = failureDetectionCount;
   }
 
-  void setStartMonitorTime(long startMonitorTime) {
-    this.startMonitorTime = startMonitorTime;
+  void setStartMonitorTimeNano(long startMonitorTimeNano) {
+    this.startMonitorTimeNano = startMonitorTimeNano;
   }
 
   Set<String> getNodeKeys() {
@@ -112,20 +113,20 @@ public class MonitorConnectionContext {
     this.failureCount = failureCount;
   }
 
-  void setInvalidNodeStartTime(long invalidNodeStartTimeMillis) {
-    this.invalidNodeStartTime = invalidNodeStartTimeMillis;
+  void setInvalidNodeStartTimeNano(long invalidNodeStartTimeNano) {
+    this.invalidNodeStartTimeNano = invalidNodeStartTimeNano;
   }
 
   void resetInvalidNodeStartTime() {
-    this.invalidNodeStartTime = 0;
+    this.invalidNodeStartTimeNano = 0;
   }
 
   boolean isInvalidNodeStartTimeDefined() {
-    return this.invalidNodeStartTime > 0;
+    return this.invalidNodeStartTimeNano > 0;
   }
 
-  public long getInvalidNodeStartTime() {
-    return this.invalidNodeStartTime;
+  public long getInvalidNodeStartTimeNano() {
+    return this.invalidNodeStartTimeNano;
   }
 
   public boolean isNodeUnhealthy() {
@@ -163,22 +164,22 @@ public class MonitorConnectionContext {
    * Update whether the connection is still valid if the total elapsed time has passed the
    * grace period.
    *
-   * @param statusCheckStartTime The time when connection status check started in milliseconds.
-   * @param currentTime The time when connection status check ended in milliseconds.
+   * @param statusCheckStartNano The time when connection status check started in nanoseconds.
+   * @param statusCheckEndNano The time when connection status check ended in nanoseconds.
    * @param isValid Whether the connection is valid.
    */
   public void updateConnectionStatus(
-      long statusCheckStartTime,
-      long currentTime,
+      long statusCheckStartNano,
+      long statusCheckEndNano,
       boolean isValid) {
     if (!this.activeContext.get()) {
       return;
     }
 
-    final long totalElapsedTimeMillis = currentTime - this.startMonitorTime;
+    final long totalElapsedTimeNano = statusCheckEndNano - this.startMonitorTimeNano;
 
-    if (totalElapsedTimeMillis > this.failureDetectionTimeMillis) {
-      this.setConnectionValid(isValid, statusCheckStartTime, currentTime);
+    if (totalElapsedTimeNano > TimeUnit.MILLISECONDS.toNanos(this.failureDetectionTimeMillis)) {
+      this.setConnectionValid(isValid, statusCheckStartNano, statusCheckEndNano);
     }
   }
 
@@ -194,25 +195,25 @@ public class MonitorConnectionContext {
    * </ul>
    *
    * @param connectionValid Boolean indicating whether the server is still responsive.
-   * @param statusCheckStartTime The time when connection status check started in milliseconds.
-   * @param currentTime The time when connection status check ended in milliseconds.
+   * @param statusCheckStartNano The time when connection status check started in nanoseconds.
+   * @param statusCheckEndNano The time when connection status check ended in nanoseconds.
    */
   void setConnectionValid(
       boolean connectionValid,
-      long statusCheckStartTime,
-      long currentTime) {
+      long statusCheckStartNano,
+      long statusCheckEndNano) {
     if (!connectionValid) {
       this.failureCount++;
 
       if (!this.isInvalidNodeStartTimeDefined()) {
-        this.setInvalidNodeStartTime(statusCheckStartTime);
+        this.setInvalidNodeStartTimeNano(statusCheckStartNano);
       }
 
-      final long invalidNodeDurationMillis = currentTime - this.getInvalidNodeStartTime();
+      final long invalidNodeDurationNano = statusCheckEndNano - this.getInvalidNodeStartTimeNano();
       final long maxInvalidNodeDurationMillis =
           (long) this.getFailureDetectionIntervalMillis() * Math.max(0, this.getFailureDetectionCount());
 
-      if (invalidNodeDurationMillis >= maxInvalidNodeDurationMillis) {
+      if (invalidNodeDurationNano >= TimeUnit.MILLISECONDS.toNanos(maxInvalidNodeDurationMillis)) {
         this.log.logTrace(
             String.format(
                 "[MonitorConnectionContext] node '%s' is *dead*.",

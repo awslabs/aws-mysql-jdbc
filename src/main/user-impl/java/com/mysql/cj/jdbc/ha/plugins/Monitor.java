@@ -38,7 +38,6 @@ import com.mysql.cj.log.Log;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -55,14 +54,16 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Monitor implements IMonitor {
   static class ConnectionStatus {
     boolean isValid;
-    long elapsedTime;
+    long elapsedTimeNano;
 
-    ConnectionStatus(boolean isValid, long elapsedTime) {
+    ConnectionStatus(boolean isValid, long elapsedTimeNano) {
       this.isValid = isValid;
-      this.elapsedTime = elapsedTime;
+      this.elapsedTimeNano = elapsedTimeNano;
     }
   }
 
+  static final long DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS = 100;
+  static final long DEFAULT_CONNECTION_CHECK_TIMEOUT_MILLIS = 3000;
   private static final int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
   private static final String MONITORING_PROPERTY_PREFIX = "monitoring-";
 
@@ -72,9 +73,10 @@ public class Monitor implements IMonitor {
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
   private Connection monitoringConn = null;
-  private int connectionCheckIntervalMillis = Integer.MAX_VALUE;
-  private final AtomicLong lastContextUsedTimestamp = new AtomicLong();
-  private final long monitorDisposalTime;
+  private long connectionCheckIntervalMillis = DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS;
+  private boolean isConnectionCheckIntervalInitialized = false;
+  private final AtomicLong contextLastUsedTimestampNano = new AtomicLong();
+  private final long monitorDisposalTimeMillis;
   private final IMonitorService monitorService;
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
@@ -85,7 +87,7 @@ public class Monitor implements IMonitor {
    * @param hostInfo The {@link HostInfo} of the server this {@link Monitor} instance is
    *                 monitoring.
    * @param propertySet The {@link PropertySet} containing additional monitoring configuration.
-   * @param monitorDisposalTime Time before stopping the monitoring thread where there are
+   * @param monitorDisposalTimeMillis Time in milliseconds before stopping the monitoring thread where there are
    *                            no active connection to the server this {@link Monitor}
    *                            instance is monitoring.
    * @param monitorService A reference to the {@link DefaultMonitorService} implementation
@@ -96,30 +98,42 @@ public class Monitor implements IMonitor {
       IConnectionProvider connectionProvider,
       HostInfo hostInfo,
       PropertySet propertySet,
-      long monitorDisposalTime,
+      long monitorDisposalTimeMillis,
       IMonitorService monitorService,
       Log logger) {
     this.connectionProvider = connectionProvider;
     this.hostInfo = hostInfo;
     this.propertySet = propertySet;
     this.logger = logger;
-    this.monitorDisposalTime = monitorDisposalTime;
+    this.monitorDisposalTimeMillis = monitorDisposalTimeMillis;
     this.monitorService = monitorService;
+
+    this.contextLastUsedTimestampNano.set(this.getCurrentTimeNano());
+  }
+
+  long getCurrentTimeNano() {
+    return System.nanoTime();
   }
 
   @Override
-  public synchronized void startMonitoring(MonitorConnectionContext context) {
-    this.connectionCheckIntervalMillis = Math.min(
-        this.connectionCheckIntervalMillis,
-        context.getFailureDetectionIntervalMillis());
-    final long currentTime = this.getCurrentTimeMillis();
-    context.setStartMonitorTime(currentTime);
-    this.lastContextUsedTimestamp.set(currentTime);
+  public void startMonitoring(MonitorConnectionContext context) {
+    if (!this.isConnectionCheckIntervalInitialized) {
+      this.connectionCheckIntervalMillis = context.getFailureDetectionIntervalMillis();
+      this.isConnectionCheckIntervalInitialized = true;
+    } else {
+      this.connectionCheckIntervalMillis = Math.min(
+              this.connectionCheckIntervalMillis,
+              context.getFailureDetectionIntervalMillis());
+    }
+
+    final long currentTimeNano = this.getCurrentTimeNano();
+    context.setStartMonitorTimeNano(currentTimeNano);
+    this.contextLastUsedTimestampNano.set(currentTimeNano);
     this.contexts.add(context);
   }
 
   @Override
-  public synchronized void stopMonitoring(MonitorConnectionContext context) {
+  public void stopMonitoring(MonitorConnectionContext context) {
     if (context == null) {
       logger.logWarn(NullArgumentMessage.getMessage("context"));
       return;
@@ -129,11 +143,13 @@ public class Monitor implements IMonitor {
     this.contexts.remove(context);
 
     this.connectionCheckIntervalMillis = findShortestIntervalMillis();
+    this.isConnectionCheckIntervalInitialized = true;
   }
 
   public synchronized void clearContexts() {
     this.contexts.clear();
     this.connectionCheckIntervalMillis = findShortestIntervalMillis();
+    this.isConnectionCheckIntervalInitialized = true;
   }
 
   @Override
@@ -142,25 +158,24 @@ public class Monitor implements IMonitor {
       this.stopped.set(false);
       while (true) {
         if (!this.contexts.isEmpty()) {
-          final long statusCheckStartTime = this.getCurrentTimeMillis();
-          this.lastContextUsedTimestamp.set(statusCheckStartTime);
+          final long statusCheckStartTimeNano = this.getCurrentTimeNano();
+          this.contextLastUsedTimestampNano.set(statusCheckStartTimeNano);
 
           final ConnectionStatus status =
-              checkConnectionStatus(this.getConnectionCheckIntervalMillis());
+              checkConnectionStatus(this.getConnectionCheckTimeoutMillis());
 
           for (MonitorConnectionContext monitorContext : this.contexts) {
             monitorContext.updateConnectionStatus(
-                statusCheckStartTime,
-                statusCheckStartTime + status.elapsedTime,
+                statusCheckStartTimeNano,
+                statusCheckStartTimeNano + status.elapsedTimeNano,
                 status.isValid);
           }
 
-          TimeUnit.MILLISECONDS.sleep(Math.max(
-              0,
-              this.getConnectionCheckIntervalMillis() - status.elapsedTime));
+          TimeUnit.MILLISECONDS.sleep(
+                  Math.max(0, this.getConnectionCheckIntervalMillis() - TimeUnit.NANOSECONDS.toMillis(status.elapsedTimeNano)));
         } else {
-          if ((this.getCurrentTimeMillis() - this.lastContextUsedTimestamp.get())
-              >= this.monitorDisposalTime) {
+          if ((this.getCurrentTimeNano() - this.contextLastUsedTimestampNano.get())
+              >= TimeUnit.MILLISECONDS.toNanos(this.monitorDisposalTimeMillis)) {
             monitorService.notifyUnused(this);
             break;
           }
@@ -190,14 +205,14 @@ public class Monitor implements IMonitor {
    *                                               to wait for a response from the server.
    * @return whether the server is still alive and the elapsed time spent checking.
    */
-  ConnectionStatus checkConnectionStatus(final int shortestFailureDetectionIntervalMillis) {
-    long start = this.getCurrentTimeMillis();
+  ConnectionStatus checkConnectionStatus(final long shortestFailureDetectionIntervalMillis) {
+    long startNano = this.getCurrentTimeNano();
     try {
       if (this.monitoringConn == null || this.monitoringConn.isClosed()) {
         // open a new connection
         Map<String, String> monitoringConnProperties = new HashMap<>();
         // Default values for connect and socket timeout
-        final String defaultTimeout = Integer.toString(shortestFailureDetectionIntervalMillis);
+        final String defaultTimeout = Long.toString(shortestFailureDetectionIntervalMillis);
         monitoringConnProperties.put(PropertyKey.connectTimeout.getKeyName(), defaultTimeout);
         monitoringConnProperties.put(PropertyKey.socketTimeout.getKeyName(), defaultTimeout);
         Properties originalProperties = this.propertySet.exposeAsProperties();
@@ -209,34 +224,29 @@ public class Monitor implements IMonitor {
                   originalProperties.getProperty(p)));
         }
 
-        start = this.getCurrentTimeMillis();
+        startNano = this.getCurrentTimeNano();
         this.monitoringConn = this.connectionProvider.connect(copy(
             this.hostInfo,
             monitoringConnProperties));
-        return new ConnectionStatus(true, this.getCurrentTimeMillis() - start);
+        return new ConnectionStatus(true, this.getCurrentTimeNano() - startNano);
       }
 
-      start = this.getCurrentTimeMillis();
+      startNano = this.getCurrentTimeNano();
       boolean isValid =
-          this.monitoringConn.isValid(shortestFailureDetectionIntervalMillis / 1000);
-      return new ConnectionStatus(isValid, this.getCurrentTimeMillis() - start);
+          this.monitoringConn.isValid((int) TimeUnit.MILLISECONDS.toSeconds(shortestFailureDetectionIntervalMillis));
+      return new ConnectionStatus(isValid, this.getCurrentTimeNano() - startNano);
     } catch (SQLException sqlEx) {
       //this.logger.logTrace(String.format("[Monitor] Error checking connection status: %s", sqlEx.getMessage()));
-      return new ConnectionStatus(false, this.getCurrentTimeMillis() - start);
+      return new ConnectionStatus(false, this.getCurrentTimeNano() - startNano);
     }
   }
 
-  // This method helps to organize unit tests.
-  long getCurrentTimeMillis() {
-    return System.currentTimeMillis();
+  long getConnectionCheckTimeoutMillis() {
+    return this.connectionCheckIntervalMillis == 0 ? DEFAULT_CONNECTION_CHECK_TIMEOUT_MILLIS : this.connectionCheckIntervalMillis;
   }
 
-  int getConnectionCheckIntervalMillis() {
-    if (this.connectionCheckIntervalMillis == Integer.MAX_VALUE) {
-      // connectionCheckIntervalMillis is at Integer.MAX_VALUE because there are no contexts available.
-      return 0;
-    }
-    return this.connectionCheckIntervalMillis;
+  long getConnectionCheckIntervalMillis() {
+    return this.connectionCheckIntervalMillis == 0 ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : this.connectionCheckIntervalMillis;
   }
 
   @Override
@@ -254,14 +264,11 @@ public class Monitor implements IMonitor {
         props);
   }
 
-  private int findShortestIntervalMillis() {
-    if (this.contexts.isEmpty()) {
-      return Integer.MAX_VALUE;
+  private long findShortestIntervalMillis() {
+    long currentMin = Long.MAX_VALUE;
+    for (MonitorConnectionContext context : this.contexts) {
+      currentMin = Math.min(currentMin, context.getFailureDetectionIntervalMillis());
     }
-
-    return this.contexts.stream()
-        .min(Comparator.comparing(MonitorConnectionContext::getFailureDetectionIntervalMillis))
-        .map(MonitorConnectionContext::getFailureDetectionIntervalMillis)
-        .orElse(0);
+    return currentMin == Long.MAX_VALUE ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : currentMin;
   }
 }
