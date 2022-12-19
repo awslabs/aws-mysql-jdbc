@@ -41,6 +41,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 class MonitorConnectionContextTest {
 
@@ -72,16 +73,16 @@ class MonitorConnectionContextTest {
 
   @Test
   public void test_1_isNodeUnhealthyWithConnection_returnFalse() {
-    long currentTimeMillis = System.currentTimeMillis();
-    context.setConnectionValid(true, currentTimeMillis, currentTimeMillis);
+    long currentTimeNano = System.nanoTime();
+    context.setConnectionValid(true, currentTimeNano, currentTimeNano);
     Assertions.assertFalse(context.isNodeUnhealthy());
     Assertions.assertEquals(0, this.context.getFailureCount());
   }
 
   @Test
   public void test_2_isNodeUnhealthyWithInvalidConnection_returnFalse() {
-    long currentTimeMillis = System.currentTimeMillis();
-    context.setConnectionValid(false, currentTimeMillis, currentTimeMillis);
+    long currentTimeNano = System.nanoTime();
+    context.setConnectionValid(false, currentTimeNano, currentTimeNano);
     Assertions.assertFalse(context.isNodeUnhealthy());
     Assertions.assertEquals(1, this.context.getFailureCount());
   }
@@ -92,8 +93,8 @@ class MonitorConnectionContextTest {
     context.setFailureCount(FAILURE_DETECTION_COUNT);
     context.resetInvalidNodeStartTime();
 
-    long currentTimeMillis = System.currentTimeMillis();
-    context.setConnectionValid(false, currentTimeMillis, currentTimeMillis);
+    long currentTimeNano = System.nanoTime();
+    context.setConnectionValid(false, currentTimeNano, currentTimeNano);
 
     Assertions.assertFalse(context.isNodeUnhealthy());
     Assertions.assertEquals(expectedFailureCount, context.getFailureCount());
@@ -102,27 +103,27 @@ class MonitorConnectionContextTest {
 
   @Test
   public void test_4_isNodeUnhealthyExceedsFailureDetectionCount() {
-    long currentTimeMillis = System.currentTimeMillis();
+    long currentTimeNano = System.nanoTime();
     context.setFailureCount(0);
     context.resetInvalidNodeStartTime();
 
     // Simulate monitor loop that reports invalid connection for 5 times with interval 50 msec to wait 250 msec in total
     for (int i = 0; i < 5; i++) {
-      long statusCheckStartTime = currentTimeMillis;
-      long statusCheckEndTime = currentTimeMillis + VALIDATION_INTERVAL_MILLIS;
+      long statusCheckStartTime = currentTimeNano;
+      long statusCheckEndTime = currentTimeNano + TimeUnit.MILLISECONDS.toNanos(VALIDATION_INTERVAL_MILLIS);
 
       context.setConnectionValid(false, statusCheckStartTime, statusCheckEndTime);
       Assertions.assertFalse(context.isNodeUnhealthy());
 
-      currentTimeMillis += VALIDATION_INTERVAL_MILLIS;
+      currentTimeNano += TimeUnit.MILLISECONDS.toNanos(VALIDATION_INTERVAL_MILLIS);
     }
 
     // Simulate waiting another 50 msec that makes total waiting time to 300 msec
     // Expected max waiting time for this context is 300 msec (interval 100 msec, count 3)
     // So it's expected that this run turns node status to "unhealthy" since we reached max allowed waiting time.
 
-    long statusCheckStartTime = currentTimeMillis;
-    long statusCheckEndTime = currentTimeMillis + VALIDATION_INTERVAL_MILLIS;
+    long statusCheckStartTime = currentTimeNano;
+    long statusCheckEndTime = currentTimeNano + TimeUnit.MILLISECONDS.toNanos(VALIDATION_INTERVAL_MILLIS);
 
     context.setConnectionValid(false, statusCheckStartTime, statusCheckEndTime);
     Assertions.assertTrue(context.isNodeUnhealthy());

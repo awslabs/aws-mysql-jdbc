@@ -49,6 +49,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -96,7 +97,7 @@ class MonitorTest {
   DefaultMonitorService monitorService;
 
   private static final int SHORT_INTERVAL_MILLIS = 30;
-  private static final int SHORT_INTERVAL_SECONDS = SHORT_INTERVAL_MILLIS / 1000;
+  private static final int SHORT_INTERVAL_SECONDS = (int) TimeUnit.MILLISECONDS.toSeconds(SHORT_INTERVAL_MILLIS);
   private static final int LONG_INTERVAL_MILLIS = 300;
 
   private AutoCloseable closeable;
@@ -149,9 +150,9 @@ class MonitorTest {
         SHORT_INTERVAL_MILLIS,
         monitor.getConnectionCheckIntervalMillis());
     verify(contextWithShortInterval)
-        .setStartMonitorTime(anyLong());
+        .setStartMonitorTimeNano(anyLong());
     verify(contextWithLongInterval)
-        .setStartMonitorTime(anyLong());
+        .setStartMonitorTimeNano(anyLong());
   }
 
   @Test
@@ -168,8 +169,7 @@ class MonitorTest {
   @Test
   void test_3_stopMonitoringWithNoMatchingContexts() {
     assertDoesNotThrow(() -> monitor.stopMonitoring(contextWithLongInterval));
-    assertEquals(
-        0,
+    assertEquals(Monitor.DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS,
         monitor.getConnectionCheckIntervalMillis());
 
     monitor.startMonitoring(contextWithShortInterval);
@@ -187,7 +187,7 @@ class MonitorTest {
       monitor.stopMonitoring(contextWithLongInterval);
     });
     assertEquals(
-        0,
+        Monitor.DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS,
         monitor.getConnectionCheckIntervalMillis());
   }
 
@@ -197,7 +197,7 @@ class MonitorTest {
 
     verify(connectionProvider).connect(any(HostInfo.class));
     assertTrue(status.isValid);
-    assertTrue(status.elapsedTime >= 0);
+    assertTrue(status.elapsedTimeNano >= 0);
   }
 
   @Test
@@ -232,7 +232,7 @@ class MonitorTest {
     assertDoesNotThrow(() -> {
       final Monitor.ConnectionStatus status = monitor.checkConnectionStatus(SHORT_INTERVAL_MILLIS);
       assertFalse(status.isValid);
-      assertTrue(status.elapsedTime >= 0);
+      assertTrue(status.elapsedTimeNano >= 0);
     });
   }
 
