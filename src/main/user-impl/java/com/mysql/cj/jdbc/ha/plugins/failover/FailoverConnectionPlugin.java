@@ -641,7 +641,10 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   protected boolean shouldExceptionTriggerConnectionSwitch(Throwable t) {
 
-    if (!isFailoverEnabled()) {
+    if (!this.enableFailoverSetting
+        || this.isRdsProxy
+        || !this.isClusterTopologyAvailable
+        || this.isMultiWriterCluster) {
       this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.13"));
       return false;
     }
@@ -710,11 +713,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected void updateTopologyAndConnectIfNeeded(boolean forceUpdate)
       throws SQLException {
     final JdbcConnection connection = this.currentConnectionProvider.getCurrentConnection();
-    if (!isFailoverEnabled()
-        || connection == null
-        || connection.isClosed()
-        || connection.isInPreparedTx()) {
-        return;
+    if (
+        !this.enableFailoverSetting
+            || this.isRdsProxy
+            || !this.isClusterTopologyAvailable
+            || connection == null
+            || connection.isClosed()
+            || connection.isInPreparedTx()) {
+      return;
     }
 
     List<HostInfo> latestTopology =
