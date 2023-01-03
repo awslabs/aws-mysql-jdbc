@@ -203,7 +203,7 @@ dependencies {
 The AWS JDBC Driver for MySQL is drop-in compatible, so usage is identical to the [MySQL-Connector-J JDBC driver](https://github.com/mysql/mysql-connector-j). The sections below highlight driver usage specific to failover.
 
 #### Driver Name
-Use the driver name: ```software.aws.rds.jdbc.Driver```. If you are building the driver directly from main, use the driver name: ```software.aws.rds.jdbc.mysql.Driver```. You'll need the driver name when loading the driver explicitly to the driver manager.
+Use the driver name: ```software.aws.rds.jdbc.mysql.Driver```. You'll need the driver name when loading the driver explicitly to the driver manager.
 
 ### Connection URL Descriptions
 
