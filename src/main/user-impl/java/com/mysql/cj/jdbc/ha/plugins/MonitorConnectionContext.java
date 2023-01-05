@@ -35,28 +35,31 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Monitoring context for each connection. This contains each connection's criteria for
- * whether a server should be considered unhealthy.
+ * Monitoring context for each connection. This contains each connection's criteria for whether a server should be
+ * considered unhealthy. The context is shared between the main thread and the monitor thread.
  */
 public class MonitorConnectionContext {
   private final int failureDetectionIntervalMillis;
   private final int failureDetectionTimeMillis;
   private final int failureDetectionCount;
 
-  private final Set<String> nodeKeys;
+  private final Set<String> nodeKeys; // Variable is never written, so it does not need to be thread-safe
   private final Log log;
   private final JdbcConnection connectionToAbort;
 
-  private long startMonitorTimeNano;
-  private long invalidNodeStartTimeNano;
-  private int failureCount;
-  private boolean nodeUnhealthy;
-  private AtomicBoolean activeContext = new AtomicBoolean(true);
+  private final AtomicBoolean activeContext = new AtomicBoolean(true);
+  private final AtomicBoolean nodeUnhealthy = new AtomicBoolean();
+  private final AtomicLong startMonitorTimeNano = new AtomicLong();
+  private long invalidNodeStartTimeNano; // Only accessed by monitor thread
+  private int failureCount; // Only accessed by monitor thread
 
   /**
    * Constructor.
@@ -78,7 +81,7 @@ public class MonitorConnectionContext {
       int failureDetectionIntervalMillis,
       int failureDetectionCount) {
     this.connectionToAbort = connectionToAbort;
-    this.nodeKeys = nodeKeys;
+    this.nodeKeys = new HashSet<>(nodeKeys); // Variable is never written, so it does not need to be thread-safe
     this.log = log;
     this.failureDetectionTimeMillis = failureDetectionTimeMillis;
     this.failureDetectionIntervalMillis = failureDetectionIntervalMillis;
@@ -86,11 +89,11 @@ public class MonitorConnectionContext {
   }
 
   void setStartMonitorTimeNano(long startMonitorTimeNano) {
-    this.startMonitorTimeNano = startMonitorTimeNano;
+    this.startMonitorTimeNano.set(startMonitorTimeNano);
   }
 
   Set<String> getNodeKeys() {
-    return this.nodeKeys;
+    return Collections.unmodifiableSet(this.nodeKeys);
   }
 
   public int getFailureDetectionTimeMillis() {
@@ -130,11 +133,11 @@ public class MonitorConnectionContext {
   }
 
   public boolean isNodeUnhealthy() {
-    return this.nodeUnhealthy;
+    return this.nodeUnhealthy.get();
   }
 
   void setNodeUnhealthy(boolean nodeUnhealthy) {
-    this.nodeUnhealthy = nodeUnhealthy;
+    this.nodeUnhealthy.set(nodeUnhealthy);
   }
 
   public boolean isActiveContext() {
@@ -176,7 +179,7 @@ public class MonitorConnectionContext {
       return;
     }
 
-    final long totalElapsedTimeNano = statusCheckEndNano - this.startMonitorTimeNano;
+    final long totalElapsedTimeNano = statusCheckEndNano - this.startMonitorTimeNano.get();
 
     if (totalElapsedTimeNano > TimeUnit.MILLISECONDS.toNanos(this.failureDetectionTimeMillis)) {
       this.setConnectionValid(isValid, statusCheckStartNano, statusCheckEndNano);
