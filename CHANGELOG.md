@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.1.3] - 2023-01-05
+
+### Fixed
+* Removed "SNAPSHOT" from the full version name. [Issue 318](https://github.com/awslabs/aws-mysql-jdbc/issues/318)
+* Fixed incorrect driver classpath in README.md
+* Fixed failure detection interval in EFM
+
+### Added
+* Shading to -sources.jar to reflect the main jar which is shaded
+
 ## [1.1.2] - 2022-11-22
 
 ### Added
@@ -13,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Upgraded dependency versions
 
 ### Fixed
-* Update FailoverConnectionPlugin license.
+* Updated FailoverConnectionPlugin license.
 * Fixed plugin factories package names in the README.
 * Resolved an issue where the driver attempts to query for the topology during a prepared transaction.[Issue 292](https://github.com/awslabs/aws-mysql-jdbc/issues/292)
 * Resolved an issue where distinct ClientPreparedStatement objects incorrectly have the same hashCode.[Issue 308](https://github.com/awslabs/aws-mysql-jdbc/issues/308)
@@ -98,6 +108,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.3]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.2...1.1.3
 [1.1.2]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.0.0...1.1.0

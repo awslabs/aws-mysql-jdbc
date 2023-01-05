@@ -38,7 +38,6 @@ val versionMajor = project.property("com.mysql.cj.build.driver.version.major")
 val versionMinor = project.property("com.mysql.cj.build.driver.version.minor")
 val versionSubminor = Integer.parseInt(project.property("com.mysql.cj.build.driver.version.subminor").toString()) + if (project.property("snapshot") == "true") 1 else 0
 version = "$versionMajor.$versionMinor.$versionSubminor" + if (project.property("snapshot") == "true") "-SNAPSHOT" else ""
-
 // Shared Shading Values
 val shadingOriginPackage: String = "com.mysql"
 val shadingDestinationPackage: String = "software.aws.rds.jdbc.mysql.shading.com.mysql"
@@ -313,9 +312,9 @@ tasks.register<Sync>("replaceTokens") {
     val git = org.ajoberstar.grgit.Grgit.open(mapOf("currentDir" to project.rootDir))
     val revision = git.head().id
 
-    val versionFull = "$this.version"
+    val versionFull = version
 
-    val fullProdName = "${project.property("com.mysql.cj.build.driver.name")}-$versionFull"
+    val fullProdName = "${project.property("com.mysql.cj.build.driver.name")}-${versionFull}"
 
     filter(ReplaceTokens::class, "tokens" to mapOf(
             "MYSQL_CJ_MAJOR_VERSION" to versionMajor,
