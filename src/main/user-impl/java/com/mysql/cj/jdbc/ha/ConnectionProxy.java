@@ -54,6 +54,7 @@ import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 /**
@@ -74,6 +75,8 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   protected ConnectionPluginManager pluginManager = null;
   private HostInfo currentHostInfo;
   private JdbcConnection currentConnection;
+
+  private final ReentrantLock lock = new ReentrantLock();
 
   public ConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
     this(connectionUrl, null);
@@ -179,32 +182,37 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   }
 
   @Override
-  public synchronized Object invoke(Object proxy, Method method, Object[] args)
+  public Object invoke(Object proxy, Method method, Object[] args)
       throws Throwable {
-    final String methodName = method.getName();
-
-    if (isDirectExecute(methodName)) {
-      return executeMethodDirectly(methodName, args);
-    }
-
-    Object[] argsCopy = args == null ?  null : Arrays.copyOf(args, args.length);
-
+    lock.lock();
     try {
-      Object result = this.pluginManager.execute(
-          this.currentConnection.getClass(),
-          methodName,
-          () -> method.invoke(currentConnection, args),
-          argsCopy);
-      return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
-    } catch (Exception e) {
-      // Check if the captured exception must be wrapped by an unchecked exception.
-      Class<?>[] declaredExceptions = method.getExceptionTypes();
-      for (Class<?> declaredException : declaredExceptions) {
-        if (declaredException.isAssignableFrom(e.getClass())) {
-          throw e;
-        }
+      final String methodName = method.getName();
+
+      if (isDirectExecute(methodName)) {
+        return executeMethodDirectly(methodName, args);
       }
-      throw new IllegalStateException(e.getMessage(), e);
+
+      Object[] argsCopy = args == null ? null : Arrays.copyOf(args, args.length);
+
+      try {
+        Object result = this.pluginManager.execute(
+                this.currentConnection.getClass(),
+                methodName,
+                () -> method.invoke(currentConnection, args),
+                argsCopy);
+        return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+      } catch (Exception e) {
+        // Check if the captured exception must be wrapped by an unchecked exception.
+        Class<?>[] declaredExceptions = method.getExceptionTypes();
+        for (Class<?> declaredException : declaredExceptions) {
+          if (declaredException.isAssignableFrom(e.getClass())) {
+            throw e;
+          }
+        }
+        throw new IllegalStateException(e.getMessage(), e);
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -303,6 +311,8 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   class JdbcInterfaceProxy implements InvocationHandler {
     Object invokeOn;
 
+    private final ReentrantLock lock = new ReentrantLock();
+
     JdbcInterfaceProxy(Object toInvokeOn) {
       this.invokeOn = toInvokeOn;
     }
@@ -329,22 +339,30 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
       return null;
     }
 
-    public synchronized Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-      final String methodName = method.getName();
-      if (isDirectExecute(methodName)) {
-        return executeMethodDirectly(methodName, args);
-      }
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      lock.lock();
+      try {
+        final String methodName = method.getName();
+        if (isDirectExecute(methodName)) {
+          return executeMethodDirectly(methodName, args);
+        }
 
-      Object[] argsCopy = args == null ? null : Arrays.copyOf(args, args.length);
+        Object[] argsCopy = args == null ? null : Arrays.copyOf(args, args.length);
 
-      synchronized(ConnectionProxy.this) {
-        Object result =
-            ConnectionProxy.this.pluginManager.execute(
-                this.invokeOn.getClass(),
-                methodName,
-                () -> method.invoke(this.invokeOn, args),
-                argsCopy);
-        return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+        ConnectionProxy.this.lock.lock();
+        try {
+          Object result =
+                  ConnectionProxy.this.pluginManager.execute(
+                          this.invokeOn.getClass(),
+                          methodName,
+                          () -> method.invoke(this.invokeOn, args),
+                          argsCopy);
+          return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+        } finally {
+          ConnectionProxy.this.lock.unlock();
+        }
+      } finally {
+        lock.unlock();
       }
     }
   }
