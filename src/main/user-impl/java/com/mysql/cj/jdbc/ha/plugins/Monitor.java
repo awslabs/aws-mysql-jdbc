@@ -72,13 +72,13 @@ public class Monitor implements IMonitor {
   private final Log logger;
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
-  private Connection monitoringConn = null;
-  private long connectionCheckIntervalMillis = DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS;
-  private boolean isConnectionCheckIntervalInitialized = false;
-  private final AtomicLong contextLastUsedTimestampNano = new AtomicLong();
-  private final long monitorDisposalTimeMillis;
   private final IMonitorService monitorService;
+  private final AtomicLong connectionCheckIntervalMillis = new AtomicLong(DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS);
+  private final AtomicLong contextLastUsedTimestampNano = new AtomicLong();
   private final AtomicBoolean stopped = new AtomicBoolean(true);
+  private final AtomicBoolean isConnectionCheckIntervalInitialized = new AtomicBoolean(false);
+  private final long monitorDisposalTimeMillis;
+  private Connection monitoringConn = null;
 
   /**
    * Store the monitoring configuration for a connection.
@@ -117,13 +117,13 @@ public class Monitor implements IMonitor {
 
   @Override
   public void startMonitoring(MonitorConnectionContext context) {
-    if (!this.isConnectionCheckIntervalInitialized) {
-      this.connectionCheckIntervalMillis = context.getFailureDetectionIntervalMillis();
-      this.isConnectionCheckIntervalInitialized = true;
+    if (!this.isConnectionCheckIntervalInitialized.get()) {
+      this.connectionCheckIntervalMillis.set(context.getFailureDetectionIntervalMillis());
+      this.isConnectionCheckIntervalInitialized.set(true);
     } else {
-      this.connectionCheckIntervalMillis = Math.min(
-              this.connectionCheckIntervalMillis,
-              context.getFailureDetectionIntervalMillis());
+      this.connectionCheckIntervalMillis.set(Math.min(
+              this.connectionCheckIntervalMillis.get(),
+              context.getFailureDetectionIntervalMillis()));
     }
 
     final long currentTimeNano = this.getCurrentTimeNano();
@@ -142,14 +142,14 @@ public class Monitor implements IMonitor {
     context.invalidate();
     this.contexts.remove(context);
 
-    this.connectionCheckIntervalMillis = findShortestIntervalMillis();
-    this.isConnectionCheckIntervalInitialized = true;
+    this.connectionCheckIntervalMillis.set(findShortestIntervalMillis());
+    this.isConnectionCheckIntervalInitialized.set(true);
   }
 
   public synchronized void clearContexts() {
     this.contexts.clear();
-    this.connectionCheckIntervalMillis = findShortestIntervalMillis();
-    this.isConnectionCheckIntervalInitialized = true;
+    this.connectionCheckIntervalMillis.set(findShortestIntervalMillis());
+    this.isConnectionCheckIntervalInitialized.set(true);
   }
 
   @Override
@@ -242,11 +242,11 @@ public class Monitor implements IMonitor {
   }
 
   long getConnectionCheckTimeoutMillis() {
-    return this.connectionCheckIntervalMillis == 0 ? DEFAULT_CONNECTION_CHECK_TIMEOUT_MILLIS : this.connectionCheckIntervalMillis;
+    return this.connectionCheckIntervalMillis.get() == 0 ? DEFAULT_CONNECTION_CHECK_TIMEOUT_MILLIS : this.connectionCheckIntervalMillis.get();
   }
 
   long getConnectionCheckIntervalMillis() {
-    return this.connectionCheckIntervalMillis == 0 ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : this.connectionCheckIntervalMillis;
+    return this.connectionCheckIntervalMillis.get() == 0 ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : this.connectionCheckIntervalMillis.get();
   }
 
   @Override

@@ -45,10 +45,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -65,10 +65,10 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
   protected IConnectionPlugin nextPlugin;
   protected Log logger;
   protected PropertySet propertySet;
-  private IMonitorService monitorService;
   private final Supplier<IMonitorService> monitorServiceSupplier;
-  private final Set<String> nodeKeys = new HashSet<>();
+  private final Set<String> nodeKeys = ConcurrentHashMap.newKeySet(); // Shared with monitor thread
   private final ICurrentConnectionProvider currentConnectionProvider;
+  private IMonitorService monitorService;
   private JdbcConnection connection;
 
   /**
