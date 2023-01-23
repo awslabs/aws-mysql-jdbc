@@ -31,11 +31,14 @@
 
 package com.mysql.cj.jdbc.ha.plugins;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -176,31 +179,10 @@ class DefaultMonitorServiceTest {
         FAILURE_DETECTION_INTERVAL_MILLIS,
         FAILURE_DETECTION_COUNT);
 
-    monitorService.stopMonitoring(context);
-
-    assertEquals(context, contextCaptor.getValue());
-    verify(monitorA).stopMonitoring(any());
-  }
-
-  @Test
-  void test_4_stopMonitoringCalledTwice() {
-    doNothing().when(monitorA).stopMonitoring(contextCaptor.capture());
-
-    final MonitorConnectionContext context = monitorService.startMonitoring(
-        connection,
-        NODE_KEYS,
-        info,
-        propertySet,
-        FAILURE_DETECTION_TIME_MILLIS,
-        FAILURE_DETECTION_INTERVAL_MILLIS,
-        FAILURE_DETECTION_COUNT);
+    assertEquals(monitorA, context.getMonitor());
 
     monitorService.stopMonitoring(context);
-
-    assertEquals(context, contextCaptor.getValue());
-
-    monitorService.stopMonitoring(context);
-    verify(monitorA, times(2)).stopMonitoring(any());
+    verify(monitorA, atLeastOnce()).stopMonitoring(eq(context));
   }
 
   @Test

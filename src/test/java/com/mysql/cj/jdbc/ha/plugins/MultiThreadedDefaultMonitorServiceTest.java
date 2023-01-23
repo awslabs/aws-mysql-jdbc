@@ -390,8 +390,8 @@ class MultiThreadedDefaultMonitorServiceTest {
     nodeKeysList.forEach(nodeKeys -> {
       monitorThreadContainer.getOrCreateMonitor(nodeKeys, () -> monitor);
       contexts.add(new MonitorConnectionContext(
+          monitor,
           null,
-          nodeKeys,
           logger,
           FAILURE_DETECTION_TIME,
           FAILURE_DETECTION_INTERVAL,

@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,7 +74,6 @@ public class AuroraTopologyServiceTest {
     spyProvider.setClusterInstanceTemplate(new HostInfo(null, "?", HostInfo.NO_PORT, null, null));
     spyProvider.setRefreshRate(AuroraTopologyService.DEFAULT_REFRESH_RATE_IN_MILLISECONDS);
     spyProvider.clearAll();
-    AuroraTopologyService.setExpireTime(AuroraTopologyService.DEFAULT_CACHE_EXPIRE_MS);
   }
 
   @Test
@@ -101,7 +101,7 @@ public class AuroraTopologyServiceTest {
     final List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
 
     final HostInfo master = topology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
-    final List<HostInfo> slaves =
+    final List<HostInfo> replicas =
         topology.subList(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1, topology.size());
 
     assertEquals("writer-instance.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
@@ -118,7 +118,7 @@ public class AuroraTopologyServiceTest {
 
     assertFalse(spyProvider.isMultiWriterCluster());
     assertEquals(3, topology.size());
-    assertEquals(2, slaves.size());
+    assertEquals(2, replicas.size());
   }
 
   @Test
@@ -306,37 +306,6 @@ public class AuroraTopologyServiceTest {
   }
 
   @Test
-  public void testQueryFailureReturnsStaleTopology() throws SQLException, InterruptedException {
-    final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
-    final Statement mockStatement = Mockito.mock(StatementImpl.class);
-    final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
-    stubTopologyQuery(mockConn, mockStatement, mockResultSet);
-    final String url =
-        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
-    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    final HostInfo mainHost = conStr.getMainHost();
-    final HostInfo clusterInstanceInfo =
-        new HostInfo(
-            conStr,
-            "?.XYZ.us-east-2.rds.amazonaws.com",
-            mainHost.getPort(),
-            mainHost.getUser(),
-            mainHost.getPassword(),
-            mainHost.getHostProperties());
-    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
-    spyProvider.setRefreshRate(1);
-
-    final List<HostInfo> hosts = spyProvider.getTopology(mockConn, false);
-    when(mockConn.createStatement()).thenThrow(SQLSyntaxErrorException.class);
-    Thread.sleep(5);
-    final List<HostInfo> staleHosts = spyProvider.getTopology(mockConn, false);
-
-    verify(spyProvider, times(2)).queryForTopology(mockConn);
-    assertEquals(3, staleHosts.size());
-    assertEquals(hosts, staleHosts);
-  }
-
-  @Test
   public void testGetHostByName_success() throws SQLException {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
     final Statement mockStatement = Mockito.mock(StatementImpl.class);
@@ -439,27 +408,11 @@ public class AuroraTopologyServiceTest {
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
-    AuroraTopologyService.setExpireTime(1000); // 1 sec
-    spyProvider.setRefreshRate(
-        10000); // 10 sec; and cache expiration time is also (indirectly) changed to 10 sec
+    spyProvider.setRefreshRate(1000); // 1 sec
 
-    spyProvider.getTopology(mockConn, false);
+    spyProvider.getTopology(mockConn, false); // this call should be filling cache
+    spyProvider.getTopology(mockConn, false); // this call should use data in cache
     verify(spyProvider, times(1)).queryForTopology(mockConn);
-
-    Thread.sleep(3000);
-
-    spyProvider.getTopology(mockConn, false);
-    verify(spyProvider, times(1)).queryForTopology(mockConn);
-
-    Thread.sleep(3000);
-    // internal cache has NOT expired yet
-    spyProvider.getTopology(mockConn, false);
-    verify(spyProvider, times(1)).queryForTopology(mockConn);
-
-    Thread.sleep(5000);
-    // internal cache has expired by now
-    spyProvider.getTopology(mockConn, false);
-    verify(spyProvider, times(2)).queryForTopology(mockConn);
   }
 
   @Test
@@ -483,7 +436,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
-    AuroraTopologyService.setExpireTime(10000); // 10 sec
     spyProvider.setRefreshRate(1000); // 1 sec
 
     spyProvider.getTopology(mockConn, false);
@@ -523,9 +475,9 @@ public class AuroraTopologyServiceTest {
 
     spyProvider.getTopology(mockConn, false);
     spyProvider.addToDownHostList(clusterInstanceInfo);
-    assertEquals(1, AuroraTopologyService.topologyCache.size());
+    assertEquals(1, AuroraTopologyService.downHostCache.size());
 
     spyProvider.clearAll();
-    assertEquals(0, AuroraTopologyService.topologyCache.size());
+    assertEquals(0, AuroraTopologyService.downHostCache.size());
   }
 }

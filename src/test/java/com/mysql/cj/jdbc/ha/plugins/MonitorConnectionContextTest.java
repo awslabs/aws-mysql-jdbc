@@ -36,6 +36,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.Collections;
@@ -58,8 +60,8 @@ class MonitorConnectionContextTest {
   void init() {
     closeable = MockitoAnnotations.openMocks(this);
     context = new MonitorConnectionContext(
+        Mockito.mock(IMonitor.class),
         null,
-        NODE_KEYS,
         new NullLogger(MonitorConnectionContextTest.class.getName()),
         FAILURE_DETECTION_TIME_MILLIS,
         FAILURE_DETECTION_INTERVAL_MILLIS,
@@ -74,7 +76,7 @@ class MonitorConnectionContextTest {
   @Test
   public void test_1_isNodeUnhealthyWithConnection_returnFalse() {
     long currentTimeNano = System.nanoTime();
-    context.setConnectionValid(true, currentTimeNano, currentTimeNano);
+    context.setConnectionValid("test-node", true, currentTimeNano, currentTimeNano);
     Assertions.assertFalse(context.isNodeUnhealthy());
     Assertions.assertEquals(0, this.context.getFailureCount());
   }
@@ -82,7 +84,7 @@ class MonitorConnectionContextTest {
   @Test
   public void test_2_isNodeUnhealthyWithInvalidConnection_returnFalse() {
     long currentTimeNano = System.nanoTime();
-    context.setConnectionValid(false, currentTimeNano, currentTimeNano);
+    context.setConnectionValid("test-node", false, currentTimeNano, currentTimeNano);
     Assertions.assertFalse(context.isNodeUnhealthy());
     Assertions.assertEquals(1, this.context.getFailureCount());
   }
@@ -94,7 +96,7 @@ class MonitorConnectionContextTest {
     context.resetInvalidNodeStartTime();
 
     long currentTimeNano = System.nanoTime();
-    context.setConnectionValid(false, currentTimeNano, currentTimeNano);
+    context.setConnectionValid("test-node", false, currentTimeNano, currentTimeNano);
 
     Assertions.assertFalse(context.isNodeUnhealthy());
     Assertions.assertEquals(expectedFailureCount, context.getFailureCount());
@@ -112,7 +114,7 @@ class MonitorConnectionContextTest {
       long statusCheckStartTime = currentTimeNano;
       long statusCheckEndTime = currentTimeNano + TimeUnit.MILLISECONDS.toNanos(VALIDATION_INTERVAL_MILLIS);
 
-      context.setConnectionValid(false, statusCheckStartTime, statusCheckEndTime);
+      context.setConnectionValid("test-node", false, statusCheckStartTime, statusCheckEndTime);
       Assertions.assertFalse(context.isNodeUnhealthy());
 
       currentTimeNano += TimeUnit.MILLISECONDS.toNanos(VALIDATION_INTERVAL_MILLIS);
@@ -125,7 +127,7 @@ class MonitorConnectionContextTest {
     long statusCheckStartTime = currentTimeNano;
     long statusCheckEndTime = currentTimeNano + TimeUnit.MILLISECONDS.toNanos(VALIDATION_INTERVAL_MILLIS);
 
-    context.setConnectionValid(false, statusCheckStartTime, statusCheckEndTime);
+    context.setConnectionValid("test-node", false, statusCheckStartTime, statusCheckEndTime);
     Assertions.assertTrue(context.isNodeUnhealthy());
   }
 }

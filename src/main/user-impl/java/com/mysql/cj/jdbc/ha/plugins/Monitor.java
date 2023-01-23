@@ -44,8 +44,6 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class uses a background thread to monitor a particular server with one or more
@@ -62,23 +60,22 @@ public class Monitor implements IMonitor {
     }
   }
 
-  static final long DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS = 100;
-  static final long DEFAULT_CONNECTION_CHECK_TIMEOUT_MILLIS = 3000;
   private static final int THREAD_SLEEP_WHEN_INACTIVE_MILLIS = 100;
+  private static final int MIN_CONNECTION_CHECK_TIMEOUT_MILLIS = 3000;
   private static final String MONITORING_PROPERTY_PREFIX = "monitoring-";
 
-  private final Queue<MonitorConnectionContext> contexts = new ConcurrentLinkedQueue<>();
+  private final Queue<MonitorConnectionContext> activeContexts = new ConcurrentLinkedQueue<>();
+  private final Queue<MonitorConnectionContext> newContexts = new ConcurrentLinkedQueue<>();
   private final IConnectionProvider connectionProvider;
   private final Log logger;
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
   private final IMonitorService monitorService;
-  private final AtomicLong connectionCheckIntervalMillis = new AtomicLong(DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS);
-  private final AtomicLong contextLastUsedTimestampNano = new AtomicLong();
-  private final AtomicBoolean stopped = new AtomicBoolean(true);
-  private final AtomicBoolean isConnectionCheckIntervalInitialized = new AtomicBoolean(false);
+  private volatile long contextLastUsedTimestampNano;
+  private boolean stopped = false;
   private final long monitorDisposalTimeMillis;
   private Connection monitoringConn = null;
+  private long nodeCheckTimeoutMillis = MIN_CONNECTION_CHECK_TIMEOUT_MILLIS;
 
   /**
    * Store the monitoring configuration for a connection.
@@ -108,7 +105,7 @@ public class Monitor implements IMonitor {
     this.monitorDisposalTimeMillis = monitorDisposalTimeMillis;
     this.monitorService = monitorService;
 
-    this.contextLastUsedTimestampNano.set(this.getCurrentTimeNano());
+    this.contextLastUsedTimestampNano = this.getCurrentTimeNano();
   }
 
   long getCurrentTimeNano() {
@@ -117,19 +114,10 @@ public class Monitor implements IMonitor {
 
   @Override
   public void startMonitoring(MonitorConnectionContext context) {
-    if (!this.isConnectionCheckIntervalInitialized.get()) {
-      this.connectionCheckIntervalMillis.set(context.getFailureDetectionIntervalMillis());
-      this.isConnectionCheckIntervalInitialized.set(true);
-    } else {
-      this.connectionCheckIntervalMillis.set(Math.min(
-              this.connectionCheckIntervalMillis.get(),
-              context.getFailureDetectionIntervalMillis()));
-    }
-
     final long currentTimeNano = this.getCurrentTimeNano();
     context.setStartMonitorTimeNano(currentTimeNano);
-    this.contextLastUsedTimestampNano.set(currentTimeNano);
-    this.contexts.add(context);
+    this.contextLastUsedTimestampNano = currentTimeNano;
+    this.newContexts.add(context);
   }
 
   @Override
@@ -139,42 +127,114 @@ public class Monitor implements IMonitor {
       return;
     }
 
-    context.invalidate();
-    this.contexts.remove(context);
+    context.setInactive();
 
-    this.connectionCheckIntervalMillis.set(findShortestIntervalMillis());
-    this.isConnectionCheckIntervalInitialized.set(true);
+    this.contextLastUsedTimestampNano = this.getCurrentTimeNano();
   }
 
   public synchronized void clearContexts() {
-    this.contexts.clear();
-    this.connectionCheckIntervalMillis.set(findShortestIntervalMillis());
-    this.isConnectionCheckIntervalInitialized.set(true);
+    this.newContexts.clear();
+    this.activeContexts.clear();
   }
 
   @Override
   public void run() {
     try {
-      this.stopped.set(false);
+      this.stopped = false;
       while (true) {
-        if (!this.contexts.isEmpty()) {
+
+        // process new contexts
+        MonitorConnectionContext newMonitorContext;
+        MonitorConnectionContext firstAddedNewMonitorContext = null;
+        final long currentTimeNano = this.getCurrentTimeNano();
+        while ((newMonitorContext = this.newContexts.poll()) != null) {
+          if (firstAddedNewMonitorContext == newMonitorContext) {
+            // This context has already been processed.
+            // Add it back to the queue and process it in the next round.
+            this.newContexts.add(newMonitorContext);
+            break;
+          }
+          if (newMonitorContext.isActiveContext()) {
+            if (newMonitorContext.getExpectedActiveMonitoringStartTimeNano() > currentTimeNano) {
+              // The context active monitoring time hasn't come.
+              // Add the context to the queue and check it later.
+              this.newContexts.add(newMonitorContext);
+              if (firstAddedNewMonitorContext == null) {
+                firstAddedNewMonitorContext = newMonitorContext;
+              }
+            } else {
+              // It's time to start actively monitor this context.
+              this.activeContexts.add(newMonitorContext);
+            }
+          }
+        }
+
+        if (!this.activeContexts.isEmpty()) {
+
           final long statusCheckStartTimeNano = this.getCurrentTimeNano();
-          this.contextLastUsedTimestampNano.set(statusCheckStartTimeNano);
+          this.contextLastUsedTimestampNano = statusCheckStartTimeNano;
 
           final ConnectionStatus status =
-              checkConnectionStatus(this.getConnectionCheckTimeoutMillis());
+              checkConnectionStatus(this.nodeCheckTimeoutMillis);
 
-          for (MonitorConnectionContext monitorContext : this.contexts) {
-            monitorContext.updateConnectionStatus(
-                statusCheckStartTimeNano,
-                statusCheckStartTimeNano + status.elapsedTimeNano,
-                status.isValid);
+          long delayMillis = -1;
+          MonitorConnectionContext monitorContext;
+          MonitorConnectionContext firstAddedMonitorContext = null;
+
+          while ((monitorContext = this.activeContexts.poll()) != null) {
+
+            synchronized (monitorContext) {
+              // If context is already invalid, just skip it
+              if (!monitorContext.isActiveContext()) {
+                continue;
+              }
+
+              if (firstAddedMonitorContext == monitorContext) {
+                // this context has already been processed by this loop
+                // add it to the queue and exit this loop
+                //System.out.println("exit loop");
+                this.activeContexts.add(monitorContext);
+                break;
+              }
+
+              // otherwise, process this context
+              monitorContext.updateConnectionStatus(
+                  this.hostInfo.getHostPortPair(),
+                  statusCheckStartTimeNano,
+                  statusCheckStartTimeNano + status.elapsedTimeNano,
+                  status.isValid);
+
+              // If context is still valid and node is still healthy, it needs to continue updating this context
+              if (monitorContext.isActiveContext() && !monitorContext.isNodeUnhealthy()) {
+                this.activeContexts.add(monitorContext);
+                if (firstAddedMonitorContext == null) {
+                  firstAddedMonitorContext = monitorContext;
+                }
+
+                if (delayMillis == -1 || delayMillis < monitorContext.getFailureDetectionIntervalMillis()) {
+                  delayMillis = monitorContext.getFailureDetectionIntervalMillis();
+                }
+              }
+            }
           }
 
-          TimeUnit.MILLISECONDS.sleep(
-                  Math.max(0, this.getConnectionCheckIntervalMillis() - TimeUnit.NANOSECONDS.toMillis(status.elapsedTimeNano)));
+          if (delayMillis == -1) {
+            // No active contexts
+            delayMillis = THREAD_SLEEP_WHEN_INACTIVE_MILLIS;
+          } else {
+            // Check for min delay between node health check
+            if (delayMillis < MIN_CONNECTION_CHECK_TIMEOUT_MILLIS) {
+              delayMillis = MIN_CONNECTION_CHECK_TIMEOUT_MILLIS;
+            }
+            // Use this delay as node checkout timeout since it corresponds to min interval for all active contexts
+            this.nodeCheckTimeoutMillis = delayMillis;
+          }
+
+          //System.out.println("Delay " + delayMillis);
+          TimeUnit.MILLISECONDS.sleep(delayMillis);
+
         } else {
-          if ((this.getCurrentTimeNano() - this.contextLastUsedTimestampNano.get())
+          if ((this.getCurrentTimeNano() - this.contextLastUsedTimestampNano)
               >= TimeUnit.MILLISECONDS.toNanos(this.monitorDisposalTimeMillis)) {
             monitorService.notifyUnused(this);
             break;
@@ -192,7 +252,7 @@ public class Monitor implements IMonitor {
           // ignore
         }
       }
-      this.stopped.set(true);
+      this.stopped = true;
     }
   }
 
@@ -241,17 +301,9 @@ public class Monitor implements IMonitor {
     }
   }
 
-  long getConnectionCheckTimeoutMillis() {
-    return this.connectionCheckIntervalMillis.get() == 0 ? DEFAULT_CONNECTION_CHECK_TIMEOUT_MILLIS : this.connectionCheckIntervalMillis.get();
-  }
-
-  long getConnectionCheckIntervalMillis() {
-    return this.connectionCheckIntervalMillis.get() == 0 ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : this.connectionCheckIntervalMillis.get();
-  }
-
   @Override
   public boolean isStopped() {
-    return this.stopped.get();
+    return this.stopped;
   }
 
   private HostInfo copy(HostInfo src, Map<String, String> props) {
@@ -262,13 +314,5 @@ public class Monitor implements IMonitor {
         src.getUser(),
         src.getPassword(),
         props);
-  }
-
-  private long findShortestIntervalMillis() {
-    long currentMin = Long.MAX_VALUE;
-    for (MonitorConnectionContext context : this.contexts) {
-      currentMin = Math.min(currentMin, context.getFailureDetectionIntervalMillis());
-    }
-    return currentMin == Long.MAX_VALUE ? DEFAULT_CONNECTION_CHECK_INTERVAL_MILLIS : currentMin;
   }
 }

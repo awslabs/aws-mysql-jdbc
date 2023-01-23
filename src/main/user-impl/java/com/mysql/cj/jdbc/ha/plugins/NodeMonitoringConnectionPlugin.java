@@ -45,6 +45,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -59,8 +60,77 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
   private static final String RETRIEVE_HOST_PORT_SQL =
       "SELECT CONCAT(@@hostname, ':', @@port)";
-  private static final List<String> METHODS_STARTING_WITH = Arrays.asList("get", "abort");
-  private static final List<String> METHODS_EQUAL_TO = Arrays.asList("close", "next");
+  private static final Set<String> METHODS_EQUAL_TO = new HashSet<>(Arrays.asList(
+      "close",
+      "next",
+      "abort",
+      "closeOnCompletion",
+      "getName",
+      "getVendor",
+      "getVendorTypeNumber",
+      "getBaseTypeName",
+      "getBaseType",
+      "getBinaryStream",
+      "getBytes",
+      "getArray",
+      "getBigDecimal",
+      "getSubString",
+      "getCharacterStream",
+      "getAsciiStream",
+      "getURL",
+      "getUserName",
+      "getDatabaseProductName",
+      "getParameterCount",
+      "getPrecision",
+      "getScale",
+      "getParameterType",
+      "getParameterTypeName",
+      "getParameterClassName",
+      "getConnection",
+      "getFetchDirection",
+      "getFetchSize",
+      "getColumnCount",
+      "getColumnDisplaySize",
+      "getColumnLabel",
+      "getColumnName",
+      "getSchemaName",
+      "getSQLTypeName",
+      "getSavepointId",
+      "getSavepointName",
+      "getMaxFieldSize",
+      "getMaxRows",
+      "getQueryTimeout",
+      "getAttributes",
+      "getString",
+      "getTime",
+      "getTimestamp",
+      "getType",
+      "getUnicodeStream",
+      "getWarnings",
+      "getBinaryStream",
+      "getBlob",
+      "getBoolean",
+      "getByte",
+      "getBytes",
+      "getClob",
+      "getConcurrency",
+      "getDate",
+      "getDouble",
+      "getFloat",
+      "getHoldability",
+      "getInt",
+      "getLong",
+      "getMetaData",
+      "getNCharacterStream",
+      "getNClob",
+      "getNString",
+      "getObject",
+      "getRef",
+      "getRow",
+      "getRowId",
+      "getSQLXML",
+      "getShort",
+      "getStatement"));
 
   protected IConnectionPlugin nextPlugin;
   protected Log logger;
@@ -181,27 +251,30 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
     } finally {
       if (monitorContext != null) {
-        this.monitorService.stopMonitoring(monitorContext);
+        synchronized (monitorContext) {
+          this.monitorService.stopMonitoring(monitorContext);
 
-        final boolean isConnectionClosed;
-        try {
-          isConnectionClosed = this.currentConnectionProvider.getCurrentConnection().isClosed();
-        } catch (final SQLException e) {
-          throw new CJCommunicationsException("Node is unavailable.");
-        }
+          if (monitorContext.isNodeUnhealthy()) {
 
-        if (monitorContext.isNodeUnhealthy()) {
-          if (!isConnectionClosed) {
-            abortConnection();
-            throw new CJCommunicationsException("Node is unavailable.");
+            final boolean isConnectionClosed;
+            try {
+              isConnectionClosed = this.currentConnectionProvider.getCurrentConnection().isClosed();
+            } catch (final SQLException e) {
+              throw new CJCommunicationsException("Node is unavailable.");
+            }
+
+            if (!isConnectionClosed) {
+              abortConnection();
+              throw new CJCommunicationsException("Node is unavailable.");
+            }
           }
         }
 
         if (this.logger.isTraceEnabled()) {
           this.logger.logTrace(String.format(
-                  "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
-                  methodInvokeOn.getName(),
-                  methodName));
+              "[NodeMonitoringConnectionPlugin.execute]: method=%s.%s, monitoring is deactivated",
+              methodInvokeOn.getName(),
+              methodName));
         }
       }
     }
@@ -231,20 +304,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
     // boolean isJdbcStatement = Statement.class.isAssignableFrom(methodInvokeOn);
     // boolean isJdbcResultSet = ResultSet.class.isAssignableFrom(methodInvokeOn);
 
-    for (final String method : METHODS_STARTING_WITH) {
-      if (methodName.startsWith(method)) {
-        return false;
-      }
-    }
-
-    for (final String method : METHODS_EQUAL_TO) {
-      if (method.equals(methodName)) {
-        return false;
-      }
-    }
-
-    // Monitor all the other methods
-    return true;
+    return !METHODS_EQUAL_TO.contains(methodName);
   }
 
   private void initMonitorService() {
