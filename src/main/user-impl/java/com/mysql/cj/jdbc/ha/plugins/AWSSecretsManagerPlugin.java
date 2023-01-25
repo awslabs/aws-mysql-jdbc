@@ -53,10 +53,9 @@ import software.amazon.awssdk.utils.Pair;
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 public class AWSSecretsManagerPlugin implements IConnectionPlugin {
-  private static final String METHOD_CLOSE = "close";
-  private static final String METHOD_ABORT = "abort";
   static final String SECRET_ID_PROPERTY = "secretsManagerSecretId";
   static final String REGION_PROPERTY = "secretsManagerRegion";
   private static final String ERROR_MISSING_DEPENDENCY_SECRETS =
@@ -73,8 +72,8 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   private final Log logger;
   private final String secretId;
   private final Region region;
-  private final SecretsManagerClient secretsManagerClient;
-  private final GetSecretValueRequest getSecretValueRequest;
+  private final Function<Region, SecretsManagerClient> secretsManagerClientFunc;
+  private final Function<String, GetSecretValueRequest> getSecretValueRequestFunc;
   private final Pair<String, Region> secretKey;
   private Secret secret;
 
@@ -89,8 +88,12 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
         propertySet,
         nextPlugin,
         logger,
-        null,
-        null
+        (region) -> SecretsManagerClient.builder()
+            .region(region)
+            .build(),
+        (secretId) -> GetSecretValueRequest.builder()
+            .secretId(secretId)
+            .build()
     );
   }
 
@@ -99,8 +102,8 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
       PropertySet propertySet,
       IConnectionPlugin nextPlugin,
       Log logger,
-      SecretsManagerClient secretsManagerClient,
-      GetSecretValueRequest getSecretValueRequest) throws SQLException {
+      Function<Region, SecretsManagerClient> secretsManagerClientFunc,
+      Function<String, GetSecretValueRequest> getSecretValueRequestFunc) throws SQLException {
 
     try {
       Class.forName("software.amazon.awssdk.services.secretsmanager.SecretsManagerClient");
@@ -117,11 +120,13 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     }
 
     if (StringUtils.isNullOrEmpty(propertySet.getStringProperty(SECRET_ID_PROPERTY).getValue())) {
-      throw new SQLException(String.format("Configuration parameter '%s' is required.", SECRET_ID_PROPERTY));
+      throw new SQLException(
+          String.format("Configuration parameter '%s' is required.", SECRET_ID_PROPERTY));
     }
 
     if (StringUtils.isNullOrEmpty(propertySet.getStringProperty(REGION_PROPERTY).getValue())) {
-      throw new SQLException(String.format("Configuration parameter '%s' is required.", REGION_PROPERTY));
+      throw new SQLException(
+          String.format("Configuration parameter '%s' is required.", REGION_PROPERTY));
     }
 
     this.nextPlugin = nextPlugin;
@@ -130,18 +135,8 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     this.region = Region.of(propertySet.getStringProperty(REGION_PROPERTY).getValue());
     this.secretKey = Pair.of(secretId, region);
 
-    if (secretsManagerClient != null && getSecretValueRequest != null) {
-      this.secretsManagerClient = secretsManagerClient;
-      this.getSecretValueRequest = getSecretValueRequest;
-
-    } else {
-      this.secretsManagerClient = SecretsManagerClient.builder()
-          .region(this.region)
-          .build();
-      this.getSecretValueRequest = GetSecretValueRequest.builder()
-          .secretId(this.secretId)
-          .build();
-    }
+    this.secretsManagerClientFunc = secretsManagerClientFunc;
+    this.getSecretValueRequestFunc = getSecretValueRequestFunc;
   }
 
   @Override
@@ -256,13 +251,23 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   private void attemptToLogin(Properties props, ConnectionUrl connectionUrl)
       throws SQLException {
 
-    final ConnectionUrl newConnectionUrl = ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(),
-        props);
+    final ConnectionUrl newConnectionUrl =
+        ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(),
+            props);
     this.nextPlugin.openInitialConnection(newConnectionUrl);
   }
 
   Secret fetchLatestCredentials() throws SecretsManagerException, JsonProcessingException {
-    final GetSecretValueResponse valueResponse = this.secretsManagerClient.getSecretValue(this.getSecretValueRequest);
+    final SecretsManagerClient client = this.secretsManagerClientFunc.apply(this.region);
+    final GetSecretValueRequest request = this.getSecretValueRequestFunc.apply(this.secretId);
+
+    final GetSecretValueResponse valueResponse;
+    try {
+      valueResponse = client.getSecretValue(request);
+    } finally {
+      client.close();
+    }
+
     final ObjectMapper mapper = new ObjectMapper();
     return mapper.readValue(valueResponse.secretString(), Secret.class);
   }
@@ -274,17 +279,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
       Callable<?> executeSqlFunc,
       Object[] args)
       throws Exception {
-    final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
-    if (isConnectionCloseOrAbort(methodInvokeOn, methodName)) {
-      secretsManagerClient.close();
-    }
-    return result;
-  }
-
-  private boolean isConnectionCloseOrAbort(final Class<?> methodInvokeOn, final String methodName) {
-    return (methodName.equals(METHOD_CLOSE)
-        || methodName.equals(METHOD_ABORT))
-        && (methodInvokeOn.equals(ConnectionImpl.class));
+    return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
   }
 
   @Override
@@ -299,7 +294,6 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
 
   @Override
   public void releaseResources() {
-    this.secretsManagerClient.close();
     this.nextPlugin.releaseResources();
   }
 
