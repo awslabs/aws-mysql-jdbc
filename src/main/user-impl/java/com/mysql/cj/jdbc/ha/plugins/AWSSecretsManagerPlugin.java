@@ -34,6 +34,7 @@ package com.mysql.cj.jdbc.ha.plugins;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.exceptions.CJException;
+import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.LRUCache;
 
@@ -54,7 +55,8 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 
 public class AWSSecretsManagerPlugin implements IConnectionPlugin {
-
+  private static final String METHOD_CLOSE = "close";
+  private static final String METHOD_ABORT = "abort";
   static final String SECRET_ID_PROPERTY = "secretsManagerSecretId";
   static final String REGION_PROPERTY = "secretsManagerRegion";
   private static final String ERROR_MISSING_DEPENDENCY_SECRETS =
@@ -272,7 +274,17 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
       Callable<?> executeSqlFunc,
       Object[] args)
       throws Exception {
-    return this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+    final Object result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
+    if (isConnectionCloseOrAbort(methodInvokeOn, methodName)) {
+      secretsManagerClient.close();
+    }
+    return result;
+  }
+
+  private boolean isConnectionCloseOrAbort(final Class<?> methodInvokeOn, final String methodName) {
+    return (methodName.equals(METHOD_CLOSE)
+        || methodName.equals(METHOD_ABORT))
+        && (methodInvokeOn.equals(ConnectionImpl.class));
   }
 
   @Override
@@ -287,6 +299,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
 
   @Override
   public void releaseResources() {
+    this.secretsManagerClient.close();
     this.nextPlugin.releaseResources();
   }
 
