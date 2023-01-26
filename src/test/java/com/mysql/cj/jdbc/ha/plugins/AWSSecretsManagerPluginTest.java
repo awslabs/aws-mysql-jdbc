@@ -112,8 +112,8 @@ public class AWSSecretsManagerPluginTest {
         propertySet,
         nextPlugin,
         logger,
-        mockSecretsManagerClient,
-        mockGetValueRequest);
+        (region) -> mockSecretsManagerClient,
+        (id) -> mockGetValueRequest);
   }
 
   @AfterEach
