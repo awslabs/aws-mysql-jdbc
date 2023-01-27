@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+
+## [1.1.4] - 2023-01-27
+### Fixed
+* Close AWS Secrets Manager Client. This prevents the leaking `PoolingHttpClientConnectionManager` issue described in ([Issue #343](https://github.com/awslabs/aws-mysql-jdbc/issues/343)).
+* Changed the criteria for updating topology and connection switching to not rely on `isFailoverEnabled()` since it may be using a stale topology ([PR #345](https://github.com/awslabs/aws-mysql-jdbc/pull/345)).
+* Make EFM variables thread-safe ([PR #332](https://github.com/awslabs/aws-mysql-jdbc/pull/332)).
+
 ## [1.1.3] - 2023-01-05
 
 ### Fixed
@@ -108,6 +115,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.4]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.3...1.1.4
 [1.1.3]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.2...1.1.3
 [1.1.2]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.0...1.1.1
