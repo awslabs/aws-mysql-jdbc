@@ -46,7 +46,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +59,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
 
   private static final String RETRIEVE_HOST_PORT_SQL =
       "SELECT CONCAT(@@hostname, ':', @@port)";
-  private static final Set<String> METHODS_EQUAL_TO = new HashSet<>(Arrays.asList(
+  private static final Set<String> SKIP_MONITORING_METHODS = new HashSet<>(Arrays.asList(
       "close",
       "next",
       "abort",
@@ -304,7 +303,7 @@ public class NodeMonitoringConnectionPlugin implements IConnectionPlugin {
     // boolean isJdbcStatement = Statement.class.isAssignableFrom(methodInvokeOn);
     // boolean isJdbcResultSet = ResultSet.class.isAssignableFrom(methodInvokeOn);
 
-    return !METHODS_EQUAL_TO.contains(methodName);
+    return !SKIP_MONITORING_METHODS.contains(methodName);
   }
 
   private void initMonitorService() {

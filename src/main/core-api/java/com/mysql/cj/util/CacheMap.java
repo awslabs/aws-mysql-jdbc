@@ -40,7 +40,7 @@ public class CacheMap<K,V> {
 
   private final Map<K, CacheItem<V>> cache = new ConcurrentHashMap<>();
   private final long cleanupIntervalNanos = TimeUnit.MINUTES.toNanos(10);
-  private AtomicLong cleanupTimeNanos = new AtomicLong(System.nanoTime() + cleanupIntervalNanos);
+  private final AtomicLong cleanupTimeNanos = new AtomicLong(System.nanoTime() + cleanupIntervalNanos);
 
   public CacheMap() {
   }
@@ -84,7 +84,7 @@ public class CacheMap<K,V> {
 
   private void cleanUp() {
     if (this.cleanupTimeNanos.get() < System.nanoTime()) {
-      this.cleanupTimeNanos = new AtomicLong(System.nanoTime() + cleanupIntervalNanos);
+      this.cleanupTimeNanos.set(System.nanoTime() + cleanupIntervalNanos);
       cache.entrySet().forEach(entry -> {
         if (entry.getValue() == null || entry.getValue().isExpired()) {
           cache.remove(entry.getKey());

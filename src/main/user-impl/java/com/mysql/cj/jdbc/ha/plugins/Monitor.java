@@ -71,7 +71,7 @@ public class Monitor implements IMonitor {
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
   private final IMonitorService monitorService;
-  private volatile long contextLastUsedTimestampNano;
+  private long contextLastUsedTimestampNano;
   private boolean stopped = false;
   private final long monitorDisposalTimeMillis;
   private Connection monitoringConn = null;
@@ -211,7 +211,7 @@ public class Monitor implements IMonitor {
                   firstAddedMonitorContext = monitorContext;
                 }
 
-                if (delayMillis == -1 || delayMillis < monitorContext.getFailureDetectionIntervalMillis()) {
+                if (delayMillis == -1 || delayMillis > monitorContext.getFailureDetectionIntervalMillis()) {
                   delayMillis = monitorContext.getFailureDetectionIntervalMillis();
                 }
               }
@@ -222,6 +222,7 @@ public class Monitor implements IMonitor {
             // No active contexts
             delayMillis = THREAD_SLEEP_WHEN_INACTIVE_MILLIS;
           } else {
+            delayMillis -= status.elapsedTimeNano;
             // Check for min delay between node health check
             if (delayMillis < MIN_CONNECTION_CHECK_TIMEOUT_MILLIS) {
               delayMillis = MIN_CONNECTION_CHECK_TIMEOUT_MILLIS;
@@ -230,7 +231,6 @@ public class Monitor implements IMonitor {
             this.nodeCheckTimeoutMillis = delayMillis;
           }
 
-          //System.out.println("Delay " + delayMillis);
           TimeUnit.MILLISECONDS.sleep(delayMillis);
 
         } else {
