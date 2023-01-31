@@ -181,7 +181,7 @@ public class AuroraTopologyService implements ITopologyService {
   public List<HostInfo> getTopology(JdbcConnection conn, boolean forceUpdate)
       throws SQLException {
 
-    List<HostInfo> hosts = topologyCache.get(this.clusterId, this.refreshRateNanos);
+    List<HostInfo> hosts = topologyCache.get(this.clusterId);
 
     if (hosts == null || forceUpdate) {
 
@@ -350,7 +350,7 @@ public class AuroraTopologyService implements ITopologyService {
    */
   @Override
   public List<HostInfo> getCachedTopology() {
-    return topologyCache.get(this.clusterId, this.refreshRateNanos);
+    return topologyCache.get(this.clusterId);
   }
 
   /**
@@ -361,7 +361,7 @@ public class AuroraTopologyService implements ITopologyService {
    */
   @Override
   public HostInfo getLastUsedReaderHost() {
-    return lastUsedReaderCache.get(this.clusterId, this.refreshRateNanos);
+    return lastUsedReaderCache.get(this.clusterId);
   }
 
   /**
@@ -392,7 +392,7 @@ public class AuroraTopologyService implements ITopologyService {
         if (resultSet.next()) {
           instanceName = resultSet.getString(GET_INSTANCE_NAME_COL);
         }
-        List<HostInfo> hosts = topologyCache.get(this.clusterId, this.refreshRateNanos);
+        List<HostInfo> hosts = topologyCache.get(this.clusterId);
         return instanceNameToHost(instanceName, hosts);
       }
     } catch (SQLException e) {

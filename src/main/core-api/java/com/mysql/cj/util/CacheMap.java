@@ -45,19 +45,16 @@ public class CacheMap<K,V> {
   public CacheMap() {
   }
 
-  public V get(final K key, final long itemExpirationNano) {
-    CacheItem<V> cacheItem = cache.computeIfPresent(key,
-        (kk, vv) -> vv.isExpired()
-            ? null
-            : new CacheItem<>(vv.item, System.nanoTime() + itemExpirationNano));
+  public V get(final K key) {
+    CacheItem<V> cacheItem = cache.computeIfPresent(key, (kk, vv) -> vv.isExpired() ? null : vv);
     return cacheItem == null ? null : cacheItem.item;
   }
 
   public V get(final K key, final V defaultItemValue, long itemExpirationNano) {
     CacheItem<V> cacheItem = cache.compute(key,
-        (kk, vv) -> new CacheItem<>(
-            (vv == null || vv.isExpired() ? defaultItemValue : vv.item),
-            System.nanoTime() + itemExpirationNano));
+        (kk, vv) -> (vv == null || vv.isExpired())
+            ? new CacheItem<>(defaultItemValue, System.nanoTime() + itemExpirationNano)
+            : vv);
     return cacheItem.item;
   }
 
