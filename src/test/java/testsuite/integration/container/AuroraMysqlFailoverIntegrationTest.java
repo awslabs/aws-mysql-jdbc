@@ -33,7 +33,11 @@ package testsuite.integration.container;
 
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
+import com.mysql.cj.log.Log;
+import com.mysql.cj.log.StandardLogger;
 import eu.rekawek.toxiproxy.Proxy;
+import software.amazon.awssdk.services.rds.model.FailoverDbClusterResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -52,6 +56,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Integration testing with Aurora MySQL failover logic. */
 public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBaseTest {
+
+  @Override
+  @BeforeEach
+  public void setUpEach() throws InterruptedException, SQLException {
+    waitUntilClusterHasRightState();
+    super.setUpEach();
+  }
 
   /* Writer connection failover tests. */
 
@@ -214,7 +225,8 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
 
     final String initialWriterId = instanceIDs[0];
 
-    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+    Properties props = initDefaultProps();
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
       final Statement testStmt1 = conn.createStatement();
       testStmt1.executeUpdate("DROP TABLE IF EXISTS test3_2");
       testStmt1.executeUpdate(
@@ -430,10 +442,22 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
   }
 
   // Helpers
+
   private void failoverClusterAndWaitUntilWriterChanged(String clusterWriterId)
       throws InterruptedException {
+    // Trigger failover
     failoverCluster();
-    waitUntilWriterInstanceChanged(clusterWriterId);
+
+    int remainingAttempts = 3;
+    // let cluster to start and complete failover
+    while (!waitUntilWriterInstanceChanged(clusterWriterId, TimeUnit.MINUTES.toNanos(3))) {
+      // if writer is not changed, try to trigger failover again
+      remainingAttempts--;
+      if (remainingAttempts == 0) {
+        throw new RuntimeException("Cluster writer has not changed.");
+      }
+      failoverCluster();
+    }
   }
 
   private void failoverCluster() throws InterruptedException {
@@ -472,18 +496,50 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
 
   private void waitUntilWriterInstanceChanged(String initialWriterInstanceId)
       throws InterruptedException {
+
+    // wait for cluster recover for up to 10 min
+    final long timeoutNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
+
     String nextClusterWriterId = getDBClusterWriterInstanceId();
+
     while (initialWriterInstanceId.equals(nextClusterWriterId)) {
+      if (timeoutNanos < System.nanoTime()) {
+        throw new RuntimeException("Cluster writer has not changed.");
+      }
       TimeUnit.MILLISECONDS.sleep(3000);
       // Calling the RDS API to get writer Id.
       nextClusterWriterId = getDBClusterWriterInstanceId();
     }
   }
 
+  private boolean waitUntilWriterInstanceChanged(String initialWriterInstanceId, long timeoutNanos)
+      throws InterruptedException {
+
+    // wait for cluster recover for up to 10 min
+    final long waitUntil = System.nanoTime() + timeoutNanos;
+
+    String nextClusterWriterId = getDBClusterWriterInstanceId();
+
+    while (initialWriterInstanceId.equals(nextClusterWriterId)) {
+      if (waitUntil < System.nanoTime()) {
+        return false;
+      }
+      TimeUnit.MILLISECONDS.sleep(3000);
+      // Calling the RDS API to get writer Id.
+      nextClusterWriterId = getDBClusterWriterInstanceId();
+    }
+    return true;
+  }
+
   private void waitUntilClusterHasRightState() throws InterruptedException {
+    final long timeoutNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
     String status = getDBCluster().status();
+
     while (!"available".equalsIgnoreCase(status)) {
-      TimeUnit.MILLISECONDS.sleep(1000);
+      if (timeoutNanos < System.nanoTime()) {
+        throw new RuntimeException("Cluster is still unavailable.");
+      }
+      TimeUnit.MILLISECONDS.sleep(5000);
       status = getDBCluster().status();
     }
   }
