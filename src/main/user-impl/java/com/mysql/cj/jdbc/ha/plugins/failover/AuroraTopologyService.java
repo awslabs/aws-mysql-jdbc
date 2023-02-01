@@ -191,6 +191,8 @@ public class AuroraTopologyService implements ITopologyService {
         multiWriterClusterCache.put(
             this.clusterId, latestTopologyInfo.getMultiWriterCluster(), this.refreshRateNanos);
 
+        downHostCache.get(this.clusterId, ConcurrentHashMap.newKeySet(), this.refreshRateNanos).clear();
+
         if (!Util.isNullOrEmpty(latestTopologyInfo.getHosts())) {
           topologyCache.put(this.clusterId, latestTopologyInfo.getHosts(), this.refreshRateNanos);
           return latestTopologyInfo.getHosts();
