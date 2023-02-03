@@ -71,8 +71,8 @@ public class Monitor implements IMonitor {
   private final PropertySet propertySet;
   private final HostInfo hostInfo;
   private final IMonitorService monitorService;
-  private long contextLastUsedTimestampNano;
-  private boolean stopped = false;
+  private volatile long contextLastUsedTimestampNano;
+  private volatile boolean stopped = false;
   private final long monitorDisposalTimeMillis;
   private Connection monitoringConn = null;
   private long nodeCheckTimeoutMillis = MIN_CONNECTION_CHECK_TIMEOUT_MILLIS;
@@ -192,7 +192,6 @@ public class Monitor implements IMonitor {
               if (firstAddedMonitorContext == monitorContext) {
                 // this context has already been processed by this loop
                 // add it to the queue and exit this loop
-                //System.out.println("exit loop");
                 this.activeContexts.add(monitorContext);
                 break;
               }
