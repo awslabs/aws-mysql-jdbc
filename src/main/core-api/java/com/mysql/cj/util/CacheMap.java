@@ -124,13 +124,10 @@ public class CacheMap<K,V> {
       }
       CacheItem<?> other = (CacheItem<?>) obj;
       if (item == null) {
-        if (other.item != null) {
-          return false;
-        }
-      } else if (!item.equals(other.item)) {
-        return false;
+        return other.item == null;
+      } else {
+        return item.equals(other.item);
       }
-      return true;
     }
 
     @Override
