@@ -82,9 +82,9 @@ public class CacheMap<K,V> {
   private void cleanUp() {
     if (this.cleanupTimeNanos.get() < System.nanoTime()) {
       this.cleanupTimeNanos.set(System.nanoTime() + cleanupIntervalNanos);
-      cache.entrySet().forEach(entry -> {
-        if (entry.getValue() == null || entry.getValue().isExpired()) {
-          cache.remove(entry.getKey());
+      cache.forEach((key, value) -> {
+        if (value == null || value.isExpired()) {
+          cache.remove(key);
         }
       });
     }
