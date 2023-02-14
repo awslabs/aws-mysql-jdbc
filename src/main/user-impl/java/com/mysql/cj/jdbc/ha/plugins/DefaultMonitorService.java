@@ -38,7 +38,7 @@ import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 
-import java.util.Iterator;
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
@@ -51,6 +51,8 @@ public class DefaultMonitorService implements IMonitorService {
 
   private final Log logger;
   final IMonitorInitializer monitorInitializer;
+  private Set<String> cachedMonitorNodeKeys = null;
+  private IMonitor cachedMonitor = null;
 
   public DefaultMonitorService(Log logger) {
     this(
@@ -96,11 +98,21 @@ public class DefaultMonitorService implements IMonitorService {
       throw new IllegalArgumentException(warning);
     }
 
-    final IMonitor monitor = getMonitor(nodeKeys, hostInfo, propertySet);
+    IMonitor monitor;
+    if (this.cachedMonitor == null
+        || this.cachedMonitorNodeKeys == null
+        || !this.cachedMonitorNodeKeys.equals(nodeKeys)) {
+
+      monitor = getMonitor(nodeKeys, hostInfo, propertySet);
+      this.cachedMonitor = monitor;
+      this.cachedMonitorNodeKeys = Collections.unmodifiableSet(nodeKeys);
+    } else {
+      monitor = this.cachedMonitor;
+    }
 
     final MonitorConnectionContext context = new MonitorConnectionContext(
+        monitor,
         connectionToAbort,
-        nodeKeys,
         logger,
         failureDetectionTimeMillis,
         failureDetectionIntervalMillis,
@@ -118,20 +130,8 @@ public class DefaultMonitorService implements IMonitorService {
       return;
     }
 
-    context.invalidate();
-
-    // Any 1 node is enough to find the monitor containing the context
-    // All nodes will map to the same monitor
-    IMonitor monitor;
-    for (Iterator<String> it = context.getNodeKeys().iterator(); it.hasNext();) {
-      String nodeKey = it.next();
-      monitor = this.threadContainer.getMonitor(nodeKey);
-      if (monitor != null) {
-        monitor.stopMonitoring(context);
-        return;
-      }
-    }
-    logger.logTrace(Messages.getString("DefaultMonitorService.NoMonitorForContext"));
+    IMonitor monitor = context.getMonitor();
+    monitor.stopMonitoring(context);
   }
 
   @Override
