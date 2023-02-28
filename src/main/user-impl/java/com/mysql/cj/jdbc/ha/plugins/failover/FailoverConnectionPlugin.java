@@ -61,6 +61,7 @@ import javax.net.ssl.SSLException;
 import java.io.EOFException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,25 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   static final String METHOD_ABORT = "abort";
   static final String METHOD_CLOSE = "close";
   static final String METHOD_IS_CLOSED = "isClosed";
+
+  private static final List<String> METHODS_REQUIRE_UPDATED_TOPOLOGY = new ArrayList<>(Arrays.asList(
+      METHOD_COMMIT,
+      "connect",
+      "isValid",
+      "rollback",
+      "sendQueryCancel",
+      "setAutoCommit",
+      "setReadOnly",
+      "cancel",
+      "execute",
+      "executeBatch",
+      "executeLargeBatch",
+      "executeLargeUpdate",
+      "executeQuery",
+      "executeUpdate",
+      "executeWithFlags",
+      "getParameterMetaData"
+  ));
 
   private static final String METHOD_GET_TRANSACTION_ISOLATION =
       "getTransactionIsolation";
@@ -245,7 +265,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     Object result = null;
 
     try {
-      updateTopologyAndConnectIfNeeded(false);
+      if (shouldUpdateTopology(methodName)) {
+        updateTopologyIfNeeded(false);
+      }
       result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
     } catch (IllegalStateException e) {
       dealWithIllegalStateException(e);
@@ -432,6 +454,18 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     return (int) (Math.random() * ((max - min) + 1)) + min;
   }
 
+  /**
+   * Updating topology requires creating and executing a new statement.
+   * This may cause interruptions during certain workflows. For instance,
+   * the driver should not be updating topology while the connection is fetching a large streaming result set.
+   *
+   * @param methodName the method to check.
+   * @return true if the driver should update topology before executing the method; false otherwise.
+   */
+  private boolean shouldUpdateTopology(String methodName) {
+    return METHODS_REQUIRE_UPDATED_TOPOLOGY.contains(methodName);
+  }
+
   protected void initializeTopology() throws SQLException {
     if (this.currentConnectionProvider.getCurrentConnection() == null) {
       return;
@@ -540,7 +574,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     updateCurrentConnection(
         result.getConnection(),
         result.getConnectionIndex());
-    updateTopologyAndConnectIfNeeded(true);
+    updateTopologyIfNeeded(true);
 
     if (this.currentHostIndex != NO_CONNECTION_INDEX
         && this.currentHostIndex != WRITER_CONNECTION_INDEX
@@ -710,7 +744,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     sourceUseLocalSessionState.setValue(prevUseLocalSessionState);
   }
 
-  protected void updateTopologyAndConnectIfNeeded(boolean forceUpdate)
+  protected void updateTopologyIfNeeded(boolean forceUpdate)
       throws SQLException {
     final JdbcConnection connection = this.currentConnectionProvider.getCurrentConnection();
     if (
