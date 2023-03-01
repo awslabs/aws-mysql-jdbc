@@ -263,7 +263,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     Object result = null;
 
     try {
-      if (shouldUpdateTopology(methodName)) {
+      if (canUpdateTopology(methodName)) {
         updateTopologyIfNeeded(false);
       }
       result = this.nextPlugin.execute(methodInvokeOn, methodName, executeSqlFunc, args);
@@ -460,7 +460,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
    * @param methodName the method to check.
    * @return true if the driver should update topology before executing the method; false otherwise.
    */
-  private boolean shouldUpdateTopology(String methodName) {
+  private boolean canUpdateTopology(String methodName) {
     return METHODS_REQUIRE_UPDATED_TOPOLOGY.contains(methodName);
   }
 
