@@ -77,7 +77,10 @@ public class BestResponseTimeBalanceStrategy implements BalanceStrategy {
 
             String bestHost = configuredHosts.get(bestHostIndex);
 
-            ConnectionImpl conn = (ConnectionImpl) liveConnections.get(bestHost);
+            final JdbcConnection wrappedConnection = liveConnections.get(bestHost);
+            ConnectionImpl conn = wrappedConnection instanceof ConnectionImpl
+                ? ((ConnectionImpl) wrappedConnection)
+                : wrappedConnection.unwrap(ConnectionImpl.class);
 
             if (conn == null) {
                 try {

@@ -32,6 +32,7 @@ package com.mysql.cj.jdbc;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
@@ -1457,15 +1458,27 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
 
             boolean directCompare = true;
 
-            String otherHost = ((ConnectionImpl) otherConnection).origHostToConnectTo;
-            String otherOrigDatabase = ((ConnectionImpl) otherConnection).origHostInfo.getDatabase();
-            String otherCurrentDb = ((ConnectionImpl) otherConnection).database;
+            ConnectionImpl unwrappedConnection;
+
+            if (otherConnection instanceof ConnectionImpl) {
+                unwrappedConnection = (ConnectionImpl) otherConnection;
+            } else {
+                try {
+                    unwrappedConnection = otherConnection.unwrap(ConnectionImpl.class);
+                } catch (SQLException e) {
+                    return false;
+                }
+            }
+
+            String otherHost = unwrappedConnection.origHostToConnectTo;
+            String otherOrigDatabase = unwrappedConnection.origHostInfo.getDatabase();
+            String otherCurrentDb = unwrappedConnection.database;
 
             if (!nullSafeCompare(otherHost, this.origHostToConnectTo)) {
                 directCompare = false;
             } else if (otherHost != null && otherHost.indexOf(',') == -1 && otherHost.indexOf(':') == -1) {
                 // need to check port numbers
-                directCompare = (((ConnectionImpl) otherConnection).origPortToConnectTo == this.origPortToConnectTo);
+                directCompare = (unwrappedConnection.origPortToConnectTo == this.origPortToConnectTo);
             }
 
             if (directCompare) {
@@ -1479,7 +1492,7 @@ public class ConnectionImpl implements JdbcConnection, SessionEventListener, Ser
             }
 
             // Has the user explicitly set a resourceId?
-            String otherResourceId = ((ConnectionImpl) otherConnection).getPropertySet().getStringProperty(PropertyKey.resourceId).getValue();
+            String otherResourceId = unwrappedConnection.getPropertySet().getStringProperty(PropertyKey.resourceId).getValue();
             String myResourceId = this.propertySet.getStringProperty(PropertyKey.resourceId).getValue();
 
             if (otherResourceId != null || myResourceId != null) {
