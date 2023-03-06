@@ -542,7 +542,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   protected void failoverReader(int failedHostIdx) throws SQLException {
-    this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.17"));
+    if (this.logger.isDebugEnabled()) {
+      this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.17"));
+    }
 
     HostInfo failedHost = null;
     if (failedHostIdx != NO_CONNECTION_INDEX && !Util.isNullOrEmpty(this.hosts)) {
@@ -579,15 +581,19 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         && !Util.isNullOrEmpty(this.hosts)) {
       HostInfo currentHost = this.hosts.get(this.currentHostIndex);
       topologyService.setLastUsedReaderHost(currentHost);
-      this.logger.logDebug(
-          Messages.getString(
-              "ClusterAwareConnectionProxy.15",
-              new Object[] {currentHost}));
+      if (this.logger.isDebugEnabled()) {
+        this.logger.logDebug(
+                Messages.getString(
+                        "ClusterAwareConnectionProxy.15",
+                        new Object[]{currentHost}));
+      }
     }
   }
 
   protected void failoverWriter() throws SQLException {
-    this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.16"));
+    if (this.logger.isDebugEnabled()) {
+      this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.16"));
+    }
     WriterFailoverResult failoverResult = this.writerFailoverHandler.failover(this.hosts);
 
     long currentTimeMs = System.currentTimeMillis();
@@ -618,10 +624,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         failoverResult.getNewConnection(),
         WRITER_CONNECTION_INDEX);
 
-    this.logger.logDebug(
-        Messages.getString(
-            "ClusterAwareConnectionProxy.15",
-            new Object[] {this.hosts.get(this.currentHostIndex)}));
+    if (this.logger.isDebugEnabled()) {
+      this.logger.logDebug(
+              Messages.getString(
+                      "ClusterAwareConnectionProxy.15",
+                      new Object[]{this.hosts.get(this.currentHostIndex)}));
+    }
   }
 
   protected void invalidateCurrentConnection() {
@@ -645,7 +653,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   protected synchronized void pickNewConnection() throws SQLException {
     if (this.isClosed && this.closedExplicitly) {
-      this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.1"));
+      if (this.logger.isDebugEnabled()) {
+        this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.1"));
+      }
 
       return;
     }
@@ -677,7 +687,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         || this.isRdsProxy
         || !this.isClusterTopologyAvailable
         || this.isMultiWriterCluster) {
-      this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.13"));
+      if (this.logger.isDebugEnabled()) {
+        this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.13"));
+      }
       return false;
     }
 
@@ -797,10 +809,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   private void connectTo(int hostIndex) throws SQLException {
     try {
       switchCurrentConnectionTo(hostIndex, createConnectionForHostIndex(hostIndex));
-      this.logger.logDebug(
-          Messages.getString(
-              "ClusterAwareConnectionProxy.15",
-              new Object[] {this.hosts.get(hostIndex)}));
+      if (this.logger.isDebugEnabled()) {
+        this.logger.logDebug(
+                Messages.getString(
+                        "ClusterAwareConnectionProxy.15",
+                        new Object[]{this.hosts.get(hostIndex)}));
+      }
     } catch (SQLException e) {
       if (this.currentConnectionProvider.getCurrentConnection() != null) {
         HostInfo host = this.hosts.get(hostIndex);
@@ -965,16 +979,20 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void identifyRdsType(String host) {
     this.isRds = isRdsDns(host);
-    this.logger.logTrace(
-        Messages.getString(
-            "ClusterAwareConnectionProxy.10",
-            new Object[] {"isRds", this.isRds}));
+    if (this.logger.isTraceEnabled()) {
+      this.logger.logTrace(
+              Messages.getString(
+                      "ClusterAwareConnectionProxy.10",
+                      new Object[]{"isRds", this.isRds}));
+    }
 
     this.isRdsProxy = isRdsProxyDns(host);
-    this.logger.logTrace(
-        Messages.getString(
-            "ClusterAwareConnectionProxy.10",
-            new Object[] {"isRdsProxy", this.isRdsProxy}));
+    if (this.logger.isTraceEnabled()) {
+      this.logger.logTrace(
+              Messages.getString(
+                      "ClusterAwareConnectionProxy.10",
+                      new Object[]{"isRdsProxy", this.isRdsProxy}));
+    }
   }
 
   private void initExpectingNoTopology(HostInfo hostInfo)
@@ -1048,10 +1066,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     if (isRdsClusterDns(hostname)) {
       this.explicitlyReadOnly = isReaderClusterDns(hostname);
-      this.logger.logTrace(
-              Messages.getString(
-                      "ClusterAwareConnectionProxy.10",
-                      new Object[] {"explicitlyReadOnly", this.explicitlyReadOnly}));
+      if (this.logger.isTraceEnabled()) {
+        this.logger.logTrace(
+                Messages.getString(
+                        "ClusterAwareConnectionProxy.10",
+                        new Object[]{"explicitlyReadOnly", this.explicitlyReadOnly}));
+      }
     }
   }
 
@@ -1063,11 +1083,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
 
     this.isClusterTopologyAvailable = !Util.isNullOrEmpty(this.hosts);
-    this.logger.logTrace(
-        Messages.getString(
-            "ClusterAwareConnectionProxy.10",
-            new Object[] {"isClusterTopologyAvailable",
-                this.isClusterTopologyAvailable}));
+    if (this.logger.isTraceEnabled()) {
+      this.logger.logTrace(
+              Messages.getString(
+                      "ClusterAwareConnectionProxy.10",
+                      new Object[]{"isClusterTopologyAvailable",
+                              this.isClusterTopologyAvailable}));
+    }
     this.isMultiWriterCluster = this.topologyService.isMultiWriterCluster();
     this.currentHostIndex =
             getHostIndex(topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
@@ -1085,10 +1107,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         final String host = connectionUrl.getMainHost().getHost();
         if (isRdsClusterDns(host)) {
           this.explicitlyReadOnly = isReaderClusterDns(host);
-          this.logger.logTrace(
-              Messages.getString(
-                  "ClusterAwareConnectionProxy.10",
-                  new Object[]{"explicitlyReadOnly", this.explicitlyReadOnly}));
+          if (this.logger.isTraceEnabled()) {
+            this.logger.logTrace(
+                    Messages.getString(
+                            "ClusterAwareConnectionProxy.10",
+                            new Object[]{"explicitlyReadOnly", this.explicitlyReadOnly}));
+          }
 
           try {
             attemptConnectionUsingCachedTopology();
@@ -1192,10 +1216,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
           .append("]: ")
           .append(hostInfo == null ? "<null>" : hostInfo.getHost());
     }
-    this.logger.logTrace(
-        Messages.getString(
-            "ClusterAwareConnectionProxy.11",
-            new Object[] {msg.toString()}));
+    if (this.logger.isTraceEnabled()) {
+      this.logger.logTrace(
+              Messages.getString(
+                      "ClusterAwareConnectionProxy.11",
+                      new Object[]{msg.toString()}));
+    }
   }
 
   private void performSpecialMethodHandlingIfRequired(Object[] args, String methodName)
@@ -1211,10 +1237,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     if (METHOD_SET_READ_ONLY.equals(methodName)) {
       this.explicitlyReadOnly = (Boolean) args[0];
-      this.logger.logTrace(
-          Messages.getString(
-              "ClusterAwareConnectionProxy.10",
-              new Object[] {"explicitlyReadOnly", this.explicitlyReadOnly}));
+      if (this.logger.isTraceEnabled()) {
+        this.logger.logTrace(
+                Messages.getString(
+                        "ClusterAwareConnectionProxy.10",
+                        new Object[] {"explicitlyReadOnly", this.explicitlyReadOnly}));
+      }
       connectToWriterIfRequired(this.explicitlyReadOnly);
     }
   }
