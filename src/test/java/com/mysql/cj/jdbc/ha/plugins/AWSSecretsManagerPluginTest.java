@@ -32,7 +32,10 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.DatabaseUrlContainer;
+import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.ConnectionProxy;
 import com.mysql.cj.log.Log;
@@ -94,7 +97,10 @@ public class AWSSecretsManagerPluginTest {
   @Mock Log logger;
   @Mock SecretsManagerClient mockSecretsManagerClient;
   @Mock GetSecretValueRequest mockGetValueRequest;
+  @Mock HostInfo mockCurrentHostInfo;
+  @Mock JdbcConnection mockCurrentConnection;
   @Captor ArgumentCaptor<ConnectionUrl> captor;
+  @Captor ArgumentCaptor<HostInfo> hostInfoCaptor;
 
   @BeforeEach
   void init() throws SQLException {
@@ -130,6 +136,10 @@ public class AWSSecretsManagerPluginTest {
     // Add initial cached secret to be used for a connection.
     AWSSecretsManagerPlugin.SECRET_CACHE.put(SECRET_CACHE_KEY, SECRET);
 
+    when(this.proxy.getCurrentHostInfo()).thenReturn(this.mockCurrentHostInfo);
+    when(this.mockCurrentHostInfo.getDatabaseUrl()).thenReturn(TEST_DB_URL);
+    when(this.proxy.getCurrentConnection()).thenReturn(this.mockCurrentConnection);
+
     this.plugin.openInitialConnection(this.connectionUrl);
 
     assertEquals(1, AWSSecretsManagerPlugin.SECRET_CACHE.size());
@@ -139,6 +149,24 @@ public class AWSSecretsManagerPluginTest {
     final Map<String, String> connectionProperties = connectionUrls.get(0).getOriginalProperties();
     assertEquals(TEST_USERNAME, connectionProperties.get("user"));
     assertEquals(TEST_PASSWORD, connectionProperties.get("password"));
+    verify(this.proxy).setCurrentConnection(any(JdbcConnection.class), any(HostInfo.class));
+  }
+
+  @Test
+  public void testOpenInitialConnectionUpdatesCurrentHostInfo() throws SQLException{
+    AWSSecretsManagerPlugin.SECRET_CACHE.put(SECRET_CACHE_KEY, SECRET);
+
+    when(this.proxy.getCurrentHostInfo()).thenReturn(this.mockCurrentHostInfo);
+    when(this.mockCurrentHostInfo.getDatabaseUrl()).thenReturn(TEST_DB_URL);
+    when(this.proxy.getCurrentConnection()).thenReturn(this.mockCurrentConnection);
+
+    this.plugin.openInitialConnection(this.connectionUrl);
+
+    verify(this.nextPlugin).openInitialConnection(this.captor.capture());
+    verify(this.proxy).setCurrentConnection(any(JdbcConnection.class), this.hostInfoCaptor.capture());
+    final HostInfo capturedHostInfo = this.hostInfoCaptor.getValue();
+    assertEquals(TEST_USERNAME, capturedHostInfo.getUser());
+    assertEquals(TEST_PASSWORD, capturedHostInfo.getPassword());
   }
 
   /**

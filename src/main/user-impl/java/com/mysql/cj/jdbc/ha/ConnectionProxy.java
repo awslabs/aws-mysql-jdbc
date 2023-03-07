@@ -169,7 +169,7 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   @Override
   public void setCurrentConnection(JdbcConnection connection, HostInfo info) {
     try {
-      if (this.currentConnection != null && !this.currentConnection.isClosed()) {
+      if (this.currentConnection != null && !this.currentConnection.equals(connection)  && !this.currentConnection.isClosed()) {
         this.currentConnection.close();
       }
     } catch (SQLException sqlEx) {

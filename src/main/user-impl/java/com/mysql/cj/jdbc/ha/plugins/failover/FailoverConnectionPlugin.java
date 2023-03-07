@@ -399,7 +399,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
             || isWriterHostIndex(this.currentHostIndex);
   }
 
-  private void attemptConnectionUsingCachedTopology() throws SQLException {
+  private void updateTopologyFromCache() {
     List<HostInfo> cachedHosts = topologyService.getCachedTopology();
     if (Util.isNullOrEmpty(cachedHosts)) {
       metricsContainer.registerUseCachedTopology(false);
@@ -409,47 +409,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.hosts = cachedHosts;
 
     metricsContainer.registerUseCachedTopology(true);
-
-    int candidateIndex = getCandidateIndexForInitialConnection();
-    if (candidateIndex != NO_CONNECTION_INDEX) {
-      connectTo(candidateIndex);
-    }
-  }
-
-  private int getCandidateIndexForInitialConnection() {
-    if (Util.isNullOrEmpty(this.hosts)) {
-      return NO_CONNECTION_INDEX;
-    }
-
-    if (isExplicitlyReadOnly()) {
-      int candidateReaderIndex = getCandidateReaderForInitialConnection();
-      if (candidateReaderIndex != NO_CONNECTION_INDEX) {
-        return candidateReaderIndex;
-      }
-    }
-    return WRITER_CONNECTION_INDEX;
-  }
-
-  private int getCandidateReaderForInitialConnection() {
-    int lastUsedReaderIndex = getHostIndex(topologyService.getLastUsedReaderHost());
-    if (lastUsedReaderIndex != NO_CONNECTION_INDEX) {
-      metricsContainer.registerUseLastConnectedReader(true);
-      return lastUsedReaderIndex;
-    }
-
-    metricsContainer.registerUseLastConnectedReader(false);
-
-    if (clusterContainsReader()) {
-      return getRandomReaderIndex();
-    } else {
-      return NO_CONNECTION_INDEX;
-    }
-  }
-
-  private int getRandomReaderIndex() {
-    int max = this.hosts.size() - 1;
-    int min = WRITER_CONNECTION_INDEX + 1;
-    return (int) (Math.random() * ((max - min) + 1)) + min;
   }
 
   /**
@@ -1114,11 +1073,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
                             new Object[]{"explicitlyReadOnly", this.explicitlyReadOnly}));
           }
 
-          try {
-            attemptConnectionUsingCachedTopology();
-          } catch (SQLException e) {
-            // do nothing - attempt to connect directly will be made below
-          }
+          updateTopologyFromCache();
         }
       }
     }
