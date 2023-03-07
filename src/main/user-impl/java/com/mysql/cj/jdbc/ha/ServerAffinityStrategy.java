@@ -58,7 +58,11 @@ public class ServerAffinityStrategy extends RandomBalanceStrategy {
 
         for (String host : this.affinityOrderedServers) {
             if (configuredHosts.contains(host) && !blockList.containsKey(host)) {
-                ConnectionImpl conn = (ConnectionImpl) liveConnections.get(host);
+                final JdbcConnection wrappedConnection = liveConnections.get(host);
+                ConnectionImpl conn = !(wrappedConnection instanceof ConnectionImpl) && wrappedConnection != null
+                    ? wrappedConnection.unwrap(ConnectionImpl.class)
+                    : ((ConnectionImpl) wrappedConnection);
+
                 if (conn != null) {
                     return conn;
                 }

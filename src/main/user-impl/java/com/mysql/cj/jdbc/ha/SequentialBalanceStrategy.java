@@ -128,7 +128,10 @@ public class SequentialBalanceStrategy implements BalanceStrategy {
 
             String hostPortSpec = configuredHosts.get(this.currentHostIndex);
 
-            ConnectionImpl conn = (ConnectionImpl) liveConnections.get(hostPortSpec);
+            JdbcConnection wrappedConnection = liveConnections.get(hostPortSpec);
+            ConnectionImpl conn = !(wrappedConnection instanceof ConnectionImpl) && wrappedConnection != null
+                ? wrappedConnection.unwrap(ConnectionImpl.class)
+                : ((ConnectionImpl) wrappedConnection);
 
             if (conn == null) {
                 try {

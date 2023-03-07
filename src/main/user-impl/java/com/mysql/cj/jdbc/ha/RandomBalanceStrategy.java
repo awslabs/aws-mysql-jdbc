@@ -70,7 +70,10 @@ public class RandomBalanceStrategy implements BalanceStrategy {
 
             String hostPortSpec = allowList.get(random);
 
-            ConnectionImpl conn = (ConnectionImpl) liveConnections.get(hostPortSpec);
+            final JdbcConnection wrappedConnection = liveConnections.get(hostPortSpec);
+            ConnectionImpl conn = !(wrappedConnection instanceof ConnectionImpl) && wrappedConnection != null
+                ? wrappedConnection.unwrap(ConnectionImpl.class)
+                : ((ConnectionImpl) wrappedConnection);
 
             if (conn == null) {
                 try {
