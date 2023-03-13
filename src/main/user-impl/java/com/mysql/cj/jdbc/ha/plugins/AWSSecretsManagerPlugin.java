@@ -32,9 +32,10 @@
 package com.mysql.cj.jdbc.ha.plugins;
 
 import com.mysql.cj.conf.ConnectionUrl;
+import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertySet;
 import com.mysql.cj.exceptions.CJException;
-import com.mysql.cj.jdbc.ConnectionImpl;
+import com.mysql.cj.jdbc.ha.ConnectionUtils;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.LRUCache;
 
@@ -67,7 +68,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
   static final String SQLSTATE_ACCESS_ERROR = "28000";
 
   static final LRUCache<Pair<String, Region>, Secret> SECRET_CACHE = new LRUCache<>(100);
-
+  private final ICurrentConnectionProvider currentConnectionProvider;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
   private final String secretId;
@@ -129,6 +130,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
           String.format("Configuration parameter '%s' is required.", REGION_PROPERTY));
     }
 
+    this.currentConnectionProvider = currentConnectionProvider;
     this.nextPlugin = nextPlugin;
     this.logger = logger;
     this.secretId = propertySet.getStringProperty(SECRET_ID_PROPERTY).getValue();
@@ -240,6 +242,13 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
     return fetched;
   }
 
+  private void updateCurrentHostInfoWithSecrets(HostInfo hostInfo) {
+    HostInfo currentHostInfo = this.currentConnectionProvider.getCurrentHostInfo();
+    this.currentConnectionProvider.setCurrentConnection(
+        this.currentConnectionProvider.getCurrentConnection(),
+        ConnectionUtils.copyWithAdditionalProps(currentHostInfo, hostInfo));
+  }
+
   /**
    * Called to open a new connection. This plugin is responsible to providing a recent credentials and delegate actual
    * opening a new connection to other plugins in the plugin chain. Eventually a new connection is handled either by
@@ -255,6 +264,7 @@ public class AWSSecretsManagerPlugin implements IConnectionPlugin {
         ConnectionUrl.getConnectionUrlInstance(connectionUrl.getDatabaseUrl(),
             props);
     this.nextPlugin.openInitialConnection(newConnectionUrl);
+    updateCurrentHostInfoWithSecrets(newConnectionUrl.getMainHost());
   }
 
   Secret fetchLatestCredentials() throws SecretsManagerException, JsonProcessingException {
