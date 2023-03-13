@@ -25,7 +25,7 @@ You need to install Amazon Corretto 8+ or Java 8+ before using the AWS JDBC Driv
 ### Installing or Upgrading the AWS JDBC Driver for MySQL
 
 #### Direct Download of the .jar file
-The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that can be downloaded directly from [GitHub Releases](https://github.com/awslabs/aws-mysql-jdbc/releases) or [Maven Central](https://search.maven.org/search?q=g:software.aws.rds). To install the driver, obtain the corresponding JAR file and include it in the application's CLASSPATH:
+The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that can be downloaded directly from [GitHub Releases](https://github.com/awslabs/aws-mysql-jdbc/releases) or [Maven Central](https://central.sonatype.com/search?q=software.aws.rds). To install the driver, obtain the corresponding JAR file and include it in the application's CLASSPATH:
 
 **Example - Direct download with wget**
 ```bash
@@ -44,7 +44,7 @@ export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.4.jar
 ```
 
 #### As a Maven dependency
-You can use [Maven's dependency management](https://search.maven.org/search?q=g:software.aws.rds) to obtain the driver by adding the following configuration to the application's Project Object Model (POM) file:
+You can use [Maven's dependency management](https://central.sonatype.com/search?q=software.aws.rds) to obtain the driver by adding the following configuration to the application's Project Object Model (POM) file:
 
 **Example - Maven**
 ```xml
@@ -71,7 +71,7 @@ To upgrade to a newer version of the driver, replace the version number identifi
 ```
 
 #### As a Gradle dependency
-You can use [Gradle's dependency management](https://search.maven.org/search?q=g:software.aws.rds) to obtain the driver by adding the following configuration to the application's ```build.gradle``` file:
+You can use [Gradle's dependency management](https://central.sonatype.com/search?q=software.aws.rds) to obtain the driver by adding the following configuration to the application's ```build.gradle``` file:
 
 **Example - Gradle**
 ```gradle
