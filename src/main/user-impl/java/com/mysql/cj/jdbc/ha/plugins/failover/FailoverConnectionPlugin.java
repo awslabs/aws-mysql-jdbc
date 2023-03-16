@@ -61,6 +61,7 @@ import javax.net.ssl.SSLException;
 import java.io.EOFException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,22 +96,26 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   static final String METHOD_CLOSE = "close";
   static final String METHOD_IS_CLOSED = "isClosed";
 
-  private final static Set<String> METHODS_REQUIRE_UPDATED_TOPOLOGY = new ConcurrentHashMap<String, String>() {{
-    put(METHOD_COMMIT, METHOD_COMMIT);
-    put("connect", "connect");
-    put("isValid", "isValid");
-    put("rollback", "rollback");
-    put("setAutoCommit", "setAutoCommit");
-    put("setReadOnly", "setReadOnly");
-    put("execute", "execute");
-    put("executeBatch", "executeBatch");
-    put("executeLargeBatch", "executeLargeBatch");
-    put("executeLargeUpdate", "executeLargeUpdate");
-    put("executeQuery", "executeQuery");
-    put("executeUpdate", "executeUpdate");
-    put("executeWithFlags", "executeWithFlags");
-    put("getParameterMetaData", "getParameterMetaData");
-  }}.newKeySet();
+  private final static Set<String> METHODS_REQUIRE_UPDATED_TOPOLOGY = ConcurrentHashMap.newKeySet();
+
+  static {
+    METHODS_REQUIRE_UPDATED_TOPOLOGY.addAll(Arrays.asList(
+        METHOD_COMMIT,
+        "connect",
+        "isValid",
+        "rollback",
+        "setAutoCommit",
+        "setReadOnly",
+        "execute",
+        "executeBatch",
+        "executeLargeBatch",
+        "executeLargeUpdate",
+        "executeQuery",
+        "executeUpdate",
+        "executeWithFlags",
+        "getParameterMetaData"
+    ));
+  }
 
   private static final String METHOD_GET_TRANSACTION_ISOLATION =
       "getTransactionIsolation";
