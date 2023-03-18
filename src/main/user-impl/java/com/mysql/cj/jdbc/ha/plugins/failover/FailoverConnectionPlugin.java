@@ -67,10 +67,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A {@link IConnectionPlugin} implementation that provides cluster-aware failover
@@ -92,22 +96,26 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   static final String METHOD_CLOSE = "close";
   static final String METHOD_IS_CLOSED = "isClosed";
 
-  private static final List<String> METHODS_REQUIRE_UPDATED_TOPOLOGY = new ArrayList<>(Arrays.asList(
-      METHOD_COMMIT,
-      "connect",
-      "isValid",
-      "rollback",
-      "setAutoCommit",
-      "setReadOnly",
-      "execute",
-      "executeBatch",
-      "executeLargeBatch",
-      "executeLargeUpdate",
-      "executeQuery",
-      "executeUpdate",
-      "executeWithFlags",
-      "getParameterMetaData"
-  ));
+  private final static Set<String> METHODS_REQUIRE_UPDATED_TOPOLOGY = ConcurrentHashMap.newKeySet();
+
+  static {
+    METHODS_REQUIRE_UPDATED_TOPOLOGY.addAll(Arrays.asList(
+        METHOD_COMMIT,
+        "connect",
+        "isValid",
+        "rollback",
+        "setAutoCommit",
+        "setReadOnly",
+        "execute",
+        "executeBatch",
+        "executeLargeBatch",
+        "executeLargeUpdate",
+        "executeQuery",
+        "executeUpdate",
+        "executeWithFlags",
+        "getParameterMetaData"
+    ));
+  }
 
   private static final String METHOD_GET_TRANSACTION_ISOLATION =
       "getTransactionIsolation";

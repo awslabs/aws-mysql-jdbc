@@ -307,8 +307,9 @@ public class Util {
      * @return boolean
      */
     public static boolean isJdbcInterface(Class<?> clazz) {
-        if (Util.isJdbcInterfaceCache.containsKey(clazz)) {
-            return (Util.isJdbcInterfaceCache.get(clazz));
+        final Boolean isJdbcInterface = Util.isJdbcInterfaceCache.get(clazz);
+        if (isJdbcInterface != null) {
+            return isJdbcInterface;
         }
 
         if (clazz.isInterface()) {
