@@ -141,26 +141,30 @@ After downloading the .jar file and adding it to your CLASSPATH, add the driver 
 1. Open DBeaver’s `Driver Manager` window and click `New` to add the AWS JDBC Driver.
 
 2. In `Settings`, enter the following information:
-
-```bash
-Default Port: 3306
-Driver Name: AWS JDBC Driver for MySQL
-Class Name: software.aws.rds.jdbc.mysql.Driver
-URL Template: jdbc:mysql:aws://{host}:{port}
-```
+   ```bash
+   Default Port: 3306
+   Driver Name: AWS JDBC Driver for MySQL
+   Class Name: software.aws.rds.jdbc.mysql.Driver
+   URL Template: jdbc:mysql:aws://{host}:{port}
+   ```
 
 3. Go to the `Libraries` tab, click `Add Artifact` and add the following dependency declaration:
-
-```bash
-<dependency>
-  <groupId>software.aws.rds</groupId>
-  <artifactId>aws-mysql-jdbc</artifactId>
-</dependency>
-```
+   ```bash
+   <dependency>
+     <groupId>software.aws.rds</groupId>
+     <artifactId>aws-mysql-jdbc</artifactId>
+   </dependency>
+   ```
 
 4. DBeaver will respond: `Artifacts Found: 1`.
 
-5. Click `OK` to finish adding the driver.
+5. (Optional) Edit the following queries under `Advanced parameters` tab. These custom queries help DBeaver to enable database selector in UI.
+   ```bash
+   Get active database: select database()
+   Set active database: use ?
+   ```
+
+6. Click `OK` to finish adding the driver.
 
 After adding driver information, you can create new connections that use the AWS JDBC Driver for MySQL.
 
