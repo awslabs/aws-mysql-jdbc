@@ -141,6 +141,7 @@ After downloading the .jar file and adding it to your CLASSPATH, add the driver 
 1. Open DBeaver’s `Driver Manager` window and click `New` to add the AWS JDBC Driver.
 
 2. In `Settings`, enter the following information:
+
    ```bash
    Default Port: 3306
    Driver Name: AWS JDBC Driver for MySQL
@@ -149,6 +150,7 @@ After downloading the .jar file and adding it to your CLASSPATH, add the driver 
    ```
 
 3. Go to the `Libraries` tab, click `Add Artifact` and add the following dependency declaration:
+
    ```bash
    <dependency>
      <groupId>software.aws.rds</groupId>
@@ -158,7 +160,8 @@ After downloading the .jar file and adding it to your CLASSPATH, add the driver 
 
 4. DBeaver will respond: `Artifacts Found: 1`.
 
-5. (Optional) Edit the following queries under `Advanced parameters` tab. These custom queries help DBeaver to enable database selector in UI.
+5. (Optional) To enable database selector in the UI, you can add custom queries to DBeaver. Go to the `Advanced parameters` and edit the following queries:
+
    ```bash
    Get active database: select database()
    Set active database: use ?
