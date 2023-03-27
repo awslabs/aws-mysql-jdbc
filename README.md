@@ -693,6 +693,11 @@ cmd /c "SET AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE & SET AWS_SECRET_ACCESS_KEY=w
 Enable logging by specifying the `logger` parameter in the connection string. For more information on the configuration parameter, see [Debugging/Profiling](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-connp-props-debugging-profiling.html).
 The driver currently does not support custom logging outside the usual logging frameworks like SLF4J. For more information on using SLF4J with the driver see [here](https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-logging-slf4j.html).
 
+## Known Limitations
+### Amazon RDS Blue/Green Deployments
+
+This driver currently does not support Amazon RDS Blue/Green Deployments and should be avoided. Executing a Blue/Green deployment with the driver will disconnect the driver from the database, and it will be unable to re-establish a connection to an available database instance.
+
 ## Known Issues
 ### SSLHandshakeException
 Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
