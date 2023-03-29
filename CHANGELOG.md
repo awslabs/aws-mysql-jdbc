@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
 
+## [1.1.5] - 2023-03-31
+### Changed
+
+* Optimized thread locks and expiring cache for the Enhanced Monitoring Plugin ([PR #356](https://github.com/awslabs/aws-mysql-jdbc/pull/356), [PR #373](https://github.com/awslabs/aws-mysql-jdbc/pull/373)).
+* Checked log level to avoid unnecessary resource allocation ([PR #367](https://github.com/awslabs/aws-mysql-jdbc/pull/367)).
+* Updated README.md with the following
+  * `clusterInstanceHostPattern` failover parameter example ([here](https://github.com/awslabs/aws-mysql-jdbc#failover-parameters)).
+  * Latest Maven Central URLs for [direct download of the jar file](https://github.com/awslabs/aws-mysql-jdbc#direct-download-of-the-jar-file), [using the driver as a Maven dependency](https://github.com/awslabs/aws-mysql-jdbc#as-a-maven-dependency), and [using the driver as a Gradle dependency](https://github.com/awslabs/aws-mysql-jdbc#as-a-gradle-dependency). 
+  * DBeaver instructions on how to enable database selectors in the UI ([here](https://github.com/awslabs/aws-mysql-jdbc#using-the-driver-with-a-database-client-dbeaver)).
+  * Clarified that the driver does not support custom RDS clusters ([here](https://github.com/awslabs/aws-mysql-jdbc#connection-url-descriptions)).
+  * Clarified Amazon RDS Blue/Green Deployments are not supported ([here](https://github.com/awslabs/aws-mysql-jdbc#amazon-rds-bluegreen-deployments)).
+
+### Fixed
+* Only update topology for specific methods so that certain workflows are not interrupted ([Issue 363](https://github.com/awslabs/aws-mysql-jdbc/issues/363)).
+* Fixed methods passing in JdbcConnection proxies by adding checks before casting to ConnectionImpl ([Issue 365](https://github.com/awslabs/aws-mysql-jdbc/issues/365)).
+* Fixed AWSSecretsManagerPlugin to update ConnectionProxy HostInfo openInitialConnection to prevent access denied errors ([Issue 361](https://github.com/awslabs/aws-mysql-jdbc/issues/361)).
+
 ## [1.1.4] - 2023-01-27
 ### Fixed
 * Close AWS Secrets Manager Client. This prevents the leaking `PoolingHttpClientConnectionManager` issue described in ([Issue #343](https://github.com/awslabs/aws-mysql-jdbc/issues/343)).
@@ -115,6 +132,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.5]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.4...1.1.5
 [1.1.4]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.3...1.1.4
 [1.1.3]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.2...1.1.3
 [1.1.2]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.1...1.1.2
