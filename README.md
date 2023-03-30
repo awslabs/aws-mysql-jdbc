@@ -807,6 +807,10 @@ If you encounter a bug with the AWS JDBC Driver for MySQL, we would like to hear
 
 The GitHub issues are intended for bug reports and feature requests. Keeping the list of open issues lean will help us respond in a timely manner.
 
+## Releases
+
+The AWS JDBC Driver for MySQL has a regular monthly release cadence. A new release will occur during the last week of each month. However, if there are no changes since the latest release, then a release will not occur. 
+
 ## Documentation
 
 For additional documentation on the AWS JDBC Driver, [please refer to the documentation for the open-source mysql-connector-j driver that the AWS JDBC Driver is based on](https://dev.mysql.com/doc/connector-j/8.0/en/).
