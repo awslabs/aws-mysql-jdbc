@@ -809,7 +809,17 @@ The GitHub issues are intended for bug reports and feature requests. Keeping the
 
 ## Releases
 
-The AWS JDBC Driver for MySQL has a regular monthly release cadence. A new release will occur during the last week of each month. However, if there are no changes since the latest release, then a release will not occur. 
+The AWS JDBC Driver for MySQL has a regular monthly release cadence. A new release will occur during the last week of each month. However, if there are no changes since the latest release, then a release will not occur.
+
+## Aurora Engine Version Testing
+The `aws-mysql-jdbc` driver is being tested against the following Community and Aurora database versions in our test suite:
+
+| Database        | Versions                                                                                                                                                                                                  |
+| --------------- |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| MySQL           | 8.0.21                                                                                                                                                                                                    |
+| Aurora MySQL    | MySQL 5.7.mysql_aurora.2.11.2 (Wire-compatible with MySQL 5.7 onwards. For more details, see [here](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraMySQLReleaseNotes/AuroraMySQL.Updates.2112.html).) |
+
+The `aws-mysql-jdbc` driver is compatible with MySQL 5.7 andMySQL 8.0 as per the Community MySQL Connector/J 8.0 Driver.
 
 ## Documentation
 
