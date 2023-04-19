@@ -1,4 +1,6 @@
 /*
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
  * Copyright (c) 2005, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -94,10 +96,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         }
         sqlBuf.append(" ORDER BY COLUMN_NAME, PRIVILEGE_TYPE");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             pStmt.setString(nextId++, db);
             pStmt.setString(nextId++, table);
@@ -109,10 +108,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(getColumnPrivilegesFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -259,11 +254,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(conditionBuf);
         sqlBuf.append(" ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
-
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -279,10 +270,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
 
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createColumnsFields());
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -329,10 +316,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(" AND A.TABLE_NAME=?");
         sqlBuf.append(" ORDER BY FKTABLE_NAME, FKTABLE_NAME, KEY_SEQ");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (primaryDb != null) {
                 pStmt.setString(nextId++, primaryDb);
@@ -347,10 +331,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createFkMetadataFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -390,10 +370,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(" AND A.REFERENCED_TABLE_NAME=?");
         sqlBuf.append(" ORDER BY FKTABLE_NAME, FKTABLE_NAME, KEY_SEQ");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
 
             if (db != null) {
@@ -406,10 +383,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createFkMetadataFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
 
     }
@@ -467,10 +440,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(" AND A.REFERENCED_TABLE_SCHEMA IS NOT NULL");
         sqlBuf.append(" ORDER BY A.REFERENCED_TABLE_SCHEMA, A.REFERENCED_TABLE_NAME, A.ORDINAL_POSITION");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -482,10 +452,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createFkMetadataFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -512,11 +478,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         }
         sqlBuf.append("ORDER BY NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -528,10 +490,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createIndexInfoFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -556,10 +514,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(" TABLE_NAME = ?");
         sqlBuf.append(" AND INDEX_NAME='PRIMARY' ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -570,10 +525,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(getPrimaryKeysFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -619,10 +570,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         }
         sqlBuf.append(" ORDER BY ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE_TYPE");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -635,10 +583,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createFieldMetadataForGetProcedures());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -775,11 +719,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         }
         sqlBuf.append(" ORDER BY SPECIFIC_SCHEMA, SPECIFIC_NAME, ROUTINE_TYPE, ORDINAL_POSITION");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
-
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -795,10 +735,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createProcedureColumnsFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -815,8 +751,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
                 tableNamePattern = parseList.get(1);
             }
         }
-
-        java.sql.PreparedStatement pStmt = null;
 
         StringBuilder sqlBuf = new StringBuilder(
                 this.databaseTerm.getValue() == DatabaseTerm.SCHEMA ? "SELECT TABLE_CATALOG AS TABLE_CAT, TABLE_SCHEMA AS TABLE_SCHEM,"
@@ -846,9 +780,8 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             sqlBuf.append(" HAVING TABLE_TYPE IN (?,?,?,?,?)");
         }
         sqlBuf.append(" ORDER BY TABLE_TYPE, TABLE_SCHEMA, TABLE_NAME");
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
 
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db != null ? db : "%");
@@ -874,10 +807,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).setColumnDefinition(createTablesFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -920,10 +849,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(" TABLE_NAME = ?");
         sqlBuf.append(" AND EXTRA LIKE '%on update CURRENT_TIMESTAMP%'");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -934,10 +860,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(getVersionColumnsFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -1066,10 +988,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         sqlBuf.append(conditionBuf);
         sqlBuf.append(" ORDER BY SPECIFIC_SCHEMA, SPECIFIC_NAME, ORDINAL_POSITION");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -1085,10 +1004,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(createFunctionColumnsFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -1148,10 +1063,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
 
         sqlBuf.append(" ORDER BY FUNCTION_CAT, FUNCTION_SCHEM, FUNCTION_NAME, SPECIFIC_NAME");
 
-        java.sql.PreparedStatement pStmt = null;
-
-        try {
-            pStmt = prepareMetaDataSafeStatement(sqlBuf.toString());
+        try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
             if (db != null) {
                 pStmt.setString(nextId++, db);
@@ -1164,10 +1076,6 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) rs).getColumnDefinition().setFields(getFunctionsFields());
 
             return rs;
-        } finally {
-            if (pStmt != null) {
-                pStmt.close();
-            }
         }
     }
 
@@ -1190,12 +1098,12 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             }
 
             List<String> keywordsFromServer = new ArrayList<>();
-            Statement stmt = this.conn.getMetadataSafeStatement();
-            ResultSet rs = stmt.executeQuery("SELECT WORD FROM INFORMATION_SCHEMA.KEYWORDS WHERE RESERVED=1 ORDER BY WORD");
-            while (rs.next()) {
-                keywordsFromServer.add(rs.getString(1));
+            try (Statement stmt = this.conn.getMetadataSafeStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT WORD FROM INFORMATION_SCHEMA.KEYWORDS WHERE RESERVED=1 ORDER BY WORD")) {
+                while (rs.next()) {
+                    keywordsFromServer.add(rs.getString(1));
+                }
             }
-            stmt.close();
 
             keywordsFromServer.removeAll(SQL2003_KEYWORDS);
             keywords = String.join(",", keywordsFromServer);
