@@ -1,4 +1,6 @@
 /*
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
  * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -1878,22 +1880,15 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
 
                 if (hadOutputParams) {
                     // We can't use 'ourself' to execute this query, or any pending result sets would be overwritten
-                    java.sql.Statement outParameterStmt = null;
-                    java.sql.ResultSet outParamRs = null;
 
-                    try {
-                        outParameterStmt = this.connection.createStatement();
-                        outParamRs = outParameterStmt.executeQuery(outParameterQuery.toString());
+                    try (java.sql.Statement outParameterStmt = this.connection.createStatement();
+                         ResultSet outParamRs = outParameterStmt.executeQuery(outParameterQuery.toString())) {
                         this.outputParameterResults = this.resultSetFactory.createFromResultsetRows(outParamRs.getConcurrency(), outParamRs.getType(),
                                 ((com.mysql.cj.jdbc.result.ResultSetInternalMethods) outParamRs).getRows()); // note, doesn't work for updatable result sets
 
                         if (!this.outputParameterResults.next()) {
                             this.outputParameterResults.close();
                             this.outputParameterResults = null;
-                        }
-                    } finally {
-                        if (outParameterStmt != null) {
-                            outParameterStmt.close();
                         }
                     }
                 } else {
@@ -1978,16 +1973,9 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                         queryBuf.append(inOutParameterName);
                         queryBuf.append("=?");
 
-                        ClientPreparedStatement setPstmt = null;
-
-                        try {
-                            setPstmt = ((Wrapper) this.connection.clientPrepareStatement(queryBuf.toString())).unwrap(ClientPreparedStatement.class);
+                        try (ClientPreparedStatement setPstmt = ((Wrapper) this.connection.clientPrepareStatement(queryBuf.toString())).unwrap(ClientPreparedStatement.class)) {
                             setPstmt.getQueryBindings().setFromBindValue(0, ((PreparedQuery) this.query).getQueryBindings().getBindValues()[inParamInfo.index]);
                             setPstmt.executeUpdate();
-                        } finally {
-                            if (setPstmt != null) {
-                                setPstmt.close();
-                            }
                         }
                     }
                 }
@@ -2245,10 +2233,7 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                 return this.paramInfo.isReadOnlySafeProcedure;
             }
 
-            ResultSet rs = null;
-            java.sql.PreparedStatement ps = null;
-
-            try {
+            try (java.sql.PreparedStatement ps = this.connection.prepareStatement("SELECT SQL_DATA_ACCESS FROM information_schema.routines WHERE routine_schema = ? AND routine_name = ?")) {
                 String procName = extractProcedureName();
 
                 String db = this.getCurrentDatabase();
@@ -2263,33 +2248,27 @@ public class CallableStatement extends ClientPreparedStatement implements java.s
                     procName = procName.substring(procName.indexOf(".") + 1);
                     procName = StringUtils.toString(StringUtils.stripEnclosure(StringUtils.getBytes(procName), "`", "`"));
                 }
-                ps = this.connection.prepareStatement("SELECT SQL_DATA_ACCESS FROM information_schema.routines WHERE routine_schema = ? AND routine_name = ?");
                 ps.setMaxRows(0);
                 ps.setFetchSize(0);
 
                 ps.setString(1, db);
                 ps.setString(2, procName);
-                rs = ps.executeQuery();
-                if (rs.next()) {
-                    String sqlDataAccess = rs.getString(1);
-                    if ("READS SQL DATA".equalsIgnoreCase(sqlDataAccess) || "NO SQL".equalsIgnoreCase(sqlDataAccess)) {
-                        synchronized (this.paramInfo) {
-                            this.paramInfo.isReadOnlySafeChecked = true;
-                            this.paramInfo.isReadOnlySafeProcedure = true;
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        String sqlDataAccess = rs.getString(1);
+                        if ("READS SQL DATA".equalsIgnoreCase(sqlDataAccess) ||
+                            "NO SQL".equalsIgnoreCase(sqlDataAccess)) {
+                            synchronized (this.paramInfo) {
+                                this.paramInfo.isReadOnlySafeChecked = true;
+                                this.paramInfo.isReadOnlySafeProcedure = true;
+                            }
+                            return true;
                         }
-                        return true;
                     }
                 }
             } catch (SQLException e) {
                 // swallow the Exception
-            } finally {
-                if (rs != null) {
-                    rs.close();
-                }
-                if (ps != null) {
-                    ps.close();
-                }
-
             }
             this.paramInfo.isReadOnlySafeChecked = false;
             this.paramInfo.isReadOnlySafeProcedure = false;
