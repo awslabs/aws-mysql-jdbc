@@ -263,7 +263,7 @@ dependencies {
     testImplementation("software.amazon.awssdk:ec2:2.17.191")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.2")
     testImplementation("org.junit.platform:junit-platform-commons:1.9.1")
     testImplementation("org.junit.platform:junit-platform-engine:1.9.1")
     testImplementation("org.junit.platform:junit-platform-launcher:1.9.1")
