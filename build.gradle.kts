@@ -136,7 +136,7 @@ tasks.shadowJar {
     exclude("instrumentation/**")
     exclude("demo/**")
     exclude("documentation/**")
-    exclude("customplugins/SampleApplication.*");
+    exclude("customplugins/**");
 
     includeEmptyDirs = false
 }
