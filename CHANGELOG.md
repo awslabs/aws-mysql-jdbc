@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.1.6] - 2023-04-28
+### Changed
+
+* Refactored resource shutdown for `DatabaseMetaDataUsingInfoSchema` and `CallableStatement` ([PR #388](https://github.com/awslabs/aws-mysql-jdbc/pull/388) & [PR #390](https://github.com/awslabs/aws-mysql-jdbc/pull/390)).
+* Upgraded `com.github.vlsi.license-gather` from 1.77 to 1.87 and `junit-jupiter-engine` from 5.8.2 to 5.9.2 ([PR #378](https://github.com/awslabs/aws-mysql-jdbc/pull/378) & [PR #355](https://github.com/awslabs/aws-mysql-jdbc/pull/355)).
+* Excluded `SampleApplication` from distribution jar ([PR #392](https://github.com/awslabs/aws-mysql-jdbc/pull/392)).
+* Updated README with list of database engine versions tested against ([here](https://github.com/awslabs/aws-mysql-jdbc#aurora-engine-version-testing)).
 
 ## [1.1.5] - 2023-03-31
 ### Changed
@@ -132,6 +139,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.6]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.5...1.1.6
 [1.1.5]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.4...1.1.5
 [1.1.4]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.3...1.1.4
 [1.1.3]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.2...1.1.3
