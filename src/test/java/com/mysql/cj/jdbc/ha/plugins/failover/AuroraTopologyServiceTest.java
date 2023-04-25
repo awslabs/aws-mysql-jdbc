@@ -36,13 +36,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.exceptions.WrongArgumentException;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.StatementImpl;
@@ -55,9 +55,9 @@ import org.mockito.Mockito;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -206,6 +206,12 @@ public class AuroraTopologyServiceTest {
     stubTopologyResponseDataMultiWriter(results);
   }
 
+  private void stubTopologyQueryWithInvalidLastUpdatedTimestamp(Connection conn, Statement stmt, ResultSet results)
+      throws SQLException {
+    stubTopologyQueryExecution(conn, stmt, results);
+    stubTopologyResponseDataWithInvalidLastUpdatedTimestamp(results);
+  }
+
   private void stubTopologyQueryExecution(Connection conn, Statement stmt, ResultSet results)
       throws SQLException {
     when(conn.createStatement()).thenReturn(stmt);
@@ -258,6 +264,29 @@ public class AuroraTopologyServiceTest {
     when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);
   }
 
+  private void stubTopologyResponseDataWithInvalidLastUpdatedTimestamp(ResultSet results) throws SQLException {
+    when(results.next()).thenReturn(true, true, true, false);
+    when(results.getString(AuroraTopologyService.FIELD_SESSION_ID))
+        .thenReturn(
+            "Replica",
+            "Replica",
+            AuroraTopologyService.WRITER_SESSION_ID,
+            AuroraTopologyService.WRITER_SESSION_ID,
+            "Replica",
+            "Replica");
+    when(results.getString(AuroraTopologyService.FIELD_SERVER_ID))
+        .thenReturn(
+            "replica-instance-1",
+            "replica-instance-1",
+            "writer-instance",
+            "writer-instance",
+            "replica-instance-2",
+            "replica-instance-2");
+    when(results.getTimestamp(AuroraTopologyService.FIELD_LAST_UPDATED))
+        .thenThrow(WrongArgumentException.class);
+
+    when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);
+  }
   @Test
   public void testCachedEntryRetrieved() throws SQLException {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
@@ -479,5 +508,40 @@ public class AuroraTopologyServiceTest {
 
     spyProvider.clearAll();
     assertEquals(0, AuroraTopologyService.downHostCache.size());
+  }
+
+  @Test
+  public void testTopologyQueryGivenInvalidLastUpdatedTimestamp() throws SQLException {
+    final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
+    final Statement mockStatement = Mockito.mock(StatementImpl.class);
+    final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
+    stubTopologyQueryWithInvalidLastUpdatedTimestamp(mockConn, mockStatement, mockResultSet);
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+    final Properties mainHostProps = new Properties();
+    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, mainHostProps);
+    final HostInfo mainHost = conStr.getMainHost();
+
+    final HostInfo clusterInstanceInfo =
+        new HostInfo(
+            conStr,
+            "?.XYZ.us-east-2.rds.amazonaws.com",
+            mainHost.getPort(),
+            mainHost.getUser(),
+            mainHost.getPassword(),
+            mainHost.getHostProperties());
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
+
+    final List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
+
+    final HostInfo master = topology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
+    final List<HostInfo> replicas =
+        topology.subList(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1, topology.size());
+
+    final Map<String, String> props = master.getHostProperties();
+    // Expected and actual lastUpdated timestamp are rounded since mocking the lastUpdated timestamp is difficult
+    final String expectedLastUpdatedTimeStampRounded = Timestamp.from(Instant.now()).toString().substring(0,16);
+    final String actualLastUpdatedTimeStampRounded = props.get(TopologyServicePropertyKeys.LAST_UPDATED).substring(0,16);
+    assertEquals(expectedLastUpdatedTimeStampRounded, actualLastUpdatedTimeStampRounded);
   }
 }
