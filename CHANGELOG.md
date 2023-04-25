@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Excluded `SampleApplication` from distribution jar ([PR #392](https://github.com/awslabs/aws-mysql-jdbc/pull/392)).
 * Updated README with list of database engine versions tested against ([here](https://github.com/awslabs/aws-mysql-jdbc#aurora-engine-version-testing)).
 
+### Fixed
+* Fixed `AuroraTopologyService` to use fallback timestamp when the topology query results in an invalid timestamp during daylight savings ([Issue 386](https://github.com/awslabs/aws-mysql-jdbc/issues/386)).
+
 ## [1.1.5] - 2023-03-31
 ### Changed
 
