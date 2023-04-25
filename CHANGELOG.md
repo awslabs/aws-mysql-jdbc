@@ -6,13 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.1.6] - 2023-04-28
 ### Changed
 
-* Refactored try blocks to try-with-resources for `DatabaseMetaDataUsingInfoSchema` class ([PR #388](https://github.com/awslabs/aws-mysql-jdbc/pull/388)).
-* Refactored resource shutdown for `CallableStatement` class ([PR #390](https://github.com/awslabs/aws-mysql-jdbc/pull/390)).
+* Refactored resource shutdown for `DatabaseMetaDataUsingInfoSchema` and `CallableStatement` ([PR #388](https://github.com/awslabs/aws-mysql-jdbc/pull/388) & [PR #390](https://github.com/awslabs/aws-mysql-jdbc/pull/390)).
 * Upgraded `com.github.vlsi.license-gather` from 1.77 to 1.87 and `junit-jupiter-engine` from 5.8.2 to 5.9.2 ([PR #378](https://github.com/awslabs/aws-mysql-jdbc/pull/378) & [PR #355](https://github.com/awslabs/aws-mysql-jdbc/pull/355)).
-* Updated README with list of database engine versions tested against ([here](https://github.com/awslabs/aws-mysql-jdbc#aurora-engine-version-testing)).
-
-### Fixed
 * Excluded `SampleApplication` from distribution jar ([PR #392](https://github.com/awslabs/aws-mysql-jdbc/pull/392)).
+* Updated README with list of database engine versions tested against ([here](https://github.com/awslabs/aws-mysql-jdbc#aurora-engine-version-testing)).
 
 ## [1.1.5] - 2023-03-31
 ### Changed
