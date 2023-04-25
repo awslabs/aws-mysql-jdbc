@@ -36,6 +36,7 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
+import com.mysql.cj.exceptions.WrongArgumentException;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;
@@ -47,6 +48,7 @@ import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -331,9 +333,17 @@ public class AuroraTopologyService implements ITopologyService {
     properties.put(
         TopologyServicePropertyKeys.SESSION_ID,
         resultSet.getString(FIELD_SESSION_ID));
-    properties.put(
-        TopologyServicePropertyKeys.LAST_UPDATED,
-        convertTimestampToString(resultSet.getTimestamp(FIELD_LAST_UPDATED)));
+    try {
+      properties.put(
+          TopologyServicePropertyKeys.LAST_UPDATED,
+          convertTimestampToString(resultSet.getTimestamp(FIELD_LAST_UPDATED)));
+    } catch (WrongArgumentException ex) {
+      // Fallback in case timestamp is invalid time. (ex. daylight savings)
+      properties.put(
+          TopologyServicePropertyKeys.LAST_UPDATED,
+          convertTimestampToString(Timestamp.from(Instant.now())));
+    }
+
     properties.put(
         TopologyServicePropertyKeys.REPLICA_LAG,
         Double.valueOf(resultSet.getDouble(FIELD_REPLICA_LAG)).toString());
