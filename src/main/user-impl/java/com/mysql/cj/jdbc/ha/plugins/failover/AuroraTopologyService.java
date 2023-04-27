@@ -49,13 +49,7 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -93,6 +87,7 @@ public class AuroraTopologyService implements ITopologyService {
 
   protected String clusterId;
   protected HostInfo clusterInstanceTemplate;
+  protected Boolean initMultiWriterCluster;
 
   protected IClusterAwareMetricsContainer metricsContainer;
 
@@ -215,22 +210,36 @@ public class AuroraTopologyService implements ITopologyService {
     long startTimeMs = System.currentTimeMillis();
 
     ClusterTopologyInfo topologyInfo = null;
-
-    try (Statement stmt = conn.createStatement()) {
-      try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
-        topologyInfo = processQueryResults(resultSet);
-      }
-    } catch (SQLSyntaxErrorException e) {
-      // We may get SQLSyntaxErrorException like the following from MySQL databases:
-      // "Unknown table 'REPLICA_HOST_STATUS' in information_schema"
-      // Ignore this kind of exceptions.
+    try {
+      do {
+        try (Statement stmt = conn.createStatement()) {
+          try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
+            topologyInfo = processQueryResults(resultSet);
+          }
+        } catch (SQLSyntaxErrorException e) {
+          // We may get SQLSyntaxErrorException like the following from MySQL databases:
+          // "Unknown table 'REPLICA_HOST_STATUS' in information_schema"
+          // Ignore this kind of exceptions.
+        }
+        if(initMultiWriterCluster != null && !initMultiWriterCluster
+                && topologyInfo != null && topologyInfo.getMultiWriterCluster()){//When failover, MultiWriterCluster returns true, and restore after re-query
+          TimeUnit.SECONDS.sleep(2L);
+        }
+      } while (initMultiWriterCluster != null && !initMultiWriterCluster
+              && topologyInfo != null && topologyInfo.getMultiWriterCluster());
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
     } finally {
       if (gatherPerfMetrics(conn.getPropertySet())) {
         long currentTimeMs = System.currentTimeMillis();
         this.metricsContainer.registerTopologyQueryExecutionTime(currentTimeMs - startTimeMs);
       }
     }
-
+    Optional.ofNullable(topologyInfo).ifPresent(e->{
+      if(initMultiWriterCluster==null) {//The initial value setting must be correct
+        initMultiWriterCluster = e.getMultiWriterCluster();
+      }
+    });
     return topologyInfo != null
         ? topologyInfo
         : new ClusterTopologyInfo(new ArrayList<>(),false);
