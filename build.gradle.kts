@@ -52,7 +52,7 @@ plugins {
     id("com.github.vlsi.crlf") version "1.86"
     id("com.github.vlsi.gradle-extensions") version "1.86"
     id("com.github.vlsi.license-gather") version "1.87" apply false
-    id("com.github.vlsi.stage-vote-release") version "1.82"
+    id("com.github.vlsi.stage-vote-release") version "1.88"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
