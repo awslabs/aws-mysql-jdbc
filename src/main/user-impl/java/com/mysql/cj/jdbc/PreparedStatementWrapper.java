@@ -29,6 +29,7 @@
 
 package com.mysql.cj.jdbc;
 
+import com.mysql.cj.exceptions.CJException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.lang.reflect.Proxy;
@@ -618,7 +619,7 @@ public class PreparedStatementWrapper extends StatementWrapper implements Prepar
                 try {
                     currentStatement = this.wrappedStmt.unwrap(ClientPreparedStatement.class);
                 } catch (SQLException e) {
-                    throw new RuntimeException(e);
+                    throw new CJException(e);
                 }
             }
             buf.append(((PreparedQuery) currentStatement.getQuery()).asSql());
@@ -955,7 +956,7 @@ public class PreparedStatementWrapper extends StatementWrapper implements Prepar
                     try {
                         currentStatement = this.wrappedStmt.unwrap(ClientPreparedStatement.class);
                     } catch (SQLException e) {
-                        throw new RuntimeException(e);
+                        throw new CJException(e);
                     }
                 }
                 return currentStatement.executeLargeUpdate();
