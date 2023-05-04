@@ -56,7 +56,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -228,8 +227,9 @@ public class AuroraTopologyService implements ITopologyService {
           // "Unknown table 'REPLICA_HOST_STATUS' in information_schema"
           // Ignore this kind of exceptions.
         }
+        // When failover, getMultiWriterCluster returns true, and restore after re-query
         if(initMultiWriterCluster != null && !initMultiWriterCluster
-                && topologyInfo != null && topologyInfo.getMultiWriterCluster()){//When failover, MultiWriterCluster returns true, and restore after re-query
+                && topologyInfo != null && topologyInfo.getMultiWriterCluster()){
           TimeUnit.SECONDS.sleep(2L);
         }
       } while (initMultiWriterCluster != null && !initMultiWriterCluster
@@ -242,11 +242,10 @@ public class AuroraTopologyService implements ITopologyService {
         this.metricsContainer.registerTopologyQueryExecutionTime(currentTimeMs - startTimeMs);
       }
     }
-    Optional.ofNullable(topologyInfo).ifPresent(e->{
-      if(initMultiWriterCluster==null) {//The initial value setting must be correct
-        initMultiWriterCluster = e.getMultiWriterCluster();
-      }
-    });
+    //The initial value setting must be correct
+    if(topologyInfo != null && initMultiWriterCluster==null) {
+      initMultiWriterCluster = topologyInfo.getMultiWriterCluster();
+    }
     return topologyInfo != null
         ? topologyInfo
         : new ClusterTopologyInfo(new ArrayList<>(),false);
