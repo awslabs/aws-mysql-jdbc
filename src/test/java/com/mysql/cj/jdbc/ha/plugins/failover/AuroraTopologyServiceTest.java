@@ -111,14 +111,60 @@ public class AuroraTopologyServiceTest {
 
     final Map<String, String> props = master.getHostProperties();
     assertEquals("writer-instance", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
-    assertEquals(
-        AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
+    assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
 
-    assertFalse(spyProvider.isMultiWriterCluster());
     assertEquals(3, topology.size());
     assertEquals(2, replicas.size());
+  }
+
+  @Test
+  public void testTopologyQuery_StaleRecord() throws SQLException {
+    final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
+    final Statement mockStatement = Mockito.mock(StatementImpl.class);
+    final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
+    stubTopologyQuery(mockConn, mockStatement, mockResultSet);
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
+    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
+    final HostInfo mainHost = conStr.getMainHost();
+
+    final HostInfo clusterInstanceInfo =
+        new HostInfo(
+            conStr,
+            "?.XYZ.us-east-2.rds.amazonaws.com",
+            mainHost.getPort(),
+            mainHost.getUser(),
+            mainHost.getPassword(),
+            mainHost.getHostProperties());
+    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
+
+    // Set up topology cache as though there was an initial successful connection
+    spyProvider.getTopology(mockConn, false);
+
+    // If the failover bug where multiple writers would appear in the topology after writer failover, verify the
+    // topology service handles it correctly.
+    stubTopologyQueryStaleRecord(mockConn, mockStatement, mockResultSet);
+    List<HostInfo> topology =  spyProvider.getTopology(mockConn, true);
+    final HostInfo master = topology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
+
+    final List<HostInfo> replicas =
+        topology.subList(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1, topology.size());
+
+    assertEquals("writer-instance-1.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
+    assertEquals(1234, master.getPort());
+    assertNull(master.getUser());
+    assertNull(master.getPassword());
+
+    final Map<String, String> props = master.getHostProperties();
+    assertEquals("writer-instance-1", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
+    assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
+    assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
+    assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
+
+    assertEquals(2, topology.size());
+    assertEquals(1, replicas.size());
   }
 
   @Test
@@ -126,7 +172,7 @@ public class AuroraTopologyServiceTest {
     final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
     final Statement mockStatement = Mockito.mock(StatementImpl.class);
     final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
-    stubTopologyQueryMultiWriter(mockConn, mockStatement, mockResultSet);
+    stubTopologyQueryStaleRecord(mockConn, mockStatement, mockResultSet);
     final String url =
         "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
     final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
@@ -143,55 +189,7 @@ public class AuroraTopologyServiceTest {
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
     final List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
-    final List<HostInfo> readers =
-        topology.subList(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1, topology.size());
-
-    assertTrue(spyProvider.isMultiWriterCluster());
-    assertEquals(3, topology.size());
-    assertEquals(2, readers.size());
-
-    final HostInfo master1 = topology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
-    final HostInfo master2 = topology.get(1);
-    final HostInfo master3 = topology.get(2);
-
-    assertEquals("writer-instance-1.XYZ.us-east-2.rds.amazonaws.com", master1.getHost());
-    assertEquals(1234, master1.getPort());
-    assertNull(master1.getUser());
-    assertNull(master1.getPassword());
-
-    assertEquals("writer-instance-2.XYZ.us-east-2.rds.amazonaws.com", master2.getHost());
-    assertEquals(1234, master2.getPort());
-    assertNull(master2.getUser());
-    assertNull(master2.getPassword());
-
-    assertEquals("writer-instance-3.XYZ.us-east-2.rds.amazonaws.com", master3.getHost());
-    assertEquals(1234, master3.getPort());
-    assertNull(master3.getUser());
-    assertNull(master3.getPassword());
-
-    Map<String, String> props1 = master1.getHostProperties();
-    assertEquals("writer-instance-1", props1.get(TopologyServicePropertyKeys.INSTANCE_NAME));
-    assertEquals(
-        AuroraTopologyService.WRITER_SESSION_ID,
-        props1.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals("2020-09-15 17:51:53.0", props1.get(TopologyServicePropertyKeys.LAST_UPDATED));
-    assertEquals("13.5", props1.get(TopologyServicePropertyKeys.REPLICA_LAG));
-
-    Map<String, String> props2 = master2.getHostProperties();
-    assertEquals("writer-instance-2", props2.get(TopologyServicePropertyKeys.INSTANCE_NAME));
-    assertEquals(
-        AuroraTopologyService.WRITER_SESSION_ID,
-        props2.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals("2020-09-15 17:51:53.0", props2.get(TopologyServicePropertyKeys.LAST_UPDATED));
-    assertEquals("13.5", props2.get(TopologyServicePropertyKeys.REPLICA_LAG));
-
-    Map<String, String> props3 = master3.getHostProperties();
-    assertEquals("writer-instance-3", props3.get(TopologyServicePropertyKeys.INSTANCE_NAME));
-    assertEquals(
-        AuroraTopologyService.WRITER_SESSION_ID,
-        props3.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals("2020-09-15 17:51:53.0", props3.get(TopologyServicePropertyKeys.LAST_UPDATED));
-    assertEquals("13.5", props3.get(TopologyServicePropertyKeys.REPLICA_LAG));
+    assertNull(topology);
   }
 
   private void stubTopologyQuery(Connection conn, Statement stmt, ResultSet results)
@@ -200,10 +198,10 @@ public class AuroraTopologyServiceTest {
     stubTopologyResponseData(results);
   }
 
-  private void stubTopologyQueryMultiWriter(Connection conn, Statement stmt, ResultSet results)
+  private void stubTopologyQueryStaleRecord(Connection conn, Statement stmt, ResultSet results)
       throws SQLException {
     stubTopologyQueryExecution(conn, stmt, results);
-    stubTopologyResponseDataMultiWriter(results);
+    stubTopologyResponseDataStaleRecord(results);
   }
 
   private void stubTopologyQueryWithInvalidLastUpdatedTimestamp(Connection conn, Statement stmt, ResultSet results)
@@ -241,24 +239,24 @@ public class AuroraTopologyServiceTest {
     when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);
   }
 
-  private void stubTopologyResponseDataMultiWriter(ResultSet results) throws SQLException {
+  private void stubTopologyResponseDataStaleRecord(ResultSet results) throws SQLException {
     when(results.next()).thenReturn(true, true, true, false);
     when(results.getString(AuroraTopologyService.FIELD_SESSION_ID))
         .thenReturn(
-            AuroraTopologyService.WRITER_SESSION_ID,
-            AuroraTopologyService.WRITER_SESSION_ID,
+            "Replica",
+            "Replica",
             AuroraTopologyService.WRITER_SESSION_ID,
             AuroraTopologyService.WRITER_SESSION_ID,
             AuroraTopologyService.WRITER_SESSION_ID,
             AuroraTopologyService.WRITER_SESSION_ID);
     when(results.getString(AuroraTopologyService.FIELD_SERVER_ID))
         .thenReturn(
+            "replica-instance-1",
+            "replica-instance-1",
+            "writer-instance",
+            "writer-instance",
             "writer-instance-1",
-            "writer-instance-1",
-            "writer-instance-2",
-            "writer-instance-2",
-            "writer-instance-3",
-            "writer-instance-3");
+            "writer-instance-1");
     when(results.getTimestamp(AuroraTopologyService.FIELD_LAST_UPDATED))
         .thenReturn(Timestamp.valueOf("2020-09-15 17:51:53.0"));
     when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);

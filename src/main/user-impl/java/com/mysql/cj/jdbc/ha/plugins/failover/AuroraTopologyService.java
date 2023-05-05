@@ -89,7 +89,6 @@ public class AuroraTopologyService implements ITopologyService {
   public static final CacheMap<String, List<HostInfo>> topologyCache = new CacheMap<>();
   public static final CacheMap<String, Set<String>> downHostCache = new CacheMap<>();
   public static final CacheMap<String, HostInfo> lastUsedReaderCache = new CacheMap<>();
-  public static final CacheMap<String, Boolean> multiWriterClusterCache = new CacheMap<>();
 
   protected String clusterId;
   protected HostInfo clusterInstanceTemplate;
@@ -177,7 +176,7 @@ public class AuroraTopologyService implements ITopologyService {
    * @param forceUpdate If true, it forces a service to ignore cached copy of topology and to fetch
    *     a fresh one.
    * @return A list of hosts that describes cluster topology. A writer is always at position 0.
-   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer).
+   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer or multi writer).
    */
   @Override
   public List<HostInfo> getTopology(JdbcConnection conn, boolean forceUpdate)
@@ -190,9 +189,6 @@ public class AuroraTopologyService implements ITopologyService {
       ClusterTopologyInfo latestTopologyInfo = queryForTopology(conn);
 
       if (latestTopologyInfo != null) {
-        multiWriterClusterCache.put(
-            this.clusterId, latestTopologyInfo.getMultiWriterCluster(), this.refreshRateNanos);
-
         downHostCache.get(this.clusterId, ConcurrentHashMap.newKeySet(), this.refreshRateNanos).clear();
 
         if (!Util.isNullOrEmpty(latestTopologyInfo.getHosts())) {
@@ -233,7 +229,7 @@ public class AuroraTopologyService implements ITopologyService {
 
     return topologyInfo != null
         ? topologyInfo
-        : new ClusterTopologyInfo(new ArrayList<>(),false);
+        : new ClusterTopologyInfo(new ArrayList<>());
   }
 
   /**
@@ -257,33 +253,48 @@ public class AuroraTopologyService implements ITopologyService {
    */
   private ClusterTopologyInfo processQueryResults(ResultSet resultSet)
       throws SQLException {
-    int writerCount = 0;
 
     List<HostInfo> hosts = new ArrayList<>();
+    List<HostInfo> writers = new ArrayList<>();
     while (resultSet.next()) {
       if (!WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
         hosts.add(createHost(resultSet));
         continue;
       }
 
-      if (writerCount == 0) {
-        // store the first writer to its expected position [0]
-        hosts.add(
-            FailoverConnectionPlugin.WRITER_CONNECTION_INDEX,
-            createHost(resultSet));
-      } else {
-        // append other writers, if any, to the end of the host list
-        hosts.add(createHost(resultSet));
-      }
-      writerCount++;
+      writers.add(createHost(resultSet));
     }
+
+    int writerCount = writers.size();
 
     if (writerCount == 0) {
       this.log.logError(Messages.getString("AuroraTopologyService.3"));
       hosts.clear();
+    } else if (writerCount == 1) {
+      // Store the first writer to its expected position [0]
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
+    } else {
+      List<HostInfo> previousTopology = topologyCache.get(this.clusterId);
+      HostInfo oldWriter = previousTopology == null ?
+          null : previousTopology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
+
+      // There is potentially a stale record. Do not add it to the hosts list.
+      if (writerCount == 2
+          && oldWriter != null
+          && (oldWriter.getHost().equalsIgnoreCase(writers.get(0).getHost())
+              || oldWriter.getHost().equalsIgnoreCase(writers.get(1).getHost()))) {
+        if (oldWriter.getHost().equalsIgnoreCase(writers.get(0).getHost())) {
+          hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(1));
+        } else if (oldWriter.getHost().equalsIgnoreCase(writers.get(1).getHost())) {
+          hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
+        }
+      } else {
+        this.log.logError(Messages.getString("AuroraTopologyService.4"));
+        hosts.clear();
+      }
     }
 
-    return new ClusterTopologyInfo(hosts, writerCount > 1);
+    return new ClusterTopologyInfo(hosts);
   }
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
@@ -465,16 +476,6 @@ public class AuroraTopologyService implements ITopologyService {
   }
 
   /**
-   * Check if cached topology belongs to multi-writer cluster.
-   *
-   * @return True, if it's multi-writer cluster.
-   */
-  @Override
-  public boolean isMultiWriterCluster() {
-    return multiWriterClusterCache.get(this.clusterId, false, this.refreshRateNanos);
-  }
-
-  /**
    * Set new topology refresh rate. Different service instances may have different topology refresh
    * rate while sharing the same topology cache.
    *
@@ -490,7 +491,6 @@ public class AuroraTopologyService implements ITopologyService {
   public void clearAll() {
     topologyCache.clear();
     downHostCache.clear();
-    multiWriterClusterCache.clear();
     lastUsedReaderCache.clear();
   }
 
@@ -499,20 +499,16 @@ public class AuroraTopologyService implements ITopologyService {
   public void clear() {
     topologyCache.remove(this.clusterId);
     downHostCache.remove(this.clusterId);
-    multiWriterClusterCache.remove(this.clusterId);
     lastUsedReaderCache.remove(this.clusterId);
   }
 
   private static class ClusterTopologyInfo {
     private List<HostInfo> hosts;
-    private boolean isMultiWriterCluster;
 
-    ClusterTopologyInfo(List<HostInfo> hosts, boolean isMultiWriterCluster) {
+    ClusterTopologyInfo(List<HostInfo> hosts) {
       this.hosts = hosts;
-      this.isMultiWriterCluster = isMultiWriterCluster;
     }
 
     List<HostInfo> getHosts() { return this.hosts; }
-    boolean getMultiWriterCluster() { return this.isMultiWriterCluster; }
   }
 }

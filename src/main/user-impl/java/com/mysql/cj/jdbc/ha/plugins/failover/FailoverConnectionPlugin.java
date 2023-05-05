@@ -147,7 +147,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   protected boolean inTransaction = false;
   protected boolean explicitlyAutoCommit = true;
   protected boolean isClusterTopologyAvailable = false;
-  protected boolean isMultiWriterCluster = false;
   protected boolean isRdsProxy = false;
   protected boolean isRds = false;
   protected ITopologyService topologyService;
@@ -307,7 +306,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     return this.enableFailoverSetting
         && !this.isRdsProxy
         && this.isClusterTopologyAvailable
-        && !this.isMultiWriterCluster
         && (this.hosts == null || this.hosts.size() > 1);
   }
 
@@ -652,8 +650,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     if (!this.enableFailoverSetting
         || this.isRdsProxy
-        || !this.isClusterTopologyAvailable
-        || this.isMultiWriterCluster) {
+        || !this.isClusterTopologyAvailable) {
       if (this.logger.isDebugEnabled()) {
         this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.13"));
       }
@@ -1057,7 +1054,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
                       new Object[]{"isClusterTopologyAvailable",
                               this.isClusterTopologyAvailable}));
     }
-    this.isMultiWriterCluster = this.topologyService.isMultiWriterCluster();
     this.currentHostIndex =
             getHostIndex(topologyService.getHostByName(this.currentConnectionProvider.getCurrentConnection()));
 
