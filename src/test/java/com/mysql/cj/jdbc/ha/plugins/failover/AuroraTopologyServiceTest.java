@@ -152,13 +152,13 @@ public class AuroraTopologyServiceTest {
     final List<HostInfo> replicas =
         topology.subList(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1, topology.size());
 
-    assertEquals("writer-instance-1.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
+    assertEquals("replica-instance-2.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
     assertEquals(1234, master.getPort());
     assertNull(master.getUser());
     assertNull(master.getPassword());
 
     final Map<String, String> props = master.getHostProperties();
-    assertEquals("writer-instance-1", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
+    assertEquals("replica-instance-2", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
     assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
     assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
@@ -255,8 +255,8 @@ public class AuroraTopologyServiceTest {
             "replica-instance-1",
             "writer-instance",
             "writer-instance",
-            "writer-instance-1",
-            "writer-instance-1");
+            "replica-instance-2",
+            "replica-instance-2");
     when(results.getTimestamp(AuroraTopologyService.FIELD_LAST_UPDATED))
         .thenReturn(Timestamp.valueOf("2020-09-15 17:51:53.0"));
     when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);

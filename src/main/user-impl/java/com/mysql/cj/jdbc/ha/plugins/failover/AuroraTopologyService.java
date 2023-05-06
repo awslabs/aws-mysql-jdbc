@@ -254,15 +254,26 @@ public class AuroraTopologyService implements ITopologyService {
   private ClusterTopologyInfo processQueryResults(ResultSet resultSet)
       throws SQLException {
 
+    List<HostInfo> previousTopology = topologyCache.get(this.clusterId);
+
     List<HostInfo> hosts = new ArrayList<>();
     List<HostInfo> writers = new ArrayList<>();
     while (resultSet.next()) {
+      HostInfo currentHost = createHost(resultSet);
+
       if (!WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
-        hosts.add(createHost(resultSet));
+        hosts.add(currentHost);
         continue;
       }
 
-      writers.add(createHost(resultSet));
+      if (previousTopology != null) {
+        // If a writer is not present in the previous topology it is a stale record.
+        if (hostListContainsHost(previousTopology, currentHost)) {
+          writers.add(currentHost);
+        }
+      } else {
+        writers.add(currentHost);
+      }
     }
 
     int writerCount = writers.size();
@@ -274,27 +285,34 @@ public class AuroraTopologyService implements ITopologyService {
       // Store the first writer to its expected position [0]
       hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
     } else {
-      List<HostInfo> previousTopology = topologyCache.get(this.clusterId);
-      HostInfo oldWriter = previousTopology == null ?
-          null : previousTopology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
+      if (previousTopology != null) {
+        // If there are multiple writer candidates, remove any that match the previous writer instance.
+        HostInfo oldWriter = previousTopology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
+        writers.removeIf(potentialWriter -> potentialWriter.getHost().equalsIgnoreCase(oldWriter.getHost()));
 
-      // There is potentially a stale record. Do not add it to the hosts list.
-      if (writerCount == 2
-          && oldWriter != null
-          && (oldWriter.getHost().equalsIgnoreCase(writers.get(0).getHost())
-              || oldWriter.getHost().equalsIgnoreCase(writers.get(1).getHost()))) {
-        if (oldWriter.getHost().equalsIgnoreCase(writers.get(0).getHost())) {
-          hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(1));
-        } else if (oldWriter.getHost().equalsIgnoreCase(writers.get(1).getHost())) {
+        // If there is more than one writer candidate left, the topology is invalid.
+        if (writers.size() == 1) {
           hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
+          return new ClusterTopologyInfo(hosts);
+        } else {
+          hosts.clear();
         }
       } else {
-        this.log.logError(Messages.getString("AuroraTopologyService.4"));
         hosts.clear();
       }
     }
 
     return new ClusterTopologyInfo(hosts);
+  }
+
+  private boolean hostListContainsHost(List<HostInfo> hostList, HostInfo targetHost) {
+    for (HostInfo host : hostList) {
+      if (host.getHost().equalsIgnoreCase(targetHost.getHost())) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
