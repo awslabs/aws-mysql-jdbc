@@ -140,11 +140,6 @@ public class AuroraTopologyServiceTest {
             mainHost.getHostProperties());
     spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
 
-    // Set up topology cache as though there was an initial successful connection
-    spyProvider.getTopology(mockConn, false);
-
-    // If the failover bug where multiple writers would appear in the topology after writer failover, verify the
-    // topology service handles it correctly.
     stubTopologyQueryStaleRecord(mockConn, mockStatement, mockResultSet);
     List<HostInfo> topology =  spyProvider.getTopology(mockConn, true);
     final HostInfo master = topology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
@@ -152,44 +147,19 @@ public class AuroraTopologyServiceTest {
     final List<HostInfo> replicas =
         topology.subList(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1, topology.size());
 
-    assertEquals("replica-instance-2.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
+    assertEquals("writer-instance-2.XYZ.us-east-2.rds.amazonaws.com", master.getHost());
     assertEquals(1234, master.getPort());
     assertNull(master.getUser());
     assertNull(master.getPassword());
 
     final Map<String, String> props = master.getHostProperties();
-    assertEquals("replica-instance-2", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
+    assertEquals("writer-instance-2", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
     assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
+    assertEquals("2020-09-15 17:51:53.123", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
 
     assertEquals(2, topology.size());
     assertEquals(1, replicas.size());
-  }
-
-  @Test
-  public void testTopologyQuery_MultiWriter() throws SQLException {
-    final JdbcConnection mockConn = Mockito.mock(ConnectionImpl.class);
-    final Statement mockStatement = Mockito.mock(StatementImpl.class);
-    final ResultSet mockResultSet = Mockito.mock(ResultSetImpl.class);
-    stubTopologyQueryStaleRecord(mockConn, mockStatement, mockResultSet);
-    final String url =
-        "jdbc:mysql:aws://my-cluster-name.cluster-XYZ.us-east-2.rds.amazonaws.com:1234/test";
-    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    final HostInfo mainHost = conStr.getMainHost();
-
-    final HostInfo clusterInstanceInfo =
-        new HostInfo(
-            conStr,
-            "?.XYZ.us-east-2.rds.amazonaws.com",
-            mainHost.getPort(),
-            mainHost.getUser(),
-            mainHost.getPassword(),
-            mainHost.getHostProperties());
-    spyProvider.setClusterInstanceTemplate(clusterInstanceInfo);
-
-    final List<HostInfo> topology = spyProvider.getTopology(mockConn, false);
-    assertNull(topology);
   }
 
   private void stubTopologyQuery(Connection conn, Statement stmt, ResultSet results)
@@ -251,14 +221,20 @@ public class AuroraTopologyServiceTest {
             AuroraTopologyService.WRITER_SESSION_ID);
     when(results.getString(AuroraTopologyService.FIELD_SERVER_ID))
         .thenReturn(
+            "writer-instance-1",
+            "writer-instance-1",
+            "writer-instance-2",
+            "writer-instance-2",
             "replica-instance-1",
-            "replica-instance-1",
-            "writer-instance",
-            "writer-instance",
-            "replica-instance-2",
-            "replica-instance-2");
+            "replica-instance-1");
     when(results.getTimestamp(AuroraTopologyService.FIELD_LAST_UPDATED))
-        .thenReturn(Timestamp.valueOf("2020-09-15 17:51:53.0"));
+        .thenReturn(
+            Timestamp.valueOf("2020-09-15 17:51:53.123"),
+            Timestamp.valueOf("2020-09-15 17:51:53.123"),
+            Timestamp.valueOf("2020-09-15 17:51:53.0"),
+            Timestamp.valueOf("2020-09-15 17:51:53.0"),
+            Timestamp.valueOf("2020-09-15 17:51:53.456"),
+            Timestamp.valueOf("2020-09-15 17:51:53.456"));
     when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);
   }
 

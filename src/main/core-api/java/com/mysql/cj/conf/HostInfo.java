@@ -31,6 +31,9 @@ package com.mysql.cj.conf;
 
 import static com.mysql.cj.util.StringUtils.isNullOrEmpty;
 
+import com.mysql.cj.jdbc.ha.plugins.failover.TopologyServicePropertyKeys;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -183,6 +186,17 @@ public class HostInfo implements DatabaseUrlContainer {
     public String getDatabase() {
         String database = this.hostProperties.get(PropertyKey.DBNAME.getKeyName());
         return isNullOrEmpty(database) ? "" : database;
+    }
+
+    /**
+     * Returns the last updated time as a LocalDateTime.
+     *
+     * @return the last updated time.
+     */
+    public LocalDateTime getLastUpdatedTime() {
+        DateTimeFormatter formatter =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss[.[SSSSSSS][SSSSSS][SSSSS][SSSS][SSS][SS][S]]");
+        return LocalDateTime.parse(this.getProperty(TopologyServicePropertyKeys.LAST_UPDATED), formatter);
     }
 
     /**

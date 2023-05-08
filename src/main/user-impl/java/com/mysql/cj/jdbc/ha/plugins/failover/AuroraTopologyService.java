@@ -50,6 +50,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * An implementation of topology service for Aurora RDS. It uses
@@ -176,7 +178,7 @@ public class AuroraTopologyService implements ITopologyService {
    * @param forceUpdate If true, it forces a service to ignore cached copy of topology and to fetch
    *     a fresh one.
    * @return A list of hosts that describes cluster topology. A writer is always at position 0.
-   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer or is multi writer).
+   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer).
    */
   @Override
   public List<HostInfo> getTopology(JdbcConnection conn, boolean forceUpdate)
@@ -254,8 +256,6 @@ public class AuroraTopologyService implements ITopologyService {
   private ClusterTopologyInfo processQueryResults(ResultSet resultSet)
       throws SQLException {
 
-    List<HostInfo> previousTopology = topologyCache.get(this.clusterId);
-
     List<HostInfo> hosts = new ArrayList<>();
     List<HostInfo> writers = new ArrayList<>();
     while (resultSet.next()) {
@@ -266,14 +266,7 @@ public class AuroraTopologyService implements ITopologyService {
         continue;
       }
 
-      if (previousTopology != null) {
-        // If a writer is not present in the previous topology it is a stale record.
-        if (hostListContainsHost(previousTopology, currentHost)) {
-          writers.add(currentHost);
-        }
-      } else {
-        writers.add(currentHost);
-      }
+      writers.add(currentHost);
     }
 
     int writerCount = writers.size();
@@ -285,33 +278,13 @@ public class AuroraTopologyService implements ITopologyService {
       // Store the first writer to its expected position [0]
       hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
     } else {
-      if (previousTopology != null) {
-        // If there are multiple writer candidates, remove any that match the previous writer instance.
-        HostInfo oldWriter = previousTopology.get(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX);
-        writers.removeIf(potentialWriter -> potentialWriter.getHost().equalsIgnoreCase(oldWriter.getHost()));
-
-        // If there is more than one writer candidate left, the topology is invalid.
-        if (writers.size() == 1) {
-          hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
-        } else {
-          hosts.clear();
-        }
-      } else {
-        hosts.clear();
-      }
+      // Take the latest updated writer and ignore the others.
+      List<HostInfo> sortedWriters = writers.stream()
+          .sorted(Comparator.comparing(HostInfo::getLastUpdatedTime).reversed()).collect(Collectors.toList());
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, sortedWriters.get(0));
     }
 
     return new ClusterTopologyInfo(hosts);
-  }
-
-  private boolean hostListContainsHost(List<HostInfo> hostList, HostInfo targetHost) {
-    for (HostInfo host : hostList) {
-      if (host.getHost().equalsIgnoreCase(targetHost.getHost())) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
