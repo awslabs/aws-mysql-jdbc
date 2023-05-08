@@ -293,7 +293,6 @@ public class AuroraTopologyService implements ITopologyService {
         // If there is more than one writer candidate left, the topology is invalid.
         if (writers.size() == 1) {
           hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
-          return new ClusterTopologyInfo(hosts);
         } else {
           hosts.clear();
         }
