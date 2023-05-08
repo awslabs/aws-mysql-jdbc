@@ -50,6 +50,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * An implementation of topology service for Aurora RDS. It uses
@@ -73,7 +75,10 @@ public class AuroraTopologyService implements ITopologyService {
 
   private long refreshRateNanos;
   static final String RETRIEVE_TOPOLOGY_SQL =
-      "SELECT SERVER_ID, SESSION_ID, LAST_UPDATE_TIMESTAMP, REPLICA_LAG_IN_MILLISECONDS "
+      "SELECT SERVER_ID, " +
+          "SESSION_ID, " +
+          "DATE_FORMAT(LAST_UPDATE_TIMESTAMP, '%Y-%m-%d %H:%i:%s.%f') AS LAST_UPDATE_TIMESTAMP, " +
+          "REPLICA_LAG_IN_MILLISECONDS "
           + "FROM information_schema.replica_host_status "
           + "WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 " // 5 min
           + "ORDER BY LAST_UPDATE_TIMESTAMP DESC";
@@ -270,10 +275,13 @@ public class AuroraTopologyService implements ITopologyService {
     if (writers.size() == 0) {
       this.log.logError(Messages.getString("AuroraTopologyService.3"));
       hosts.clear();
+    } if (writers.size() == 1) {
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
     } else {
       // Store the first writer to its expected position [0]. If there are other writers or stale records, ignore them.
-      // ResultSet and writers list is already ordered by latest updated after querying with RETRIEVE_TOPOLOGY_SQL.
-      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
+      List<HostInfo> sortedWriters = writers.stream()
+          .sorted(Comparator.comparing(HostInfo::getLastUpdatedTime).reversed()).collect(Collectors.toList());
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, sortedWriters.get(0));
     }
 
     return new ClusterTopologyInfo(hosts);
