@@ -176,7 +176,7 @@ public class AuroraTopologyService implements ITopologyService {
    * @param forceUpdate If true, it forces a service to ignore cached copy of topology and to fetch
    *     a fresh one.
    * @return A list of hosts that describes cluster topology. A writer is always at position 0.
-   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer or multi writer).
+   *     Returns an empty list if topology isn't available or is invalid (doesn't contain a writer or is multi writer).
    */
   @Override
   public List<HostInfo> getTopology(JdbcConnection conn, boolean forceUpdate)
