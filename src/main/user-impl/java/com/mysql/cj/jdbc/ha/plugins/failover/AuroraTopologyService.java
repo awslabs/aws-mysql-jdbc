@@ -50,7 +50,6 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +59,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * An implementation of topology service for Aurora RDS. It uses
@@ -269,19 +267,13 @@ public class AuroraTopologyService implements ITopologyService {
       writers.add(currentHost);
     }
 
-    int writerCount = writers.size();
-
-    if (writerCount == 0) {
+    if (writers.size() == 0) {
       this.log.logError(Messages.getString("AuroraTopologyService.3"));
       hosts.clear();
-    } else if (writerCount == 1) {
-      // Store the first writer to its expected position [0]
-      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
     } else {
-      // Take the latest updated writer and ignore the others.
-      List<HostInfo> sortedWriters = writers.stream()
-          .sorted(Comparator.comparing(HostInfo::getLastUpdatedTime).reversed()).collect(Collectors.toList());
-      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, sortedWriters.get(0));
+      // Store the first writer to its expected position [0]. If there are other writers or stale records, ignore them.
+      // ResultSet and writers list is already ordered by latest updated after querying with RETRIEVE_TOPOLOGY_SQL.
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
     }
 
     return new ClusterTopologyInfo(hosts);
