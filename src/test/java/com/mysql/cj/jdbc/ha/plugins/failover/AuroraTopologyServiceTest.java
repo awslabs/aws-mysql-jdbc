@@ -32,10 +32,8 @@
 package com.mysql.cj.jdbc.ha.plugins.failover;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -112,7 +110,7 @@ public class AuroraTopologyServiceTest {
     final Map<String, String> props = master.getHostProperties();
     assertEquals("writer-instance", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
     assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals("2020-09-15 17:51:53.0", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
+    assertEquals(Timestamp.valueOf("2020-09-15 17:51:53.0"), Timestamp.valueOf(props.get(TopologyServicePropertyKeys.LAST_UPDATED)));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
 
     assertEquals(3, topology.size());
@@ -155,7 +153,7 @@ public class AuroraTopologyServiceTest {
     final Map<String, String> props = master.getHostProperties();
     assertEquals("writer-instance-2", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
     assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals("2020-09-15 17:51:53.123", props.get(TopologyServicePropertyKeys.LAST_UPDATED));
+    assertEquals(Timestamp.valueOf("2020-09-15 17:51:53.123123"), Timestamp.valueOf(props.get(TopologyServicePropertyKeys.LAST_UPDATED)));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
 
     assertEquals(2, topology.size());
@@ -229,12 +227,12 @@ public class AuroraTopologyServiceTest {
             "replica-instance-1");
     when(results.getTimestamp(AuroraTopologyService.FIELD_LAST_UPDATED))
         .thenReturn(
-            Timestamp.valueOf("2020-09-15 17:51:53.123"),
-            Timestamp.valueOf("2020-09-15 17:51:53.123"),
-            Timestamp.valueOf("2020-09-15 17:51:53.0"),
-            Timestamp.valueOf("2020-09-15 17:51:53.0"),
-            Timestamp.valueOf("2020-09-15 17:51:53.456"),
-            Timestamp.valueOf("2020-09-15 17:51:53.456"));
+            Timestamp.valueOf("2020-09-15 17:51:53.123123"),
+            Timestamp.valueOf("2020-09-15 17:51:53.123123"),
+            Timestamp.valueOf("2020-09-15 17:51:53.111111"),
+            Timestamp.valueOf("2020-09-15 17:51:53.111111"),
+            Timestamp.valueOf("2020-09-15 17:51:53.456456"),
+            Timestamp.valueOf("2020-09-15 17:51:53.456456"));
     when(results.getDouble(AuroraTopologyService.FIELD_REPLICA_LAG)).thenReturn(13.5);
   }
 

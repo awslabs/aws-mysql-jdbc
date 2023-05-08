@@ -272,10 +272,12 @@ public class AuroraTopologyService implements ITopologyService {
       writers.add(currentHost);
     }
 
-    if (writers.size() == 0) {
+    int writersCount = writers.size();
+
+    if (writersCount == 0) {
       this.log.logError(Messages.getString("AuroraTopologyService.3"));
       hosts.clear();
-    } if (writers.size() == 1) {
+    } else if (writersCount == 1) {
       hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
     } else {
       // Store the first writer to its expected position [0]. If there are other writers or stale records, ignore them.

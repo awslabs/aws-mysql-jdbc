@@ -185,7 +185,7 @@ public class HostInfo implements DatabaseUrlContainer {
      */
     public LocalDateTime getLastUpdatedTime() {
         DateTimeFormatter formatter =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS");
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
         return LocalDateTime.parse(this.getProperty(TopologyServicePropertyKeys.LAST_UPDATED), formatter);
     }
 
