@@ -141,13 +141,6 @@ public interface ITopologyService {
   void removeFromDownHostList(HostInfo host);
 
   /**
-   * Check if topology belongs to multi-writer cluster.
-   *
-   * @return True, if it's multi-writer cluster.
-   */
-  boolean isMultiWriterCluster();
-
-  /**
    * Set new topology refresh rate. Topology is considered valid (up to date) within provided
    * duration of time.
    *
