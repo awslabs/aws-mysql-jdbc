@@ -76,10 +76,7 @@ public class AuroraTopologyService implements ITopologyService {
 
   private long refreshRateNanos;
   static final String RETRIEVE_TOPOLOGY_SQL =
-      "SELECT SERVER_ID, "
-          + "SESSION_ID, "
-          + "DATE_FORMAT(LAST_UPDATE_TIMESTAMP, '%Y-%m-%d %H:%i:%s.%f') AS LAST_UPDATE_TIMESTAMP, "
-          + "REPLICA_LAG_IN_MILLISECONDS "
+      "SELECT SERVER_ID, SESSION_ID, LAST_UPDATE_TIMESTAMP, REPLICA_LAG_IN_MILLISECONDS "
           + "FROM information_schema.replica_host_status "
           + "WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 " // 5 min
           + "ORDER BY LAST_UPDATE_TIMESTAMP DESC";
