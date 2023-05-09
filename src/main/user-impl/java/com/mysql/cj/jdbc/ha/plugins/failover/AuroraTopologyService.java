@@ -49,6 +49,7 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -75,7 +76,10 @@ public class AuroraTopologyService implements ITopologyService {
 
   private long refreshRateNanos;
   static final String RETRIEVE_TOPOLOGY_SQL =
-      "SELECT SERVER_ID, SESSION_ID, LAST_UPDATE_TIMESTAMP, REPLICA_LAG_IN_MILLISECONDS "
+      "SELECT SERVER_ID, "
+          + "SESSION_ID, "
+          + "DATE_FORMAT(LAST_UPDATE_TIMESTAMP, '%Y-%m-%d %H:%i:%s.%f') AS LAST_UPDATE_TIMESTAMP, "
+          + "REPLICA_LAG_IN_MILLISECONDS "
           + "FROM information_schema.replica_host_status "
           + "WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 " // 5 min
           + "ORDER BY LAST_UPDATE_TIMESTAMP DESC";
@@ -351,7 +355,8 @@ public class AuroraTopologyService implements ITopologyService {
   }
 
   private String convertTimestampToString(Timestamp timestamp) {
-    return timestamp == null ? null : timestamp.toString();
+    DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    return timestamp == null ? null : formatter.format(timestamp.toLocalDateTime());
   }
 
   /**

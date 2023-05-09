@@ -46,6 +46,8 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.StatementImpl;
 import com.mysql.cj.jdbc.result.ResultSetImpl;
 import com.mysql.cj.log.Log;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -65,6 +67,7 @@ import java.util.UUID;
 public class AuroraTopologyServiceTest {
 
   private final AuroraTopologyService spyProvider = Mockito.spy(new AuroraTopologyService(Mockito.mock(Log.class)));
+  private final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
   @BeforeEach
   void resetProvider() {
@@ -110,7 +113,9 @@ public class AuroraTopologyServiceTest {
     final Map<String, String> props = master.getHostProperties();
     assertEquals("writer-instance", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
     assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals(Timestamp.valueOf("2020-09-15 17:51:53.0"), Timestamp.valueOf(props.get(TopologyServicePropertyKeys.LAST_UPDATED)));
+    assertEquals(
+        Timestamp.valueOf("2020-09-15 17:51:53.0"),
+        Timestamp.valueOf(LocalDateTime.from(formatter.parse(props.get(TopologyServicePropertyKeys.LAST_UPDATED)))));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
 
     assertEquals(3, topology.size());
@@ -153,7 +158,9 @@ public class AuroraTopologyServiceTest {
     final Map<String, String> props = master.getHostProperties();
     assertEquals("writer-instance-2", props.get(TopologyServicePropertyKeys.INSTANCE_NAME));
     assertEquals(AuroraTopologyService.WRITER_SESSION_ID, props.get(TopologyServicePropertyKeys.SESSION_ID));
-    assertEquals(Timestamp.valueOf("2020-09-15 17:51:53.123123"), Timestamp.valueOf(props.get(TopologyServicePropertyKeys.LAST_UPDATED)));
+    assertEquals(
+        Timestamp.valueOf("2020-09-15 17:51:53.123123"),
+        Timestamp.valueOf(LocalDateTime.from(formatter.parse(props.get(TopologyServicePropertyKeys.LAST_UPDATED)))));
     assertEquals("13.5", props.get(TopologyServicePropertyKeys.REPLICA_LAG));
 
     assertEquals(2, topology.size());
@@ -512,7 +519,7 @@ public class AuroraTopologyServiceTest {
 
     final Map<String, String> props = master.getHostProperties();
     // Expected and actual lastUpdated timestamp are rounded since mocking the lastUpdated timestamp is difficult
-    final String expectedLastUpdatedTimeStampRounded = Timestamp.from(Instant.now()).toString().substring(0,16);
+    final String expectedLastUpdatedTimeStampRounded = formatter.format(Timestamp.from(Instant.now()).toLocalDateTime()).substring(0,16);
     final String actualLastUpdatedTimeStampRounded = props.get(TopologyServicePropertyKeys.LAST_UPDATED).substring(0,16);
     assertEquals(expectedLastUpdatedTimeStampRounded, actualLastUpdatedTimeStampRounded);
   }
