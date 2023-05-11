@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [1.1.7] - 2023-05-11
 ### Changed
-* Removed the `isMultiWriterCluster` flag as multi-writer clusters have been deprecated ([PR #405](https://github.com/awslabs/aws-mysql-jdbc/pull/405)).
+* Removed the `isMultiWriterCluster` flag as [multi-writer clusters are end of life since February 2023](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.MySQL56.EOL.html). ([PR #405](https://github.com/awslabs/aws-mysql-jdbc/pull/405)).
 
 ### Fixed
 * Fixed methods passing proxy statement objects by adding checks to unwrap them before casting to a `ClientPreparedStatement` ([Issue #401](https://github.com/awslabs/aws-mysql-jdbc/issues/401)).
