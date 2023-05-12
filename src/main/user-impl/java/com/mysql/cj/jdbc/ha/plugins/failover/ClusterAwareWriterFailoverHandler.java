@@ -172,7 +172,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
       List<HostInfo> currentTopology, ExecutorService executorService,
       CompletionService<WriterFailoverResult> completionService) {
     HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
-    HostInfo writerHostWithInitialProps = ConnectionUtils.copyWithAdditionalProps2(connection,
+    HostInfo writerHostWithInitialProps = ConnectionUtils.copyWithAdditionalProps(connection.getSession().getHostInfo(),
         writerHost,
         this.initialConnectionProps);
     this.topologyService.addToDownHostList(writerHost);
@@ -375,7 +375,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
       while (true) {
         try {
           ReaderFailoverResult connResult =
-              readerFailoverHandler.getReaderConnection(this.currentTopology);
+              readerFailoverHandler.getReaderConnection(this.originalWriterHost, this.currentTopology);
           if (isValidReaderConnection(connResult)) {
             this.currentReaderConnection = connResult.getConnection();
             this.currentReaderHost =

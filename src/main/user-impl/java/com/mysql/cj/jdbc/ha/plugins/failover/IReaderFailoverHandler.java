@@ -32,6 +32,7 @@
 package com.mysql.cj.jdbc.ha.plugins.failover;
 
 import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -46,12 +47,12 @@ public interface IReaderFailoverHandler {
    * Called to start Reader Failover Process. This process tries to connect to any reader. If no
    * reader is available then driver may also try to connect to a writer host, down hosts, and the
    * current reader host.
-   *
+   * @param connection current connection
    * @param hosts Cluster current topology.
    * @param currentHost The currently connected host that has failed.
    * @return {@link ReaderFailoverResult} The results of this process.
    */
-  ReaderFailoverResult failover(List<HostInfo> hosts, HostInfo currentHost) throws SQLException;
+  ReaderFailoverResult failover(JdbcConnection connection, List<HostInfo> hosts, HostInfo currentHost) throws SQLException;
 
   /**
    * Called to get any available reader connection. If no reader is available then result of process
@@ -60,5 +61,5 @@ public interface IReaderFailoverHandler {
    * @param hostList Cluster current topology.
    * @return {@link ReaderFailoverResult} The results of this process.
    */
-  ReaderFailoverResult getReaderConnection(List<HostInfo> hostList) throws SQLException;
+  ReaderFailoverResult getReaderConnection(HostInfo originHostInfo, List<HostInfo> hostList) throws SQLException;
 }

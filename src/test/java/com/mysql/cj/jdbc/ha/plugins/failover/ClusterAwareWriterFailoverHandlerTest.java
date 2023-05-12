@@ -93,7 +93,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(currentTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(mockConnection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
         .thenThrow(SQLException.class);
 
     final ClusterAwareWriterFailoverHandler target =
@@ -155,7 +155,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(eq(mockReaderA_Connection), eq(true)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
         .thenAnswer(
             (Answer<ReaderFailoverResult>)
                 invocation -> {
@@ -219,7 +219,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(currentTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
@@ -291,7 +291,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(eq(mockReaderA_Connection), eq(true)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.any(), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
@@ -362,7 +362,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
@@ -441,7 +441,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(eq(mockNewWriterConnection), any(Boolean.class)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =
@@ -499,7 +499,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), any(Boolean.class)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
 
     final ClusterAwareWriterFailoverHandler target =

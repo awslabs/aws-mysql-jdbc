@@ -46,6 +46,7 @@ public interface IWriterFailoverHandler {
   /**
    * Called to start Writer Failover Process.
    *
+   * @param connection current connection
    * @param currentTopology Cluster current topology
    * @return {@link WriterFailoverResult} The results of this process.
    */

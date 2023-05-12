@@ -79,12 +79,11 @@ public class ConnectionUtils {
         mergedProps);
   }
 
-  public static HostInfo copyWithAdditionalProps2(JdbcConnection connection, HostInfo baseHostInfo,
+  public static HostInfo copyWithAdditionalProps(HostInfo currentHostInfo, HostInfo baseHostInfo,
                                                   Map<String, String> additionalProps) {
     if (baseHostInfo == null || additionalProps == null) {
       return baseHostInfo;
     }
-    HostInfo currentHostInfo = connection.getSession().getHostInfo();
     DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
             replaceDatabaseName(baseHostInfo.getDatabaseUrl(), currentHostInfo.getDatabase()),
             new Properties());
@@ -108,9 +107,9 @@ public class ConnectionUtils {
       return url;
     }
     int end = url.indexOf("?");
-    if (end <0) {
+    if (end < 0) {
       return url.replace(url.substring(begin), "/" + databaseName);
-    }else{
+    } else {
       return url.replace(url.substring(begin, end + 1), "/" + databaseName + "?");
     }
   }

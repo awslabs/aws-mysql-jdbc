@@ -517,7 +517,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     if (failedHostIdx != NO_CONNECTION_INDEX && !Util.isNullOrEmpty(this.hosts)) {
       failedHost = this.hosts.get(failedHostIdx);
     }
-    ReaderFailoverResult result = readerFailoverHandler.failover(this.hosts, failedHost);
+    ReaderFailoverResult result = readerFailoverHandler
+            .failover(this.currentConnectionProvider.getCurrentConnection(), this.hosts, failedHost);
 
     long currentTimeMs = System.currentTimeMillis();
     metricsContainer.registerReaderFailoverProcedureTime(currentTimeMs - this.failoverStartTimeMs);

@@ -134,7 +134,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             testConnectionProps,
             mockLog);
     final ReaderFailoverResult result =
-        target.failover(hosts, hosts.get(currentHostIndex));
+        target.failover(mockConnection, hosts, hosts.get(currentHostIndex));
 
     assertTrue(result.isConnected());
     assertSame(mockConnection, result.getConnection());
@@ -194,7 +194,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             false,
             mockLog);
     final ReaderFailoverResult result =
-        target.failover(hosts, hosts.get(currentHostIndex));
+        target.failover(mockConnection, hosts, hosts.get(currentHostIndex));
 
     assertFalse(result.isConnected());
     assertNull(result.getConnection());
@@ -214,7 +214,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             mockLog);
     final HostInfo currentHost = new HostInfo(null, "writer", 1234, null, null);
 
-    ReaderFailoverResult result = target.failover(null, currentHost);
+    ReaderFailoverResult result = target.failover(null, null, currentHost);
     assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(
@@ -222,7 +222,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
         result.getConnectionIndex());
 
     final List<HostInfo> hosts = new ArrayList<>();
-    result = target.failover(hosts, currentHost);
+    result = target.failover(null, hosts, currentHost);
     assertFalse(result.isConnected());
     assertNull(result.getConnection());
     assertEquals(
@@ -258,7 +258,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             mockConnProvider,
             testConnectionProps,
             mockLog);
-    final ReaderFailoverResult result = target.getReaderConnection(hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(mockConnection.getSession().getHostInfo(), hosts);
 
     assertTrue(result.isConnected());
     assertSame(mockConnection, result.getConnection());
@@ -288,7 +288,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             mockConnProvider,
             testConnectionProps,
             mockLog);
-    final ReaderFailoverResult result = target.getReaderConnection(hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(null, hosts);
 
     assertFalse(result.isConnected());
     assertNull(result.getConnection());
@@ -335,7 +335,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             1000,
             false,
             mockLog);
-    final ReaderFailoverResult result = target.getReaderConnection(hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(mockConnection.getSession().getHostInfo(), hosts);
 
     assertFalse(result.isConnected());
     assertNull(result.getConnection());
