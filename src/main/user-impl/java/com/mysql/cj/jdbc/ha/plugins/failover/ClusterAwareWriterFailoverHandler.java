@@ -129,7 +129,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
    * @return {@link WriterFailoverResult} The results of this process.
    */
   @Override
-  public WriterFailoverResult failover(List<HostInfo> currentTopology)
+  public WriterFailoverResult failover(JdbcConnection connection, List<HostInfo> currentTopology)
       throws SQLException {
     if (Util.isNullOrEmpty(currentTopology)) {
       this.log.logError(Messages.getString("ClusterAwareWriterFailoverHandler.7"));
@@ -139,7 +139,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     ExecutorService executorService = Executors.newFixedThreadPool(2);
     CompletionService<WriterFailoverResult> completionService =
         new ExecutorCompletionService<>(executorService);
-    submitTasks(currentTopology, executorService, completionService);
+    submitTasks(connection, currentTopology, executorService, completionService);
 
     try {
       long startTimeNano = System.nanoTime();
@@ -168,11 +168,11 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     }
   }
 
-  private void submitTasks(
+  private void submitTasks(JdbcConnection connection,
       List<HostInfo> currentTopology, ExecutorService executorService,
       CompletionService<WriterFailoverResult> completionService) {
     HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
-    HostInfo writerHostWithInitialProps = ConnectionUtils.copyWithAdditionalProps(
+    HostInfo writerHostWithInitialProps = ConnectionUtils.copyWithAdditionalProps2(connection,
         writerHost,
         this.initialConnectionProps);
     this.topologyService.addToDownHostList(writerHost);
@@ -434,7 +434,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               if (!isSame(writerCandidate, this.originalWriterHost)) {
                 // new writer is available, and it's different from the previous writer
                 logTopology();
-                if (connectToWriter(writerCandidate)) {
+                if (connectToWriter(originalWriterHost)) {
                   return true;
                 }
               }

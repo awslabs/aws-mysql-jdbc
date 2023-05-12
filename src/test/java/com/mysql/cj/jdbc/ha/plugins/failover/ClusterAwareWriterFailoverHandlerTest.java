@@ -106,7 +106,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockConnection, currentTopology);
 
     assertTrue(result.isConnected());
     assertFalse(result.isNewHost());
@@ -173,7 +173,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockWriterConnection, currentTopology);
 
     assertTrue(result.isConnected());
     assertFalse(result.isNewHost());
@@ -232,7 +232,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockWriterConnection, currentTopology);
 
     assertTrue(result.isConnected());
     assertFalse(result.isNewHost());
@@ -304,7 +304,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockWriterConnection, currentTopology);
 
     assertTrue(result.isConnected());
     assertTrue(result.isNewHost());
@@ -375,7 +375,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockNewWriterConnection, currentTopology);
 
     assertTrue(result.isConnected());
     assertTrue(result.isNewHost());
@@ -454,7 +454,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockWriterConnection, currentTopology);
 
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());
@@ -512,7 +512,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final WriterFailoverResult result = target.failover(currentTopology);
+    final WriterFailoverResult result = target.failover(mockReaderA_Connection, currentTopology);
 
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());

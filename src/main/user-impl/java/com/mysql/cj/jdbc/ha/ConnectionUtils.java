@@ -34,6 +34,7 @@ package com.mysql.cj.jdbc.ha;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -76,6 +77,42 @@ public class ConnectionUtils {
         baseHostInfo.getUser(),
         baseHostInfo.getPassword(),
         mergedProps);
+  }
+
+  public static HostInfo copyWithAdditionalProps2(JdbcConnection connection, HostInfo baseHostInfo,
+                                                  Map<String, String> additionalProps) {
+    if (baseHostInfo == null || additionalProps == null) {
+      return baseHostInfo;
+    }
+    HostInfo currentHostInfo = connection.getSession().getHostInfo();
+    DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
+            replaceDatabaseName(baseHostInfo.getDatabaseUrl(), currentHostInfo.getDatabase()),
+            new Properties());
+    Map<String, String> originalProps = baseHostInfo.getHostProperties();
+    Map<String, String> mergedProps = new HashMap<>();
+    mergedProps.putAll(originalProps);
+    mergedProps.putAll(additionalProps);
+    mergedProps.putAll(currentHostInfo.getHostProperties());
+    return new HostInfo(
+            urlContainer,
+            baseHostInfo.getHost(),
+            baseHostInfo.getPort(),
+            currentHostInfo.getUser(),
+            currentHostInfo.getPassword(),
+            mergedProps);
+  }
+
+  private static String replaceDatabaseName(String url, String databaseName) {
+    int begin = url.lastIndexOf("/");
+    if (begin < 0) {
+      return url;
+    }
+    int end = url.indexOf("?");
+    if (end <0) {
+      return url.replace(url.substring(begin), "/" + databaseName);
+    }else{
+      return url.replace(url.substring(begin, end + 1), "/" + databaseName + "?");
+    }
   }
 
   /**

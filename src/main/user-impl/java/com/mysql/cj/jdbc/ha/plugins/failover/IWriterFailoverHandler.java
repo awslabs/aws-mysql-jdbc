@@ -32,6 +32,7 @@
 package com.mysql.cj.jdbc.ha.plugins.failover;
 
 import com.mysql.cj.conf.HostInfo;
+import com.mysql.cj.jdbc.JdbcConnection;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -48,5 +49,5 @@ public interface IWriterFailoverHandler {
    * @param currentTopology Cluster current topology
    * @return {@link WriterFailoverResult} The results of this process.
    */
-  WriterFailoverResult failover(List<HostInfo> currentTopology) throws SQLException;
+  WriterFailoverResult failover(JdbcConnection connection, List<HostInfo> currentTopology) throws SQLException;
 }
