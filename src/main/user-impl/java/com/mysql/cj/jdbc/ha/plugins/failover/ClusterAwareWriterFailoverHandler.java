@@ -434,7 +434,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               if (!isSame(writerCandidate, this.originalWriterHost)) {
                 // new writer is available, and it's different from the previous writer
                 logTopology();
-                if (connectToWriter(originalWriterHost)) {
+                if (connectToWriter(writerCandidate)) {
                   return true;
                 }
               }
@@ -474,7 +474,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
       } else {
         // connect to the new writer
         HostInfo writerCandidateWithProps =
-            ConnectionUtils.copyWithAdditionalProps(
+            ConnectionUtils.copyWithAdditionalProps(this.originalWriterHost,
                 writerCandidate,
                 initialConnectionProps);
         try {

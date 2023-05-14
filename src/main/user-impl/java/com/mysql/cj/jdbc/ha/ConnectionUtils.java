@@ -34,7 +34,7 @@ package com.mysql.cj.jdbc.ha;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
-import com.mysql.cj.jdbc.JdbcConnection;
+import com.mysql.cj.conf.PropertyKey;
 
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -91,7 +91,7 @@ public class ConnectionUtils {
     Map<String, String> mergedProps = new HashMap<>();
     mergedProps.putAll(originalProps);
     mergedProps.putAll(additionalProps);
-    mergedProps.putAll(currentHostInfo.getHostProperties());
+    mergedProps.put(PropertyKey.DBNAME.getKeyName(), currentHostInfo.getDatabase());
     return new HostInfo(
             urlContainer,
             baseHostInfo.getHost(),
