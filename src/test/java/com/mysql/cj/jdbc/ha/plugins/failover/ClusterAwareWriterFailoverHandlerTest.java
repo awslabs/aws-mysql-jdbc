@@ -43,6 +43,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.mysql.cj.NativeSession;
+import com.mysql.cj.conf.DefaultPropertySet;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.mysql.cj.jdbc.JdbcConnection;
@@ -93,8 +95,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(currentTopology);
 
-    when(mockReaderFailover.getReaderConnection(mockConnection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenThrow(SQLException.class);
+
+    when(mockConnection.getSession()).thenReturn(new NativeSession(writerHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -155,13 +159,15 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(eq(mockReaderA_Connection), eq(true)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenAnswer(
             (Answer<ReaderFailoverResult>)
                 invocation -> {
                   Thread.sleep(5000);
                   return new ReaderFailoverResult(mockReaderA_Connection, 1, true);
                 });
+
+    when(mockWriterConnection.getSession()).thenReturn(new NativeSession(writerHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -219,8 +225,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(currentTopology);
 
-    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
+
+    when(mockWriterConnection.getSession()).thenReturn(new NativeSession(writerHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -291,8 +299,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(eq(mockReaderA_Connection), eq(true)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(ArgumentMatchers.any(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
+
+    when(mockWriterConnection.getSession()).thenReturn(new NativeSession(writerHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -327,6 +337,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
   public void testConnectToReaderA_taskADefers() throws SQLException {
     final AuroraTopologyService mockTopologyService = Mockito.mock(AuroraTopologyService.class);
     final IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
+    final ConnectionImpl mockWriterConnection = Mockito.mock(ConnectionImpl.class);
     final ConnectionImpl mockNewWriterConnection = Mockito.mock(ConnectionImpl.class);
     final ConnectionImpl mockReaderA_Connection = Mockito.mock(ConnectionImpl.class);
     final ConnectionImpl mockReaderB_Connection = Mockito.mock(ConnectionImpl.class);
@@ -347,8 +358,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(initialWriterHost))
-        .thenReturn(Mockito.mock(ConnectionImpl.class));
+    when(mockConnectionProvider.connect(initialWriterHost)).thenReturn(mockWriterConnection);
     when(mockConnectionProvider.connect(refEq(readerA_Host))).thenReturn(mockReaderA_Connection);
     when(mockConnectionProvider.connect(refEq(readerB_Host))).thenReturn(mockReaderB_Connection);
     when(mockConnectionProvider.connect(refEq(newWriterHost)))
@@ -362,8 +372,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
+
+    when(mockWriterConnection.getSession()).thenReturn(new NativeSession(initialWriterHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -375,7 +387,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             5000,
             5000,
             mockLog);
-    final WriterFailoverResult result = target.failover(mockNewWriterConnection, currentTopology);
+    final WriterFailoverResult result = target.failover(mockWriterConnection, currentTopology);
 
     assertTrue(result.isConnected());
     assertTrue(result.isNewHost());
@@ -441,8 +453,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(eq(mockNewWriterConnection), any(Boolean.class)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
+
+    when(mockWriterConnection.getSession()).thenReturn(new NativeSession(writerHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -473,6 +487,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
   public void testFailedToConnect_taskAException_taskBWriterException() throws SQLException {
     final AuroraTopologyService mockTopologyService = Mockito.mock(AuroraTopologyService.class);
     final IConnectionProvider mockConnectionProvider = Mockito.mock(IConnectionProvider.class);
+    final ConnectionImpl mockWriterConnection = Mockito.mock(ConnectionImpl.class);
     final ConnectionImpl mockReaderA_Connection = Mockito.mock(ConnectionImpl.class);
     final ConnectionImpl mockReaderB_Connection = Mockito.mock(ConnectionImpl.class);
     final IReaderFailoverHandler mockReaderFailover = Mockito.mock(IReaderFailoverHandler.class);
@@ -499,8 +514,10 @@ public class ClusterAwareWriterFailoverHandlerTest {
     when(mockTopologyService.getTopology(any(JdbcConnection.class), any(Boolean.class)))
         .thenReturn(newTopology);
 
-    when(mockReaderFailover.getReaderConnection(mockReaderA_Connection.getSession().getHostInfo(), ArgumentMatchers.anyList()))
+    when(mockReaderFailover.getReaderConnection(any(HostInfo.class), ArgumentMatchers.anyList()))
         .thenReturn(new ReaderFailoverResult(mockReaderA_Connection, 1, true));
+
+    when(mockWriterConnection.getSession()).thenReturn(new NativeSession(writerHost, new DefaultPropertySet()));
 
     final ClusterAwareWriterFailoverHandler target =
         new ClusterAwareWriterFailoverHandler(
@@ -512,7 +529,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
             2000,
             2000,
             mockLog);
-    final WriterFailoverResult result = target.failover(mockReaderA_Connection, currentTopology);
+    final WriterFailoverResult result = target.failover(mockWriterConnection, currentTopology);
 
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());

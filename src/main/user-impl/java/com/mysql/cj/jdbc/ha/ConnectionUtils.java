@@ -49,6 +49,7 @@ public class ConnectionUtils {
    * Create a copy of the given {@link HostInfo} object where all details are the same except for the host properties,
    * which will contain both the original properties and the properties passed into the function.
    *
+   * @param currentHostInfo The {@link HostInfo} object to copy
    * @param baseHostInfo The {@link HostInfo} object to copy
    * @param additionalProps The map of properties to add to the new {@link HostInfo} copy
    *
@@ -56,36 +57,13 @@ public class ConnectionUtils {
    *      will contain both the original properties and the properties passed into the function. Returns null if
    *      baseHostInfo is null
    */
-  public static HostInfo copyWithAdditionalProps(
-      HostInfo baseHostInfo,
-      Map<String, String> additionalProps) {
-    if (baseHostInfo == null || additionalProps == null) {
-      return baseHostInfo;
-    }
-
-    DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
-        baseHostInfo.getDatabaseUrl(),
-        new Properties());
-    Map<String, String> originalProps = baseHostInfo.getHostProperties();
-    Map<String, String> mergedProps = new HashMap<>();
-    mergedProps.putAll(originalProps);
-    mergedProps.putAll(additionalProps);
-    return new HostInfo(
-        urlContainer,
-        baseHostInfo.getHost(),
-        baseHostInfo.getPort(),
-        baseHostInfo.getUser(),
-        baseHostInfo.getPassword(),
-        mergedProps);
-  }
-
   public static HostInfo copyWithAdditionalProps(HostInfo currentHostInfo, HostInfo baseHostInfo,
                                                   Map<String, String> additionalProps) {
     if (baseHostInfo == null || additionalProps == null) {
       return baseHostInfo;
     }
     DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
-            replaceDatabaseName(baseHostInfo.getDatabaseUrl(), currentHostInfo.getDatabase()),
+            replaceDatabaseName(baseHostInfo, currentHostInfo.getDatabase()),
             new Properties());
     Map<String, String> originalProps = baseHostInfo.getHostProperties();
     Map<String, String> mergedProps = new HashMap<>();
@@ -101,17 +79,8 @@ public class ConnectionUtils {
             mergedProps);
   }
 
-  private static String replaceDatabaseName(String url, String databaseName) {
-    int begin = url.lastIndexOf("/");
-    if (begin < 0) {
-      return url;
-    }
-    int end = url.indexOf("?");
-    if (end < 0) {
-      return url.replace(url.substring(begin), "/" + databaseName);
-    } else {
-      return url.replace(url.substring(begin, end + 1), "/" + databaseName + "?");
-    }
+  private static String replaceDatabaseName(HostInfo hostInfo, String databaseName) {
+    return hostInfo.getDatabaseUrl().replace(hostInfo.getDatabase(), databaseName);
   }
 
   /**

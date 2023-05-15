@@ -46,6 +46,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.mysql.cj.NativeSession;
+import com.mysql.cj.conf.DefaultPropertySet;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ConnectionImpl;
@@ -126,6 +128,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
       downHosts.add(hosts.get(hostIndex).getHostPortPair());
     }
     when(mockTopologyService.getDownHosts()).thenReturn(downHosts);
+    when(mockConnection.getSession()).thenReturn(new NativeSession(hosts.get(currentHostIndex), new DefaultPropertySet()));
 
     final IReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
@@ -251,6 +254,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
                   return mockConnection;
                 });
     when(mockConnProvider.connect(refEq(fastHost))).thenReturn(mockConnection);
+    when(mockConnection.getSession()).thenReturn(new NativeSession(slowHost, new DefaultPropertySet()));
 
     final IReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
@@ -276,11 +280,13 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final ITopologyService mockTopologyService = Mockito.mock(ITopologyService.class);
     when(mockTopologyService.getDownHosts()).thenReturn(new HashSet<>());
     final IConnectionProvider mockConnProvider = Mockito.mock(IConnectionProvider.class);
+    final ConnectionImpl mockConnection = Mockito.mock(ConnectionImpl.class);
     final List<HostInfo> hosts =
         getHostsFromTestUrls(4); // 3 connection attempts (writer not attempted)
     when(mockConnProvider.connect(any())).thenThrow(new SQLException("exception", "08S01", null));
 
     final int currentHostIndex = 2;
+    when(mockConnection.getSession()).thenReturn(new NativeSession(hosts.get(currentHostIndex), new DefaultPropertySet()));
 
     final IReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
@@ -288,7 +294,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
             mockConnProvider,
             testConnectionProps,
             mockLog);
-    final ReaderFailoverResult result = target.getReaderConnection(null, hosts);
+    final ReaderFailoverResult result = target.getReaderConnection(mockConnection.getSession().getHostInfo(), hosts);
 
     assertFalse(result.isConnected());
     assertNull(result.getConnection());
@@ -325,6 +331,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
                   }
                   return mockConnection;
                 });
+    when(mockConnection.getSession()).thenReturn(new NativeSession(hosts.get(0), new DefaultPropertySet()));
 
     final ClusterAwareReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(

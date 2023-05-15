@@ -47,7 +47,6 @@ public interface IReaderFailoverHandler {
    * Called to start Reader Failover Process. This process tries to connect to any reader. If no
    * reader is available then driver may also try to connect to a writer host, down hosts, and the
    * current reader host.
-   * @param connection current connection
    * @param hosts Cluster current topology.
    * @param currentHost The currently connected host that has failed.
    * @return {@link ReaderFailoverResult} The results of this process.

@@ -562,7 +562,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     if (this.logger.isDebugEnabled()) {
       this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.16"));
     }
-    WriterFailoverResult failoverResult = this.writerFailoverHandler.failover(this.currentConnectionProvider.getCurrentConnection(), this.hosts);
+    WriterFailoverResult failoverResult = this.writerFailoverHandler.failover(
+            this.currentConnectionProvider.getCurrentConnection(), this.hosts);
 
     long currentTimeMs = System.currentTimeMillis();
     metricsContainer.registerWriterFailoverProcedureTime(currentTimeMs - this.failoverStartTimeMs);
