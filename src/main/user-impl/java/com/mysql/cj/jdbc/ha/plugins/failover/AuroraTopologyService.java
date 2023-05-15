@@ -49,7 +49,9 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * An implementation of topology service for Aurora RDS. It uses
@@ -89,7 +92,6 @@ public class AuroraTopologyService implements ITopologyService {
   public static final CacheMap<String, List<HostInfo>> topologyCache = new CacheMap<>();
   public static final CacheMap<String, Set<String>> downHostCache = new CacheMap<>();
   public static final CacheMap<String, HostInfo> lastUsedReaderCache = new CacheMap<>();
-  public static final CacheMap<String, Boolean> multiWriterClusterCache = new CacheMap<>();
 
   protected String clusterId;
   protected HostInfo clusterInstanceTemplate;
@@ -190,9 +192,6 @@ public class AuroraTopologyService implements ITopologyService {
       ClusterTopologyInfo latestTopologyInfo = queryForTopology(conn);
 
       if (latestTopologyInfo != null) {
-        multiWriterClusterCache.put(
-            this.clusterId, latestTopologyInfo.getMultiWriterCluster(), this.refreshRateNanos);
-
         downHostCache.get(this.clusterId, ConcurrentHashMap.newKeySet(), this.refreshRateNanos).clear();
 
         if (!Util.isNullOrEmpty(latestTopologyInfo.getHosts())) {
@@ -233,7 +232,7 @@ public class AuroraTopologyService implements ITopologyService {
 
     return topologyInfo != null
         ? topologyInfo
-        : new ClusterTopologyInfo(new ArrayList<>(),false);
+        : new ClusterTopologyInfo(new ArrayList<>());
   }
 
   /**
@@ -257,33 +256,35 @@ public class AuroraTopologyService implements ITopologyService {
    */
   private ClusterTopologyInfo processQueryResults(ResultSet resultSet)
       throws SQLException {
-    int writerCount = 0;
 
     List<HostInfo> hosts = new ArrayList<>();
+    List<HostInfo> writers = new ArrayList<>();
     while (resultSet.next()) {
+      HostInfo currentHost = createHost(resultSet);
+
       if (!WRITER_SESSION_ID.equalsIgnoreCase(resultSet.getString(FIELD_SESSION_ID))) {
-        hosts.add(createHost(resultSet));
+        hosts.add(currentHost);
         continue;
       }
 
-      if (writerCount == 0) {
-        // store the first writer to its expected position [0]
-        hosts.add(
-            FailoverConnectionPlugin.WRITER_CONNECTION_INDEX,
-            createHost(resultSet));
-      } else {
-        // append other writers, if any, to the end of the host list
-        hosts.add(createHost(resultSet));
-      }
-      writerCount++;
+      writers.add(currentHost);
     }
 
-    if (writerCount == 0) {
+    int writersCount = writers.size();
+
+    if (writersCount == 0) {
       this.log.logError(Messages.getString("AuroraTopologyService.3"));
       hosts.clear();
+    } else if (writersCount == 1) {
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, writers.get(0));
+    } else {
+      // Store the first writer to its expected position [0]. If there are other writers or stale records, ignore them.
+      List<HostInfo> sortedWriters = writers.stream()
+          .sorted(Comparator.comparing(HostInfo::getLastUpdatedTime).reversed()).collect(Collectors.toList());
+      hosts.add(FailoverConnectionPlugin.WRITER_CONNECTION_INDEX, sortedWriters.get(0));
     }
 
-    return new ClusterTopologyInfo(hosts, writerCount > 1);
+    return new ClusterTopologyInfo(hosts);
   }
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
@@ -351,7 +352,8 @@ public class AuroraTopologyService implements ITopologyService {
   }
 
   private String convertTimestampToString(Timestamp timestamp) {
-    return timestamp == null ? null : timestamp.toString();
+    DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    return timestamp == null ? null : formatter.format(timestamp.toLocalDateTime());
   }
 
   /**
@@ -465,16 +467,6 @@ public class AuroraTopologyService implements ITopologyService {
   }
 
   /**
-   * Check if cached topology belongs to multi-writer cluster.
-   *
-   * @return True, if it's multi-writer cluster.
-   */
-  @Override
-  public boolean isMultiWriterCluster() {
-    return multiWriterClusterCache.get(this.clusterId, false, this.refreshRateNanos);
-  }
-
-  /**
    * Set new topology refresh rate. Different service instances may have different topology refresh
    * rate while sharing the same topology cache.
    *
@@ -490,7 +482,6 @@ public class AuroraTopologyService implements ITopologyService {
   public void clearAll() {
     topologyCache.clear();
     downHostCache.clear();
-    multiWriterClusterCache.clear();
     lastUsedReaderCache.clear();
   }
 
@@ -499,20 +490,16 @@ public class AuroraTopologyService implements ITopologyService {
   public void clear() {
     topologyCache.remove(this.clusterId);
     downHostCache.remove(this.clusterId);
-    multiWriterClusterCache.remove(this.clusterId);
     lastUsedReaderCache.remove(this.clusterId);
   }
 
   private static class ClusterTopologyInfo {
     private List<HostInfo> hosts;
-    private boolean isMultiWriterCluster;
 
-    ClusterTopologyInfo(List<HostInfo> hosts, boolean isMultiWriterCluster) {
+    ClusterTopologyInfo(List<HostInfo> hosts) {
       this.hosts = hosts;
-      this.isMultiWriterCluster = isMultiWriterCluster;
     }
 
     List<HostInfo> getHosts() { return this.hosts; }
-    boolean getMultiWriterCluster() { return this.isMultiWriterCluster; }
   }
 }

@@ -31,6 +31,7 @@ package com.mysql.cj.conf;
 
 import static com.mysql.cj.util.StringUtils.isNullOrEmpty;
 
+import com.mysql.cj.jdbc.ha.plugins.failover.TopologyServicePropertyKeys;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -173,6 +174,15 @@ public class HostInfo implements DatabaseUrlContainer {
      */
     public String getProperty(String key) {
         return this.hostProperties.get(key);
+    }
+
+    /**
+     * Returns the last updated time as a String.
+     *
+     * @return the last updated time.
+     */
+    public String getLastUpdatedTime() {
+        return this.getProperty(TopologyServicePropertyKeys.LAST_UPDATED);
     }
 
     /**

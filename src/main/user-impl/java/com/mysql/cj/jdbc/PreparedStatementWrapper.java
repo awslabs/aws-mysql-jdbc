@@ -29,6 +29,7 @@
 
 package com.mysql.cj.jdbc;
 
+import com.mysql.cj.exceptions.CJException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.lang.reflect.Proxy;
@@ -48,6 +49,7 @@ import java.sql.RowId;
 import java.sql.SQLException;
 import java.sql.SQLType;
 import java.sql.SQLXML;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
@@ -610,7 +612,17 @@ public class PreparedStatementWrapper extends StatementWrapper implements Prepar
         StringBuilder buf = new StringBuilder(super.toString());
         if (this.wrappedStmt != null) {
             buf.append(": ");
-            buf.append(((PreparedQuery) ((ClientPreparedStatement) this.wrappedStmt).getQuery()).asSql());
+            ClientPreparedStatement currentStatement;
+            if (this.wrappedStmt instanceof ClientPreparedStatement) {
+                currentStatement = (ClientPreparedStatement) this.wrappedStmt;
+            } else {
+                try {
+                    currentStatement = this.wrappedStmt.unwrap(ClientPreparedStatement.class);
+                } catch (SQLException e) {
+                    throw new CJException(e);
+                }
+            }
+            buf.append(((PreparedQuery) currentStatement.getQuery()).asSql());
         }
         return buf.toString();
     }
@@ -937,7 +949,17 @@ public class PreparedStatementWrapper extends StatementWrapper implements Prepar
     public long executeLargeUpdate() throws SQLException {
         try {
             if (this.wrappedStmt != null) {
-                return ((ClientPreparedStatement) this.wrappedStmt).executeLargeUpdate();
+                ClientPreparedStatement currentStatement;
+                if (this.wrappedStmt instanceof ClientPreparedStatement) {
+                    currentStatement = (ClientPreparedStatement) this.wrappedStmt;
+                } else {
+                    try {
+                        currentStatement = this.wrappedStmt.unwrap(ClientPreparedStatement.class);
+                    } catch (SQLException e) {
+                        throw new CJException(e);
+                    }
+                }
+                return currentStatement.executeLargeUpdate();
             }
 
             throw SQLError.createSQLException(Messages.getString("Statement.AlreadyClosed"), MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT,
