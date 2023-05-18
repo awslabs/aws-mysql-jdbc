@@ -40,7 +40,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +59,7 @@ import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.log.Log;
+import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,9 +80,9 @@ class FailoverConnectionPluginTest {
   private static final int PORT = 1234;
   private static final String DATABASE = "test";
   private final HostInfo writerHost =
-      ClusterAwareTestUtils.createBasicHostInfo("writer", "test");
+      ClusterAwareTestUtils.createBasicHostInfo("writer");
   private final HostInfo readerHost =
-      ClusterAwareTestUtils.createBasicHostInfo("reader", "test");
+      ClusterAwareTestUtils.createBasicHostInfo("reader");
   private final List<HostInfo> mockTopology =
       new ArrayList<>(Arrays.asList(writerHost, readerHost));
   @Mock private ConnectionImpl mockConnection;
@@ -103,11 +107,11 @@ class FailoverConnectionPluginTest {
     when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
     when(mockHostInfo.getHost()).thenReturn(host);
     final HostInfo writerHost =
-        ClusterAwareTestUtils.createBasicHostInfo("writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
     final HostInfo readerA_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
     final HostInfo readerB_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerA_Host);
@@ -197,11 +201,11 @@ class FailoverConnectionPluginTest {
     when(mockHostInfo.getHost()).thenReturn(host);
 
     final HostInfo writerHost =
-        ClusterAwareTestUtils.createBasicHostInfo("writer-host", null);
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
     final HostInfo readerAHost =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host", null);
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
     final HostInfo readerBHost =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host", null);
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerAHost);
@@ -241,20 +245,20 @@ class FailoverConnectionPluginTest {
     when(mockHostInfo.getHost()).thenReturn(host);
 
     final HostInfo cachedWriterHost =
-        ClusterAwareTestUtils.createBasicHostInfo("cached-writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("cached-writer-host");
     final HostInfo readerA_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
     final HostInfo readerB_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
     final List<HostInfo> cachedTopology = new ArrayList<>();
     cachedTopology.add(cachedWriterHost);
     cachedTopology.add(readerA_Host);
     cachedTopology.add(readerB_Host);
 
     final HostInfo actualWriterHost =
-        ClusterAwareTestUtils.createBasicHostInfo("actual-writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("actual-writer-host");
     final HostInfo obsoleteWriterHost =
-        ClusterAwareTestUtils.createBasicHostInfo("obsolete-writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("obsolete-writer-host");
     final List<HostInfo> actualTopology = new ArrayList<>();
     actualTopology.add(actualWriterHost);
     actualTopology.add(readerA_Host);
@@ -414,11 +418,11 @@ class FailoverConnectionPluginTest {
     final int newConnectionHostIndex = 1;
 
     final HostInfo writerHost =
-        ClusterAwareTestUtils.createBasicHostInfo("writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
     final HostInfo readerA_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
     final HostInfo readerB_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerA_Host);
@@ -551,11 +555,11 @@ class FailoverConnectionPluginTest {
     when(mockHostInfo.getHost()).thenReturn(host);
 
     final HostInfo writerHost =
-        ClusterAwareTestUtils.createBasicHostInfo("writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
     final HostInfo readerA_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
     final HostInfo readerB_Host =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerA_Host);
@@ -585,9 +589,9 @@ class FailoverConnectionPluginTest {
     final int connectionHostIndex = 1;
 
     final HostInfo writerHost =
-        ClusterAwareTestUtils.createBasicHostInfo("writer-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
     final HostInfo readerAHost =
-        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host", "test");
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
     final List<HostInfo> topology = new ArrayList<>();
     topology.add(writerHost);
     topology.add(readerAHost);
@@ -643,6 +647,50 @@ class FailoverConnectionPluginTest {
     assertFalse(failoverPlugin.isFailoverEnabled());
   }
 
+  @Test
+  public void testPluginsShareTopologyCache() throws Exception {
+    final String clusterId = "clusterId";
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
+    final String host = url.split(PREFIX)[1];
+    when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
+    when(mockHostInfo.getHost()).thenReturn(host);
+
+    final HostInfo writerHost =
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
+    final HostInfo readerA_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
+    final HostInfo readerB_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
+    final List<HostInfo> topology = new ArrayList<>();
+    topology.add(writerHost);
+    topology.add(readerA_Host);
+    topology.add(readerB_Host);
+    AuroraTopologyService auroraTopologyService1 = new AuroraTopologyService(null);
+    AuroraTopologyService spyAuroratopologyService1 = spy(auroraTopologyService1);
+    spyAuroratopologyService1.clusterId = clusterId;
+
+    AuroraTopologyService auroraTopologyService2 = new AuroraTopologyService(null);
+    AuroraTopologyService spyAuroratopologyService2 = spy(auroraTopologyService2);
+    spyAuroratopologyService2.clusterId = clusterId;
+
+    doReturn(new AuroraTopologyService.ClusterTopologyInfo(topology))
+        .when(spyAuroratopologyService1).queryForTopology(eq(mockConnection));
+    doReturn(writerHost).when(spyAuroratopologyService1).getHostByName(eq(mockConnection));
+    doReturn(new AuroraTopologyService.ClusterTopologyInfo(topology))
+        .when(spyAuroratopologyService2).queryForTopology(eq(mockConnection));
+    doReturn(writerHost).when(spyAuroratopologyService2).getHostByName(eq(mockConnection));
+
+    final Properties properties = new Properties();
+    final FailoverConnectionPlugin failoverPlugin1 = initFailoverPlugin(properties, spyAuroratopologyService1);
+    final FailoverConnectionPlugin failoverPlugin2 = initFailoverPlugin(properties, spyAuroratopologyService2);
+
+    assert(Objects.equals(failoverPlugin1.hosts.get(0).getDatabase(), ""));
+    assertEquals(failoverPlugin1.hosts, failoverPlugin2.hosts);
+    verify(spyAuroratopologyService1, times(1)).queryForTopology(eq(mockConnection));
+    verify(spyAuroratopologyService2, never()).queryForTopology(eq(mockConnection));
+  }
+
   @AfterEach
   void cleanUp() throws Exception {
     closeable.close();
@@ -666,10 +714,14 @@ class FailoverConnectionPluginTest {
   }
 
   private FailoverConnectionPlugin initFailoverPlugin() throws SQLException {
-    return initFailoverPlugin(new Properties());
+    return initFailoverPlugin(new Properties(), mockTopologyService);
   }
 
-  private FailoverConnectionPlugin initFailoverPlugin(Properties properties)
+  private FailoverConnectionPlugin initFailoverPlugin(Properties properties) throws SQLException {
+    return initFailoverPlugin(properties, mockTopologyService);
+  }
+  
+  private FailoverConnectionPlugin initFailoverPlugin(Properties properties, AuroraTopologyService topologyService)
       throws SQLException {
     final JdbcPropertySet propertySet = new JdbcPropertySetImpl();
     propertySet.initializeProperties(properties);
@@ -680,7 +732,7 @@ class FailoverConnectionPluginTest {
         mockNextPlugin,
         mockLogger,
         mockConnectionProvider,
-        () -> mockTopologyService,
+        () -> topologyService,
         () -> mockClusterMetricContainer);
   }
 }

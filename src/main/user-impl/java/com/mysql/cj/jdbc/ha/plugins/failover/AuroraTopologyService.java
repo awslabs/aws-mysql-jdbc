@@ -165,8 +165,7 @@ public class AuroraTopologyService implements ITopologyService {
     this.log.logTrace(Messages.getString(
         "AuroraTopologyService.2",
         new Object[] {clusterInstanceTemplate.getHost(),
-            clusterInstanceTemplate.getPort(),
-            clusterInstanceTemplate.getDatabase()}));
+            clusterInstanceTemplate.getPort()}));
     this.clusterInstanceTemplate = clusterInstanceTemplate;
   }
 
@@ -292,8 +291,7 @@ public class AuroraTopologyService implements ITopologyService {
     ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
         getUrlFromEndpoint(
             hostEndpoint,
-            this.clusterInstanceTemplate.getPort(),
-            this.clusterInstanceTemplate.getDatabase()),
+            this.clusterInstanceTemplate.getPort()),
         new Properties());
     return new HostInfo(
         hostUrl,
@@ -315,19 +313,18 @@ public class AuroraTopologyService implements ITopologyService {
     return host.replace("?", nodeName);
   }
 
-  private String getUrlFromEndpoint(String endpoint, int port, String dbname) {
+  private String getUrlFromEndpoint(String endpoint, int port) {
     return String.format(
-        "%s//%s:%d/%s",
+        "%s//%s:%d/",
         ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(),
         endpoint,
-        port,
-        dbname);
+        port);
   }
 
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet)
       throws SQLException {
     Map<String, String> properties =
-        new HashMap<>(this.clusterInstanceTemplate.getHostProperties());
+        new HashMap<>();
     properties.put(
         TopologyServicePropertyKeys.INSTANCE_NAME,
         resultSet.getString(FIELD_SERVER_ID));
@@ -493,7 +490,7 @@ public class AuroraTopologyService implements ITopologyService {
     lastUsedReaderCache.remove(this.clusterId);
   }
 
-  private static class ClusterTopologyInfo {
+  static class ClusterTopologyInfo {
     private List<HostInfo> hosts;
 
     ClusterTopologyInfo(List<HostInfo> hosts) {
