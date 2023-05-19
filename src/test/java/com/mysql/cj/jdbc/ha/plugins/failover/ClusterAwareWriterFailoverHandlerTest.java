@@ -36,9 +36,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -310,7 +313,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertTrue(result.isNewHost());
     assertSame(result.getNewConnection(), mockNewWriterConnection);
     assertEquals(3, result.getTopology().size());
-    assertEquals("new-writer-host", result.getTopology().get(0).getHost());
+    assertEquals("new-writer-host.com", result.getTopology().get(0).getHost());
 
     verify(mockTopologyService, times(1)).addToDownHostList(refEq(writerHost));
     verify(mockTopologyService, times(1)).removeFromDownHostList(refEq(newWriterHost));
@@ -381,7 +384,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertTrue(result.isNewHost());
     assertSame(result.getNewConnection(), mockNewWriterConnection);
     assertEquals(4, result.getTopology().size());
-    assertEquals("new-writer-host", result.getTopology().get(0).getHost());
+    assertEquals("new-writer-host.com", result.getTopology().get(0).getHost());
 
     verify(mockTopologyService, times(1)).addToDownHostList(refEq(initialWriterHost));
     verify(mockTopologyService, times(1)).removeFromDownHostList(refEq(newWriterHost));
@@ -491,10 +494,17 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(refEq(writerHost))).thenThrow(new SQLException("exception", "08S01", null));
-    when(mockConnectionProvider.connect(refEq(readerA_Host))).thenReturn(mockReaderA_Connection);
-    when(mockConnectionProvider.connect(refEq(readerB_Host))).thenReturn(mockReaderB_Connection);
-    when(mockConnectionProvider.connect(refEq(newWriterHost))).thenThrow(SQLException.class);
+    ClusterAwareTestUtils.HostInfoMatcher writerMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    ClusterAwareTestUtils.HostInfoMatcher newWriterMatcher = new ClusterAwareTestUtils.HostInfoMatcher(newWriterHost);
+
+    doThrow(new SQLException("exception", "08S01", null))
+        .when(mockConnectionProvider).connect(argThat(writerMatcher));
+    doReturn(mockReaderA_Connection)
+        .when(mockConnectionProvider).connect(argThat(new ClusterAwareTestUtils.HostInfoMatcher(readerA_Host)));
+    doReturn(mockReaderB_Connection)
+        .when(mockConnectionProvider).connect(argThat(new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host)));
+    doThrow(SQLException.class)
+        .when(mockConnectionProvider).connect(argThat(newWriterMatcher));
 
     when(mockTopologyService.getTopology(any(JdbcConnection.class), any(Boolean.class)))
         .thenReturn(newTopology);
@@ -517,7 +527,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
     assertFalse(result.isConnected());
     assertFalse(result.isNewHost());
 
-    verify(mockTopologyService, times(1)).addToDownHostList(refEq(writerHost));
-    verify(mockTopologyService, atLeastOnce()).addToDownHostList(refEq(newWriterHost));
+    verify(mockTopologyService, times(1)).addToDownHostList(argThat(writerMatcher));
+    verify(mockTopologyService, atLeastOnce()).addToDownHostList(argThat(newWriterMatcher));
   }
 }

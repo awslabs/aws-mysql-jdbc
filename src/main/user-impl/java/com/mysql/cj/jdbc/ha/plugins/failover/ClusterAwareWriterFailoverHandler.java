@@ -172,14 +172,11 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
       List<HostInfo> currentTopology, ExecutorService executorService,
       CompletionService<WriterFailoverResult> completionService) {
     HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
-    HostInfo writerHostWithInitialProps = ConnectionUtils.copyWithAdditionalProps(
-        writerHost,
-        this.initialConnectionProps);
     this.topologyService.addToDownHostList(writerHost);
-    completionService.submit(new ReconnectToWriterHandler(writerHostWithInitialProps));
+    completionService.submit(new ReconnectToWriterHandler(writerHost));
     completionService.submit(new WaitForNewWriterHandler(
         currentTopology,
-        writerHostWithInitialProps));
+        writerHost));
     executorService.shutdown();
   }
 
@@ -271,7 +268,9 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
             }
 
             conn = connectionProvider.connect(this.originalWriterHost);
-            latestTopology = topologyService.getTopology(conn, true);
+            latestTopology = ConnectionUtils.createTopologyFromSimpleHosts(
+                topologyService.getTopology(conn, true),
+                initialConnectionProps);
 
           } catch (CJCommunicationsException exception) {
             // do nothing
@@ -413,8 +412,8 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     private boolean refreshTopologyAndConnectToNewWriter() throws InterruptedException {
       while (true) {
         try {
-          List<HostInfo> topology =
-              topologyService.getTopology(this.currentReaderConnection, true);
+          List<HostInfo> topology = ConnectionUtils.createTopologyFromSimpleHosts(
+              topologyService.getTopology(this.currentReaderConnection, true), initialConnectionProps);
 
           if (!topology.isEmpty()) {
             if (topology.size() == 1) {
@@ -473,12 +472,8 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
         this.currentConnection = this.currentReaderConnection;
       } else {
         // connect to the new writer
-        HostInfo writerCandidateWithProps =
-            ConnectionUtils.copyWithAdditionalProps(
-                writerCandidate,
-                initialConnectionProps);
         try {
-          this.currentConnection = connectionProvider.connect(writerCandidateWithProps);
+          this.currentConnection = connectionProvider.connect(writerCandidate);
         } catch (SQLException exception) {
           topologyService.addToDownHostList(writerCandidate);
           return false;

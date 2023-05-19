@@ -193,7 +193,9 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
 
             // need to ensure that the new connection is a connection to a reader node
             final HostInfo newHost = hosts.get(result.getConnectionIndex());
-            final List<HostInfo> topology = this.topologyService.getTopology(result.getConnection(), true);
+            final List<HostInfo> topology = ConnectionUtils.createTopologyFromSimpleHosts(
+                this.topologyService.getTopology(result.getConnection(), true),
+                this.initialConnectionProps);
             for (int i = FailoverConnectionPlugin.WRITER_CONNECTION_INDEX + 1; i < topology.size(); i++) {
               if (topology.get(i).equalHostPortPair(newHost)) {
                 return result;
@@ -463,9 +465,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
               new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
 
       try {
-        HostInfo newHostWithProps =
-            ConnectionUtils.copyWithAdditionalProps(newHost, initialConnectionProps);
-        JdbcConnection conn = connProvider.connect(newHostWithProps);
+        JdbcConnection conn = connProvider.connect(newHost);
         topologyService.removeFromDownHostList(newHost);
         log.logDebug(
             Messages.getString(

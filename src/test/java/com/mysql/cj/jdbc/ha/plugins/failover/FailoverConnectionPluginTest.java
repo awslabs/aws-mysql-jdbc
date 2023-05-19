@@ -285,9 +285,9 @@ class FailoverConnectionPluginTest {
     assertEquals(
         FailoverConnectionPlugin.WRITER_CONNECTION_INDEX,
         failoverPlugin.currentHostIndex);
-    assertEquals(
+    assertTrue(ClusterAwareTestUtils.hostsAreTheSame(
         actualWriterHost,
-        failoverPlugin.hosts.get(failoverPlugin.currentHostIndex));
+        failoverPlugin.hosts.get(failoverPlugin.currentHostIndex)));
     assertFalse(failoverPlugin.explicitlyReadOnly);
     assertFalse(failoverPlugin.isCurrentConnectionReadOnly());
   }
@@ -620,7 +620,7 @@ class FailoverConnectionPluginTest {
 
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
 
-    assertEquals(0, failoverPlugin.initialConnectionProps.size());
+    assertEquals(4, failoverPlugin.initialConnectionProps.size());
     assertFalse(failoverPlugin.isRds());
     assertFalse(failoverPlugin.isRdsProxy());
     assertFalse(failoverPlugin.isClusterTopologyAvailable);
@@ -639,7 +639,7 @@ class FailoverConnectionPluginTest {
     final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties);
     final Map<String, String> initialConnectionProperties = failoverPlugin.initialConnectionProps;
 
-    assertEquals(1, initialConnectionProperties.size());
+    assertEquals(5, initialConnectionProperties.size());
     assertEquals("10", initialConnectionProperties.get("maxAllowedPacket"));
     assertFalse(failoverPlugin.isRds());
     assertFalse(failoverPlugin.isRdsProxy());
@@ -686,7 +686,10 @@ class FailoverConnectionPluginTest {
     final FailoverConnectionPlugin failoverPlugin2 = initFailoverPlugin(properties, spyAuroratopologyService2);
 
     assert(Objects.equals(failoverPlugin1.hosts.get(0).getDatabase(), ""));
-    assertEquals(failoverPlugin1.hosts, failoverPlugin2.hosts);
+    assertEquals(failoverPlugin1.hosts.size(), failoverPlugin2.hosts.size());
+    for (int i = 0; i < failoverPlugin1.hosts.size(); i++) {
+      assertTrue(ClusterAwareTestUtils.hostsAreTheSame(failoverPlugin1.hosts.get(i), failoverPlugin2.hosts.get(i)));
+    }
     verify(spyAuroratopologyService1, times(1)).queryForTopology(eq(mockConnection));
     verify(spyAuroratopologyService2, never()).queryForTopology(eq(mockConnection));
   }

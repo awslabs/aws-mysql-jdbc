@@ -35,8 +35,11 @@ import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
 
+import com.mysql.cj.conf.PropertyKey;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -117,6 +120,49 @@ public class ConnectionUtils {
     return new HostInfo(urlContainer, baseHostInfo.getHost(), baseHostInfo.getPort(),
         newHostInfo.getUser(), newHostInfo.getPassword(),
         mergedProps);
+  }
+
+  public static HostInfo createHostWithProperties(HostInfo baseHost, Map<String, String> properties) {
+    Map<String, String> propertiesCopy = new HashMap<>(properties);
+    propertiesCopy.putAll(baseHost.getHostProperties());
+    String hostEndpoint = baseHost.getHost();
+    int port = baseHost.getPort();
+    String user = propertiesCopy.get(PropertyKey.USER.getKeyName());
+    String password = propertiesCopy.get(PropertyKey.PASSWORD.getKeyName());
+    propertiesCopy.remove(PropertyKey.USER.getKeyName());
+    propertiesCopy.remove(PropertyKey.PASSWORD.getKeyName());
+
+    ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
+        getUrlFromEndpoint(
+            hostEndpoint,
+            port),
+        new Properties());
+
+    return new HostInfo(
+        hostUrl,
+        hostEndpoint,
+        port,
+        user,
+        password,
+        propertiesCopy);
+  }
+
+  public static List<HostInfo> createTopologyFromSimpleHosts(List<HostInfo> basicTopology, Map<String, String> properties) {
+    List<HostInfo> topology = new ArrayList<>();
+    if (basicTopology != null) {
+      for (HostInfo host : basicTopology) {
+        topology.add(createHostWithProperties(host, properties));
+      }
+    }
+    return topology;
+  }
+
+  private static String getUrlFromEndpoint(String endpoint, int port) {
+    return String.format(
+        "%s//%s:%d/",
+        ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(),
+        endpoint,
+        port);
   }
 
   /**

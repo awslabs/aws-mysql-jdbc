@@ -38,7 +38,9 @@ import com.mysql.cj.jdbc.ha.ConnectionProxyTest;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import org.mockito.ArgumentMatcher;
 
 /**
  * Class containing helper methods for {@link ConnectionProxyTest},
@@ -60,13 +62,58 @@ public class ClusterAwareTestUtils {
       String password) {
     final Map<String, String> properties = new HashMap<>();
     properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
+    properties.put(PropertyKey.connectTimeout.getKeyName(), "0");
+    properties.put(PropertyKey.socketTimeout.getKeyName(), "0");
     String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
+    String host = instanceName + ".com";
     if (db != null) {
       properties.put(PropertyKey.DBNAME.getKeyName(), db);
       url += db;
     }
     final ConnectionUrl conStr =
         ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    return new HostInfo(conStr, instanceName, 1234, user, password, properties);
+    return new HostInfo(conStr, host, 1234, user, password, properties);
   }
+
+  protected static class HostInfoMatcher implements ArgumentMatcher<HostInfo> {
+
+    private final HostInfo expectedHost;
+
+    HostInfoMatcher(HostInfo hostInfo) {
+      this.expectedHost = hostInfo;
+    }
+
+    @Override
+    public boolean matches(HostInfo host) {
+      return expectedHost.getHost().equals(host.getHost()) &&
+          expectedHost.getDatabase().equals(host.getDatabase()) &&
+          expectedHost.getPort() == host.getPort() &&
+          expectedHost.getDatabaseUrl().equals(host.getDatabaseUrl()) &&
+          expectedHost.getHostProperties().equals(host.getHostProperties());
+    }
+  }
+
+    protected static boolean hostsAreTheSame(HostInfo hostInfo1, HostInfo hostInfo2) {
+      if (hostInfo1 == hostInfo2) {
+        return true;
+      }
+
+      boolean sameProperties =
+          hostInfo1.getHostProperties().size() == hostInfo2.getHostProperties().size();
+      for (Map.Entry<String,String> property : hostInfo1.getHostProperties().entrySet()) {
+        if (hostInfo2.getHostProperties().get(property.getKey()) == null ||
+          !Objects.equals(
+              hostInfo2.getHostProperties().get(property.getKey()),
+              hostInfo1.getHostProperties().get(property.getKey()))) {
+          sameProperties = false;
+          break;
+        }
+      }
+
+      return hostInfo1.getPort() == hostInfo2.getPort() &&
+          Objects.equals(hostInfo1.getUser(), hostInfo2.getUser()) &&
+          Objects.equals(hostInfo1.getPassword(), hostInfo2.getPassword()) &&
+          sameProperties &&
+          Objects.equals(hostInfo1.getDatabaseUrl(), hostInfo2.getDatabaseUrl());
+    }
 }

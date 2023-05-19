@@ -580,7 +580,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
 
     if (!Util.isNullOrEmpty(failoverResult.getTopology())) {
-      this.hosts = failoverResult.getTopology();
+      this.hosts =
+          ConnectionUtils.createTopologyFromSimpleHosts(failoverResult.getTopology(), this.initialConnectionProps);
     }
 
     metricsContainer.registerFailoverConnects(true);
@@ -732,8 +733,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return;
     }
 
-    List<HostInfo> latestTopology =
-        this.topologyService.getTopology(connection, forceUpdate);
+    List<HostInfo> latestTopology = ConnectionUtils.createTopologyFromSimpleHosts(
+        this.topologyService.getTopology(connection, forceUpdate),
+        this.initialConnectionProps);
 
     updateHostIndex(latestTopology);
     this.hosts = latestTopology;
@@ -814,19 +816,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private HostInfo createClusterInstanceTemplate(
-      HostInfo hostInfo,
       String host,
       int port) {
-    final ConnectionUrl connectionUrl = ConnectionUrl.getConnectionUrlInstance(
-        hostInfo.getDatabaseUrl(),
-        null);
-
     return new HostInfo(
-        connectionUrl,
+        null,
         host,
         port,
-        hostInfo.getUser(),
-        hostInfo.getPassword(),
+        null,
+        null,
         null);
   }
 
@@ -947,7 +944,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     setClusterId(hostInfo.getHost(), hostInfo.getPort());
     this.topologyService.setClusterInstanceTemplate(
         createClusterInstanceTemplate(
-            hostInfo,
             hostInfo.getHost(),
             hostInfo.getPort()));
     initializeTopology();
@@ -972,7 +968,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     setClusterId(hostInfo.getHost(), hostInfo.getPort());
     this.topologyService.setClusterInstanceTemplate(
         createClusterInstanceTemplate(
-            hostInfo,
             rdsInstanceHostPattern,
             hostInfo.getPort()));
     initializeTopology();
@@ -990,7 +985,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     // come from the configuration property.
     setClusterId(instanceHostPattern, instanceHostPort);
     this.topologyService.setClusterInstanceTemplate(
-        createClusterInstanceTemplate(hostInfo, instanceHostPattern, instanceHostPort));
+        createClusterInstanceTemplate(instanceHostPattern, instanceHostPort));
     initializeTopology();
   }
 
@@ -1024,7 +1019,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void fetchTopology() throws SQLException {
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
+    List<HostInfo> topology = ConnectionUtils.createTopologyFromSimpleHosts(
+        this.topologyService.getTopology(currentConnection, false),
+        this.initialConnectionProps);
     if (!Util.isNullOrEmpty(topology)) {
       this.hosts = topology;
     }
@@ -1326,6 +1323,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         .forEach(x -> initialConnectionProperties.put(x, originalProperties.getProperty(x)));
 
     initialConnectionProperties.putAll(currentHost.getHostProperties());
+    initialConnectionProperties.put(PropertyKey.USER.getKeyName(), currentHost.getUser());
+    initialConnectionProperties.put(PropertyKey.PASSWORD.getKeyName(), currentHost.getPassword());
     initialConnectionProperties.put(PropertyKey.connectTimeout.getKeyName(), String.valueOf(this.failoverConnectTimeoutMs));
     initialConnectionProperties.put(PropertyKey.socketTimeout.getKeyName(), String.valueOf(this.failoverSocketTimeoutMs));
 
