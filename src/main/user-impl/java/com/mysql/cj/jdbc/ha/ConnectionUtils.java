@@ -109,11 +109,11 @@ public class ConnectionUtils {
   public static HostInfo copyWithAdditionalProps(
       HostInfo baseHostInfo,
       HostInfo newHostInfo) {
-    DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
+    final DatabaseUrlContainer urlContainer = ConnectionUrl.getConnectionUrlInstance(
         baseHostInfo.getDatabaseUrl(),
         new Properties());
-    Map<String, String> originalProps = baseHostInfo.getHostProperties();
-    Map<String, String> mergedProps = new HashMap<>();
+    final Map<String, String> originalProps = baseHostInfo.getHostProperties();
+    final Map<String, String> mergedProps = new HashMap<>();
     mergedProps.putAll(originalProps);
     mergedProps.putAll(newHostInfo.getHostProperties());
 
@@ -123,16 +123,16 @@ public class ConnectionUtils {
   }
 
   public static HostInfo createHostWithProperties(HostInfo baseHost, Map<String, String> properties) {
-    Map<String, String> propertiesCopy = new HashMap<>(properties);
+    final Map<String, String> propertiesCopy = new HashMap<>(properties);
     propertiesCopy.putAll(baseHost.getHostProperties());
-    String hostEndpoint = baseHost.getHost();
-    int port = baseHost.getPort();
-    String user = propertiesCopy.get(PropertyKey.USER.getKeyName());
-    String password = propertiesCopy.get(PropertyKey.PASSWORD.getKeyName());
+    final String hostEndpoint = baseHost.getHost();
+    final int port = baseHost.getPort();
+    final String user = propertiesCopy.get(PropertyKey.USER.getKeyName());
+    final String password = propertiesCopy.get(PropertyKey.PASSWORD.getKeyName());
     propertiesCopy.remove(PropertyKey.USER.getKeyName());
     propertiesCopy.remove(PropertyKey.PASSWORD.getKeyName());
 
-    ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
+    final ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
         getUrlFromEndpoint(
             hostEndpoint,
             port),
@@ -145,16 +145,6 @@ public class ConnectionUtils {
         user,
         password,
         propertiesCopy);
-  }
-
-  public static List<HostInfo> createTopologyFromSimpleHosts(List<HostInfo> basicTopology, Map<String, String> properties) {
-    List<HostInfo> topology = new ArrayList<>();
-    if (basicTopology != null) {
-      for (HostInfo host : basicTopology) {
-        topology.add(createHostWithProperties(host, properties));
-      }
-    }
-    return topology;
   }
 
   private static String getUrlFromEndpoint(String endpoint, int port) {

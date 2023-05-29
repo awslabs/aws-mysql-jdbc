@@ -68,7 +68,6 @@ public class ClusterAwareTestUtils {
     String host = instanceName + ".com";
     if (db != null) {
       properties.put(PropertyKey.DBNAME.getKeyName(), db);
-      url += db;
     }
     final ConnectionUrl conStr =
         ConnectionUrl.getConnectionUrlInstance(url, new Properties());
@@ -85,35 +84,19 @@ public class ClusterAwareTestUtils {
 
     @Override
     public boolean matches(HostInfo host) {
-      return expectedHost.getHost().equals(host.getHost()) &&
-          expectedHost.getDatabase().equals(host.getDatabase()) &&
-          expectedHost.getPort() == host.getPort() &&
-          expectedHost.getDatabaseUrl().equals(host.getDatabaseUrl()) &&
-          expectedHost.getHostProperties().equals(host.getHostProperties());
+      return hostsAreTheSame(expectedHost, host);
     }
   }
 
-    protected static boolean hostsAreTheSame(HostInfo hostInfo1, HostInfo hostInfo2) {
-      if (hostInfo1 == hostInfo2) {
-        return true;
-      }
-
-      boolean sameProperties =
-          hostInfo1.getHostProperties().size() == hostInfo2.getHostProperties().size();
-      for (Map.Entry<String,String> property : hostInfo1.getHostProperties().entrySet()) {
-        if (hostInfo2.getHostProperties().get(property.getKey()) == null ||
-          !Objects.equals(
-              hostInfo2.getHostProperties().get(property.getKey()),
-              hostInfo1.getHostProperties().get(property.getKey()))) {
-          sameProperties = false;
-          break;
-        }
-      }
-
-      return hostInfo1.getPort() == hostInfo2.getPort() &&
-          Objects.equals(hostInfo1.getUser(), hostInfo2.getUser()) &&
-          Objects.equals(hostInfo1.getPassword(), hostInfo2.getPassword()) &&
-          sameProperties &&
-          Objects.equals(hostInfo1.getDatabaseUrl(), hostInfo2.getDatabaseUrl());
+  protected static boolean hostsAreTheSame(HostInfo hostInfo1, HostInfo hostInfo2) {
+    if (hostInfo1 == hostInfo2) {
+      return true;
     }
+
+    return hostInfo1.getPort() == hostInfo2.getPort() &&
+        Objects.equals(hostInfo1.getUser(), hostInfo2.getUser()) &&
+        Objects.equals(hostInfo1.getPassword(), hostInfo2.getPassword()) &&
+        Objects.equals(hostInfo1.exposeAsProperties(), hostInfo2.exposeAsProperties()) &&
+        Objects.equals(hostInfo1.getDatabaseUrl(), hostInfo2.getDatabaseUrl());
+  }
 }

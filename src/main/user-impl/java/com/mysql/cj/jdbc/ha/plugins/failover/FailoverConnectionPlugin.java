@@ -580,8 +580,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
 
     if (!Util.isNullOrEmpty(failoverResult.getTopology())) {
-      this.hosts =
-          ConnectionUtils.createTopologyFromSimpleHosts(failoverResult.getTopology(), this.initialConnectionProps);
+      this.hosts = failoverResult.getTopology();
     }
 
     metricsContainer.registerFailoverConnects(true);
@@ -733,9 +732,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return;
     }
 
-    List<HostInfo> latestTopology = ConnectionUtils.createTopologyFromSimpleHosts(
-        this.topologyService.getTopology(connection, forceUpdate),
-        this.initialConnectionProps);
+    List<HostInfo> latestTopology = this.topologyService.getTopology(connection, forceUpdate);
 
     updateHostIndex(latestTopology);
     this.hosts = latestTopology;
@@ -1019,9 +1016,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void fetchTopology() throws SQLException {
     final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
-    List<HostInfo> topology = ConnectionUtils.createTopologyFromSimpleHosts(
-        this.topologyService.getTopology(currentConnection, false),
-        this.initialConnectionProps);
+    List<HostInfo> topology = this.topologyService.getTopology(currentConnection, false);
     if (!Util.isNullOrEmpty(topology)) {
       this.hosts = topology;
     }
