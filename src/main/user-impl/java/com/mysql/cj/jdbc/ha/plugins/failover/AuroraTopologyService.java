@@ -32,7 +32,6 @@
 package com.mysql.cj.jdbc.ha.plugins.failover;
 
 import com.mysql.cj.Messages;
-import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.conf.PropertySet;
@@ -55,7 +54,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -165,8 +163,7 @@ public class AuroraTopologyService implements ITopologyService {
     this.log.logTrace(Messages.getString(
         "AuroraTopologyService.2",
         new Object[] {clusterInstanceTemplate.getHost(),
-            clusterInstanceTemplate.getPort(),
-            clusterInstanceTemplate.getDatabase()}));
+            clusterInstanceTemplate.getPort()}));
     this.clusterInstanceTemplate = clusterInstanceTemplate;
   }
 
@@ -289,18 +286,12 @@ public class AuroraTopologyService implements ITopologyService {
 
   private HostInfo createHost(ResultSet resultSet) throws SQLException {
     String hostEndpoint = getHostEndpoint(resultSet.getString(FIELD_SERVER_ID));
-    ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
-        getUrlFromEndpoint(
-            hostEndpoint,
-            this.clusterInstanceTemplate.getPort(),
-            this.clusterInstanceTemplate.getDatabase()),
-        new Properties());
     return new HostInfo(
-        hostUrl,
+        null,
         hostEndpoint,
         this.clusterInstanceTemplate.getPort(),
-        this.clusterInstanceTemplate.getUser(),
-        this.clusterInstanceTemplate.getPassword(),
+        null,
+        null,
         getPropertiesFromTopology(resultSet));
   }
 
@@ -315,19 +306,10 @@ public class AuroraTopologyService implements ITopologyService {
     return host.replace("?", nodeName);
   }
 
-  private String getUrlFromEndpoint(String endpoint, int port, String dbname) {
-    return String.format(
-        "%s//%s:%d/%s",
-        ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(),
-        endpoint,
-        port,
-        dbname);
-  }
-
   private Map<String, String> getPropertiesFromTopology(ResultSet resultSet)
       throws SQLException {
     Map<String, String> properties =
-        new HashMap<>(this.clusterInstanceTemplate.getHostProperties());
+        new HashMap<>();
     properties.put(
         TopologyServicePropertyKeys.INSTANCE_NAME,
         resultSet.getString(FIELD_SERVER_ID));
@@ -493,7 +475,7 @@ public class AuroraTopologyService implements ITopologyService {
     lastUsedReaderCache.remove(this.clusterId);
   }
 
-  private static class ClusterTopologyInfo {
+  static class ClusterTopologyInfo {
     private List<HostInfo> hosts;
 
     ClusterTopologyInfo(List<HostInfo> hosts) {

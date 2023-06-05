@@ -463,8 +463,7 @@ public class ClusterAwareReaderFailoverHandler implements IReaderFailoverHandler
               new Object[] {this.newHostTuple.getIndex(), newHost.getHostPortPair()}));
 
       try {
-        HostInfo newHostWithProps =
-            ConnectionUtils.copyWithAdditionalProps(newHost, initialConnectionProps);
+        HostInfo newHostWithProps = ConnectionUtils.createHostWithProperties(newHost, initialConnectionProps);
         JdbcConnection conn = connProvider.connect(newHostWithProps);
         topologyService.removeFromDownHostList(newHost);
         log.logDebug(

@@ -172,14 +172,11 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
       List<HostInfo> currentTopology, ExecutorService executorService,
       CompletionService<WriterFailoverResult> completionService) {
     HostInfo writerHost = currentTopology.get(WRITER_CONNECTION_INDEX);
-    HostInfo writerHostWithInitialProps = ConnectionUtils.copyWithAdditionalProps(
-        writerHost,
-        this.initialConnectionProps);
     this.topologyService.addToDownHostList(writerHost);
-    completionService.submit(new ReconnectToWriterHandler(writerHostWithInitialProps));
+    completionService.submit(new ReconnectToWriterHandler(writerHost));
     completionService.submit(new WaitForNewWriterHandler(
         currentTopology,
-        writerHostWithInitialProps));
+        writerHost));
     executorService.shutdown();
   }
 
@@ -270,7 +267,8 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               conn.close();
             }
 
-            conn = connectionProvider.connect(this.originalWriterHost);
+            HostInfo originalHost = ConnectionUtils.createHostWithProperties(this.originalWriterHost, initialConnectionProps);
+            conn = connectionProvider.connect(originalHost);
             latestTopology = topologyService.getTopology(conn, true);
 
           } catch (CJCommunicationsException exception) {
@@ -378,8 +376,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
               readerFailoverHandler.getReaderConnection(this.currentTopology);
           if (isValidReaderConnection(connResult)) {
             this.currentReaderConnection = connResult.getConnection();
-            this.currentReaderHost =
-                this.currentTopology.get(connResult.getConnectionIndex());
+            this.currentReaderHost = this.currentTopology.get(connResult.getConnectionIndex());
             log.logDebug(
                 Messages.getString(
                     "ClusterAwareWriterFailoverHandler.11",
@@ -413,8 +410,7 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
     private boolean refreshTopologyAndConnectToNewWriter() throws InterruptedException {
       while (true) {
         try {
-          List<HostInfo> topology =
-              topologyService.getTopology(this.currentReaderConnection, true);
+          List<HostInfo> topology = topologyService.getTopology(this.currentReaderConnection, true);
 
           if (!topology.isEmpty()) {
             if (topology.size() == 1) {
@@ -473,11 +469,8 @@ public class ClusterAwareWriterFailoverHandler implements IWriterFailoverHandler
         this.currentConnection = this.currentReaderConnection;
       } else {
         // connect to the new writer
-        HostInfo writerCandidateWithProps =
-            ConnectionUtils.copyWithAdditionalProps(
-                writerCandidate,
-                initialConnectionProps);
         try {
+          HostInfo writerCandidateWithProps = ConnectionUtils.createHostWithProperties(writerCandidate, initialConnectionProps);
           this.currentConnection = connectionProvider.connect(writerCandidateWithProps);
         } catch (SQLException exception) {
           topologyService.addToDownHostList(writerCandidate);

@@ -38,13 +38,19 @@ import com.mysql.cj.jdbc.ha.ConnectionProxyTest;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import org.mockito.ArgumentMatcher;
 
 /**
  * Class containing helper methods for {@link ConnectionProxyTest},
  * {@link ClusterAwareReaderFailoverHandlerTest} and {@link ClusterAwareWriterFailoverHandlerTest}.
  */
 public class ClusterAwareTestUtils {
+  protected static HostInfo createBasicHostInfo(String instanceName) {
+    return createBasicHostInfo(instanceName, null, null, null);
+  }
+
   protected static HostInfo createBasicHostInfo(String instanceName, String db) {
     return createBasicHostInfo(instanceName, db, null, null);
   }
@@ -56,12 +62,41 @@ public class ClusterAwareTestUtils {
       String password) {
     final Map<String, String> properties = new HashMap<>();
     properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
+    properties.put(PropertyKey.connectTimeout.getKeyName(), "0");
+    properties.put(PropertyKey.socketTimeout.getKeyName(), "0");
     String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
-    db = (db == null) ? "" : db;
-    properties.put(PropertyKey.DBNAME.getKeyName(), db);
-    url += db;
+    String host = instanceName + ".com";
+    if (db != null) {
+      properties.put(PropertyKey.DBNAME.getKeyName(), db);
+    }
     final ConnectionUrl conStr =
         ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    return new HostInfo(conStr, instanceName, 1234, user, password, properties);
+    return new HostInfo(conStr, host, 1234, user, password, properties);
+  }
+
+  protected static class HostInfoMatcher implements ArgumentMatcher<HostInfo> {
+
+    private final HostInfo expectedHost;
+
+    HostInfoMatcher(HostInfo hostInfo) {
+      this.expectedHost = hostInfo;
+    }
+
+    @Override
+    public boolean matches(HostInfo host) {
+      return hostsAreTheSame(expectedHost, host);
+    }
+  }
+
+  protected static boolean hostsAreTheSame(HostInfo hostInfo1, HostInfo hostInfo2) {
+    if (hostInfo1 == hostInfo2) {
+      return true;
+    }
+
+    return hostInfo1.getPort() == hostInfo2.getPort() &&
+        Objects.equals(hostInfo1.getUser(), hostInfo2.getUser()) &&
+        Objects.equals(hostInfo1.getPassword(), hostInfo2.getPassword()) &&
+        Objects.equals(hostInfo1.exposeAsProperties(), hostInfo2.exposeAsProperties()) &&
+        Objects.equals(hostInfo1.getDatabaseUrl(), hostInfo2.getDatabaseUrl());
   }
 }

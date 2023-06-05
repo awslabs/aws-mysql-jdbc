@@ -205,10 +205,11 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     this.connectionProvider = connectionProvider;
     this.metricsContainer = metricsContainerSupplier.get();
 
-    this.initialConnectionProps = new HashMap<>();
-    this.initialConnectionProps = getInitialConnectionProps(this.propertySet);
-
     initSettings();
+
+    this.initialConnectionProps = new HashMap<>();
+    this.initialConnectionProps =
+        getInitialConnectionProps(this.propertySet, this.currentConnectionProvider.getCurrentHostInfo());
 
     if (!this.enableFailoverSetting) {
       return;
@@ -731,8 +732,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       return;
     }
 
-    List<HostInfo> latestTopology =
-        this.topologyService.getTopology(connection, forceUpdate);
+    List<HostInfo> latestTopology = this.topologyService.getTopology(connection, forceUpdate);
 
     updateHostIndex(latestTopology);
     this.hosts = latestTopology;
@@ -813,38 +813,15 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private HostInfo createClusterInstanceTemplate(
-      HostInfo hostInfo,
       String host,
       int port) {
-    // TODO: review whether we still need this method
-    Map<String, String> properties = new HashMap<>(this.initialConnectionProps);
-    properties.put(
-        PropertyKey.connectTimeout.getKeyName(),
-        String.valueOf(this.failoverConnectTimeoutMs));
-    properties.put(
-        PropertyKey.socketTimeout.getKeyName(),
-        String.valueOf(this.failoverSocketTimeoutMs));
-
-    if (!Objects.equals(hostInfo.getDatabase(), "")) {
-      properties.put(
-          PropertyKey.DBNAME.getKeyName(),
-          hostInfo.getDatabase());
-    }
-
-    final Properties connectionProperties = new Properties();
-    connectionProperties.putAll(this.initialConnectionProps);
-
-    final ConnectionUrl connectionUrl = ConnectionUrl.getConnectionUrlInstance(
-        hostInfo.getDatabaseUrl(),
-        connectionProperties);
-
     return new HostInfo(
-        connectionUrl,
+        null,
         host,
         port,
-        hostInfo.getUser(),
-        hostInfo.getPassword(),
-        properties);
+        null,
+        null,
+        null);
   }
 
   /**
@@ -964,7 +941,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     setClusterId(hostInfo.getHost(), hostInfo.getPort());
     this.topologyService.setClusterInstanceTemplate(
         createClusterInstanceTemplate(
-            hostInfo,
             hostInfo.getHost(),
             hostInfo.getPort()));
     initializeTopology();
@@ -989,7 +965,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     setClusterId(hostInfo.getHost(), hostInfo.getPort());
     this.topologyService.setClusterInstanceTemplate(
         createClusterInstanceTemplate(
-            hostInfo,
             rdsInstanceHostPattern,
             hostInfo.getPort()));
     initializeTopology();
@@ -1007,7 +982,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     // come from the configuration property.
     setClusterId(instanceHostPattern, instanceHostPort);
     this.topologyService.setClusterInstanceTemplate(
-        createClusterInstanceTemplate(hostInfo, instanceHostPattern, instanceHostPort));
+        createClusterInstanceTemplate(instanceHostPattern, instanceHostPort));
     initializeTopology();
   }
 
@@ -1334,13 +1309,19 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
   }
 
-  private Map<String, String> getInitialConnectionProps(final PropertySet propertySet) {
+  private Map<String, String> getInitialConnectionProps(final PropertySet propertySet, HostInfo currentHost) {
     final Map<String, String> initialConnectionProperties = new HashMap<>();
     final Properties originalProperties = propertySet.exposeAsProperties();
     originalProperties.stringPropertyNames()
         .stream()
         .filter(x -> this.propertySet.getProperty(x).isExplicitlySet())
         .forEach(x -> initialConnectionProperties.put(x, originalProperties.getProperty(x)));
+
+    initialConnectionProperties.putAll(currentHost.getHostProperties());
+    initialConnectionProperties.put(PropertyKey.USER.getKeyName(), currentHost.getUser());
+    initialConnectionProperties.put(PropertyKey.PASSWORD.getKeyName(), currentHost.getPassword());
+    initialConnectionProperties.put(PropertyKey.connectTimeout.getKeyName(), String.valueOf(this.failoverConnectTimeoutMs));
+    initialConnectionProperties.put(PropertyKey.socketTimeout.getKeyName(), String.valueOf(this.failoverSocketTimeoutMs));
 
     return initialConnectionProperties;
   }
