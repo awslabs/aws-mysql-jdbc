@@ -152,6 +152,19 @@ public class ConnectionProxyTest {
     assertSame(mockHostInfo, proxy.getCurrentHostInfo());
   }
 
+  @Test
+  public void testAwsProtocolWithLegacyPropertyValues() throws SQLException {
+    final Properties props = new Properties();
+    props.setProperty("zeroDateTimeBehavior", "convertToNull");
+
+    final ConnectionUrl conStr =
+        ConnectionUrl.getConnectionUrlInstance(DEFAULT_CONNECTION_STR, props);
+    final ConnectionProxy proxy = getConnectionProxy(conStr);
+
+    assertSame(mockConnection, proxy.getCurrentConnection());
+    assert(proxy.getCurrentHostInfo().getHostProperties().get("zeroDateTimeBehavior").equals("CONVERT_TO_NULL"));
+  }
+
   @AfterEach
   void cleanUp() throws Exception {
     closeable.close();

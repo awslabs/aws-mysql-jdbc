@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [?]
+### Fixed
+- Fixed value `convertToNull` being rejected for property `zeroDateTimeBehavior` because of capitalization ([Issue #411](https://github.com/awslabs/aws-mysql-jdbc/pull/413)).
+
 ## [1.1.7] - 2023-05-11
 ### Changed
 * Removed the `isMultiWriterCluster` flag as [multi-writer clusters are end of life since February 2023](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.MySQL56.EOL.html). ([PR #405](https://github.com/awslabs/aws-mysql-jdbc/pull/405)).

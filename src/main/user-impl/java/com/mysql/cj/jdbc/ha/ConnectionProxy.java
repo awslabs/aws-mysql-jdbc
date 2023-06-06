@@ -54,6 +54,7 @@ import java.lang.reflect.Proxy;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Function;
 
 /**
@@ -225,7 +226,13 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
 
   protected void initSettings(ConnectionUrl connectionUrl) throws SQLException {
     try {
-      this.connProps.initializeProperties(connectionUrl.getConnectionArgumentsAsProperties());
+      final Properties props = new Properties();
+      for (Map.Entry<String, String> entry : connectionUrl.getMainHost().getHostProperties().entrySet()) {
+        if (entry.getValue() != null) {
+          props.put(entry.getKey(), entry.getValue());
+        }
+      }
+      this.connProps.initializeProperties(props);
     } catch (CJException e) {
       throw SQLExceptionsMapping.translateException(e, null);
     }
