@@ -128,7 +128,7 @@ public class Monitor implements IMonitor {
     }
 
     context.setInactive();
-
+    this.newContexts.remove(context);
     this.contextLastUsedTimestampNano = this.getCurrentTimeNano();
   }
 
