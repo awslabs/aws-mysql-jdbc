@@ -174,6 +174,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private long invokeStartTimeMs;
   private long failoverStartTimeMs;
+  boolean isInitialConnectionToReader;
 
   public FailoverConnectionPlugin(
       ICurrentConnectionProvider currentConnectionProvider,
@@ -618,6 +619,15 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   protected synchronized void pickNewConnection() throws SQLException {
+    pickNewConnection(null);
+  }
+
+  synchronized void pickNewConnection(List<HostInfo> latestTopology) throws SQLException {
+    final List<HostInfo> currentTopology = this.hosts;
+    if (latestTopology != null) {
+      this.hosts = latestTopology;
+    }
+
     if (this.isClosed && this.closedExplicitly) {
       if (this.logger.isDebugEnabled()) {
         this.logger.logDebug(Messages.getString("ClusterAwareConnectionProxy.1"));
@@ -640,7 +650,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       connectTo(WRITER_CONNECTION_INDEX);
       if (this.currentHostIndex != NO_CONNECTION_INDEX
           && this.currentHostIndex != WRITER_CONNECTION_INDEX) {
-        topologyService.setLastUsedReaderHost(this.hosts.get(this.currentHostIndex));
+        topologyService.setLastUsedReaderHost(currentTopology.get(this.currentHostIndex));
       }
     } catch (SQLException e) {
       failover(WRITER_CONNECTION_INDEX);
@@ -733,7 +743,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
 
     List<HostInfo> latestTopology = this.topologyService.getTopology(connection, forceUpdate);
-
     updateHostIndex(latestTopology);
     this.hosts = latestTopology;
   }
@@ -1002,6 +1011,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
         initFromConnectionString(hostInfo);
       }
     }
+
+    this.isInitialConnectionToReader = this.currentHostIndex != WRITER_CONNECTION_INDEX;
 
     if (isRdsClusterDns(hostname)) {
       this.explicitlyReadOnly = isReaderClusterDns(hostname);
@@ -1282,11 +1293,12 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       }
     }
 
-    if (latestHostIndex == NO_CONNECTION_INDEX) {
-      // current connection host isn't found in the latest topology
-      // switch to another connection;
+    if (latestHostIndex == NO_CONNECTION_INDEX
+        || (!isExplicitlyReadOnly() && latestHostIndex != WRITER_CONNECTION_INDEX && !isInitialConnectionToReader)) {
+      // Current connection host isn't found in the latest topology or
+      // the current connection is not read only but is connected to a reader instance.
       this.currentHostIndex = NO_CONNECTION_INDEX;
-      pickNewConnection();
+      pickNewConnection(latestTopology);
     } else {
       // found the same node at different position in the topology
       // adjust current index only; connection is still valid

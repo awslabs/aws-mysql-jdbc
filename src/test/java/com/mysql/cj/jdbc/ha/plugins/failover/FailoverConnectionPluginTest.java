@@ -38,10 +38,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -674,24 +676,24 @@ class FailoverConnectionPluginTest {
     topology.add(writerHost);
     topology.add(readerA_Host);
     topology.add(readerB_Host);
-    AuroraTopologyService auroraTopologyService1 = new AuroraTopologyService(null);
-    AuroraTopologyService spyAuroratopologyService1 = spy(auroraTopologyService1);
+    final AuroraTopologyService auroraTopologyService1 = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroratopologyService1 = spy(auroraTopologyService1);
     spyAuroratopologyService1.clusterId = clusterId;
 
-    AuroraTopologyService auroraTopologyService2 = new AuroraTopologyService(null);
-    AuroraTopologyService spyAuroratopologyService2 = spy(auroraTopologyService2);
-    spyAuroratopologyService2.clusterId = clusterId;
+    final AuroraTopologyService auroraTopologyService2 = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroraTopologyService2 = spy(auroraTopologyService2);
+    spyAuroraTopologyService2.clusterId = clusterId;
 
     doReturn(new AuroraTopologyService.ClusterTopologyInfo(topology))
         .when(spyAuroratopologyService1).queryForTopology(eq(mockConnection));
     doReturn(writerHost).when(spyAuroratopologyService1).getHostByName(eq(mockConnection));
     doReturn(new AuroraTopologyService.ClusterTopologyInfo(topology))
-        .when(spyAuroratopologyService2).queryForTopology(eq(mockConnection));
-    doReturn(writerHost).when(spyAuroratopologyService2).getHostByName(eq(mockConnection));
+        .when(spyAuroraTopologyService2).queryForTopology(eq(mockConnection));
+    doReturn(writerHost).when(spyAuroraTopologyService2).getHostByName(eq(mockConnection));
 
     final Properties properties = new Properties();
     final FailoverConnectionPlugin failoverPlugin1 = initFailoverPlugin(properties, spyAuroratopologyService1);
-    final FailoverConnectionPlugin failoverPlugin2 = initFailoverPlugin(properties, spyAuroratopologyService2);
+    final FailoverConnectionPlugin failoverPlugin2 = initFailoverPlugin(properties, spyAuroraTopologyService2);
 
     assert(Objects.equals(failoverPlugin1.hosts.get(0).getDatabase(), ""));
     assertEquals(failoverPlugin1.hosts.size(), failoverPlugin2.hosts.size());
@@ -699,7 +701,221 @@ class FailoverConnectionPluginTest {
       assertTrue(ClusterAwareTestUtils.hostsAreTheSame(failoverPlugin1.hosts.get(i), failoverPlugin2.hosts.get(i)));
     }
     verify(spyAuroratopologyService1, times(1)).queryForTopology(eq(mockConnection));
-    verify(spyAuroratopologyService2, never()).queryForTopology(eq(mockConnection));
+    verify(spyAuroraTopologyService2, never()).queryForTopology(eq(mockConnection));
+  }
+
+  @Test
+  public void testHostsAndHostIndexOutOfSync() throws Exception {
+    final String clusterId = "clusterId";
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
+    final String host = url.split(PREFIX)[1];
+    when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
+    when(mockHostInfo.getHost()).thenReturn(host);
+
+    final HostInfo writerHost =
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
+    final HostInfo readerA_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
+    final HostInfo readerB_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-b-host");
+
+    final List<HostInfo> topology1 = new ArrayList<>();
+    topology1.add(writerHost);
+    topology1.add(readerA_Host);
+    topology1.add(readerB_Host);
+
+    final List<HostInfo> topology2 = new ArrayList<>();
+    topology2.add(readerA_Host);
+    topology2.add(readerB_Host);
+
+    final AuroraTopologyService auroraTopologyService = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroraTopologyService = spy(auroraTopologyService);
+    spyAuroraTopologyService.clusterId = clusterId;
+
+    when(mockConnection.getPropertySet()).thenReturn(null);
+
+    doReturn(topology1).doReturn(topology1).doReturn(topology1).doReturn(topology2)
+        .when(spyAuroraTopologyService).getTopology(eq(mockConnection), any(Boolean.class));
+
+    doReturn(writerHost).when(spyAuroraTopologyService).getHostByName(eq(mockConnection));
+
+    final Properties properties = new Properties();
+    final FailoverConnectionPlugin failoverPlugin1 = initFailoverPlugin(properties, spyAuroraTopologyService);
+    failoverPlugin1.explicitlyReadOnly = false;
+    final FailoverConnectionPlugin failoverPlugin2 = initFailoverPlugin(properties, spyAuroraTopologyService);
+    failoverPlugin2.explicitlyReadOnly = false;
+
+    failoverPlugin1.execute(
+        JdbcConnection.class,
+        "execute",
+        () -> true,
+        new Object[] {false});
+
+    failoverPlugin2.execute(
+        JdbcConnection.class,
+        "execute",
+        () -> true,
+        new Object[] {false});
+
+    final ClusterAwareTestUtils.HostInfoMatcher writerMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    final ClusterAwareTestUtils.HostInfoMatcher readerAMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerA_Host);
+    final ClusterAwareTestUtils.HostInfoMatcher readerBMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host);
+    verify(mockConnectionProvider, times(0)).connect(argThat(writerMatcher));
+    verify(mockConnectionProvider, times(1)).connect(argThat(readerAMatcher));
+    verify(mockConnectionProvider, times(0)).connect(argThat(readerBMatcher));
+    verify(spyAuroraTopologyService, times(4)).getTopology(any(JdbcConnection.class), any(Boolean.class));
+  }
+
+  @Test
+  public void testFailoverEnabledScaleDown() throws Exception {
+    final String clusterId = "clusterId";
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
+    final String host = url.split(PREFIX)[1];
+    when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
+    when(mockHostInfo.getHost()).thenReturn(host);
+
+    final HostInfo writerHost =
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
+    final HostInfo readerA_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
+
+    final List<HostInfo> topology1 = new ArrayList<>();
+    topology1.add(writerHost);
+    topology1.add(readerA_Host);
+
+    final List<HostInfo> topology2 = new ArrayList<>();
+    topology2.add(readerA_Host);
+
+    final AuroraTopologyService auroraTopologyService = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroraTopologyService = spy(auroraTopologyService);
+    spyAuroraTopologyService.clusterId = clusterId;
+
+    when(mockConnection.getPropertySet()).thenReturn(null);
+
+    doReturn(topology1).doReturn(topology2)
+        .when(spyAuroraTopologyService).getTopology(eq(mockConnection), any(Boolean.class));
+
+    doReturn(writerHost).when(spyAuroraTopologyService).getHostByName(eq(mockConnection));
+
+    final Properties properties = new Properties();
+    final FailoverConnectionPlugin failoverPlugin1 = initFailoverPlugin(properties, spyAuroraTopologyService);
+    final FailoverConnectionPlugin spyFailoverPlugin = spy(failoverPlugin1);
+    spyFailoverPlugin.currentHostIndex = 0;
+    spyFailoverPlugin.isInitialConnectionToReader = false;
+    spyFailoverPlugin.explicitlyReadOnly = false;
+
+    spyFailoverPlugin.execute(
+        JdbcConnection.class,
+        "execute",
+        () -> true,
+        new Object[] {false});
+
+    verify(spyAuroraTopologyService, times(2)).getTopology(any(JdbcConnection.class), any(Boolean.class));
+    verify(spyFailoverPlugin, times(1)).updateTopologyIfNeeded(any(Boolean.class));
+    verify(spyFailoverPlugin, times(1)).pickNewConnection(eq(topology2));
+  }
+
+  @Test
+  public void testFailoverEnabledScaleUp() throws Exception {
+    final String clusterId = "clusterId";
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
+    final String host = url.split(PREFIX)[1];
+    when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
+    when(mockHostInfo.getHost()).thenReturn(host);
+
+    final HostInfo writerHost =
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
+    final HostInfo readerA_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
+
+    final List<HostInfo> topology1 = new ArrayList<>();
+    topology1.add(writerHost);
+    topology1.add(readerA_Host);
+
+    final List<HostInfo> topology2 = new ArrayList<>();
+    topology2.add(readerA_Host);
+
+    final AuroraTopologyService auroraTopologyService = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroraTopologyService = spy(auroraTopologyService);
+    spyAuroraTopologyService.clusterId = clusterId;
+
+    when(mockConnection.getPropertySet()).thenReturn(null);
+
+    doReturn(topology2).doReturn(topology1)
+        .when(spyAuroraTopologyService).getTopology(eq(mockConnection), any(Boolean.class));
+
+    doReturn(writerHost).when(spyAuroraTopologyService).getHostByName(eq(mockConnection));
+
+    final Properties properties = new Properties();
+    final FailoverConnectionPlugin failoverPlugin1 = initFailoverPlugin(properties, spyAuroraTopologyService);
+    final FailoverConnectionPlugin spyFailoverPlugin = spy(failoverPlugin1);
+    spyFailoverPlugin.currentHostIndex = 0;
+    spyFailoverPlugin.isInitialConnectionToReader = false;
+    spyFailoverPlugin.explicitlyReadOnly = false;
+
+    spyFailoverPlugin.execute(
+        JdbcConnection.class,
+        "execute",
+        () -> true,
+        new Object[] {false});
+
+    verify(spyAuroraTopologyService, times(2)).getTopology(any(JdbcConnection.class), any(Boolean.class));
+    verify(spyFailoverPlugin, times(1)).updateTopologyIfNeeded(any(Boolean.class));
+    verify(spyFailoverPlugin, times(1)).pickNewConnection(eq(topology1));
+  }
+
+  @Test
+  public void testFailoverHostRoleChanged() throws Exception {
+    final String clusterId = "clusterId";
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
+    final String host = url.split(PREFIX)[1];
+    when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
+    when(mockHostInfo.getHost()).thenReturn(host);
+
+    final HostInfo writerHost =
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
+    final HostInfo readerA_Host =
+        ClusterAwareTestUtils.createBasicHostInfo("reader-a-host");
+
+    final List<HostInfo> topology1 = new ArrayList<>();
+    topology1.add(writerHost);
+    topology1.add(readerA_Host);
+
+    final List<HostInfo> topology2 = new ArrayList<>();
+    topology2.add(readerA_Host);
+    topology2.add(writerHost);
+
+    final AuroraTopologyService auroraTopologyService = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroraTopologyService = spy(auroraTopologyService);
+    spyAuroraTopologyService.clusterId = clusterId;
+
+    when(mockConnection.getPropertySet()).thenReturn(null);
+
+    doReturn(topology2).doReturn(topology1)
+        .when(spyAuroraTopologyService).getTopology(eq(mockConnection), any(Boolean.class));
+
+    doReturn(writerHost).when(spyAuroraTopologyService).getHostByName(eq(mockConnection));
+
+    final Properties properties = new Properties();
+    final FailoverConnectionPlugin failoverPlugin1 = initFailoverPlugin(properties, spyAuroraTopologyService);
+    final FailoverConnectionPlugin spyFailoverPlugin = spy(failoverPlugin1);
+    spyFailoverPlugin.currentHostIndex = 0;
+    spyFailoverPlugin.isInitialConnectionToReader = false;
+    spyFailoverPlugin.explicitlyReadOnly = false;
+
+    spyFailoverPlugin.execute(
+        JdbcConnection.class,
+        "execute",
+        () -> true,
+        new Object[] {false});
+
+    verify(spyAuroraTopologyService, times(2)).getTopology(any(JdbcConnection.class), any(Boolean.class));
+    verify(spyFailoverPlugin, times(1)).updateTopologyIfNeeded(any(Boolean.class));
+    verify(spyFailoverPlugin, times(1)).pickNewConnection(eq(topology1));
   }
 
   @Test
