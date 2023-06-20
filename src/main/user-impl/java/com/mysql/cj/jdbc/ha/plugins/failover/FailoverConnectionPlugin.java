@@ -1264,6 +1264,11 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private void updateHostIndex(List<HostInfo> latestTopology) throws SQLException {
+    if (this.currentHostIndex == NO_CONNECTION_INDEX) {
+      pickNewConnection();
+      return;
+    }
+
     HostInfo currentHost = this.hosts.get(this.currentHostIndex);
 
     int latestHostIndex = NO_CONNECTION_INDEX;
