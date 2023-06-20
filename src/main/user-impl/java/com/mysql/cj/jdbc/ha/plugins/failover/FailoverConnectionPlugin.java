@@ -465,9 +465,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
    */
   protected ConnectionImpl createConnectionForHost(HostInfo baseHostInfo)
       throws SQLException {
-    HostInfo hostInfoWithInitialProps = ConnectionUtils.copyWithAdditionalProps(
+    HostInfo hostInfoWithInitialProps = ConnectionUtils.createHostWithProperties(
         baseHostInfo,
-        this.currentConnectionProvider.getCurrentHostInfo());
+        this.initialConnectionProps);
     return this.connectionProvider.connect(hostInfoWithInitialProps);
   }
 

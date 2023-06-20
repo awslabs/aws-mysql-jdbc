@@ -36,6 +36,10 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ha.ConnectionProxyTest;
 
+import com.mysql.cj.jdbc.ha.ConnectionUtils;
+import com.mysql.cj.util.StringUtils;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -47,31 +51,30 @@ import org.mockito.ArgumentMatcher;
  * {@link ClusterAwareReaderFailoverHandlerTest} and {@link ClusterAwareWriterFailoverHandlerTest}.
  */
 public class ClusterAwareTestUtils {
-  protected static HostInfo createBasicHostInfo(String instanceName) {
-    return createBasicHostInfo(instanceName, null, null, null);
-  }
-
-  protected static HostInfo createBasicHostInfo(String instanceName, String db) {
-    return createBasicHostInfo(instanceName, db, null, null);
+  protected static HostInfo createBasicHostInfo(String instanceName) throws SQLException {
+    return createBasicHostInfo(instanceName, null);
   }
 
   protected static HostInfo createBasicHostInfo(
       String instanceName,
-      String db,
-      String user,
-      String password) {
-    final Map<String, String> properties = new HashMap<>();
-    properties.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
-    properties.put(PropertyKey.connectTimeout.getKeyName(), "0");
-    properties.put(PropertyKey.socketTimeout.getKeyName(), "0");
-    String url = "jdbc:mysql:aws://" + instanceName + ".com:1234/";
-    String host = instanceName + ".com";
-    if (db != null) {
-      properties.put(PropertyKey.DBNAME.getKeyName(), db);
+      String db) throws SQLException {
+    final Map<String, String> propsMap = new HashMap<>();
+    propsMap.put(TopologyServicePropertyKeys.INSTANCE_NAME, instanceName);
+    propsMap.put(PropertyKey.connectTimeout.getKeyName(), "0");
+    propsMap.put(PropertyKey.socketTimeout.getKeyName(), "0");
+    if (!StringUtils.isNullOrEmpty(db)) {
+      propsMap.put(PropertyKey.DBNAME.getKeyName(), db);
     }
-    final ConnectionUrl conStr =
-        ConnectionUrl.getConnectionUrlInstance(url, new Properties());
-    return new HostInfo(conStr, host, 1234, user, password, properties);
+
+    final Properties props = new Properties();
+    props.putAll(propsMap);
+
+    final String host = instanceName + ".com";
+
+    final ConnectionUrl conStr = ConnectionUrl.getConnectionUrlInstance(
+        ConnectionUtils.getUrlFromEndpoint(host, 1234, props),
+        new Properties());
+    return new HostInfo(conStr, host, 1234, null, null, propsMap);
   }
 
   protected static class HostInfoMatcher implements ArgumentMatcher<HostInfo> {

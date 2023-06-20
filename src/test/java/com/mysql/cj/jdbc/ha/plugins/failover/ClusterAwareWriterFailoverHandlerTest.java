@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -89,9 +90,13 @@ public class ClusterAwareWriterFailoverHandlerTest {
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(refEq(writerHost))).thenReturn(mockConnection);
-    when(mockConnectionProvider.connect(refEq(readerA_Host))).thenThrow(SQLException.class);
-    when(mockConnectionProvider.connect(refEq(readerB_Host))).thenThrow(SQLException.class);
+    final ClusterAwareTestUtils.HostInfoMatcher writerHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    final ClusterAwareTestUtils.HostInfoMatcher readerAHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerA_Host);
+    final ClusterAwareTestUtils.HostInfoMatcher readerBHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host);
+
+    doReturn(mockConnection).when(mockConnectionProvider).connect(argThat(writerHostMatcher));
+    doThrow(SQLException.class).when(mockConnectionProvider).connect(argThat(readerAHostMatcher));
+    doThrow(SQLException.class).when(mockConnectionProvider).connect(argThat(readerBHostMatcher));
 
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(currentTopology);
@@ -150,8 +155,11 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(refEq(writerHost))).thenReturn(mockWriterConnection);
-    when(mockConnectionProvider.connect(refEq(readerB_Host))).thenThrow(SQLException.class);
+    final ClusterAwareTestUtils.HostInfoMatcher writerHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    final ClusterAwareTestUtils.HostInfoMatcher readerBHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host);
+
+    doReturn(mockWriterConnection).when(mockConnectionProvider).connect(argThat(writerHostMatcher));
+    doThrow(SQLException.class).when(mockConnectionProvider).connect(argThat(readerBHostMatcher));
 
     when(mockTopologyService.getTopology(eq(mockWriterConnection), eq(true)))
         .thenReturn(currentTopology);
@@ -210,14 +218,14 @@ public class ClusterAwareWriterFailoverHandlerTest {
     currentTopology.add(readerA_Host);
     currentTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(refEq(writerHost)))
-        .thenAnswer(
-            (Answer<ConnectionImpl>)
-                invocation -> {
-                  Thread.sleep(5000);
-                  return mockWriterConnection;
-                });
-    when(mockConnectionProvider.connect(refEq(readerB_Host))).thenThrow(SQLException.class);
+    final ClusterAwareTestUtils.HostInfoMatcher writerHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    final ClusterAwareTestUtils.HostInfoMatcher readerBHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host);
+
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      Thread.sleep(5000);
+      return mockWriterConnection;
+    }).when(mockConnectionProvider).connect(argThat(writerHostMatcher));
+    doThrow(SQLException.class).when(mockConnectionProvider).connect(argThat(readerBHostMatcher));
 
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(currentTopology);
@@ -278,16 +286,18 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(refEq(writerHost)))
-        .thenAnswer(
-            (Answer<ConnectionImpl>)
-                invocation -> {
-                  Thread.sleep(5000);
-                  return mockWriterConnection;
-                });
-    when(mockConnectionProvider.connect(refEq(readerA_Host))).thenReturn(mockReaderA_Connection);
-    when(mockConnectionProvider.connect(refEq(readerB_Host))).thenReturn(mockReaderB_Connection);
-    when(mockConnectionProvider.connect(refEq(newWriterHost))).thenReturn(mockNewWriterConnection);
+    final ClusterAwareTestUtils.HostInfoMatcher writerHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    final ClusterAwareTestUtils.HostInfoMatcher readerAHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerA_Host);
+    final ClusterAwareTestUtils.HostInfoMatcher readerBHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host);
+    final ClusterAwareTestUtils.HostInfoMatcher newWriterHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(newWriterHost);
+
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      Thread.sleep(5000);
+      return mockWriterConnection;
+    }).when(mockConnectionProvider).connect(argThat(writerHostMatcher));
+    doReturn(mockReaderA_Connection).when(mockConnectionProvider).connect(argThat(readerAHostMatcher));
+    doReturn(mockReaderB_Connection).when(mockConnectionProvider).connect(argThat(readerBHostMatcher));
+    doReturn(mockNewWriterConnection).when(mockConnectionProvider).connect(argThat(newWriterHostMatcher));
 
     when(mockTopologyService.getTopology(eq(mockWriterConnection), eq(true)))
         .thenReturn(currentTopology);
@@ -350,17 +360,23 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    when(mockConnectionProvider.connect(initialWriterHost))
-        .thenReturn(Mockito.mock(ConnectionImpl.class));
-    when(mockConnectionProvider.connect(refEq(readerA_Host))).thenReturn(mockReaderA_Connection);
-    when(mockConnectionProvider.connect(refEq(readerB_Host))).thenReturn(mockReaderB_Connection);
-    when(mockConnectionProvider.connect(refEq(newWriterHost)))
-        .thenAnswer(
-            (Answer<ConnectionImpl>)
-                invocation -> {
-                  Thread.sleep(5000);
-                  return mockNewWriterConnection;
-                });
+    final ClusterAwareTestUtils.HostInfoMatcher initialWriterHostMatcher =
+        new ClusterAwareTestUtils.HostInfoMatcher(initialWriterHost);
+    final ClusterAwareTestUtils.HostInfoMatcher readerAHostMatcher =
+        new ClusterAwareTestUtils.HostInfoMatcher(readerA_Host);
+    final ClusterAwareTestUtils.HostInfoMatcher readerBHostMatcher =
+        new ClusterAwareTestUtils.HostInfoMatcher(readerB_Host);
+    ClusterAwareTestUtils.HostInfoMatcher newWriterHostMatcher =
+        new ClusterAwareTestUtils.HostInfoMatcher(newWriterHost);
+
+    doReturn(Mockito.mock(ConnectionImpl.class))
+        .when(mockConnectionProvider).connect(argThat(initialWriterHostMatcher));
+    doReturn(mockReaderA_Connection).when(mockConnectionProvider).connect(argThat(readerAHostMatcher));
+    doReturn(mockReaderB_Connection).when(mockConnectionProvider).connect(argThat(readerBHostMatcher));
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      Thread.sleep(5000);
+      return mockNewWriterConnection;
+    }).when(mockConnectionProvider).connect(argThat(newWriterHostMatcher));
 
     when(mockTopologyService.getTopology(any(JdbcConnection.class), eq(true)))
         .thenReturn(newTopology);
@@ -494,8 +510,8 @@ public class ClusterAwareWriterFailoverHandlerTest {
     newTopology.add(readerA_Host);
     newTopology.add(readerB_Host);
 
-    ClusterAwareTestUtils.HostInfoMatcher writerMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
-    ClusterAwareTestUtils.HostInfoMatcher newWriterMatcher = new ClusterAwareTestUtils.HostInfoMatcher(newWriterHost);
+    final ClusterAwareTestUtils.HostInfoMatcher writerMatcher = new ClusterAwareTestUtils.HostInfoMatcher(writerHost);
+    final ClusterAwareTestUtils.HostInfoMatcher newWriterMatcher = new ClusterAwareTestUtils.HostInfoMatcher(newWriterHost);
 
     doThrow(new SQLException("exception", "08S01", null))
         .when(mockConnectionProvider).connect(argThat(writerMatcher));

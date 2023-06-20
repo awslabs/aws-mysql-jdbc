@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
@@ -61,6 +62,7 @@ import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.log.Log;
 import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -79,12 +81,19 @@ class FailoverConnectionPluginTest {
   private static final String URL = "somehost:1234";
   private static final int PORT = 1234;
   private static final String DATABASE = "test";
-  private final HostInfo writerHost =
-      ClusterAwareTestUtils.createBasicHostInfo("writer");
-  private final HostInfo readerHost =
-      ClusterAwareTestUtils.createBasicHostInfo("reader");
   private final List<HostInfo> mockTopology =
       new ArrayList<>(Arrays.asList(writerHost, readerHost));
+  static HostInfo writerHost;
+  static HostInfo readerHost;
+  static {
+    try {
+      writerHost = ClusterAwareTestUtils.createBasicHostInfo("writer");
+      readerHost = ClusterAwareTestUtils.createBasicHostInfo("reader");
+    } catch (SQLException e) {
+      fail();
+    }
+  }
+
   @Mock private ConnectionImpl mockConnection;
   @Mock private IConnectionProvider mockConnectionProvider;
   @Mock private ICurrentConnectionProvider mockCurrentConnectionProvider;
