@@ -31,13 +31,19 @@
 
 package com.mysql.cj.jdbc.ha;
 
+import com.mysql.cj.Messages;
 import com.mysql.cj.conf.ConnectionUrl;
 import com.mysql.cj.conf.DatabaseUrlContainer;
 import com.mysql.cj.conf.HostInfo;
 
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.util.StringUtils;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,7 +128,8 @@ public class ConnectionUtils {
         mergedProps);
   }
 
-  public static HostInfo createHostWithProperties(HostInfo baseHost, Map<String, String> properties) {
+  public static HostInfo createHostWithProperties(HostInfo baseHost, Map<String, String> properties)
+      throws SQLException {
     final Map<String, String> propertiesCopy = new HashMap<>(properties);
     propertiesCopy.putAll(baseHost.getHostProperties());
     final String hostEndpoint = baseHost.getHost();
@@ -131,12 +138,15 @@ public class ConnectionUtils {
     final String password = propertiesCopy.get(PropertyKey.PASSWORD.getKeyName());
     propertiesCopy.remove(PropertyKey.USER.getKeyName());
     propertiesCopy.remove(PropertyKey.PASSWORD.getKeyName());
+    final Properties connProps = new Properties();
+    connProps.putAll(propertiesCopy);
 
     final ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
         getUrlFromEndpoint(
             hostEndpoint,
-            port),
-        new Properties());
+            port,
+            connProps),
+        connProps);
 
     return new HostInfo(
         hostUrl,
@@ -147,12 +157,56 @@ public class ConnectionUtils {
         propertiesCopy);
   }
 
-  private static String getUrlFromEndpoint(String endpoint, int port) {
-    return String.format(
-        "%s//%s:%d/",
+  public static String getUrlFromEndpoint(String endpoint, int port, Properties props) throws SQLException {
+    final Properties propsCopy = new Properties();
+    propsCopy.putAll(props);
+
+    final String portString = port < 1 ? "" : ":" + port;
+
+    final StringBuilder urlBuilder = new StringBuilder(
+      String.format(
+        "%s//%s%s",
         ConnectionUrl.Type.SINGLE_CONNECTION_AWS.getScheme(),
         endpoint,
-        port);
+        portString)
+    );
+
+    final String dbName = propsCopy.getProperty(PropertyKey.DBNAME.getKeyName());
+    if (!StringUtils.isNullOrEmpty(dbName)) {
+      urlBuilder.append("/").append(dbName);
+    }
+    propsCopy.remove(PropertyKey.DBNAME.getKeyName());
+
+    final StringBuilder queryBuilder = new StringBuilder();
+
+    if (propsCopy.size() != 0) {
+      final Enumeration<?> propertyNames = propsCopy.propertyNames();
+      while (propertyNames.hasMoreElements()) {
+        final String propertyName = propertyNames.nextElement().toString();
+        if (propertyName != null && !propertyName.trim().equals("")) {
+          if (queryBuilder.length() != 0) {
+            queryBuilder.append("&");
+          }
+          final String propertyValue = propsCopy.getProperty(propertyName);
+          try {
+            queryBuilder
+                .append(propertyName)
+                .append("=")
+                .append(URLEncoder.encode(propertyValue, StandardCharsets.UTF_8.toString()));
+          } catch (final UnsupportedEncodingException e) {
+            throw new SQLException(Messages.getString("ConnectionUtils.1"));
+          }
+        }
+      }
+    }
+
+    if (queryBuilder.length() != 0) {
+      urlBuilder.append("?").append(queryBuilder);
+    } else {
+      urlBuilder.append("/");
+    }
+
+    return urlBuilder.toString();
   }
 
   /**

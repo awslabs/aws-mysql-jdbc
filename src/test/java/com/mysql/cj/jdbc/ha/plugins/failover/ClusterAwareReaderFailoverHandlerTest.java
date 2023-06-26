@@ -36,11 +36,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
@@ -88,8 +89,12 @@ public class ClusterAwareReaderFailoverHandlerTest {
     );
 
     for (String instance : instances) {
-      HostInfo host = ClusterAwareTestUtils.createBasicHostInfo(instance, "test");
-      testHosts.add(host);
+      try {
+        HostInfo host = ClusterAwareTestUtils.createBasicHostInfo(instance, "test");
+        testHosts.add(host);
+      } catch (SQLException e) {
+        fail();
+      }
     }
   }
 
@@ -147,7 +152,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertEquals(successHostIndex, result.getConnectionIndex());
 
     final HostInfo successHost = hosts.get(successHostIndex);
-    ClusterAwareTestUtils.HostInfoMatcher successHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(successHost);
+    final ClusterAwareTestUtils.HostInfoMatcher successHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(successHost);
     verify(mockTopologyService, atLeast(4)).addToDownHostList(any());
     verify(mockTopologyService, never()).addToDownHostList(eq(successHost));
     verify(mockTopologyService, times(1)).removeFromDownHostList(argThat(successHostMatcher));
@@ -177,11 +182,11 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final List<HostInfo> hosts = getHostsFromTestUrls(6);
     final int currentHostIndex = 2;
     for (HostInfo host : hosts) {
-      when(mockConnProvider.connect(refEq(host)))
-          .thenAnswer((Answer<ConnectionImpl>) invocation -> {
-            Thread.sleep(20000);
-            return mockConnection;
-          });
+      ClusterAwareTestUtils.HostInfoMatcher hostInfoMatcher = new ClusterAwareTestUtils.HostInfoMatcher(host);
+      doAnswer((Answer<ConnectionImpl>) invocation -> {
+        Thread.sleep(20000);
+        return mockConnection;
+      }).when(mockConnProvider).connect(argThat(hostInfoMatcher));
     }
 
     final Set<String> downHosts = new HashSet<>();
@@ -250,14 +255,13 @@ public class ClusterAwareReaderFailoverHandlerTest {
     final HostInfo slowHost = hosts.get(1);
     final HostInfo fastHost = hosts.get(2);
     final IConnectionProvider mockConnProvider = Mockito.mock(IConnectionProvider.class);
-    when(mockConnProvider.connect(refEq(slowHost)))
-        .thenAnswer(
-            (Answer<ConnectionImpl>)
-                invocation -> {
-                  Thread.sleep(20000);
-                  return mockConnection;
-                });
-    when(mockConnProvider.connect(refEq(fastHost))).thenReturn(mockConnection);
+    final ClusterAwareTestUtils.HostInfoMatcher slowHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(slowHost);
+    final ClusterAwareTestUtils.HostInfoMatcher fastHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(fastHost);
+    doAnswer((Answer<ConnectionImpl>) invocation -> {
+      Thread.sleep(20000);
+      return mockConnection;
+    }).when(mockConnProvider).connect(argThat(slowHostMatcher));
+    doReturn(mockConnection).when(mockConnProvider).connect(argThat(fastHostMatcher));
 
     final IReaderFailoverHandler target =
         new ClusterAwareReaderFailoverHandler(
@@ -272,7 +276,6 @@ public class ClusterAwareReaderFailoverHandlerTest {
     assertEquals(2, result.getConnectionIndex());
 
     verify(mockTopologyService, never()).addToDownHostList(any());
-    ClusterAwareTestUtils.HostInfoMatcher fastHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(fastHost);
     verify(mockTopologyService, times(1)).removeFromDownHostList(argThat(fastHostMatcher));
   }
 
@@ -305,7 +308,7 @@ public class ClusterAwareReaderFailoverHandlerTest {
         result.getConnectionIndex());
 
     final HostInfo currentHost = hosts.get(currentHostIndex);
-    ClusterAwareTestUtils.HostInfoMatcher currentHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(currentHost);
+    final ClusterAwareTestUtils.HostInfoMatcher currentHostMatcher = new ClusterAwareTestUtils.HostInfoMatcher(currentHost);
     verify(mockTopologyService, atLeastOnce()).addToDownHostList(argThat(currentHostMatcher));
     verify(mockTopologyService, never())
         .addToDownHostList(
