@@ -62,7 +62,6 @@ import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
 import com.mysql.cj.log.Log;
 import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -701,6 +700,42 @@ class FailoverConnectionPluginTest {
     }
     verify(spyAuroratopologyService1, times(1)).queryForTopology(eq(mockConnection));
     verify(spyAuroratopologyService2, never()).queryForTopology(eq(mockConnection));
+  }
+
+  @Test
+  public void testRetainPropertiesFromPreviousPlugins() throws Exception {
+    final String clusterId = "clusterId";
+    final String url =
+        "jdbc:mysql:aws://my-cluster-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com";
+    final String host = url.split(PREFIX)[1];
+    when(mockHostInfo.getDatabaseUrl()).thenReturn(url);
+    when(mockHostInfo.getHost()).thenReturn(host);
+
+    final HostInfo writerHost =
+        ClusterAwareTestUtils.createBasicHostInfo("writer-host");
+    final List<HostInfo> topology = new ArrayList<>();
+    topology.add(writerHost);
+
+    final AuroraTopologyService auroraTopologyService = new AuroraTopologyService(null);
+    final AuroraTopologyService spyAuroratopologyService = spy(auroraTopologyService);
+    spyAuroratopologyService.clusterId = clusterId;
+
+    doReturn(new AuroraTopologyService.ClusterTopologyInfo(topology))
+        .when(spyAuroratopologyService).queryForTopology(eq(mockConnection));
+    doReturn(writerHost).when(spyAuroratopologyService).getHostByName(eq(mockConnection));
+
+    final Properties properties = new Properties();
+    final FailoverConnectionPlugin failoverPlugin = initFailoverPlugin(properties, spyAuroratopologyService);
+
+    final String testProperty = "testProperty";
+    final String testPropertyValue = "testPropertyValue";
+    final Properties previousPluginProperties = new Properties();
+    previousPluginProperties.put(testProperty, testPropertyValue);
+
+    final ConnectionUrl connectionUrl = ConnectionUrl.getConnectionUrlInstance(url, previousPluginProperties);
+    failoverPlugin.openInitialConnection(connectionUrl);
+
+    assert(failoverPlugin.initialConnectionProps.get(testProperty).equals(testPropertyValue));
   }
 
   @AfterEach

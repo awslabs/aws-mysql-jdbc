@@ -1038,6 +1038,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private void createConnection(ConnectionUrl connectionUrl) throws SQLException {
+    // Update initial properties in case previous plugins have changed values
+    this.initialConnectionProps.putAll(connectionUrl.getOriginalProperties());
 
     if (this.enableFailoverSetting) {
       // Connection isn't created - try to use cached topology to create it
