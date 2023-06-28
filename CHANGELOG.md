@@ -3,13 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [?]
+## [1.1.8] - 2023-06-28
 ### Fixed
+- The topology service cache no longer stores connection specific properties so connections to the same cluster will not connect with the wrong properties ([Issue #407](https://github.com/awslabs/aws-mysql-jdbc/issues/407)).
 - Fixed value `convertToNull` being rejected for property `zeroDateTimeBehavior` because of capitalization ([Issue #411](https://github.com/awslabs/aws-mysql-jdbc/pull/413)).
+- Handle case in the `FailoverConnectionPlugin` where the `currentHostIndex` is equal to `NO_CONNECTION_INDEX` ([Issue #417](https://github.com/awslabs/aws-mysql-jdbc/issues/417)).
 
 ## [1.1.7] - 2023-05-11
 ### Changed
-* Removed the `isMultiWriterCluster` flag as [multi-writer clusters are end of life since February 2023](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.MySQL56.EOL.html). ([PR #405](https://github.com/awslabs/aws-mysql-jdbc/pull/405)).
+* Removed the `isMultiWriterCluster` flag as [multi-writer clusters are end of life since February 2023](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.MySQL56.EOL.html) ([PR #405](https://github.com/awslabs/aws-mysql-jdbc/pull/405)).
 
 ### Fixed
 * Fixed methods passing proxy statement objects by adding checks to unwrap them before casting to a `ClientPreparedStatement` ([Issue #401](https://github.com/awslabs/aws-mysql-jdbc/issues/401)).
@@ -153,6 +155,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.8]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.7...1.1.8
 [1.1.7]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.6...1.1.7
 [1.1.6]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.5...1.1.6
 [1.1.5]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.4...1.1.5
