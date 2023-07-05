@@ -170,7 +170,7 @@ public class ClusterAwareWriterFailoverHandlerTest {
         .thenAnswer(
             (Answer<ReaderFailoverResult>)
                 invocation -> {
-                  Thread.sleep(5000);
+                  Thread.sleep(10000);
                   return new ReaderFailoverResult(mockReaderA_Connection, 1, true);
                 });
 

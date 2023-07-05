@@ -50,6 +50,7 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -434,10 +435,68 @@ public class AuroraMysqlFailoverIntegrationTest extends AuroraMysqlIntegrationBa
       long invokeStartTimeMs = System.currentTimeMillis();
       SQLException e = assertThrows(SQLException.class, () -> stmt.executeQuery("SELECT 1"));
       long invokeEndTimeMs = System.currentTimeMillis();
-      
+
       assertEquals(MysqlErrorNumbers.SQL_STATE_UNABLE_TO_CONNECT_TO_DATASOURCE, e.getSQLState());
       long duration = invokeEndTimeMs - invokeStartTimeMs;
       assertTrue(duration < 15000); // Add in 5 seconds to account for time to detect the failure
+    }
+  }
+
+  @Test
+  public void test_keepSessionStateOnFailoverIsFalse()
+      throws SQLException, InterruptedException {
+
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, initDefaultProps())) {
+      final Statement testStmt = conn.createStatement();
+      testStmt.executeUpdate("DROP TABLE IF EXISTS test3_2");
+      testStmt.executeUpdate(
+          "CREATE TABLE test3_2 (id int not null primary key, test3_2_field varchar(255) not null)");
+
+      conn.setAutoCommit(false);
+      testStmt.executeUpdate("INSERT INTO test3_2 VALUES (1, 'test field string 1')");
+
+      // failover connection
+      failoverClusterAndWaitUntilWriterChanged(initialWriterId);
+      final SQLException exception =
+          assertThrows(
+              SQLException.class,
+              () -> testStmt.executeUpdate("INSERT INTO test3_2 VALUES (3, 'test field string 2')"));
+      assertEquals("08007", exception.getSQLState());
+
+      // check autocommit value, which should be reset to true
+      assertTrue(conn.getAutoCommit());
+    }
+  }
+
+  @Test
+  public void test_keepSessionStateOnFailoverIsTrue()
+      throws SQLException, InterruptedException {
+    final Properties props = initDefaultProps();
+    props.setProperty(PropertyKey.keepSessionStateOnFailover.getKeyName(), String.valueOf(true));
+
+    final String initialWriterId = instanceIDs[0];
+
+    try (final Connection conn = connectToInstance(initialWriterId + DB_CONN_STR_SUFFIX, MYSQL_PORT, props)) {
+      final Statement testStmt = conn.createStatement();
+      testStmt.executeUpdate("DROP TABLE IF EXISTS test3_2");
+      testStmt.executeUpdate(
+          "CREATE TABLE test3_2 (id int not null primary key, test3_2_field varchar(255) not null)");
+
+      conn.setAutoCommit(false);
+      testStmt.executeUpdate("INSERT INTO test3_2 VALUES (1, 'test field string 1')");
+
+      // failover connection
+      failoverClusterAndWaitUntilWriterChanged(initialWriterId);
+      final SQLException exception =
+          assertThrows(
+              SQLException.class,
+              () -> testStmt.executeUpdate("INSERT INTO test3_2 VALUES (3, 'test field string 2')"));
+      assertEquals("08007", exception.getSQLState());
+
+      // check autocommit value, which should stay false
+      assertFalse(conn.getAutoCommit());
     }
   }
 

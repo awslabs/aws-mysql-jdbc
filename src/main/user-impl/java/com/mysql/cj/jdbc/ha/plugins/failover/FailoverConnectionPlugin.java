@@ -171,6 +171,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   // exception is caught in every proxy instance belonging to the same call stack.
   protected Throwable lastExceptionDealtWith = null;
   protected boolean autoReconnect;
+  protected boolean keepSessionStateOnFailover;
 
   private long invokeStartTimeMs;
   private long failoverStartTimeMs;
@@ -366,6 +367,9 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     this.enableFailoverStrictReaderSetting =
         propertySet.getBooleanProperty(PropertyKey.enableFailoverStrictReader.getKeyName()).getValue();
+
+    this.keepSessionStateOnFailover =
+        propertySet.getBooleanProperty(PropertyKey.keepSessionStateOnFailover.getKeyName()).getValue();
   }
 
   /**
@@ -487,7 +491,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     } else {
       failoverReader(failedHostIdx);
     }
-
     if (this.inTransaction) {
       this.inTransaction = false;
 
@@ -537,9 +540,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     metricsContainer.registerFailoverConnects(true);
 
+    if (!keepSessionStateOnFailover) {
     updateCurrentConnection(
         result.getConnection(),
         result.getConnectionIndex());
+    } else {
+      switchCurrentConnectionTo(result.getConnectionIndex(), result.getConnection(), true);
+    }
+
     updateTopologyIfNeeded(true);
 
     if (this.currentHostIndex != NO_CONNECTION_INDEX
@@ -586,9 +594,13 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     metricsContainer.registerFailoverConnects(true);
 
     // successfully re-connected to the same writer node
-    updateCurrentConnection(
-        failoverResult.getNewConnection(),
-        WRITER_CONNECTION_INDEX);
+    if (!keepSessionStateOnFailover) {
+      updateCurrentConnection(
+          failoverResult.getNewConnection(),
+          WRITER_CONNECTION_INDEX);
+    } else {
+      switchCurrentConnectionTo(WRITER_CONNECTION_INDEX, failoverResult.getNewConnection(), true);
+    }
 
     if (this.logger.isDebugEnabled()) {
       this.logger.logDebug(
@@ -1227,15 +1239,18 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
    *
    * @param hostIndex The host index in the global hosts list that matches the given connection.
    * @param connection The connection instance to switch to.
+   * @param failoverOccurred Whether the connection is switching due to failover.
    * @throws SQLException if an error occurs
    */
-  private void switchCurrentConnectionTo(int hostIndex, JdbcConnection connection)
+  private void switchCurrentConnectionTo(int hostIndex, JdbcConnection connection, boolean failoverOccurred)
       throws SQLException {
-    invalidateCurrentConnection();
-
     boolean readOnly;
-    final JdbcConnection currentConnection =
-        this.currentConnectionProvider.getCurrentConnection();
+    final JdbcConnection currentConnection = this.currentConnectionProvider.getCurrentConnection();
+
+    if (currentConnection != null && !currentConnection.isClosed()) {
+      invalidateCurrentConnection();
+    }
+
     if (isWriterHostIndex(hostIndex)) {
       readOnly = isExplicitlyReadOnly();
     } else if (this.explicitlyReadOnly != null) {
@@ -1247,7 +1262,14 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
     syncSessionState(currentConnection, connection, readOnly);
     updateCurrentConnection(connection, hostIndex);
-    this.inTransaction = false;
+
+    if (!failoverOccurred) {
+      this.inTransaction = false;
+    }
+  }
+
+  private void switchCurrentConnectionTo(int hostIndex, JdbcConnection connection) throws SQLException {
+    switchCurrentConnectionTo(hostIndex, connection, false);
   }
 
   private void updateCurrentConnection(
