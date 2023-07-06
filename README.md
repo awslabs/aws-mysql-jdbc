@@ -697,7 +697,12 @@ cmd /c "SET AWS_ACCESS_KEY_ID=ASIAIOSFODNN7EXAMPLE & SET AWS_SECRET_ACCESS_KEY=w
 | `TEST_DB_USER` | No | User within the database that is identified with AWS IAM database authentication. This is used for AWS IAM authentication. | jane_doe |
 
 ### Enable Logging
-Enable logging by specifying the `logger` parameter in the connection string. For more information on the configuration parameter, see [Debugging/Profiling](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-connp-props-debugging-profiling.html).
+Enable logging by specifying the `logger` parameter in the connection string like the following:
+```
+jdbc:mysql:aws://database.cluster-xyz.us-east-2.rds.amazonaws.com/dbnname?logger=StandardLogger
+```
+
+For more information on the configuration parameter, see [Debugging/Profiling](https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-connp-props-debugging-profiling.html).
 The driver currently does not support custom logging outside the usual logging frameworks like SLF4J. For more information on using SLF4J with the driver see [here](https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-logging-slf4j.html).
 
 ## Known Limitations
