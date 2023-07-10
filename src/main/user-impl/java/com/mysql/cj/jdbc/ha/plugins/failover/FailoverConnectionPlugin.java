@@ -728,6 +728,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
             || !this.isClusterTopologyAvailable
             || connection == null
             || connection.isClosed()
+            || connection.isInGlobalTx()
             || connection.isInPreparedTx()) {
       return;
     }

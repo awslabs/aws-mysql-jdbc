@@ -187,7 +187,6 @@ public class AuroraTopologyService implements ITopologyService {
     if (hosts == null || forceUpdate) {
 
       ClusterTopologyInfo latestTopologyInfo = queryForTopology(conn);
-
       if (latestTopologyInfo != null) {
         downHostCache.get(this.clusterId, ConcurrentHashMap.newKeySet(), this.refreshRateNanos).clear();
 
@@ -211,19 +210,24 @@ public class AuroraTopologyService implements ITopologyService {
     long startTimeMs = System.currentTimeMillis();
 
     ClusterTopologyInfo topologyInfo = null;
-
-    try (Statement stmt = conn.createStatement()) {
-      try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
-        topologyInfo = processQueryResults(resultSet);
-      }
-    } catch (SQLSyntaxErrorException e) {
-      // We may get SQLSyntaxErrorException like the following from MySQL databases:
-      // "Unknown table 'REPLICA_HOST_STATUS' in information_schema"
-      // Ignore this kind of exceptions.
-    } finally {
-      if (gatherPerfMetrics(conn.getPropertySet())) {
-        long currentTimeMs = System.currentTimeMillis();
-        this.metricsContainer.registerTopologyQueryExecutionTime(currentTimeMs - startTimeMs);
+    if (!conn.isInGlobalTx() && !conn.isInPreparedTx()) {
+      synchronized (this) {
+        if (!conn.isInGlobalTx() && !conn.isInPreparedTx()) {
+          try (Statement stmt = conn.createStatement()) {
+            try (ResultSet resultSet = stmt.executeQuery(RETRIEVE_TOPOLOGY_SQL)) {
+              topologyInfo = processQueryResults(resultSet);
+            }
+          } catch (SQLSyntaxErrorException e) {
+            // We may get SQLSyntaxErrorException like the following from MySQL databases:
+            // "Unknown table 'REPLICA_HOST_STATUS' in information_schema"
+            // Ignore this kind of exceptions.
+          } finally {
+            if (gatherPerfMetrics(conn.getPropertySet())) {
+              long currentTimeMs = System.currentTimeMillis();
+              this.metricsContainer.registerTopologyQueryExecutionTime(currentTimeMs - startTimeMs);
+            }
+          }
+        }
       }
     }
 
