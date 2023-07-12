@@ -297,6 +297,7 @@ public enum PropertyKey {
     failoverClusterTopologyRefreshRateMs("failoverClusterTopologyRefreshRateMs", true), //
     failoverWriterReconnectIntervalMs("failoverWriterReconnectIntervalMs", true), //
     failoverReaderConnectTimeoutMs("failoverReaderConnectTimeoutMs", true), //
+    keepSessionStateOnFailover("keepSessionStateOnFailover", true),
 
     // Enhanced Failure Monitoring plugin
     failureDetectionEnabled("failureDetectionEnabled", true),

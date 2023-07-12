@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [???]
+### Added
+- The `keepSessionStateOnFailover` failover property to allow retaining the connection session state after failover without manually reconfiguring a connection ([Issue #425](https://github.com/awslabs/aws-mysql-jdbc/issues/425)).
+
 ## [1.1.8] - 2023-06-28
 ### Fixed
 - The topology service cache no longer stores connection specific properties so connections to the same cluster will not connect with the wrong properties ([Issue #407](https://github.com/awslabs/aws-mysql-jdbc/issues/407)).

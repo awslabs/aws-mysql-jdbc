@@ -723,6 +723,9 @@ public class PropertyDefinitions {
                 new BooleanPropertyDefinition(PropertyKey.useAwsIam, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
                         Messages.getString("ConnectionProperties.useAwsIam"), "0.3.0", CATEGORY_SECURITY, Integer.MAX_VALUE),
 
+                new BooleanPropertyDefinition(PropertyKey.keepSessionStateOnFailover, DEFAULT_VALUE_FALSE, RUNTIME_NOT_MODIFIABLE,
+                        Messages.getString("ConnectionProperties.keepSessionStateOnFailover"), "1.1.9", CATEGORY_SECURITY, Integer.MAX_VALUE),
+
                 //
                 // CATEGORY_PERFORMANCE
                 //
