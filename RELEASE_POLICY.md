@@ -10,16 +10,16 @@
 | Mar 30, 2023  | [Release 1.1.5](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.5) |
 | Apr 28, 2023  | [Release 1.1.6](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.6) |
 | May 11, 2023  | [Release 1.1.7](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.7) |
+| June 28, 2023  | [Release 1.1.7](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.8) |
 
 
-Aws-mysql-jdbc-driver [follows semver](https://semver.org/#semantic-versioning-200) which means we will only release
-breaking changes in major versions. Generally speaking patches will be released to fix existing problems without adding
-new features. Minor version releases will include new features as well as fixes to existing features. We will do our
-best to deprecate existing features before removing them completely.
+aws-mysql-jdbc-driver [follows semver](https://semver.org/#semantic-versioning-200) which means we will only release
+breaking changes in major versions. Minor version releases will include new features as well as fixes to existing features. 
+We release patches to fix existing problems without adding new features. We will do our best to deprecate existing features
+before removing them completely.
 
-
-Aws-mysql-jdbc releases new major versions only when there are a critical mass of breaking changes 
-(e.g. changes that are incompatible with existing APIs). This tends to happen if we need to
+aws-mysql-jdbc releases new major versions in cases where there is a larger breaking change
+(e.g. changes that are incompatible with existing APIs). This tends to happen when we need to
 change the way the driver is currently working. Fortunately the JDBC API is fairly mature and hasn't changed, however
 in the event that the API changes we will release a version to be compatible.
 
@@ -27,11 +27,10 @@ Maintenance Policy
 
 New features will not be added to the aws-jdbc-driver. Future development will be taking place in the 
 [aws-advanced-wrapper driver](https://github.com/awslabs/aws-advanced-jdbc-wrapper).
-The Aws-mysql-jdbc project follows the semantic versioning specification for assigning version numbers
-to releases, so you should be able to upgrade to the latest minor version of that same major version of the
-software without encountering incompatible changes (e.g., 1.1.0 → 1.3.x).
+The aws-mysql-jdbc project follows the semantic versioning specification for assigning version numbers
+to releases. We recommend to adopt the new wrapper driver before the maintenance window of current version ends on **July 2024**.
 
-Sometimes an incompatible change is unavoidable. When this happens, the software’s maintainers will increment
+However, sometimes an incompatible change is unavoidable. When this happens, the software’s maintainers will increment
 the major version number (e.g., increment from release_policy 1.3.1 to release_policy 2.0.0).
 The last minor version of the previous major version of the software will then enter a maintenance window
 (e.g., 1.3.x). During the maintenance window, the software will continue to receive bug fixes and security patches,
