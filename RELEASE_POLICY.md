@@ -25,7 +25,7 @@ Maintenance Policy
 New features will not be added to the aws-jdbc-driver going forward. Future development will be taking place in the
 [aws-advanced-wrapper driver](https://github.com/awslabs/aws-advanced-jdbc-wrapper).
 The aws-mysql-jdbc project follows the semantic versioning specification for assigning version numbers
-to releases,  We recommend to adopt the new wrapper driver before the maintenance window of current version ends on **July 2024**.
+to releases,  We recommend to adopt the new wrapper driver before the maintenance window of current version ends on **July 25, 2024**.
 
 However, sometimes an incompatible change is unavoidable. When this happens, the software’s maintainers will increment
 the major version number (e.g., increment from release_policy 1.3.1 to release_policy 2.0.0).
