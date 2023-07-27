@@ -3,9 +3,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [???]
+## [1.1.9] - 2023-07-31
 ### Added
+- Documentation:
+  - An example of how to enable logging ([PR #431](https://github.com/awslabs/aws-mysql-jdbc/pull/431)).
+  - Release policy ([PR #434](https://github.com/awslabs/aws-mysql-jdbc/pull/434)).
 - The `keepSessionStateOnFailover` failover property to allow retaining the connection session state after failover without manually reconfiguring a connection ([Issue #425](https://github.com/awslabs/aws-mysql-jdbc/issues/425)).
+
+### Fixed
+- Avoid updating topology during global transactions which caused JTA transactions to fail ([Issue #292](https://github.com/awslabs/aws-mysql-jdbc/issues/292)).
+- Keep `currentHostIndex` and hosts list in sync and pick a new connection when host role changes ([Issue #303](https://github.com/awslabs/aws-mysql-jdbc/issues/303)).
+- Redundant reset statement called due to incorrect condition ([Issue #422](https://github.com/awslabs/aws-mysql-jdbc/pull/435)).
 
 ## [1.1.8] - 2023-06-28
 ### Fixed
@@ -159,6 +167,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.9]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.8...1.1.9
 [1.1.8]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.7...1.1.8
 [1.1.7]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.6...1.1.7
 [1.1.6]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.5...1.1.6
