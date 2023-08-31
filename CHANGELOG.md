@@ -3,23 +3,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [?]
+### Fixed
+* Incorrect BatchUpdateException.getUpdateCounts() on failed batch statement execution ([Issue #450](https://github.com/awslabs/aws-mysql-jdbc/issues/450)).
+
 ## [1.1.9] - 2023-07-31
 ### Added
-- Documentation:
-  - An example of how to enable logging ([PR #431](https://github.com/awslabs/aws-mysql-jdbc/pull/431)).
-  - Release policy ([PR #434](https://github.com/awslabs/aws-mysql-jdbc/pull/434)).
-- The `keepSessionStateOnFailover` failover property to allow retaining the connection session state after failover without manually reconfiguring a connection ([Issue #425](https://github.com/awslabs/aws-mysql-jdbc/issues/425)).
+* Documentation:
+  * An example of how to enable logging ([PR #431](https://github.com/awslabs/aws-mysql-jdbc/pull/431)).
+  * Release policy ([PR #434](https://github.com/awslabs/aws-mysql-jdbc/pull/434)).
+* The `keepSessionStateOnFailover` failover property to allow retaining the connection session state after failover without manually reconfiguring a connection ([Issue #425](https://github.com/awslabs/aws-mysql-jdbc/issues/425)).
 
 ### Fixed
-- Avoid updating topology during global transactions which caused JTA transactions to fail ([Issue #292](https://github.com/awslabs/aws-mysql-jdbc/issues/292)).
-- Keep `currentHostIndex` and hosts list in sync and pick a new connection when host role changes ([Issue #303](https://github.com/awslabs/aws-mysql-jdbc/issues/303)).
-- Redundant reset statement called due to incorrect condition ([Issue #422](https://github.com/awslabs/aws-mysql-jdbc/pull/435)).
+* Avoid updating topology during global transactions which caused JTA transactions to fail ([Issue #292](https://github.com/awslabs/aws-mysql-jdbc/issues/292)).
+* Keep `currentHostIndex` and hosts list in sync and pick a new connection when host role changes ([Issue #303](https://github.com/awslabs/aws-mysql-jdbc/issues/303)).
+* Redundant reset statement called due to incorrect condition ([Issue #422](https://github.com/awslabs/aws-mysql-jdbc/pull/435)).
 
 ## [1.1.8] - 2023-06-28
 ### Fixed
-- The topology service cache no longer stores connection specific properties so connections to the same cluster will not connect with the wrong properties ([Issue #407](https://github.com/awslabs/aws-mysql-jdbc/issues/407)).
-- Fixed value `convertToNull` being rejected for property `zeroDateTimeBehavior` because of capitalization ([Issue #411](https://github.com/awslabs/aws-mysql-jdbc/pull/413)).
-- Handle case in the `FailoverConnectionPlugin` where the `currentHostIndex` is equal to `NO_CONNECTION_INDEX` ([Issue #417](https://github.com/awslabs/aws-mysql-jdbc/issues/417)).
+* The topology service cache no longer stores connection specific properties so connections to the same cluster will not connect with the wrong properties ([Issue #407](https://github.com/awslabs/aws-mysql-jdbc/issues/407)).
+* Fixed value `convertToNull` being rejected for property `zeroDateTimeBehavior` because of capitalization ([Issue #411](https://github.com/awslabs/aws-mysql-jdbc/pull/413)).
+* Handle case in the `FailoverConnectionPlugin` where the `currentHostIndex` is equal to `NO_CONNECTION_INDEX` ([Issue #417](https://github.com/awslabs/aws-mysql-jdbc/issues/417)).
 
 ## [1.1.7] - 2023-05-11
 ### Changed
