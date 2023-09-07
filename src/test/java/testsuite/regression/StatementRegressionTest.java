@@ -25,6 +25,8 @@
  * You should have received a copy of the GNU General Public License along with
  * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+ *
+ * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  */
 
 package testsuite.regression;
@@ -12670,5 +12672,39 @@ public class StatementRegressionTest extends BaseTestCase {
             startPos = pos + "NULL".length();
             assertEquals(-1, sql.indexOf("NULL", startPos), testCase);
         } while ((useSPS = !useSPS) && (setMax = !setMax));
+    }
+
+    /**
+     * Test fix for Issue #450. BatchUpdateException.getUpdateCounts() should return EXECUTE_FAILED status when an error
+     * occurs while executing a batch statement.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBugIssue450() throws Exception {
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        props.setProperty(PropertyKey.allowMultiQueries.getKeyName(), "true");
+        this.conn = getConnectionWithProps(props);
+        Statement stmt = this.conn.createStatement();
+
+        String tableName = "testBugIssue450";
+
+        createTable(tableName, "(c0 INT PRIMARY KEY NOT NULL)");
+
+        stmt.execute("INSERT INTO " + tableName + " VALUES (1)");
+
+        Statement bstmt = conn.createStatement();
+        bstmt.addBatch("INSERT INTO " + tableName + " VALUES (1)");
+        bstmt.addBatch("INSERT INTO " + tableName + " VALUES (2)");
+        try {
+            bstmt.executeBatch();
+        } catch (BatchUpdateException e) {
+            int[] res = e.getUpdateCounts();
+            for (int r : res) {
+                assertEquals(Statement.EXECUTE_FAILED, r);
+            }
+        }
     }
 }
