@@ -3,7 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [?]
+## [1.1.10] - 2023-10-04
+### Added
+* Documentation regarding the `enableFailoverStrictReader` parameter ([Issue #456](https://github.com/awslabs/aws-mysql-jdbc/issues/456).
+
 ### Fixed
 * Incorrect BatchUpdateException.getUpdateCounts() on failed batch statement execution ([Issue #450](https://github.com/awslabs/aws-mysql-jdbc/issues/450)).
 
@@ -171,6 +174,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.10]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.9...1.1.10
 [1.1.9]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.8...1.1.9
 [1.1.8]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.7...1.1.8
 [1.1.7]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.6...1.1.7
