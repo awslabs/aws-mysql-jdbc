@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [1.1.10] - 2023-10-03
+## [1.1.10] - 2023-10-04
 ### Added
 * Documentation regarding the `enableFailoverStrictReader` parameter ([Issue #456](https://github.com/awslabs/aws-mysql-jdbc/issues/456).
 
