@@ -12707,4 +12707,46 @@ public class StatementRegressionTest extends BaseTestCase {
             }
         }
     }
+
+    /**
+     * Test fix for Issue #464. Executing a batch statement should ignore any comments.
+     * Verifies that isNonResultSetProducingQuery() properly handles queries that return
+     * queryReturnType == QueryReturnType.NONE
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBugIssue464() throws Exception {
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        this.conn = getConnectionWithProps(props);
+
+        String tableName = "testBugIssue464";
+
+        final Statement statement = this.conn.createStatement();
+        createTable(tableName, "(c0 INT)");
+
+        Statement bstmt = conn.createStatement();
+        bstmt.addBatch("INSERT INTO " + tableName + " /* Comment 1 */ VALUES (1)");
+        bstmt.addBatch("INSERT INTO " + tableName + " VALUES (2)" + " # Comment 2");
+        bstmt.addBatch("INSERT INTO " + tableName + " VALUES (3)" + " -- Comment 3");
+        bstmt.addBatch("/* Comment 4 */");
+        bstmt.addBatch("# Comment 5");
+        bstmt.addBatch("-- Comment 6");
+
+        try {
+            bstmt.executeBatch();
+        } catch (BatchUpdateException e) {
+            fail();
+        }
+
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery("SELECT * FROM " + tableName);
+        int counter = 0;
+        while (rs.next()) {
+            counter++;
+        }
+        assertEquals(3, counter);
+    }
 }

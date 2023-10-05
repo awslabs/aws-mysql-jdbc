@@ -364,7 +364,7 @@ public class StatementImpl implements JdbcStatement {
      */
     protected boolean isNonResultSetProducingQuery(String sql) {
         QueryReturnType queryReturnType = QueryInfo.getQueryReturnType(sql, this.session.getServerSession().isNoBackslashEscapesSet());
-        return queryReturnType == QueryReturnType.DOES_NOT_PRODUCE_RESULT_SET || queryReturnType == QueryReturnType.MAY_PRODUCE_RESULT_SET;
+        return queryReturnType == QueryReturnType.DOES_NOT_PRODUCE_RESULT_SET || queryReturnType == QueryReturnType.MAY_PRODUCE_RESULT_SET || queryReturnType == QueryReturnType.NONE;
     }
 
     /**
