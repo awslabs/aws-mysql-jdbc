@@ -41,7 +41,7 @@ import com.mchange.v2.c3p0.QueryConnectionTester;
 import com.mysql.cj.exceptions.CJCommunicationsException;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 
 /**
  * ConnectionTester for C3P0 connection pool that uses the more efficient COM_PING method of testing connection 'liveness' for MySQL, and 'sorts' exceptions
