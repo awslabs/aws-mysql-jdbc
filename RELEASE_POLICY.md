@@ -22,7 +22,7 @@ the API changes we will release a version to be compatible. Minor version releas
 features. We release patches to fix existing problems without adding new features. We do our best to deprecate existing features before
 removing them completely.
 
-Maintenance Policy
+## Maintenance Policy
 
 New features will not be added to the aws-jdbc-driver going forward. Future development will be taking place in the
 [aws-advanced-wrapper driver](https://github.com/awslabs/aws-advanced-jdbc-wrapper).
