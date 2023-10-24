@@ -262,7 +262,7 @@ dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.9.0")
     testImplementation("software.amazon.awssdk:rds:2.20.162")
     testImplementation("software.amazon.awssdk:ec2:2.17.191")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
     testImplementation("org.junit.platform:junit-platform-commons:1.10.0")
