@@ -710,11 +710,16 @@ For more information on the configuration parameter, see [Debugging/Profiling](h
 The driver currently does not support custom logging outside the usual logging frameworks like SLF4J. For more information on using SLF4J with the driver see [here](https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-logging-slf4j.html).
 
 ## Known Limitations
+Please note that as mentioned in the [maintenance policy](./RELEASE_POLICY.md), there will not be any new feature work for the AWS JDBC Driver for MySQL. All new feature development will be targeted towards the [AWS JDBC Driver](https://github.com/awslabs/aws-advanced-jdbc-wrapper), which can be used in place of the AWS JDBC Driver for MySQL. A migration guide containing instructions on how to transition from the AWS JDBC Driver for MySQL to the AWS JDBC Driver can be found [here](https://github.com/awslabs/aws-advanced-jdbc-wrapper/blob/main/docs/using-the-jdbc-driver/UsingTheJdbcDriver.md#aws-jdbc-driver-for-mysql-migration-guide). We encourage you to check out the AWS JDBC Driver [documentation](https://github.com/awslabs/aws-advanced-jdbc-wrapper/blob/main/docs/Documentation.md) and to consider whether it would be suitable for your needs. 
+
 ### Amazon RDS Blue/Green Deployments
 
-This driver currently does not support Amazon RDS Blue/Green Deployments and should be avoided. Executing a Blue/Green deployment with the driver will disconnect the driver from the database, and it will be unable to re-establish a connection to an available database instance.
+This driver does not support Amazon RDS Blue/Green Deployments, and they should be avoided. Executing a Blue/Green deployment with the driver will disconnect the driver from the database, and it will be unable to re-establish a connection to an available database instance.
 
-## Known Issues
+### Amazon Aurora Global Databases
+
+This driver does not support Amazon Aurora Global Databases. While it is possible to connect to global databases, failing over to a secondary cluster will result in errors and there may be additional unforeseen errors when working with global databases.
+
 ### SSLHandshakeException
 Using the driver with JDKs based on OpenJDK 8u292+ or OpenJDK 11.0.11+ will result in an exception: `SSLHandshakeException: No appropriate protocol`.
 This is due to OpenJDK disabling TLS 1.0 and 1.1 availability in `security.properties`. For additional information see "[Disable TLS 1.0 and TLS 1.1](https://java.com/en/configure_crypto.html#DisableTLS)".
@@ -818,7 +823,7 @@ The GitHub issues are intended for bug reports and feature requests. Keeping the
 
 ## Releases
 
-The AWS JDBC Driver for MySQL has a regular monthly release cadence. A new release will occur during the last week of each month. However, if there are no changes since the latest release, then a release will not occur.
+The AWS JDBC Driver for MySQL has a regular monthly release cadence. A new release will occur during the last week of each month. However, if there are no changes since the latest release, then a release will not occur. The full release schedule and maintenance policy can be found [here](./RELEASE_POLICY.md).
 
 ## Aurora Engine Version Testing
 The `aws-mysql-jdbc` driver is being tested against the following Community and Aurora database versions in our test suite:
