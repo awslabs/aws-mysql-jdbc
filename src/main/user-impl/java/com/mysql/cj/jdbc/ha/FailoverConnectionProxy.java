@@ -31,6 +31,7 @@
 
 package com.mysql.cj.jdbc.ha;
 
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;

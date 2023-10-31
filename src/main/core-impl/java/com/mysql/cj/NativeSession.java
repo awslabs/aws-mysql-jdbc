@@ -60,7 +60,7 @@ import com.mysql.cj.exceptions.ExceptionInterceptorChain;
 import com.mysql.cj.exceptions.MysqlErrorNumbers;
 import com.mysql.cj.exceptions.OperationCancelledException;
 import com.mysql.cj.interceptors.QueryInterceptor;
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.protocol.ColumnDefinition;
 import com.mysql.cj.protocol.NetworkResources;

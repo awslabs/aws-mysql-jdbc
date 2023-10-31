@@ -575,6 +575,12 @@ public class AWSSecretsManagerPluginSample {
 }
 ```
 
+## Reader Cluster Connection Plugin
+
+When connecting to an Amazon Aurora database using the reader endpoint, the endpoint will load balance connections between all the available Aurora Replicas. In situations where the AWS JDBC Driver for MySQL needs to create a new connection internally, the new connection may or may not be to the same instance the original connection was made to. This means any processes that require the same instance will result in errors. For example, setting query timeouts may result in errors due to the kill query being sent to the incorrect instance. In these cases, the Reader Cluster Connection Plugin can be used to ensure all new connections are made to the same reader.
+
+The Reader Cluster Connection Plugin is not enabled by default and can be enabled by using the [`connectionPluginFactories`](#connection-plugin-manager-parameters).
+
 ## Extra Additions
 
 ### XML Entity Injection Fix
@@ -813,7 +819,6 @@ public class AWSSecretsManagerPluginSample2 {
 }
 
 ```
-
 
 ## Getting Help and Opening Issues
 

@@ -100,8 +100,9 @@ public class DefaultConnectionPlugin implements IConnectionPlugin {
       return;
     }
 
-    HostInfo mainHostInfo = connectionUrl.getMainHost();
+    final HostInfo mainHostInfo = connectionUrl.getMainHost();
     JdbcConnection connection = this.connectionProvider.connect(mainHostInfo);
+
     this.currentConnectionProvider.setCurrentConnection(connection, mainHostInfo);
   }
 

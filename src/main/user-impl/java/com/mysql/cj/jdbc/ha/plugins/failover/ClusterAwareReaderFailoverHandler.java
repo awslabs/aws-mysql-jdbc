@@ -34,7 +34,7 @@ package com.mysql.cj.jdbc.ha.plugins.failover;
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.log.NullLogger;

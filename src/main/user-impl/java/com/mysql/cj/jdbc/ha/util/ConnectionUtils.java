@@ -29,7 +29,7 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-package com.mysql.cj.jdbc.ha;
+package com.mysql.cj.jdbc.ha.util;
 
 import com.mysql.cj.Messages;
 import com.mysql.cj.conf.ConnectionUrl;
@@ -157,6 +157,38 @@ public class ConnectionUtils {
         propertiesCopy);
   }
 
+  /**
+   * Create a copy of {@link HostInfo} object where all properties are the same but the hostInfo points to the provided
+   * instance.
+   *
+   * @param instance The instance name to replace the previous host.
+   * @param previousHostInfo The {@link HostInfo} object that all other information to add to the new {@link HostInfo}.
+   *
+   * @return A copy of {@link HostInfo} object where only the host has been changed.
+   */
+  public static HostInfo createInstanceHostWithProperties(String instance, HostInfo previousHostInfo)
+      throws SQLException {
+    final Properties propertiesCopy = new Properties();
+    propertiesCopy.putAll(previousHostInfo.getHostProperties());
+    propertiesCopy.put(PropertyKey.USER.getKeyName(), previousHostInfo.getUser());
+    propertiesCopy.put(PropertyKey.PASSWORD.getKeyName(), previousHostInfo.getPassword());
+
+    final ConnectionUrl hostUrl = ConnectionUrl.getConnectionUrlInstance(
+        getUrlFromEndpoint(
+            instance,
+            previousHostInfo.getPort(),
+            propertiesCopy),
+        propertiesCopy);
+
+    return new HostInfo(
+        hostUrl,
+        instance,
+        previousHostInfo.getPort(),
+        previousHostInfo.getUser(),
+        previousHostInfo.getPassword(),
+        previousHostInfo.getHostProperties());
+  }
+
   public static String getUrlFromEndpoint(String endpoint, int port, Properties props) throws SQLException {
     final Properties propsCopy = new Properties();
     propsCopy.putAll(props);
@@ -172,8 +204,10 @@ public class ConnectionUtils {
     );
 
     final String dbName = propsCopy.getProperty(PropertyKey.DBNAME.getKeyName());
+    boolean containsDbName = false;
     if (!StringUtils.isNullOrEmpty(dbName)) {
       urlBuilder.append("/").append(dbName);
+      containsDbName = true;
     }
     propsCopy.remove(PropertyKey.DBNAME.getKeyName());
 
@@ -202,7 +236,7 @@ public class ConnectionUtils {
 
     if (queryBuilder.length() != 0) {
       urlBuilder.append("?").append(queryBuilder);
-    } else {
+    } else if (!containsDbName) {
       urlBuilder.append("/");
     }
 

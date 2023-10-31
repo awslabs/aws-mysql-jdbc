@@ -32,10 +32,13 @@
 package testsuite.integration.container;
 
 import com.mysql.cj.conf.PropertyKey;
+import com.mysql.cj.jdbc.exceptions.MySQLTimeoutException;
+import com.mysql.cj.jdbc.ha.plugins.ReaderClusterConnectionPluginFactory;
 import com.mysql.cj.jdbc.ha.plugins.failover.IClusterAwareMetricsReporter;
+import java.sql.Statement;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -607,4 +610,18 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
     conn.close();
   }
 
+  @RepeatedTest(50)
+  public void test_QueryTimeoutOnReaderClusterConnection() throws Exception {
+    final Properties props = initDefaultProps();
+    props.setProperty("connectionPluginFactories", ReaderClusterConnectionPluginFactory.class.getName());
+    try (final Connection conn = connectToInstance(MYSQL_RO_CLUSTER_URL, MYSQL_PORT, props)) {
+      assertTrue(conn.isValid(5));
+      try (final Statement statement = conn.createStatement()) {
+        statement.setQueryTimeout(1);
+        statement.execute("SELECT SLEEP(60)");
+      } catch (MySQLTimeoutException e) {
+        // ignore
+      }
+    }
+  }
 }

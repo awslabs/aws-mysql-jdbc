@@ -36,9 +36,8 @@ import com.mysql.cj.conf.HostInfo;
 import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.ha.ConnectionProxyTest;
 
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 import com.mysql.cj.util.StringUtils;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;

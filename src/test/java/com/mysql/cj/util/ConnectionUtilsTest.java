@@ -34,7 +34,7 @@ package com.mysql.cj.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mysql.cj.conf.PropertyKey;
-import com.mysql.cj.jdbc.ha.ConnectionUtils;
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.stream.Stream;
