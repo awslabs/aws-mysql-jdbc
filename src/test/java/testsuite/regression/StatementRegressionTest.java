@@ -12724,7 +12724,6 @@ public class StatementRegressionTest extends BaseTestCase {
 
         String tableName = "testBugIssue464";
 
-        final Statement statement = this.conn.createStatement();
         createTable(tableName, "(c0 INT)");
 
         Statement bstmt = conn.createStatement();
@@ -12748,5 +12747,49 @@ public class StatementRegressionTest extends BaseTestCase {
             counter++;
         }
         assertEquals(3, counter);
+    }
+
+    /**
+     * Test fix for Issue #484. Verifies that getGeneratedKeys() will work after executing both batch and individual
+     * statements.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testBugIssue484() throws Exception {
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+        this.conn = getConnectionWithProps(props);
+
+        String tableName = "testBugIssue484";
+
+        createTable(tableName, "(c0 INT AUTO_INCREMENT PRIMARY KEY)");
+
+        Statement stmt = conn.createStatement();
+        stmt.addBatch("INSERT INTO " + tableName + " VALUES(1)");
+        stmt.addBatch("INSERT INTO " + tableName + " VALUES(2)");
+        stmt.executeBatch();
+
+        ResultSet rs1 = stmt.getGeneratedKeys();
+        int counter = 0;
+        while (rs1.next()) {
+            counter++;
+        }
+        rs1.close();
+        assertEquals(2, counter);
+
+        stmt.executeUpdate("INSERT INTO " + tableName + " VALUES (DEFAULT)", Statement.RETURN_GENERATED_KEYS);
+
+        ResultSet rs2 = stmt.getGeneratedKeys();
+        counter = 0;
+        int key = 0;
+        while (rs2.next()) {
+            counter++;
+            key = rs2.getInt(1);
+        }
+        rs2.close();
+        assertEquals(1, counter);
+        assertEquals(3, key);
     }
 }

@@ -1323,6 +1323,7 @@ public class StatementImpl implements JdbcStatement {
 
                 if (!isBatch) {
                     this.query.getStatementExecuting().set(false);
+                    this.batchedGeneratedKeys = null;
                 }
             }
 
