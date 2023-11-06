@@ -260,7 +260,7 @@ tasks.withType<Checkstyle>().configureEach {
 
 dependencies {
     testImplementation("org.apache.commons:commons-dbcp2:2.9.0")
-    testImplementation("software.amazon.awssdk:rds:2.20.162")
+    testImplementation("software.amazon.awssdk:rds:2.21.15")
     testImplementation("software.amazon.awssdk:ec2:2.17.191")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.0")
@@ -279,7 +279,7 @@ dependencies {
     testImplementation("com.zaxxer:HikariCP:4.0.3")
     testImplementation("software.amazon.awssdk:secretsmanager:2.20.162")
 
-    implementation("software.amazon.awssdk:rds:2.20.162")
+    implementation("software.amazon.awssdk:rds:2.21.15")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
     implementation("com.mchange:c3p0:0.9.5.5")
     implementation("org.javassist:javassist:3.28.0-GA")
