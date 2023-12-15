@@ -529,6 +529,26 @@ You can include additional monitoring configurations by adding the prefix `monit
 > 
 > It is suggested to turn off Enhanced Failure Monitoring plugin, or to avoid using RDS Proxy endpoints when the plugin is active. 
 
+## **Experimental** Enhanced Failure Monitoring Plugin v2
+
+> [!WARNING] 
+> This plugin is experimental and users should test the plugin before using it in production environment.
+
+Enhanced Failure Monitoring Plugin v2 is an alternative implementation of enhanced failure monitoring, and it is functionally equal to the Enhanced Failure Monitoring Plugin described above. Both plugins share the same set of [configuration parameters](#enhanced-failure-monitoring-parameters). Enhanced Failure Monitoring Plugin v2 plugin is designed to be a drop-in replacement for the Enhanced Failure Monitoring Plugin.
+
+> [!NOTE] 
+> Since these two plugins are separate plugins, users may decide to use them together with a single connection. While this should not  have any negative side effects, it is not recommended. It is recommended to use either the Enhanced Failure Monitoring Plugin, or the Enhanced Failure Monitoring Plugin v2 where it's needed.
+
+In order to use Enhanced Failure Monitoring Plugin v2, users should add `software.aws.rds.jdbc.mysql.shading.com.mysql.cj.jdbc.ha.plugins.efm2.NodeMonitoringConnectionPluginFactory` to `connectionPluginFactories`.
+
+Enhanced Failure Monitoring Plugin v2 is designed to address [some of the issues](https://github.com/awslabs/aws-mysql-jdbc/issues/412) that have been reported by multiple users. The following changes have been made:
+- Used weak pointers to ease garbage collection
+- Split monitoring logic into two separate threads to increase overall monitoring stability
+- Reviewed locks for monitoring context
+- Reviewed and redesigned stopping of idle monitoring threads
+- Reviewed and simplified monitoring logic
+
+
 ## AWS Secrets Manager Plugin
 
 The AWS JDBC Driver for MySQL supports usage of database credentials stored in the [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) through the AWS Secrets Manager Plugin. This plugin is optional and can be enabled with the `connectionPluginFactories` parameter as seen in the [connection plugin manager parameters table](#connection-plugin-manager-parameters). When a user creates a new connection with this plugin enabled, the plugin will retrieve the secret and the connection will be created using those credentials.

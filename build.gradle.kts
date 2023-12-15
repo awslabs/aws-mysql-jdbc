@@ -136,7 +136,7 @@ tasks.shadowJar {
     exclude("instrumentation/**")
     exclude("demo/**")
     exclude("documentation/**")
-    exclude("customplugins/**");
+    exclude("customplugins/**")
 
     includeEmptyDirs = false
 }
@@ -447,7 +447,10 @@ tasks.register<Test>("in-container-aurora") {
 }
 
 tasks.register<Test>("in-container-aurora-performance") {
-    filter.includeTestsMatching("testsuite.integration.container.AuroraMysqlPerformanceIntegrationTest")
+    filter.includeTestsMatching(
+        "testsuite.integration.container.AuroraMysqlPerformanceIntegrationTest")
+    filter.includeTestsMatching(
+        "testsuite.integration.container.AuroraMysqlPerformanceForEfm2IntegrationTest")
 }
 
 // Run all tests excluding integration tests
