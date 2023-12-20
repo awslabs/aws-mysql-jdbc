@@ -60,11 +60,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegrationBaseTest {
 
-  private static final int REPEAT_TIMES = 5;
-  private static final int FAILOVER_TIMEOUT_MS = 40000;
-  private static final List<PerfStatMonitoring> enhancedFailureMonitoringPerfDataList = new ArrayList<>();
-  private static final List<PerfStatMonitoring> failoverWithEfmPerfDataList = new ArrayList<>();
-  private static final List<PerfStatSocketTimeout> failoverWithSocketTimeoutPerfDataList = new ArrayList<>();
+  protected static final int REPEAT_TIMES = 5;
+  protected static final int FAILOVER_TIMEOUT_MS = 40000;
+  protected static final List<PerfStatMonitoring> enhancedFailureMonitoringPerfDataList = new ArrayList<>();
+  protected static final List<PerfStatMonitoring> failoverWithEfmPerfDataList = new ArrayList<>();
+  protected static final List<PerfStatSocketTimeout> failoverWithSocketTimeoutPerfDataList = new ArrayList<>();
 
   @BeforeAll
   public static void setUp() throws IOException, SQLException {
@@ -73,12 +73,12 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
 
   @AfterAll
   public static void cleanUp() throws IOException {
-    doWritePerfDataToFile("./build/reports/tests/FailureDetectionResults_EnhancedMonitoring.xlsx", enhancedFailureMonitoringPerfDataList);
-    doWritePerfDataToFile("./build/reports/tests/FailoverPerformanceResults_EnhancedMonitoring.xlsx", failoverWithEfmPerfDataList);
-    doWritePerfDataToFile("./build/reports/tests/FailoverPerformanceResults_SocketTimeout.xlsx", failoverWithSocketTimeoutPerfDataList);
+    doWritePerfDataToFile("./build/reports/tests/EnhancedMonitoring.xlsx", enhancedFailureMonitoringPerfDataList);
+    doWritePerfDataToFile("./build/reports/tests/FailoverWithEnhancedMonitoring.xlsx", failoverWithEfmPerfDataList);
+    doWritePerfDataToFile("./build/reports/tests/FailoverWithSocketTimeout.xlsx", failoverWithSocketTimeoutPerfDataList);
   }
 
-  private static void doWritePerfDataToFile(String fileName, List<? extends PerfStatBase> dataList) throws IOException {
+  protected static void doWritePerfDataToFile(String fileName, List<? extends PerfStatBase> dataList) throws IOException {
     if (dataList.isEmpty()) {
       return;
     }
@@ -108,6 +108,7 @@ public class AuroraMysqlPerformanceIntegrationTest extends AuroraMysqlIntegratio
         workbook.write(fileOut);
       }
     }
+    dataList.clear();
   }
 
   @ParameterizedTest
