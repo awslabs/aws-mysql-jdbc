@@ -1,19 +1,20 @@
 # Release Schedule and Maintenance Policy
-| Release Date     | Release                                                                         |
-|------------------|---------------------------------------------------------------------------------|
-| Mar 1, 2022      | [Release 1.0.0](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.0.0)   |  
-| June 29, 2022    | [Release 1.1.0](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.0)   | 
-| Sept 22, 2022    | [Release 1.1.1](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.1)   |
-| Nov 22, 2022     | [Release 1.1.2](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.2)   |  
-| Jan 5, 2023      | [Release 1.1.3](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.3)   |
-| Jan 27, 2023     | [Release 1.1.4](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.4)   |
-| Mar 30, 2023     | [Release 1.1.5](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.5)   |
-| Apr 28, 2023     | [Release 1.1.6](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.6)   |
-| May 11, 2023     | [Release 1.1.7](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.7)   |
-| June 28, 2023    | [Release 1.1.8](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.8)   |
-| July 31, 2023    | [Release 1.1.9](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.9)   |
-| October 3, 2023  | [Release 1.1.10](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.10) |
-| November 2, 2023 | [Release 1.1.11](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.11) |
+| Release Date      | Release                                                                         |
+|-------------------|---------------------------------------------------------------------------------|
+| Mar 1, 2022       | [Release 1.0.0](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.0.0)   |  
+| June 29, 2022     | [Release 1.1.0](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.0)   | 
+| Sept 22, 2022     | [Release 1.1.1](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.1)   |
+| Nov 22, 2022      | [Release 1.1.2](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.2)   |  
+| Jan 5, 2023       | [Release 1.1.3](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.3)   |
+| Jan 27, 2023      | [Release 1.1.4](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.4)   |
+| Mar 30, 2023      | [Release 1.1.5](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.5)   |
+| Apr 28, 2023      | [Release 1.1.6](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.6)   |
+| May 11, 2023      | [Release 1.1.7](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.7)   |
+| June 28, 2023     | [Release 1.1.8](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.8)   |
+| July 31, 2023     | [Release 1.1.9](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.9)   |
+| October 3, 2023   | [Release 1.1.10](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.10) |
+| November 2, 2023  | [Release 1.1.11](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.11) |
+| December 21, 2023 | [Release 1.1.12](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.12) |
 
 
 aws-mysql-jdbc-driver [follows semver](https://semver.org/#semantic-versioning-200) which means we will only release
@@ -55,4 +56,4 @@ from the updated source after the PRs are merged.
 | Major Version | Latest Minor Version | Status      | Initial Release | Maintenance Window Start | Maintenance Window End |
 |---------------|----------------------|-------------|-----------------|--------------------------|------------------------|
 | 1             | 1.0.0                | Maintenance | Mar 1, 2022     | June 29, 2022            | June 29, 2023          |
-| 2             | 1.1.11               | Current     | June 28, 2023   | July 25, 2023            | July 25, 2024          |
+| 2             | 1.1.12               | Current     | June 28, 2023   | July 25, 2023            | July 25, 2024          |
