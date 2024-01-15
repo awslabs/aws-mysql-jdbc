@@ -277,7 +277,7 @@ dependencies {
     testImplementation("org.testcontainers:toxiproxy:1.18.3")
     testImplementation("org.apache.poi:poi-ooxml:5.2.3")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
-    testImplementation("software.amazon.awssdk:secretsmanager:2.20.162")
+    testImplementation("software.amazon.awssdk:secretsmanager:2.23.3")
 
     implementation("software.amazon.awssdk:rds:2.20.162")
     implementation("com.google.protobuf:protobuf-java:3.19.1")
@@ -285,7 +285,7 @@ dependencies {
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:2.0.1")
     implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.13.0")
-    compileOnly("software.amazon.awssdk:secretsmanager:2.20.162")
+    compileOnly("software.amazon.awssdk:secretsmanager:2.23.3")
 
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
 }
