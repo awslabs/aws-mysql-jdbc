@@ -52,9 +52,12 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.SQLException;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 /**
@@ -67,6 +70,7 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   protected static final Log NULL_LOGGER = new NullLogger(Log.LOGGER_INSTANCE_NAME);
   static final String METHOD_EQUALS = "equals";
   private static final String METHOD_HASH_CODE = "hashCode";
+  private final ReentrantLock lock = new ReentrantLock();
   private final JdbcPropertySetImpl connProps = new JdbcPropertySetImpl();
   /** The logger we're going to use. */
   protected transient Log log = NULL_LOGGER;
@@ -76,7 +80,6 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
   private HostInfo currentHostInfo;
   private JdbcConnection currentConnection;
   private Class<?> currentConnectionClass;
-
   public ConnectionProxy(ConnectionUrl connectionUrl) throws SQLException {
     this(connectionUrl, null);
   }
@@ -314,6 +317,13 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
     private final Object invokeOn;
     private final Class<?> invokeOnClass;
 
+    private final Set<String> asynchronousMethods =
+        Collections.unmodifiableSet(new HashSet<String>() {
+          {
+            add("cancel");
+          }
+        });
+
     JdbcInterfaceProxy(Object toInvokeOn) {
       this.invokeOn = toInvokeOn;
       this.invokeOnClass = toInvokeOn == null ? null : toInvokeOn.getClass();
@@ -347,7 +357,10 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
         return executeMethodDirectly(methodName, args);
       }
 
-      synchronized(this.invokeOn) {
+      if (!asynchronousMethods.contains(methodName)) {
+        lock.lock();
+      }
+      try {
         Object result =
             ConnectionProxy.this.pluginManager.execute(
                 this.invokeOnClass,
@@ -355,6 +368,10 @@ public class ConnectionProxy implements ICurrentConnectionProvider, InvocationHa
                 () -> method.invoke(this.invokeOn, args),
                 args);
         return proxyIfReturnTypeIsJdbcInterface(method.getReturnType(), result);
+      } finally {
+        if (lock.isHeldByCurrentThread()) {
+          lock.unlock();
+        }
       }
     }
   }

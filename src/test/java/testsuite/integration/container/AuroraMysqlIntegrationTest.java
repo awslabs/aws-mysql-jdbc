@@ -624,4 +624,32 @@ public class AuroraMysqlIntegrationTest extends AuroraMysqlIntegrationBaseTest {
       }
     }
   }
+
+  @Test
+  public void test_CancelStatementsAreNotBlocked() {
+    try (final Connection conn = connectToInstance(MYSQL_CLUSTER_URL, MYSQL_PORT)) {
+      Statement stmt = conn.createStatement();
+      Thread thread = new Thread(() -> {
+        try {
+          Thread.sleep(1000);
+          stmt.cancel();
+        } catch (SQLException | InterruptedException e) {
+          fail(e);
+        }
+      });
+
+      final long startTime = System.currentTimeMillis();
+      thread.start();
+      stmt.execute("select sleep(100000000)");
+
+      try {
+        thread.join();
+        assert(System.currentTimeMillis() - startTime < 10000);
+      } catch (InterruptedException e) {
+        fail(e);
+      }
+    } catch (Exception e) {
+      fail(e);
+    }
+  }
 }
