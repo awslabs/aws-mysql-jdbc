@@ -97,7 +97,7 @@ public class MysqlDataSourceFactory implements ObjectFactory {
 
             String explicitUrlAsString = nullSafeRefAddrStringGet("explicitUrl", ref);
             if (explicitUrlAsString != null) {
-                if (Boolean.valueOf(explicitUrlAsString).booleanValue()) {
+                if (Boolean.parseBoolean(explicitUrlAsString)) {
                     dataSource.setUrl(nullSafeRefAddrStringGet("url", ref));
                 }
             }
