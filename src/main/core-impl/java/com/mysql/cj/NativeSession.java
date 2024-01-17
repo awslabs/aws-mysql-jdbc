@@ -1,7 +1,7 @@
 /*
  * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -81,6 +81,7 @@ import com.mysql.cj.result.Row;
 import com.mysql.cj.result.StringValueFactory;
 import com.mysql.cj.result.ValueFactory;
 import com.mysql.cj.util.StringUtils;
+import com.mysql.cj.util.Util;
 
 public class NativeSession extends CoreSession implements Serializable {
 
@@ -326,45 +327,34 @@ public class NativeSession extends CoreSession implements Serializable {
                 return;
             }
 
-            try {
-                Class<?> factoryClass = Class.forName(getPropertySet().getStringProperty(PropertyKey.serverConfigCacheFactory).getStringValue());
+            String serverConfigCacheFactory = this.propertySet.getStringProperty(PropertyKey.serverConfigCacheFactory).getStringValue();
 
-                @SuppressWarnings("unchecked")
-                CacheAdapterFactory<String, Map<String, String>> cacheFactory = ((CacheAdapterFactory<String, Map<String, String>>) factoryClass.newInstance());
+            @SuppressWarnings("unchecked")
+            CacheAdapterFactory<String, Map<String, String>> cacheFactory = Util.getInstance(CacheAdapterFactory.class, serverConfigCacheFactory, null, null,
+                    getExceptionInterceptor());
+            this.serverConfigCache = cacheFactory.getInstance(syncMutex, this.hostInfo.getDatabaseUrl(), Integer.MAX_VALUE, Integer.MAX_VALUE);
 
-                this.serverConfigCache = cacheFactory.getInstance(syncMutex, this.hostInfo.getDatabaseUrl(), Integer.MAX_VALUE, Integer.MAX_VALUE);
-
-                ExceptionInterceptor evictOnCommsError = new ExceptionInterceptor() {
-
-                    public ExceptionInterceptor init(Properties config, Log log1) {
-                        return this;
-                    }
-
-                    public void destroy() {
-                    }
-
-                    @SuppressWarnings("synthetic-access")
-                    public Exception interceptException(Exception sqlEx) {
-                        if (sqlEx instanceof SQLException && ConnectionUtils.isNetworkException((SQLException) sqlEx)) {
-                            NativeSession.this.serverConfigCache.invalidate(NativeSession.this.hostInfo.getDatabaseUrl());
-                        }
-                        return null;
-                    }
-                };
-
-                if (this.exceptionInterceptor == null) {
-                    this.exceptionInterceptor = evictOnCommsError;
-                } else {
-                    ((ExceptionInterceptorChain) this.exceptionInterceptor).addRingZero(evictOnCommsError);
+            ExceptionInterceptor evictOnCommsError = new ExceptionInterceptor() {
+                public ExceptionInterceptor init(Properties config, Log log1) {
+                    return this;
                 }
-            } catch (ClassNotFoundException e) {
-                throw ExceptionFactory.createException(Messages.getString("Connection.CantFindCacheFactory",
-                        new Object[] { getPropertySet().getStringProperty(PropertyKey.queryInfoCacheFactory).getValue(), PropertyKey.queryInfoCacheFactory }),
-                        e, getExceptionInterceptor());
-            } catch (InstantiationException | IllegalAccessException | CJException e) {
-                throw ExceptionFactory.createException(Messages.getString("Connection.CantLoadCacheFactory",
-                        new Object[] { getPropertySet().getStringProperty(PropertyKey.queryInfoCacheFactory).getValue(), PropertyKey.queryInfoCacheFactory }),
-                        e, getExceptionInterceptor());
+
+                public void destroy() {
+                }
+
+                @SuppressWarnings("synthetic-access")
+                public Exception interceptException(Exception sqlEx) {
+                    if (sqlEx instanceof SQLException && ConnectionUtils.isNetworkException((SQLException) sqlEx)) {
+                        NativeSession.this.serverConfigCache.invalidate(NativeSession.this.hostInfo.getDatabaseUrl());
+                    }
+                    return null;
+                }
+            };
+
+            if (this.exceptionInterceptor == null) {
+                this.exceptionInterceptor = evictOnCommsError;
+            } else {
+                ((ExceptionInterceptorChain) this.exceptionInterceptor).addRingZero(evictOnCommsError);
             }
         }
     }

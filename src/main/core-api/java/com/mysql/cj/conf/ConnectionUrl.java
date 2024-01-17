@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -243,7 +243,7 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
          *         an instance of {@link ConnectionUrl}.
          */
         private ConnectionUrl getImplementingInstance(ConnectionUrlParser parser, Properties info) {
-            return (ConnectionUrl) Util.getInstance(getImplementingClass(), new Class<?>[] { ConnectionUrlParser.class, Properties.class },
+            return Util.getInstance(ConnectionUrl.class, this.implementingClass, new Class<?>[] { ConnectionUrlParser.class, Properties.class },
                     new Object[] { parser, info }, null);
         }
     }
@@ -384,10 +384,9 @@ public abstract class ConnectionUrl implements DatabaseUrlContainer {
         String propertiesTransformClassName = this.properties.get(PropertyKey.propertiesTransform.getKeyName());
         if (!isNullOrEmpty(propertiesTransformClassName)) {
             try {
-                this.propertiesTransformer = (ConnectionPropertiesTransform) Class.forName(propertiesTransformClassName).newInstance();
-            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | CJException e) {
-                throw ExceptionFactory.createException(InvalidConnectionAttributeException.class,
-                        Messages.getString("ConnectionString.9", new Object[] { propertiesTransformClassName, e.toString() }), e);
+                this.propertiesTransformer = Util.getInstance(ConnectionPropertiesTransform.class, propertiesTransformClassName, null, null, null);
+            } catch (CJException e) {
+                throw ExceptionFactory.createException(InvalidConnectionAttributeException.class, Messages.getString("ConnectionString.9"), e);
             }
         }
     }

@@ -102,7 +102,8 @@ public class ConnectionPluginManager implements ITransactionContextHandler {
 
     if (!StringUtils.isNullOrEmpty(factoryClazzNames)) {
       IConnectionPluginFactory[] factories =
-          Util.<IConnectionPluginFactory>loadClasses(
+          Util.loadClasses(
+                  IConnectionPluginFactory.class,
                   factoryClazzNames,
                   "MysqlIo.BadConnectionPluginFactory",
                   null)
