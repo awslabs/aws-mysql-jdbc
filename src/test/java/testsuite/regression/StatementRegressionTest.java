@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2002, 2023, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -47,6 +47,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.CharArrayReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -59,6 +60,8 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
 import java.sql.Blob;
@@ -5315,8 +5318,7 @@ public class StatementRegressionTest extends BaseTestCase {
     }
 
     /*
-     * Bug #40439 - Error rewriting batched statement if table name ends with
-     * "values".
+     * Bug #40439 - Error rewriting batched statement if table name ends with "values".
      */
     @Test
     public void testBug40439() throws Exception {
@@ -8362,14 +8364,14 @@ public class StatementRegressionTest extends BaseTestCase {
             // A. Test Statement.execute() results
             createTable("testBug71672", tableDDL);
             for (int i = 0; i < queries.length; i++) {
-                testBug71672Statement(testStep, testConn, queries[i], -1, expectedGenKeys[i]);
+                checkStatementForTestBug71672(testStep, testConn, queries[i], -1, expectedGenKeys[i]);
             }
             dropTable("testBug71672");
 
             // B. Test Statement.executeUpdate() results
             createTable("testBug71672", tableDDL);
             for (int i = 0; i < queries.length; i++) {
-                testBug71672Statement(testStep, testConn, queries[i], expectedUpdCount[i], expectedGenKeys[i]);
+                checkStatementForTestBug71672(testStep, testConn, queries[i], expectedUpdCount[i], expectedGenKeys[i]);
             }
             dropTable("testBug71672");
 
@@ -8399,14 +8401,14 @@ public class StatementRegressionTest extends BaseTestCase {
             // D. Test PreparedStatement.execute() results
             createTable("testBug71672", tableDDL);
             for (int i = 0; i < queries.length; i++) {
-                testBug71672PreparedStatement(testStep, testConn, queries[i], -1, expectedGenKeys[i]);
+                checkPreparedStatementForTestBug71672(testStep, testConn, queries[i], -1, expectedGenKeys[i]);
             }
             dropTable("testBug71672");
 
             // E. Test PreparedStatement.executeUpdate() results
             createTable("testBug71672", tableDDL);
             for (int i = 0; i < queries.length; i++) {
-                testBug71672PreparedStatement(testStep, testConn, queries[i], expectedUpdCount[i], expectedGenKeys[i]);
+                checkPreparedStatementForTestBug71672(testStep, testConn, queries[i], expectedUpdCount[i], expectedGenKeys[i]);
             }
             dropTable("testBug71672");
 
@@ -8464,22 +8466,22 @@ public class StatementRegressionTest extends BaseTestCase {
 
             // A. Test Statement.execute() results
             createTable("testBug71672", tableDDL);
-            testBug71672Statement(testStep, testConn, allQueries, -1, expectedGenKeysMultiQueries);
+            checkStatementForTestBug71672(testStep, testConn, allQueries, -1, expectedGenKeysMultiQueries);
             dropTable("testBug71672");
 
             // B. Test Statement.executeUpdate() results
             createTable("testBug71672", tableDDL);
-            testBug71672Statement(testStep, testConn, allQueries, 3, expectedGenKeysMultiQueries);
+            checkStatementForTestBug71672(testStep, testConn, allQueries, 3, expectedGenKeysMultiQueries);
             dropTable("testBug71672");
 
             // C. Test PreparedStatement.execute() results
             createTable("testBug71672", tableDDL);
-            testBug71672PreparedStatement(testStep, testConn, allQueries, -1, expectedGenKeysMultiQueries);
+            checkPreparedStatementForTestBug71672(testStep, testConn, allQueries, -1, expectedGenKeysMultiQueries);
             dropTable("testBug71672");
 
             // D. Test PreparedStatement.executeUpdate() results
             createTable("testBug71672", tableDDL);
-            testBug71672PreparedStatement(testStep, testConn, allQueries, 3, expectedGenKeysMultiQueries);
+            checkPreparedStatementForTestBug71672(testStep, testConn, allQueries, 3, expectedGenKeysMultiQueries);
             dropTable("testBug71672");
 
             testConn.close();
@@ -8497,7 +8499,8 @@ public class StatementRegressionTest extends BaseTestCase {
      * @param expectedKeys
      * @throws SQLException
      */
-    public void testBug71672Statement(int testStep, Connection testConn, String query, int expectedUpdateCount, int[] expectedKeys) throws SQLException {
+    private void checkStatementForTestBug71672(int testStep, Connection testConn, String query, int expectedUpdateCount, int[] expectedKeys)
+            throws SQLException {
         Statement testStmt = testConn.createStatement();
 
         if (expectedUpdateCount < 0) {
@@ -8527,7 +8530,7 @@ public class StatementRegressionTest extends BaseTestCase {
      * @param expectedKeys
      * @throws SQLException
      */
-    public void testBug71672PreparedStatement(int testStep, Connection testConn, String query, int expectedUpdateCount, int[] expectedKeys)
+    private void checkPreparedStatementForTestBug71672(int testStep, Connection testConn, String query, int expectedUpdateCount, int[] expectedKeys)
             throws SQLException {
         PreparedStatement testPStmt = testConn.prepareStatement(query);
 
@@ -12969,7 +12972,7 @@ public class StatementRegressionTest extends BaseTestCase {
     }
 
     /**
-     * Tests for Bug#99604 (Bug#31612628), Add support to row alias on INSERT... ON DUPLICATE KEY UPDATE on batch mode.
+     * Tests fix for Bug#99604 (Bug#31612628), Add support to row alias on INSERT... ON DUPLICATE KEY UPDATE on batch mode.
      * Resolved by fix for Bug#106240 (33781440), StringIndexOutOfBoundsException when VALUE is at the end of the query.
      * 
      * @throws Exception
@@ -13066,5 +13069,307 @@ public class StatementRegressionTest extends BaseTestCase {
 
             testConn.close();
         } while ((useSPS = !useSPS) || (cachePS = !cachePS));
+    }
+
+    /**
+     * Tests fix for Bug#109243 (Bug#34852047), Judge whether the returned result set of the sql statement is incorrect.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug109243() throws Exception {
+        assumeTrue(versionMeetsMinimum(8, 0), "MySQL 8.0+ is required to run this test.");
+
+        this.rs = this.stmt.executeQuery("WITH q1 AS (SELECT 1 v1),q2 AS (SELECT 2 v2) SELECT v1,v2 FROM q1,q2");
+        assertTrue(this.rs.next());
+        assertEquals(1, this.rs.getInt(1));
+        assertEquals(2, this.rs.getInt(2));
+        assertFalse(this.rs.next());
+    }
+
+    /**
+     * Tests fix for Bug#77368 (Bug#21321849), "LOAD DATA LOCAL INFILE" doesn't work properly with relative paths.
+     * 
+     * Testing this would require changing the value of "user.dir" which could cause other tests to fail. As such, only basic testing to verify that the default
+     * relative paths work fine is done here.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug77368() throws Exception {
+        createTable("testBug77368", "(id INT, txt VARCHAR(100))");
+
+        final String data = "1\tMySQL\n2\tConnector/J";
+        final String fileName = "TestBug77368.tsv";
+
+        Files.write(Paths.get(fileName), data.getBytes());
+
+        try {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.allowLoadLocalInfile.getKeyName(), "true");
+            Connection testConn = getConnectionWithProps(props);
+            Statement testStmt = testConn.createStatement();
+            testStmt.execute("LOAD DATA LOCAL INFILE './" + fileName + "' INTO TABLE testBug77368");
+
+            this.rs = this.stmt.executeQuery("SELECT * FROM testBug77368");
+            assertTrue(this.rs.next());
+            assertEquals(1, this.rs.getInt(1));
+            assertEquals("MySQL", this.rs.getString(2));
+            assertTrue(this.rs.next());
+            assertEquals(2, this.rs.getInt(1));
+            assertEquals("Connector/J", this.rs.getString(2));
+            assertFalse(this.rs.next());
+            testConn.close();
+        } finally {
+            try {
+                Files.delete(Paths.get(fileName));
+            } catch (FileNotFoundException e) {
+            }
+        }
+    }
+
+    /**
+     * Tests fix for Bug#109864 (Bug#35034666), Connector/J 8.0.32 hangs on MySQL 5.5 with prepared statements.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBug109864() throws Exception {
+        createTable("testBug109864", "(id INT)");
+
+        boolean useSPS = false;
+
+        do {
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+            props.setProperty(PropertyKey.socketTimeout.getKeyName(), "5000");
+
+            Connection testConn = getConnectionWithProps(props);
+
+            this.pstmt = testConn.prepareStatement("SELECT ?");  // Both column and parameter definition blocks in Prepare response.
+            this.pstmt.setInt(1, 1);
+            this.rs = this.pstmt.executeQuery();
+            assertTrue(this.rs.next());
+            assertFalse(this.rs.next());
+            this.pstmt.close();
+
+            this.pstmt = testConn.prepareStatement("SELECT 1");  // No parameter definition block in Stmt Prepare response.
+            this.rs = this.pstmt.executeQuery();
+            assertTrue(this.rs.next());
+            assertFalse(this.rs.next());
+
+            // Prior to this fix preparing this statement would hang indefinitely with server-prepared statements.
+            this.pstmt = testConn.prepareStatement("INSERT INTO testBug109864 VALUES (?)"); // No column definition block in Prepare response.
+            this.pstmt.setInt(1, 1);
+            assertEquals(1, this.pstmt.executeUpdate());
+            this.pstmt.close();
+
+            this.pstmt = testConn.prepareStatement("INSERT INTO testBug109864 VALUES (2)");  // No column or parameter definition blocks in Prepare response.
+            assertEquals(1, this.pstmt.executeUpdate());
+            this.pstmt.close();
+
+            testConn.close();
+        } while (useSPS = !useSPS);
+    }
+
+    /**
+     * Tests fix for Bug#109377 (Bug#34900156), rewriteBatchedStatements doesn't work when parenthesis are found in values.
+     * 
+     * @throws Exception
+     */
+    @Test
+    void testBug109377() throws Exception {
+        createTable("testBug109377", "(d DOUBLE, i INT)");
+
+        boolean useSPS = false;
+        do {
+            final String testCase = String.format("Case [useSPS: %s]", useSPS ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            props.setProperty(PropertyKey.queryInterceptors.getKeyName(), QueryInfoQueryInterceptor.class.getName());
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+
+            try (Connection testConn = getConnectionWithProps(props)) {
+                QueryInfoQueryInterceptor.startCapturing();
+                this.pstmt = testConn.prepareStatement("INSERT INTO testBug109377 (d, i) VALUES (RAND(?), ?)");
+                this.pstmt.setInt(1, 10);
+                this.pstmt.setInt(2, 1);
+                this.pstmt.addBatch();
+                this.pstmt.setInt(1, 10);
+                this.pstmt.setInt(2, 2);
+                this.pstmt.addBatch();
+                this.pstmt.executeBatch();
+                if (useSPS) {
+                    QueryInfoQueryInterceptor.assertCapturedSql(testCase, "INSERT INTO testBug109377 (d, i) VALUES (RAND(?), ?),(RAND(?), ?)");
+                } else {
+                    QueryInfoQueryInterceptor.assertCapturedSql(testCase, "INSERT INTO testBug109377 (d, i) VALUES (RAND(10), 1),(RAND(10), 2)");
+                }
+            }
+        } while (useSPS = !useSPS);
+    }
+
+    /**
+     * Tests for Bug#107577 (Bug#34325361), rewriteBatchedStatements not work when table column name contains 'value' string.
+     * 
+     * Duplicate of Bug#40439 (Bug#11750096), Error rewriting batched statement if table name ends with "values", that re-surfaced while fixing Bug#109377
+     * (Bug#34900156).
+     * 
+     * @throws Exception
+     */
+    @Test
+    void testBug107577() throws Exception {
+        createTable("VALUES_testBug_VALUE_107577_VALUES", "(value INT, VALUE_foo_VALUES_bar_VALUE INT)");
+
+        boolean useSPS = false;
+        do {
+            final String testCase = String.format("Case [useSPS: %s]", useSPS ? "Y" : "N");
+
+            Properties props = new Properties();
+            props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+            props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+            props.setProperty(PropertyKey.queryInterceptors.getKeyName(), QueryInfoQueryInterceptor.class.getName());
+            props.setProperty(PropertyKey.rewriteBatchedStatements.getKeyName(), "true");
+            props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+
+            try (Connection testConn = getConnectionWithProps(props)) {
+                QueryInfoQueryInterceptor.startCapturing();
+                this.pstmt = testConn.prepareStatement("INSERT INTO VALUES_testBug_VALUE_107577_VALUES (value, VALUE_foo_VALUES_bar_VALUE) VALUES (?, ?)");
+                this.pstmt.setInt(1, 1);
+                this.pstmt.setInt(2, 1);
+                this.pstmt.addBatch();
+                this.pstmt.setInt(1, 2);
+                this.pstmt.setInt(2, 2);
+                this.pstmt.addBatch();
+                this.pstmt.executeBatch();
+                if (useSPS) {
+                    QueryInfoQueryInterceptor.assertCapturedSql(testCase,
+                            "INSERT INTO VALUES_testBug_VALUE_107577_VALUES (value, VALUE_foo_VALUES_bar_VALUE) VALUES (?, ?),(?, ?)");
+                } else {
+                    QueryInfoQueryInterceptor.assertCapturedSql(testCase,
+                            "INSERT INTO VALUES_testBug_VALUE_107577_VALUES (value, VALUE_foo_VALUES_bar_VALUE) VALUES (1, 1),(2, 2)");
+                }
+            }
+        } while (useSPS = !useSPS);
+    }
+
+    public static class QueryInfoQueryInterceptor extends BaseQueryInterceptor {
+        private static boolean enabled = false;
+        private static List<String> capturedSql = new ArrayList<>();
+
+        public static void startCapturing() {
+            enabled = true;
+            capturedSql.clear();
+        }
+
+        public static void assertCapturedSql(String testCase, String... expectedSql) {
+            enabled = false;
+            assertEquals(expectedSql.length, capturedSql.size(), testCase);
+            for (int i = 0; i < expectedSql.length; i++) {
+                assertEquals(expectedSql[i], capturedSql.get(i), testCase);
+            }
+        }
+
+        @Override
+        public <T extends Resultset> T preProcess(Supplier<String> sql, Query interceptedQuery) {
+            if (enabled && interceptedQuery != null) {
+                capturedSql.add(sql.get());
+            }
+            return super.preProcess(sql, interceptedQuery);
+        }
+    }
+
+    /**
+     * Tests fix for Bug#34558945, PS using setCharacterStream() fails with "Incorrect string value" if the Java program encoding is not UTF-8 after 8.0.29.
+     * 
+     * @throws Exception
+     */
+    @Test
+    void testBug34558945() throws Exception {
+        createTable("testBug34558945Utf8", "(txt VARCHAR(100) COLLATE utf8mb4_general_ci)");
+        createTable("testBug34558945SJis", "(txt VARCHAR(100) COLLATE sjis_japanese_ci)");
+
+        Properties props = new Properties();
+        props.setProperty(PropertyKey.sslMode.getKeyName(), SslMode.DISABLED.name());
+        props.setProperty(PropertyKey.allowPublicKeyRetrieval.getKeyName(), "true");
+
+        final String utf8 = "UTF-8";
+        final String sjis = "Shift_JIS";
+        final String[] charEncs = { null, utf8, sjis };
+        final String value = "\u7ADC";
+
+        for (String ce : charEncs) {
+            for (String cce : charEncs) {
+
+                if (ce == null) {
+                    props.remove(PropertyKey.characterEncoding.getKeyName());
+                } else {
+                    props.setProperty(PropertyKey.characterEncoding.getKeyName(), ce);
+                }
+                if (cce == null) {
+                    props.remove(PropertyKey.clobCharacterEncoding.getKeyName());
+                } else {
+                    props.setProperty(PropertyKey.clobCharacterEncoding.getKeyName(), cce);
+                }
+
+                boolean useSPS = false;
+                do {
+                    props.setProperty(PropertyKey.useServerPrepStmts.getKeyName(), Boolean.toString(useSPS));
+                    try (Connection testConn = getConnectionWithProps(props)) {
+                        int records;
+                        PreparedStatement testPStmt;
+                        Statement testStmt;
+
+                        // Table with UTF-8 column.
+                        records = 1;
+                        testPStmt = testConn.prepareStatement("INSERT INTO testBug34558945Utf8 VALUES (?)");
+                        testPStmt.setString(1, value);
+                        assertEquals(1, testPStmt.executeUpdate());
+                        testPStmt.setCharacterStream(1, new StringReader(value), value.length());
+                        if (sjis.equals(cce) || cce == null && sjis.equals(ce)) {
+                            assertThrows(SQLException.class, ".*Incorrect string value:.*", testPStmt::executeUpdate);
+                        } else {
+                            assertEquals(1, testPStmt.executeUpdate());
+                            records = 2;
+                        }
+
+                        testStmt = testConn.createStatement();
+                        this.rs = testStmt.executeQuery("SELECT * FROM testBug34558945Utf8");
+                        while (records-- > 0) {
+                            assertTrue(this.rs.next());
+                            assertEquals(value, this.rs.getString(1));
+                        }
+                        assertFalse(this.rs.next());
+                        testStmt.executeUpdate("TRUNCATE TABLE testBug34558945Utf8");
+
+                        // Table with Shift_JIS column.
+                        records = 1;
+                        testPStmt = testConn.prepareStatement("INSERT INTO testBug34558945SJis VALUES (?)");
+                        testPStmt.setString(1, value);
+                        assertEquals(1, testPStmt.executeUpdate());
+                        testPStmt.setCharacterStream(1, new StringReader(value), value.length());
+                        if (sjis.equals(cce) || cce == null && sjis.equals(ce)) {
+                            assertEquals(1, testPStmt.executeUpdate());
+                            records = 2;
+                        } else {
+                            assertThrows(SQLException.class, ".*Incorrect string value:.*", testPStmt::executeUpdate);
+                        }
+
+                        testStmt = testConn.createStatement();
+                        this.rs = testStmt.executeQuery("SELECT * FROM testBug34558945SJis");
+                        while (records-- > 0) {
+                            assertTrue(this.rs.next());
+                            assertEquals(value, this.rs.getString(1));
+                        }
+                        assertFalse(this.rs.next());
+                        testStmt.executeUpdate("TRUNCATE TABLE testBug34558945SJis");
+                    }
+                } while (useSPS = !useSPS);
+            }
+        }
     }
 }
