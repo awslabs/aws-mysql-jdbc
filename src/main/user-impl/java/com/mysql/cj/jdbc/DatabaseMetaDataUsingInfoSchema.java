@@ -1,7 +1,7 @@
 /*
  * Modifications Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Copyright (c) 2005, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2005, 2023, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, version 2.0, as published by the
@@ -476,7 +476,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
         if (unique) {
             sqlBuf.append(" AND NON_UNIQUE=0 ");
         }
-        sqlBuf.append("ORDER BY NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX");
+        sqlBuf.append(" ORDER BY NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX");
 
         try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
@@ -512,7 +512,7 @@ public class DatabaseMetaDataUsingInfoSchema extends DatabaseMetaData {
             sqlBuf.append(" TABLE_SCHEMA = ? AND");
         }
         sqlBuf.append(" TABLE_NAME = ?");
-        sqlBuf.append(" AND INDEX_NAME='PRIMARY' ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX");
+        sqlBuf.append(" AND INDEX_NAME='PRIMARY' ORDER BY TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, SEQ_IN_INDEX");
 
         try (java.sql.PreparedStatement pStmt = prepareMetaDataSafeStatement(sqlBuf.toString())) {
             int nextId = 1;
