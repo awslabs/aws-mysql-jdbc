@@ -23,6 +23,7 @@ jobs:
       - name: 'Set up JDK 8'
         uses: actions/setup-java@v4
         with:
+          distribution: 'corretto'
           java-version: 8
       - name: 'Configure AWS Credentials'
         uses: aws-actions/configure-aws-credentials@v4
@@ -72,6 +73,7 @@ jobs:
       - name: 'Set up JDK 8'
         uses: actions/setup-java@v4
         with:
+          distribution: 'corretto'
           java-version: 8
       - name: 'Run Community Tests'
         run: |
