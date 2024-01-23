@@ -61,6 +61,7 @@ import com.mysql.cj.jdbc.JdbcPropertySetImpl;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
+import com.mysql.cj.jdbc.ha.util.RdsUtils;
 import com.mysql.cj.log.Log;
 import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
@@ -994,6 +995,7 @@ class FailoverConnectionPluginTest {
         propertySet,
         mockNextPlugin,
         mockLogger,
+        new RdsUtils(),
         mockConnectionProvider,
         () -> topologyService,
         () -> mockClusterMetricContainer);
