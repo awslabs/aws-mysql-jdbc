@@ -123,18 +123,37 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
+
+  // patterns
   private final Pattern auroraDnsPattern =
-      Pattern.compile(
-          "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?([a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
-          Pattern.CASE_INSENSITIVE);
+          Pattern.compile(
+                  "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?([a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
+                  Pattern.CASE_INSENSITIVE);
+  private final Pattern auroraChinaDnsPattern =
+          Pattern.compile(
+                  "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?"
+                          + "([a-zA-Z0-9]+\\.rds\\.([a-zA-Z0-9\\-]+)\\.amazonaws\\.com\\.cn)",
+                  Pattern.CASE_INSENSITIVE);
+
   private final Pattern auroraCustomClusterPattern =
-      Pattern.compile(
-          "(.+)\\.(cluster-custom-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
-          Pattern.CASE_INSENSITIVE);
+          Pattern.compile(
+                  "(.+)\\.(cluster-custom-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
+                  Pattern.CASE_INSENSITIVE);
+  private static final Pattern auroraChinaCustomClusterPattern =
+          Pattern.compile(
+                  "(.+)\\."
+                          + "(cluster-|cluster-ro-)+([a-zA-Z0-9]+\\.rds\\.([a-zA-Z0-9\\-]+)\\.amazonaws\\.com\\.cn)",
+                  Pattern.CASE_INSENSITIVE);
+
   private final Pattern auroraProxyDnsPattern =
-      Pattern.compile(
-          "(.+)\\.(proxy-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
-          Pattern.CASE_INSENSITIVE);
+          Pattern.compile(
+                  "(.+)\\.(proxy-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
+                  Pattern.CASE_INSENSITIVE);
+  private final Pattern auroraChinaProxyDnsPattern =
+          Pattern.compile(
+                  "(.+)\\.(proxy-)+([a-zA-Z0-9]+\\.rds\\.([a-zA-Z0-9\\-])+\\.amazonaws\\.com\\.cn)",
+                  Pattern.CASE_INSENSITIVE);
+
   protected IWriterFailoverHandler writerFailoverHandler = null;
   protected IReaderFailoverHandler readerFailoverHandler = null;
   // writer host is always stored at index 0
@@ -1129,29 +1148,51 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private boolean isRdsClusterDns(String host) {
     Matcher matcher = auroraDnsPattern.matcher(host);
-    String clusterKeyword = getClusterKeyword(matcher);
-    return "cluster-".equalsIgnoreCase(clusterKeyword)
-        || "cluster-ro-".equalsIgnoreCase(clusterKeyword);
+    if (matcher.find()) {
+      String clusterKeyword = getClusterKeyword(matcher);
+      return "cluster-".equalsIgnoreCase(clusterKeyword)
+              || "cluster-ro-".equalsIgnoreCase(clusterKeyword);
+    }
+    Matcher chinaMatcher = auroraChinaDnsPattern.matcher(host);
+    if (chinaMatcher.find()) {
+      String clusterKeyword = getClusterKeyword(chinaMatcher);
+      return "cluster-".equalsIgnoreCase(clusterKeyword)
+              || "cluster-ro-".equalsIgnoreCase(clusterKeyword);
+    }
+    return false;
   }
 
   private boolean isRdsCustomClusterDns(String host) {
-    Matcher matcher = auroraCustomClusterPattern.matcher(host);
-    return matcher.find();
+    return !StringUtils.isNullOrEmpty(host) &&
+            (auroraCustomClusterPattern.matcher(host).find() || auroraChinaCustomClusterPattern.matcher(host).find());
   }
 
   private boolean isRdsDns(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    return matcher.find();
+    return !StringUtils.isNullOrEmpty(host) &&
+            (auroraDnsPattern.matcher(host).find() || auroraChinaDnsPattern.matcher(host).find());
   }
 
   private boolean isRdsProxyDns(String host) {
-    Matcher matcher = auroraProxyDnsPattern.matcher(host);
-    return matcher.find();
+    if (StringUtils.isNullOrEmpty(host)) {
+      return false;
+    }
+    return auroraProxyDnsPattern.matcher(host).find() || auroraChinaProxyDnsPattern.matcher(host).find();
   }
 
   private boolean isReaderClusterDns(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    return "cluster-ro-".equalsIgnoreCase(getClusterKeyword(matcher));
+    if (StringUtils.isNullOrEmpty(host)) {
+      return false;
+    }
+
+    final Matcher matcher = auroraDnsPattern.matcher(host);
+    if (matcher.find()) {
+      return "cluster-ro-".equalsIgnoreCase(getClusterKeyword(matcher));
+    }
+    final Matcher chinaMatcher = auroraChinaDnsPattern.matcher(host);
+    if (chinaMatcher.find()) {
+      return "cluster-ro-".equalsIgnoreCase(getClusterKeyword(chinaMatcher));
+    }
+    return false;
   }
 
   /**
