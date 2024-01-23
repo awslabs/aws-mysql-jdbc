@@ -171,7 +171,8 @@ public class RdsUtils {
 
   public boolean isRdsClusterDns(final String host) {
     return !StringUtils.isNullOrEmpty(host)
-        && (AURORA_CLUSTER_PATTERN.matcher(host).find() || AURORA_CHINA_CLUSTER_PATTERN.matcher(host).find());
+        && (AURORA_CLUSTER_PATTERN.matcher(host).find()
+        || AURORA_CHINA_CLUSTER_PATTERN.matcher(host).find());
   }
 
   public boolean isRdsCustomClusterDns(final String host) {
@@ -182,14 +183,16 @@ public class RdsUtils {
 
   public boolean isRdsDns(final String host) {
     return !StringUtils.isNullOrEmpty(host)
-        && (AURORA_DNS_PATTERN.matcher(host).find() || AURORA_CHINA_DNS_PATTERN.matcher(host).find());
+        && (AURORA_DNS_PATTERN.matcher(host).find()
+        || AURORA_CHINA_DNS_PATTERN.matcher(host).find());
   }
 
   public boolean isRdsProxyDns(final String host) {
     if (StringUtils.isNullOrEmpty(host)) {
       return false;
     }
-    return AURORA_PROXY_DNS_PATTERN.matcher(host).find() || AURORA_CHINA_PROXY_DNS_PATTERN.matcher(host).find();
+    return AURORA_PROXY_DNS_PATTERN.matcher(host).find()
+        || AURORA_CHINA_PROXY_DNS_PATTERN.matcher(host).find();
   }
 
   public String getRdsClusterHostUrl(final String host) {
