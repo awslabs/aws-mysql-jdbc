@@ -84,11 +84,6 @@ public class RdsUtils {
               + "(?<domain>[a-zA-Z0-9]+\\.(?<region>[a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com(\\.cn)?)",
           Pattern.CASE_INSENSITIVE);
 
-  private static final Pattern AURORA_INSTANCE_PATTERN =
-      Pattern.compile(
-          "(?<instance>.+)\\.(?<domain>[a-zA-Z0-9]+\\.(?<region>[a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com(\\.cn)?)",
-          Pattern.CASE_INSENSITIVE);
-
   private static final Pattern AURORA_CLUSTER_PATTERN =
       Pattern.compile(
           "(?<instance>.+)\\."
@@ -113,13 +108,6 @@ public class RdsUtils {
       Pattern.compile(
           "(?<instance>.+)\\."
               + "(?<dns>proxy-|cluster-|cluster-ro-|cluster-custom-)?"
-              + "(?<domain>[a-zA-Z0-9]+\\.(?<region>rds\\.[a-zA-Z0-9\\-]+|"
-              + "[a-zA-Z0-9\\-]+\\.rds)\\.amazonaws\\.com\\.cn)",
-          Pattern.CASE_INSENSITIVE);
-
-  private static final Pattern AURORA_CHINA_INSTANCE_PATTERN =
-      Pattern.compile(
-          "(?<instance>.+)\\."
               + "(?<domain>[a-zA-Z0-9]+\\.(?<region>rds\\.[a-zA-Z0-9\\-]+|"
               + "[a-zA-Z0-9\\-]+\\.rds)\\.amazonaws\\.com\\.cn)",
           Pattern.CASE_INSENSITIVE);
