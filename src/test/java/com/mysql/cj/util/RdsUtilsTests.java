@@ -170,7 +170,7 @@ public class RdsUtilsTests {
   }
 
   @Test
-  public void testBrokenPathsHostPattern() {
+  public void testInvalidPathsHostPattern() {
     final String incorrectChinaHostPattern = "?.rds.cn-northwest-1.rds.amazonaws.com.cn";
     assertEquals(incorrectChinaHostPattern, RdsUtils.getRdsInstanceHostPattern(extraRdsChinaPath));
     assertEquals("?", RdsUtils.getRdsInstanceHostPattern(missingCnChinaPath));
@@ -178,14 +178,14 @@ public class RdsUtilsTests {
   }
 
   @Test
-  public void testBrokenPathsReaderCluster() {
+  public void testInvalidPathsReaderCluster() {
     assertFalse(RdsUtils.isReaderClusterDns(extraRdsChinaPath));
     assertFalse(RdsUtils.isReaderClusterDns(missingCnChinaPath));
     assertFalse(RdsUtils.isReaderClusterDns(missingRegionChinaPath));
   }
 
   @Test
-  public void testBrokenPathsRdsDns() {
+  public void testInvalidPathsRdsDns() {
     // Expected to return true with correct cluster paths
     assertTrue(RdsUtils.isRdsDns(extraRdsChinaPath));
     assertFalse(RdsUtils.isRdsDns(missingCnChinaPath));
