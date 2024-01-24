@@ -995,7 +995,6 @@ class FailoverConnectionPluginTest {
         propertySet,
         mockNextPlugin,
         mockLogger,
-        new RdsUtils(),
         mockConnectionProvider,
         () -> topologyService,
         () -> mockClusterMetricContainer);
