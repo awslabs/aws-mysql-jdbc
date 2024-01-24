@@ -47,17 +47,16 @@ import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.exceptions.CommunicationsException;
 import com.mysql.cj.jdbc.exceptions.SQLError;
 import com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping;
-import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
 import com.mysql.cj.jdbc.ha.plugins.BasicConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionPlugin;
 import com.mysql.cj.jdbc.ha.plugins.IConnectionProvider;
 import com.mysql.cj.jdbc.ha.plugins.ICurrentConnectionProvider;
+import com.mysql.cj.jdbc.ha.util.ConnectionUtils;
+import com.mysql.cj.jdbc.ha.util.RdsUtils;
 import com.mysql.cj.log.Log;
 import com.mysql.cj.util.IpAddressUtils;
 import com.mysql.cj.util.StringUtils;
 import com.mysql.cj.util.Util;
-
-import javax.net.ssl.SSLException;
 import java.io.EOFException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -70,8 +69,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import javax.net.ssl.SSLException;
 
 /**
  * A {@link IConnectionPlugin} implementation that provides cluster-aware failover
@@ -123,18 +121,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   private final PropertySet propertySet;
   private final IConnectionPlugin nextPlugin;
   private final Log logger;
-  private final Pattern auroraDnsPattern =
-      Pattern.compile(
-          "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?([a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
-          Pattern.CASE_INSENSITIVE);
-  private final Pattern auroraCustomClusterPattern =
-      Pattern.compile(
-          "(.+)\\.(cluster-custom-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
-          Pattern.CASE_INSENSITIVE);
-  private final Pattern auroraProxyDnsPattern =
-      Pattern.compile(
-          "(.+)\\.(proxy-[a-zA-Z0-9]+\\.[a-zA-Z0-9\\-]+\\.rds\\.amazonaws\\.com)",
-          Pattern.CASE_INSENSITIVE);
   protected IWriterFailoverHandler writerFailoverHandler = null;
   protected IReaderFailoverHandler readerFailoverHandler = null;
   // writer host is always stored at index 0
@@ -881,16 +867,6 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     throw wrapperException;
   }
 
-  private String getClusterKeyword(Matcher matcher) {
-    if (matcher.find()
-        && matcher.group(2) != null
-        && matcher.group(1) != null
-        && !matcher.group(1).isEmpty()) {
-      return matcher.group(2);
-    }
-    return null;
-  }
-
   private int getHostIndex(HostInfo host) {
     if (host == null || Util.isNullOrEmpty(this.hosts)) {
       return NO_CONNECTION_INDEX;
@@ -918,27 +894,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     return pair;
   }
 
-  private String getRdsClusterHostUrl(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    String clusterKeyword = getClusterKeyword(matcher);
-    if ("cluster-".equalsIgnoreCase(clusterKeyword)
-        || "cluster-ro-".equalsIgnoreCase(clusterKeyword)) {
-      return matcher.group(1) + ".cluster-"
-          + matcher.group(3); // always RDS cluster endpoint
-    }
-    return null;
-  }
-
-  private String getRdsInstanceHostPattern(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    if (matcher.find()) {
-      return "?." + matcher.group(3);
-    }
-    return null;
-  }
-
   private void identifyRdsType(String host) {
-    this.isRds = isRdsDns(host);
+    this.isRds = RdsUtils.isRdsDns(host);
     if (this.logger.isTraceEnabled()) {
       this.logger.logTrace(
               Messages.getString(
@@ -946,7 +903,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
                       new Object[]{"isRds", this.isRds}));
     }
 
-    this.isRdsProxy = isRdsProxyDns(host);
+    this.isRdsProxy = RdsUtils.isRdsProxyDns(host);
     if (this.logger.isTraceEnabled()) {
       this.logger.logTrace(
               Messages.getString(
@@ -975,7 +932,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
   private void initFromConnectionString(HostInfo hostInfo)
       throws SQLException {
-    String rdsInstanceHostPattern = getRdsInstanceHostPattern(hostInfo.getHost());
+    String rdsInstanceHostPattern = RdsUtils.getRdsInstanceHostPattern(hostInfo.getHost());
     if (rdsInstanceHostPattern == null) {
       this.logger.logError(Messages.getString("ClusterAwareConnectionProxy.20"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.20"));
@@ -1024,8 +981,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
 
     this.isInitialConnectionToReader = this.currentHostIndex != WRITER_CONNECTION_INDEX;
 
-    if (isRdsClusterDns(hostname)) {
-      this.explicitlyReadOnly = isReaderClusterDns(hostname);
+    if (RdsUtils.isRdsClusterDns(hostname)) {
+      this.explicitlyReadOnly = RdsUtils.isReaderClusterDns(hostname);
       if (this.logger.isTraceEnabled()) {
         this.logger.logTrace(
                 Messages.getString(
@@ -1066,8 +1023,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       // Connection isn't created - try to use cached topology to create it
       if (this.currentConnectionProvider.getCurrentConnection() == null) {
         final String host = connectionUrl.getMainHost().getHost();
-        if (isRdsClusterDns(host)) {
-          this.explicitlyReadOnly = isReaderClusterDns(host);
+        if (RdsUtils.isRdsClusterDns(host)) {
+          this.explicitlyReadOnly = RdsUtils.isReaderClusterDns(host);
           if (this.logger.isTraceEnabled()) {
             this.logger.logTrace(
                     Messages.getString(
@@ -1119,39 +1076,8 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
     }
   }
 
-  private boolean isDnsPatternValid(String pattern) {
-    return pattern.contains("?");
-  }
-
   private boolean isExplicitlyReadOnly() {
     return this.explicitlyReadOnly != null && this.explicitlyReadOnly;
-  }
-
-  private boolean isRdsClusterDns(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    String clusterKeyword = getClusterKeyword(matcher);
-    return "cluster-".equalsIgnoreCase(clusterKeyword)
-        || "cluster-ro-".equalsIgnoreCase(clusterKeyword);
-  }
-
-  private boolean isRdsCustomClusterDns(String host) {
-    Matcher matcher = auroraCustomClusterPattern.matcher(host);
-    return matcher.find();
-  }
-
-  private boolean isRdsDns(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    return matcher.find();
-  }
-
-  private boolean isRdsProxyDns(String host) {
-    Matcher matcher = auroraProxyDnsPattern.matcher(host);
-    return matcher.find();
-  }
-
-  private boolean isReaderClusterDns(String host) {
-    Matcher matcher = auroraDnsPattern.matcher(host);
-    return "cluster-ro-".equalsIgnoreCase(getClusterKeyword(matcher));
   }
 
   /**
@@ -1221,7 +1147,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       this.topologyService.setClusterId(host + ":" + port);
     } else if (this.isRds) {
       // If it's a cluster endpoint, or a reader cluster endpoint, then let's use it as the cluster ID
-      String clusterRdsHostUrl = getRdsClusterHostUrl(host);
+      String clusterRdsHostUrl = RdsUtils.getRdsClusterHostUrl(host);
       if (!StringUtils.isNullOrEmpty(clusterRdsHostUrl)) {
         this.topologyService.setClusterId(clusterRdsHostUrl + ":" + port);
       }
@@ -1327,7 +1253,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
   }
 
   private void validateHostPatternSetting(String hostPattern) throws SQLException {
-    if (!isDnsPatternValid(hostPattern)) {
+    if (!RdsUtils.isDnsPatternValid(hostPattern)) {
       // "Invalid value for the 'clusterInstanceHostPattern' configuration setting - the host pattern must contain a '?'
       // character as a placeholder for the DB instance identifiers of the instances in the cluster"
       this.logger.logError(Messages.getString("ClusterAwareConnectionProxy.21"));
@@ -1341,7 +1267,7 @@ public class FailoverConnectionPlugin implements IConnectionPlugin {
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.7"));
     }
 
-    if (isRdsCustomClusterDns(hostPattern)) {
+    if (RdsUtils.isRdsCustomClusterDns(hostPattern)) {
       // "An RDS Custom Cluster endpoint can't be used as the 'clusterInstanceHostPattern' configuration setting."
       this.logger.logError(Messages.getString("ClusterAwareConnectionProxy.18"));
       throw new SQLException(Messages.getString("ClusterAwareConnectionProxy.18"));
