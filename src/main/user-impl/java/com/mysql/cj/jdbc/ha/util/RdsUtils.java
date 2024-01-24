@@ -137,7 +137,7 @@ public class RdsUtils {
   private static final String DNS_GROUP = "dns";
   private static final String DOMAIN_GROUP = "domain";
 
-  public String getRdsInstanceHostPattern(final String host) {
+  public static String getRdsInstanceHostPattern(final String host) {
     if (StringUtils.isNullOrEmpty(host)) {
       return "?";
     }
@@ -153,7 +153,7 @@ public class RdsUtils {
     return "?";
   }
 
-  public String getRdsClusterHostUrl(final String host) {
+  public static String getRdsClusterHostUrl(final String host) {
     if (StringUtils.isNullOrEmpty(host)) {
       return null;
     }
@@ -169,7 +169,7 @@ public class RdsUtils {
     return null;
   }
 
-  public boolean isReaderClusterDns(final String host) {
+  public static boolean isReaderClusterDns(final String host) {
     if (StringUtils.isNullOrEmpty(host)) {
       return false;
     }
@@ -185,25 +185,25 @@ public class RdsUtils {
     return false;
   }
 
-  public boolean isRdsClusterDns(final String host) {
+  public static boolean isRdsClusterDns(final String host) {
     return !StringUtils.isNullOrEmpty(host)
         && (AURORA_CLUSTER_PATTERN.matcher(host).find()
         || AURORA_CHINA_CLUSTER_PATTERN.matcher(host).find());
   }
 
-  public boolean isRdsCustomClusterDns(final String host) {
+  public static boolean isRdsCustomClusterDns(final String host) {
     return !StringUtils.isNullOrEmpty(host)
         && (AURORA_CUSTOM_CLUSTER_PATTERN.matcher(host).find()
         || AURORA_CHINA_CUSTOM_CLUSTER_PATTERN.matcher(host).find());
   }
 
-  public boolean isRdsDns(final String host) {
+  public static boolean isRdsDns(final String host) {
     return !StringUtils.isNullOrEmpty(host)
         && (AURORA_DNS_PATTERN.matcher(host).find()
         || AURORA_CHINA_DNS_PATTERN.matcher(host).find());
   }
 
-  public boolean isRdsProxyDns(final String host) {
+  public static boolean isRdsProxyDns(final String host) {
     if (StringUtils.isNullOrEmpty(host)) {
       return false;
     }
@@ -211,7 +211,7 @@ public class RdsUtils {
         || AURORA_CHINA_PROXY_DNS_PATTERN.matcher(host).find();
   }
 
-  public boolean isDnsPatternValid(final String pattern) {
+  public static boolean isDnsPatternValid(final String pattern) {
     return pattern.contains("?");
   }
 }
