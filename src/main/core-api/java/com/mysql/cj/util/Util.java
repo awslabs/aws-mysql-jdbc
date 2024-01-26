@@ -276,12 +276,15 @@ public class Util {
 
     public static <T> List<T> loadClasses(Class<T> instancesType, String extensionClassNames, String errorMessageKey,
             ExceptionInterceptor exceptionInterceptor) {
-        try {
-            return StringUtils.split(extensionClassNames, ",", true).stream().filter(s -> !s.isEmpty())
-                    .map(c -> getInstance(instancesType, c, null, null, exceptionInterceptor)).collect(Collectors.toCollection(LinkedList::new));
-        } catch (Throwable t) {
-            throw ExceptionFactory.createException(WrongArgumentException.class, Messages.getString(errorMessageKey), t, exceptionInterceptor);
-        }
+        return StringUtils.split(extensionClassNames, ",", true).stream().filter(s -> !s.isEmpty())
+            .map(c -> {
+                try {
+                    return getInstance(instancesType, c, null, null, exceptionInterceptor);
+                } catch (Throwable t) {
+                    throw ExceptionFactory.createException(WrongArgumentException.class,
+                        Messages.getString(errorMessageKey, new Object[] {c}), t, exceptionInterceptor);
+                }
+            }).collect(Collectors.toCollection(LinkedList::new));
     }
 
     /** Cache for the JDBC interfaces already verified */
