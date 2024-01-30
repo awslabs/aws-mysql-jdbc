@@ -32,7 +32,6 @@
 package testsuite.integration.container;
 
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.DBCluster;
 import software.amazon.awssdk.services.rds.model.DBClusterMember;
@@ -135,6 +134,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
 
   protected String[] instanceIDs; // index 0 is always writer!
   protected int clusterSize = 0;
+  protected List<String> clusterTopology;
 
   protected final ContainerHelper containerHelper = new ContainerHelper();
   protected final AuroraTestUtility auroraUtil = new AuroraTestUtility(DB_REGION);
@@ -200,6 +200,7 @@ public abstract class AuroraMysqlIntegrationBaseTest {
     assertTrue(clusterSize >= 2); // many tests assume that cluster contains at least a writer and a reader
     assertTrue(isDBInstanceWriter(instanceIDs[0]));
     makeSureInstancesUp(instanceIDs);
+    clusterTopology = getTopologyEndpoints();
   }
 
   protected Properties initDefaultPropsNoTimeouts() {
@@ -273,9 +274,24 @@ public abstract class AuroraMysqlIntegrationBaseTest {
 
   // Return list of instance Ids.
   // Writer instance goes first.
-  protected List<String> getTopologyIds() throws SQLException {
+  protected List<String> getTopologyIds() {
     final String url = "jdbc:mysql://" + MYSQL_INSTANCE_1_URL + ":" + MYSQL_PORT;
-    return this.containerHelper.getAuroraInstanceIds(url, TEST_USERNAME, TEST_PASSWORD);
+    List<String> instanceIds = null;
+    int retry = 0;
+    while (instanceIds == null || retry < 3) {
+      try {
+        instanceIds = this.containerHelper.getAuroraInstanceIds(url, TEST_USERNAME, TEST_PASSWORD);
+      } catch (SQLException sqlException) {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException interruptedException) {
+          // ignore
+        }
+      } finally {
+        retry++;
+      }
+    }
+    return instanceIds;
   }
 
   protected static class TestLogger extends NullLogger {

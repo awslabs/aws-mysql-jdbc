@@ -50,7 +50,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,22 +63,6 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   private static Log log = null;
   private static final String URL_SUFFIX = PROXIED_DOMAIN_NAME_SUFFIX + ":" + MYSQL_PROXY_PORT;
   private static HikariDataSource data_source = null;
-  private final List<String> clusterTopology = fetchTopology();
-
-  private List<String> fetchTopology() {
-    try {
-      List<String> topology = getTopologyEndpoints();
-      // topology should contain a writer and at least one reader
-      if (topology == null || topology.size() < 2) {
-        fail("Topology does not contain the required instances");
-      }
-      return topology;
-    } catch (SQLException e) {
-      fail("Couldn't fetch cluster topology");
-    }
-
-    return null;
-  }
 
   @BeforeAll
   static void setup() throws ClassNotFoundException {
@@ -95,7 +78,12 @@ public class HikariCPIntegrationTest extends AuroraMysqlIntegrationBaseTest {
   }
 
   @BeforeEach
-  public void setUpTest() throws SQLException {
+  public void setUpTest() {
+    // topology should contain a writer and at least one reader
+    if (clusterTopology == null || clusterTopology.size() < 2) {
+      fail("Topology does not contain the required instances");
+    }
+
     String writerEndpoint = clusterTopology.get(0);
 
     String jdbcUrl = DB_CONN_STR_PREFIX + writerEndpoint + URL_SUFFIX;
