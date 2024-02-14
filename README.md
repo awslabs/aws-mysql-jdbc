@@ -17,6 +17,21 @@ An Amazon Aurora DB cluster uses failover to automatically repairs the DB cluste
 
 Although Aurora is able to provide maximum availability through the use of failover, existing client drivers do not fully support this functionality. This is partially due to the time required for the DNS of the new primary DB instance to be fully resolved in order to properly direct the connection. The AWS JDBC Driver for MySQL fully utilizes failover behavior by maintaining a cache of the Aurora cluster topology and each DB instance's role (Aurora Replica or primary DB instance). This topology is provided via a direct query to the Aurora database, essentially providing a shortcut to bypass the delays caused by DNS resolution. With this knowledge, the AWS JDBC Driver can more closely monitor the Aurora DB cluster status so that a connection to the new primary DB instance can be established as fast as possible. Additionally, as noted above, the AWS JDBC Driver is designed to be a drop-in compatible for other MySQL JDBC drivers and can be used to interact with RDS and MySQL databases as well as Aurora MySQL.
 
+## Differences between the AWS MySQL JDBC driver and the AWS JDBC Driver
+The AWS MySQL JDBC driver, as its name explicitly says, is a MySQL JDBC driver built on top of the MySQL-Connector-J JDBC driver to provide features and enhancements of Amazon Aurora databases to that driver. That means that a user can only use the AWS MySQL JDBC driver with MySQL databases and/or MySQL-compatible Amazon RDS and Amazon Aurora clusters.
+
+The AWS JDBC Driver (previously named AWS Advanced JDBC Wrapper) provides similar functionalities. However, it is not specific to a certain vendor database. The idea behind this driver is to build a feature/functionality layer for JDBC on top of an existing database driver. It was designed to work with multiple relational databases and also different drivers, whether they are community-based or proprietary drivers. For the databases, the AWS JDBC Driver currently supports MySQL, but also PostgreSQL and MariaDB.
+
+In that sense, one could see the functionalities in the AWS MySQL Driver now as just a smaller subset of the functionalities and capabilities of the AWS JDBC Driver.
+
+Once the AWS JDBC Driver was released, it was decided not to proceed with any new functionalities in the AWS MySQL JDBC Driver. In that sense, the AWS MySQL JDBC Driver is now behind in terms of functionalities, only receiving security and critical fixes.
+
+It is mentioned in the AWS MySQL Driver documentation that all new feature work will only be available in the AWS JDBC Driver and that all users should consider migrating to the AWS JDBC Driver sooner rather than later. One will also find in the Maintenance Policy section of the documentation that the driver will be discontinued soon, in July 2024.
+
+In the documentation of the AWS JDBC Driver, there is a section to guide users in the process of migrating from the AWS MySQL JDBC Driver to the AWS JDBC Driver.
+
+If you are new to the projects and are wondering which one to use, you should definitely use the AWS JDBC Driver.
+
 ## Getting Started
 
 ### Prerequisites
