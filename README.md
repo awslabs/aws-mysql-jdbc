@@ -1,6 +1,6 @@
 # Amazon Web Services (AWS) JDBC Driver for MySQL
 
-[![Build Status](https://github.com/awslabs/aws-mysql-jdbc/workflows/CI/badge.svg)](https://github.com/awslabs/aws-mysql-jdbc/actions?query=workflow%3A%22CI%22)
+[![Build Status](https://github.com/awslabs/aws-mysql-jdbc/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/awslabs/aws-mysql-jdbc/actions/workflows/main.yml)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/software.aws.rds/aws-mysql-jdbc/badge.svg)](https://maven-badges.herokuapp.com/maven-central/software.aws.rds/aws-mysql-jdbc)
 [![Javadoc](https://javadoc.io/badge2/software.aws.rds/aws-mysql-jdbc/javadoc.svg)](https://javadoc.io/doc/software.aws.rds/aws-mysql-jdbc)
 [![License: GPLv2 with FOSS exception](https://img.shields.io/badge/license-GPLv2_with_FOSS_exception-c30014.svg)](LICENSE)
