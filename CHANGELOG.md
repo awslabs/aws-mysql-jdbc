@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.1.14] - 2024-03-04
+### Added
+* Documentation regarding the differences between the AWS JDBC Driver and the AWS MySQL JDBC Driver ([PR #554](https://github.com/awslabs/aws-mysql-jdbc/pull/554)).
+* Support for China endpoint patterns ([PR #543](https://github.com/awslabs/aws-mysql-jdbc/pull/543)).
+
+### Fixed
+* Statement cancel waits for statements to finish before cancelling ([PR #531](https://github.com/awslabs/aws-mysql-jdbc/pull/531)).
+
 ## [1.1.13] - 2024-01-19
 ### Changed
 * Upstream changes from MySQL 8.0.32 and 8.0.33 community driver. The upstream 8.0.33 changes include a security fix for [CVE-2023-21971 - RCE and Unauthorized DB Access](https://github.com/awslabs/aws-mysql-jdbc/security/advisories/GHSA-vj9v-mpjv-qf74).
@@ -191,6 +199,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.14]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.13...1.1.14
 [1.1.13]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.12...1.1.13
 [1.1.12]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.11...1.1.12
 [1.1.11]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.10...1.1.11
