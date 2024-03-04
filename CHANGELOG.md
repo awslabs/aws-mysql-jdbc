@@ -5,11 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [1.1.14] - 2024-03-04
 ### Added
-* Documentation regarding the differences between the AWS JDBC Driver and the AWS MySQL JDBC Driver ([PR #554](https://github.com/awslabs/aws-mysql-jdbc/pull/554)).
+* Documentation regarding the differences between the AWS JDBC Driver and the AWS JDBC Driver for MySQL ([PR #554](https://github.com/awslabs/aws-mysql-jdbc/pull/554)).
 * Support for China endpoint patterns ([PR #543](https://github.com/awslabs/aws-mysql-jdbc/pull/543)).
 
 ### Fixed
-* Statement cancel waits for statement to finish before cancelling ([PR #531](https://github.com/awslabs/aws-mysql-jdbc/pull/531)).
+* Statement cancel waits for statement to finish before cancelling ([Issue #527](https://github.com/awslabs/aws-mysql-jdbc/issues/527)).
 
 ## [1.1.13] - 2024-01-19
 ### Changed

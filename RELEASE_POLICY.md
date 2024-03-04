@@ -58,4 +58,4 @@ from the updated source after the PRs are merged.
 | Major Version | Latest Minor Version | Status      | Initial Release | Maintenance Window Start | Maintenance Window End |
 |---------------|----------------------|-------------|-----------------|--------------------------|------------------------|
 | 1             | 1.0.0                | Maintenance | Mar 1, 2022     | June 29, 2022            | June 29, 2023          |
-| 2             | 1.1.12               | Current     | June 28, 2023   | July 25, 2023            | July 25, 2024          |
+| 2             | 1.1.14               | Current     | June 28, 2023   | July 25, 2023            | July 25, 2024          |
