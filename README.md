@@ -38,18 +38,18 @@ The AWS JDBC Driver for MySQL can be installed from pre-compiled packages that c
 
 **Example - Direct download with wget**
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.13/aws-mysql-jdbc-1.1.13.jar
-cp aws-mysql-jdbc-1.1.13.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.13.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.14/aws-mysql-jdbc-1.1.14.jar
+cp aws-mysql-jdbc-1.1.14.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.14.jar
 ```
 
 **Upgrading to a newer version with wget**
 
-To upgrade the driver, replace the .jar file of your earlier driver with the new `.jar` file. After replacing the `.jar` file, update the CLASSPATH to include the name of the new file. For example, to upgrade to version 1.1.13:
+To upgrade the driver, replace the .jar file of your earlier driver with the new `.jar` file. After replacing the `.jar` file, update the CLASSPATH to include the name of the new file. For example, to upgrade to version 1.1.14:
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.13/aws-mysql-jdbc-1.1.13.jar
-cp aws-mysql-jdbc-1.1.13.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.13.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.14/aws-mysql-jdbc-1.1.14.jar
+cp aws-mysql-jdbc-1.1.14.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.14.jar
 ```
 
 #### As a Maven dependency
@@ -61,20 +61,20 @@ You can use [Maven's dependency management](https://central.sonatype.com/search?
   <dependency>
     <groupId>software.aws.rds</groupId>
     <artifactId>aws-mysql-jdbc</artifactId>
-    <version>1.1.13</version>
+    <version>1.1.14</version>
   </dependency>
 </dependencies>
 ```
 
 **Upgrading to a newer version with Maven**
 
-To upgrade to a newer version of the driver, replace the version number identified in the `pom.xml` file with the newer driver version. For example, to upgrade to version 1.1.13, modify the file to include:
+To upgrade to a newer version of the driver, replace the version number identified in the `pom.xml` file with the newer driver version. For example, to upgrade to version 1.1.14, modify the file to include:
 ```xml
 <dependencies>
   <dependency>
     <groupId>software.aws.rds</groupId>
     <artifactId>aws-mysql-jdbc</artifactId>
-    <version>1.1.13</version>
+    <version>1.1.14</version>
   </dependency>
 </dependencies>
 ```
@@ -85,16 +85,16 @@ You can use [Gradle's dependency management](https://central.sonatype.com/search
 **Example - Gradle**
 ```gradle
 dependencies {
-    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '1.1.13'
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '1.1.14'
 }
 ```
 
 **Upgrading to a newer version with Gradle**
 
-To upgrade to a newer version of the driver, replace the version number identified in the application's ```build.gradle``` file with the newer driver version. For example, to upgrade to version 1.1.13:
+To upgrade to a newer version of the driver, replace the version number identified in the application's ```build.gradle``` file with the newer driver version. For example, to upgrade to version 1.1.14:
 ```gradle
 dependencies {
-    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '1.1.13'
+    implementation group: 'software.aws.rds', name: 'aws-mysql-jdbc', version: '1.1.14'
 }
 ```
 
@@ -104,9 +104,9 @@ To use the driver with an IDE (for example, IntelliJ), download the `.jar` file 
 **Example - IntelliJ**
 
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.13/aws-mysql-jdbc-1.1.13.jar
-cp aws-mysql-jdbc-1.1.13.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.13.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.14/aws-mysql-jdbc-1.1.14.jar
+cp aws-mysql-jdbc-1.1.14.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.14.jar
 ```
 
 After downloading the `.jar` file and updating the CLASSPATH, add the driver information to your `Project`:
@@ -126,9 +126,9 @@ After downloading the `.jar` file and updating the CLASSPATH, add the driver inf
 To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
 
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.13/aws-mysql-jdbc-1.1.13.jar
-cp aws-mysql-jdbc-1.1.13.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.13.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.14/aws-mysql-jdbc-1.1.14.jar
+cp aws-mysql-jdbc-1.1.14.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.14.jar
 ```
 
 Then, follow the steps listed above to update your project to the latest version.
@@ -140,9 +140,9 @@ To use the driver with the DBeaver database client, download the `.jar` file, co
 **Example - DBeaver**
 
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.13/aws-mysql-jdbc-1.1.13.jar
-cp aws-mysql-jdbc-1.1.13.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.13.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1.14/aws-mysql-jdbc-1.1.14.jar
+cp aws-mysql-jdbc-1.1.14.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.14.jar
 ```
 
 After downloading the .jar file and adding it to your CLASSPATH, add the driver information to the DBeaver client:
@@ -185,9 +185,9 @@ After adding driver information, you can create new connections that use the AWS
 To upgrade to a newer version of the driver, download the updated driver, and add it to your CLASSPATH:  
 
 ```bash
-wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1./aws-mysql-jdbc-1.1.13.jar
-cp aws-mysql-jdbc-1.1.13.jar /home/userx/libs/
-export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.13.jar
+wget https://github.com/awslabs/aws-mysql-jdbc/releases/download/1.1./aws-mysql-jdbc-1.1.14.jar
+cp aws-mysql-jdbc-1.1.14.jar /home/userx/libs/
+export CLASSPATH=$CLASSPATH:/home/userx/libs/aws-mysql-jdbc-1.1.14.jar
 ```
 Then, follow the steps listed above to update your DBeaver client settings.
 
@@ -200,7 +200,7 @@ If there is an unreleased feature you would like to try, it may be available in 
   <dependency>
     <groupId>software.aws.rds</groupId>
     <artifactId>aws-mysql-jdbc</artifactId>
-    <version>1.1.14</version>
+    <version>1.1.15</version>
     <scope>system</scope>
     <systemPath>path-to-snapshot-jar</systemPath>
   </dependency>

@@ -16,6 +16,7 @@
 | November 2, 2023  | [Release 1.1.11](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.11) |
 | December 21, 2023 | [Release 1.1.12](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.12) |
 | January 19, 2024  | [Release 1.1.13](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.13) |
+| March 4, 2024     | [Release 1.1.14](https://github.com/awslabs/aws-mysql-jdbc/releases/tag/1.1.14) |
 
 
 aws-mysql-jdbc-driver [follows semver](https://semver.org/#semantic-versioning-200) which means we will only release
