@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Support for China endpoint patterns ([PR #543](https://github.com/awslabs/aws-mysql-jdbc/pull/543)).
 
 ### Fixed
-* Statement cancel waits for statements to finish before cancelling ([PR #531](https://github.com/awslabs/aws-mysql-jdbc/pull/531)).
+* Statement cancel waits for statement to finish before cancelling ([PR #531](https://github.com/awslabs/aws-mysql-jdbc/pull/531)).
 
 ## [1.1.13] - 2024-01-19
 ### Changed
