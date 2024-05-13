@@ -281,7 +281,7 @@ dependencies {
 
     implementation("software.amazon.awssdk:rds:2.25.1")
     implementation("com.google.protobuf:protobuf-java:3.21.9")
-    implementation("com.mchange:c3p0:0.9.5.5")
+    implementation("com.mchange:c3p0:0.10.1")
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:2.0.1")
     implementation("com.oracle.oci.sdk:oci-java-sdk-common:2.47.0")
