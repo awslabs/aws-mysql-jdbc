@@ -31,6 +31,7 @@
 
 package com.mysql.cj.protocol.a.authentication;
 
+import com.mysql.cj.jdbc.ha.util.RdsUtils;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.rds.RdsUtilities;
@@ -50,7 +51,7 @@ public class AwsIamAuthenticationTokenHelper {
   private final String hostname;
   private final int port;
   private final Log log;
-  private static final int REGION_MATCHER_GROUP = 3;
+  private static final String REGION_MATCHER_GROUP = "region";
 
   public AwsIamAuthenticationTokenHelper(final String hostname, final int port, final String logger) {
     this.log = LogFactory.getLogger(logger, Log.LOGGER_INSTANCE_NAME);
@@ -83,23 +84,25 @@ public class AwsIamAuthenticationTokenHelper {
 
   private Region getRdsRegion() {
     // Check Hostname
-    final Pattern auroraDnsPattern =
-        Pattern.compile(
-            "(.+)\\.(proxy-|cluster-|cluster-ro-|cluster-custom-)?[a-zA-Z0-9]+\\.([a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com",
-            Pattern.CASE_INSENSITIVE);
-    final Matcher matcher = auroraDnsPattern.matcher(hostname);
+    Matcher matcher = RdsUtils.AURORA_DNS_PATTERN.matcher(hostname);
     if (!matcher.find()) {
-      // Does not match Amazon's Hostname, throw exception
-      final String exceptionMessage = Messages.getString(
-          "AuthenticationAwsIamPlugin.UnsupportedHostname",
-          new String[]{hostname});
+      final Matcher chinaMatcher = RdsUtils.AURORA_CHINA_DNS_PATTERN.matcher(hostname);
+      if (!chinaMatcher.find()) {
+        // Does not match Amazon's Hostname, throw exception
+        final String exceptionMessage = Messages.getString(
+            "AuthenticationAwsIamPlugin.UnsupportedHostname",
+            new String[]{hostname});
 
-      log.logTrace(exceptionMessage);
-      throw ExceptionFactory.createException(exceptionMessage);
+        log.logTrace(exceptionMessage);
+        throw ExceptionFactory.createException(exceptionMessage);
+      }
+      matcher = chinaMatcher;
     }
 
     // Get Region
-    final String rdsRegion = matcher.group(REGION_MATCHER_GROUP);
+    final String rdsRegion = matcher.group(REGION_MATCHER_GROUP) == null
+        ? null
+        : matcher.group(REGION_MATCHER_GROUP).replaceAll("rds", "").replaceAll("\\.", "");
 
     // Check Region
     Optional<Region> regionOptional = Region.regions().stream()

@@ -77,7 +77,7 @@ public class RdsUtils {
   // Instance Endpoint: <instance-name>.<xyz>.rds.<aws-region>.amazonaws.com.cn
   // Example: test-postgres-instance-1.123456789012.rds.cn-northwest-1.amazonaws.com.cn
 
-  private static final Pattern AURORA_DNS_PATTERN =
+  public static final Pattern AURORA_DNS_PATTERN =
       Pattern.compile(
           "(?<instance>.+)\\."
               + "(?<dns>proxy-|cluster-|cluster-ro-|cluster-custom-)?"
@@ -104,7 +104,7 @@ public class RdsUtils {
               + "(?<domain>[a-zA-Z0-9]+\\.(?<region>[a-zA-Z0-9\\-]+)\\.rds\\.amazonaws\\.com(\\.cn)?)",
           Pattern.CASE_INSENSITIVE);
 
-  private static final Pattern AURORA_CHINA_DNS_PATTERN =
+  public static final Pattern AURORA_CHINA_DNS_PATTERN =
       Pattern.compile(
           "(?<instance>.+)\\."
               + "(?<dns>proxy-|cluster-|cluster-ro-|cluster-custom-)?"
