@@ -51,6 +51,18 @@ public class AwsIamAuthenticationHelperTest {
             PORT,
             StandardLogger.class.getName()
         ));
+
+        Assertions.assertNotNull(new AwsIamAuthenticationTokenHelper(
+            "MyDBInstanceName.SomeServerName.us-east-1.rds.amazonaws.com.cn",
+            PORT,
+            StandardLogger.class.getName()
+        ));
+
+        Assertions.assertNotNull(new AwsIamAuthenticationTokenHelper(
+            "test-postgres.cluster-123456789012.rds.cn-northwest-1.amazonaws.com.cn",
+            PORT,
+            StandardLogger.class.getName()
+        ));
     }
 
 
