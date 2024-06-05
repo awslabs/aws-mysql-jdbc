@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.1.15] - 2024-06-06
+### Fixed
+* Exception thrown when using IAM authentication and CN RDS URL ([Issue #579](https://github.com/awslabs/aws-mysql-jdbc/issues/579)).
+
 ## [1.1.14] - 2024-03-04
 ### Added
 * Documentation regarding the differences between the AWS JDBC Driver and the AWS JDBC Driver for MySQL ([PR #554](https://github.com/awslabs/aws-mysql-jdbc/pull/554)).
@@ -199,6 +203,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 * This driver is based on the MySQL 8.0.21 community driver. The driver is cluster aware for Amazon Aurora MySQL. It takes advantage of Amazon Aurora's fast failover capabilities, reducing failover times from minutes to seconds.
 
+[1.1.15]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.14...1.1.15
 [1.1.14]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.13...1.1.14
 [1.1.13]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.12...1.1.13
 [1.1.12]: https://github.com/awslabs/aws-mysql-jdbc/compare/1.1.11...1.1.12
