@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -65,7 +66,7 @@ public class Monitor implements IMonitor {
   protected static final Executor ABORT_EXECUTOR = Executors.newSingleThreadExecutor();
 
   private final Queue<WeakReference<MonitorConnectionContext>> activeContexts = new ConcurrentLinkedQueue<>();
-  private final HashMap<Long, Queue<WeakReference<MonitorConnectionContext>>> newContexts = new HashMap<>();
+  private final Map<Long, Queue<WeakReference<MonitorConnectionContext>>> newContexts = new ConcurrentHashMap<>();
 
   private final AtomicBoolean stopped = new AtomicBoolean(false);
   private Connection monitoringConn = null;
