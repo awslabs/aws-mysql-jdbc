@@ -275,7 +275,7 @@ dependencies {
     testImplementation("org.testcontainers:mysql:1.19.1")
     testImplementation("org.testcontainers:junit-jupiter:1.19.8")
     testImplementation("org.testcontainers:toxiproxy:1.18.3")
-    testImplementation("org.apache.poi:poi-ooxml:5.2.3")
+    testImplementation("org.apache.poi:poi-ooxml:5.2.5")
     testImplementation("com.zaxxer:HikariCP:4.0.3")
     testImplementation("software.amazon.awssdk:secretsmanager:2.23.12")
 
