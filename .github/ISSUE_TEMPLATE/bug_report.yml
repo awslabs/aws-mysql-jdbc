@@ -4,6 +4,11 @@ title: "(short issue description)"
 labels: [bug, needs-triage]
 body:
 - type: textarea
+  id: deprecation
+  attributes:
+    label: Support for this project will end on July 25/2024.
+    description: Please consider migrating to https://github.com/aws/aws-advanced-jdbc-wrapper.
+- type: textarea
   id: description
   attributes:
     label: Describe the bug
