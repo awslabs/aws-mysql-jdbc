@@ -430,7 +430,7 @@ public class NativeSession extends CoreSession implements Serializable {
                 queryBuf.append(", @@max_allowed_packet AS max_allowed_packet");
                 queryBuf.append(", @@net_write_timeout AS net_write_timeout");
                 queryBuf.append(", @@performance_schema AS performance_schema");
-                if (!versionMeetsMinimum(8, 0, 3)) {
+                if (!versionMeetsMinimum(8, 0, 0)) {
                     queryBuf.append(", @@query_cache_size AS query_cache_size");
                     queryBuf.append(", @@query_cache_type AS query_cache_type");
                 }
