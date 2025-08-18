@@ -1,4 +1,4 @@
-# Amazon Web Services (AWS) JDBC Driver for MySQL
+#delete Amazon Web Services (AWS) JDBC Driver for MySQL
 
 [![Build Status](https://github.com/awslabs/aws-mysql-jdbc/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/awslabs/aws-mysql-jdbc/actions/workflows/main.yml)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/software.aws.rds/aws-mysql-jdbc/badge.svg)](https://maven-badges.herokuapp.com/maven-central/software.aws.rds/aws-mysql-jdbc)
