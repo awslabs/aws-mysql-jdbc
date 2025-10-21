@@ -5,6 +5,9 @@ on:
     types:
       - published
 
+permissions:
+  contents: read
+
 jobs:
   ubuntu-latest-aurora-release-to-maven:
     name: 'Build And Release to Maven'
