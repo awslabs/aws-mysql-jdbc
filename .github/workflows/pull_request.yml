@@ -11,6 +11,9 @@ concurrency:
   group: environment-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   ubuntu-latest-aurora-run-community-tests:
     name: 'Run Community Tests'
