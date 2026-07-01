@@ -443,7 +443,14 @@ public class MysqlSQLXML implements SQLXML {
     protected String domSourceToString() throws SQLException {
         try {
             DOMSource source = new DOMSource(this.asDOMResult.getNode());
-            Transformer identity = TransformerFactory.newInstance().newTransformer();
+            TransformerFactory factory = TransformerFactory.newInstance();
+            // Baseline secure processing (limits, disables risky features)
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            // Block external DTDs and external stylesheets — the XXE vectors for XSLT/transform
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+
+            Transformer identity = factory.newTransformer();
             StringWriter stringOut = new StringWriter();
             Result result = new StreamResult(stringOut);
             identity.transform(source, result);
