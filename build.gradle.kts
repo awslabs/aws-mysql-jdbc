@@ -286,7 +286,7 @@ dependencies {
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("org.slf4j:slf4j-api:2.0.1")
     implementation("com.oracle.oci.sdk:oci-java-sdk-common:3.42.0")
-    implementation("org.checkerframework:checker-qual:3.47.0")
+    implementation("org.checkerframework:checker-qual:4.2.1")
     compileOnly("software.amazon.awssdk:secretsmanager:2.23.12")
 
     compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
