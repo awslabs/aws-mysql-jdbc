@@ -289,7 +289,7 @@ dependencies {
     implementation("org.checkerframework:checker-qual:3.47.0")
     compileOnly("software.amazon.awssdk:secretsmanager:2.23.12")
 
-    compileOnly("org.ajoberstar.grgit:grgit-gradle:4.1.1")
+    compileOnly("org.ajoberstar.grgit:grgit-gradle:5.3.3")
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.17.1")
 }
 
